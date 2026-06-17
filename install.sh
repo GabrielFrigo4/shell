@@ -43,11 +43,11 @@ fi
 ### --------------------------------
 ### Validate
 ### --------------------------------
-PROMPT_FILE="${SHELL_REPO_DIR}/os/${OS}/${SHELL_NAME}/prompt.sh"
+PROMPT_FILE="${SHELL_REPO_DIR}/target/${OS}/${SHELL_NAME}/prompt.sh"
 if [ ! -f "${PROMPT_FILE}" ]; then
 	echo "ERROR: No prompt file found at: ${PROMPT_FILE}"
 	echo "Available configs:"
-	ls -R "${SHELL_REPO_DIR}/os/" 2> "/dev/null"
+	ls -R "${SHELL_REPO_DIR}/target/" 2> "/dev/null"
 	exit 1
 fi
 

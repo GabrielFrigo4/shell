@@ -43,48 +43,9 @@ setopt PUSHD_SILENT
 setopt COMPLETE_IN_WORD
 
 ### ================================
-### SHELL ENVIRONMENT
-### ================================
-
-command_not_found_handler() {
-	local cmd="${1}"
-	shift
-	for ext in .bat .cmd .exe; do
-		if (( $+commands[${cmd}${ext}] )); then
-			"${cmd}${ext}" "$@"
-			return $?
-		fi
-	done
-	echo "zsh: ${cmd}: command not found" > &2
-	return 127
-}
-
-path_front() {
-	if [ -d "${1}" ] && [[ ":${PATH}:" != *":${1}:"* ]]; then
-		export PATH="${1}:${PATH}"
-	fi
-}
-
-path_back() {
-	if [ -d "${1}" ] && [[ ":${PATH}:" != *":${1}:"* ]]; then
-		export PATH="${PATH}:${1}"
-	fi
-}
-
-path_front "${HOME}/.local/bin"
-path_back "$(cygpath -u "$LOCALAPPDATA")/Coursier/data/bin"
-export PATH=$(printf "%s" "${PATH}" | awk -v RS=: -v ORS=: '!a[$(0)]++' | sed 's/:$//')
-
-export C_INCLUDE_PATH="$(cygpath -m /usr/local/include)"
-export CPLUS_INCLUDE_PATH="$(cygpath -m /usr/local/include)"
-export LIBRARY_PATH="$(cygpath -m /usr/local/lib)"
-export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig"
-
-export MICRO_TRUECOLOR=1
-
-### ================================
 ### SHELL APPEARANCE
 ### ================================
+### Expects: PROMPT_OS_ICON, PROMPT_OS_COLOR (red|blue), PROMPT_OS_NAME
 
 () {
 	zstyle ':prompt:colors' reset     '%f%b'
@@ -143,84 +104,19 @@ export MICRO_TRUECOLOR=1
 		zstyle -s ':prompt:colors' b_green u
 	fi
 
-	local sys_info="MSYS2-$MSYSTEM"
+	local os_icon="${PROMPT_OS_ICON}"
+	local os_name="${PROMPT_OS_NAME}"
 	local sh_name="$ZSH_NAME"
 
+	local os_color
+	case "$PROMPT_OS_COLOR" in
+		red)  os_color="$R" ;;
+		blue) os_color="$B" ;;
+		*)    os_color="$B" ;;
+	esac
+
 	export PROMPT="
-${y}${B} ${M}${sys_info}${y}─${B} ${M}${sh_name}${y}
+${y}${os_color}${os_icon}${M}${os_name}${y}─${B} ${M}${sh_name}${y}
 ${y}┌──❮ ${G} %*${y} ❯─❮ ${G} %D{%d/%m/%y}${y} ❯─❮ ${Y} ${C}%c${y} ❯─ ❮${B} ${u}%n${y}❯ \$(git_branch)
 ${y}└─${B}${z} "
 }
-
-### ================================
-### WINDOWS FUNCTIONS
-### ================================
-
-### --------------------------------
-### Manual
-### --------------------------------
-win-man() {
-	start "https://learn.microsoft.com/en-us/search/?terms=${1}"
-}
-
-### ================================
-### UNIX FUNCTIONS
-### ================================
-
-### --------------------------------
-### Manual
-### --------------------------------
-unix-man() {
-	section="${1}"
-	command="${2}"
-	number="$section"
-
-	if [[ ! "$section" =~ [0-9]$ ]]; then
-		number="${section%?}"
-	fi
-
-	w3m "https://www.man7.org/linux/man-pages/man$number/$command.$section.html"
-}
-
-### ================================
-### SHELL ALIAS
-### ================================
-
-### --------------------------------
-### Software
-### --------------------------------
-alias wh="which"
-alias brw="lynx -use_mouse=on -nobrowse=on -nopause=on -show_cursor=off"
-### --------------------------------
-### Manual
-### --------------------------------
-alias wman="win-man"
-alias uman="unix-man"
-alias mandoc="unix-man"
-### --------------------------------
-### Management
-### --------------------------------
-alias upsys="pacman --noconfirm -Syu"
-alias upall="upsys"
-alias pac="pacman"
-alias pacs="pacman -Ss"
-alias paci="pacman -S"
-alias pacr="pacman -Rcns"
-alias pacu="pacman -Syu"
-### --------------------------------
-### Emacs
-### --------------------------------
-alias ek="pkill emacs"
-alias es="runemacs --fg-daemon"
-alias er="ek && es"
-alias ec="emacsclientw --create-frame --alternate-editor \"\""
-alias oe="emacsclientw --create-frame --alternate-editor \"\" ."
-### --------------------------------
-### Code Editors
-### --------------------------------
-alias on="nvim ."
-alias ov="vim ."
-
-### ================================
-### SHELL CONFIGURATION
-### ================================
