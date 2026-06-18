@@ -6,7 +6,6 @@ PROMPT_OS_ICON=" "
 PROMPT_OS_COLOR="blue"
 PROMPT_OS_NAME="MSYS2-$MSYSTEM"
 
-SHELL_REPO_DIR="${${(%):-%x}:A:h:h:h:h}"
 source "${SHELL_REPO_DIR}/theme/zsh.sh"
 
 ### ================================

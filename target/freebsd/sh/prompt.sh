@@ -2,7 +2,6 @@
 ### FreeBSD sh - Entry Point
 ### ================================
 
-SHELL_REPO_DIR="/usr/local/share/shell"
 
 . "${SHELL_REPO_DIR}/target/freebsd/sh/terminal.sh"
 

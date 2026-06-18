@@ -164,10 +164,10 @@ case "${SHELL_NAME}" in
 	*)        SOURCE_CMD="." ;;
 esac
 
-SOURCE_LINE="${SOURCE_CMD} \"${PROMPT_FILE}\""
-CORE_ENV_LINE="${SOURCE_CMD} \"${SHELL_REPO_DIR}/core/environment.sh\""
-CORE_FUNC_LINE="${SOURCE_CMD} \"${SHELL_REPO_DIR}/core/functions.sh\""
-CORE_VAULT_LINE="${SOURCE_CMD} \"${SHELL_REPO_DIR}/core/vault.sh\""
+SOURCE_LINE="${SOURCE_CMD} \"\${SHELL_REPO_DIR}/target/${OS}/${SHELL_NAME}/prompt.sh\""
+CORE_ENV_LINE="${SOURCE_CMD} \"\${SHELL_REPO_DIR}/core/environment.sh\""
+CORE_FUNC_LINE="${SOURCE_CMD} \"\${SHELL_REPO_DIR}/core/functions.sh\""
+CORE_VAULT_LINE="${SOURCE_CMD} \"\${SHELL_REPO_DIR}/core/vault.sh\""
 CONTEXT_LINE="export SHELL_CONTEXT=\"${SHELL_CONTEXT}\""
 REPO_DIR_LINE="export SHELL_REPO_DIR=\"${SHELL_REPO_DIR}\""
 
