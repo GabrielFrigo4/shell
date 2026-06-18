@@ -38,7 +38,8 @@ upsh() {
 		echo "🔄 Updating shell repository at ${SHELL_REPO_DIR}..."
 		command git -C "${SHELL_REPO_DIR}" pull
 		echo "♻️ Reloading shell environment..."
-		local SHELL_NAME="${SHELL##*/}"
+		local SHELL_NAME="$(command ps -p "$$" -o comm= 2> "/dev/null" | command sed 's/^-//')"
+		SHELL_NAME="${SHELL_NAME##*/}"
 		. "${HOME}/.${SHELL_NAME:-sh}rc" 2> "/dev/null" || true
 	else
 		echo "❌ ERROR: SHELL_REPO_DIR is not set or invalid."
