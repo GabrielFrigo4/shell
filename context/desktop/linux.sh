@@ -3,7 +3,22 @@
 ### ================================
 
 ### --------------------------------
-### Packages (Arch)
+### Software
+### --------------------------------
+alias wh="which"
+alias ds="disown"
+alias brw="lynx -use_mouse=on -nobrowse=on -nopause=on -show_cursor=off"
+alias mmdc="mmdc -p ~/.mermaid-puppeteer-config.json -c ~/.mermaid-theme-config.json -b \"#191919\" -s 4"
+
+### --------------------------------
+### Manual
+### --------------------------------
+alias wman="win-man"
+alias uman="unix-man"
+alias mandoc="unix-man"
+
+### --------------------------------
+### Packages
 ### --------------------------------
 alias upyay="yay --noconfirm -Syu"
 alias upall="upyay"
@@ -18,7 +33,7 @@ alias pacr="pacman -Rcns"
 alias pacu="pacman -Syu"
 
 ### --------------------------------
-### Goto (desktop folders)
+### Goto
 ### --------------------------------
 alias desk="cd ~/'Área de trabalho'"
 alias down="cd ~/Downloads"

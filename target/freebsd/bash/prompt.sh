@@ -15,9 +15,8 @@ PROMPT_OS_NAME="$(freebsd-version)"
 
 SHELL_REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 source "${SHELL_REPO_DIR}/theme/bash.sh"
-source "${SHELL_REPO_DIR}/target/freebsd/aliases.sh"
+source "${SHELL_REPO_DIR}/target/freebsd/environment.sh"
 
-### Context (desktop/server)
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
 [ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/freebsd.sh" ] && \
     source "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/freebsd.sh"

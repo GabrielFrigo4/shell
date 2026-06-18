@@ -3,7 +3,20 @@
 ### ================================
 
 ### --------------------------------
-### Packages (MSYS2 pacman)
+### Software
+### --------------------------------
+alias wh="which"
+alias brw="lynx -use_mouse=on -nobrowse=on -nopause=on -show_cursor=off"
+
+### --------------------------------
+### Manual
+### --------------------------------
+alias wman="win-man"
+alias uman="unix-man"
+alias mandoc="unix-man"
+
+### --------------------------------
+### Packages
 ### --------------------------------
 alias upsys="pacman --noconfirm -Syu"
 alias upall="upsys"

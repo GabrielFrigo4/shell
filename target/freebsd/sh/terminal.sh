@@ -1,11 +1,6 @@
 ### ================================
 ### TERMINAL ENVIRONMENT
 ### ================================
-### Sistema de inicialização do FreeBSD sh.
-### chsh é sempre sh; este módulo detecta o tipo de terminal
-### e faz exec para zsh quando apropriado.
-### - ttyv*/console → mantém sh (terminal burro / sem GUI)
-### - outros ttys   → exec para zsh (terminal gráfico / SSH)
 
 case "$(command ps -o comm= -p $PPID)" in
 	su|-su) unset SHELL_INIT ;;

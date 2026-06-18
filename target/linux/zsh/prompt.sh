@@ -8,9 +8,8 @@ PROMPT_OS_NAME="$(uname -r)"
 
 SHELL_REPO_DIR="${${(%):-%x}:A:h:h:h:h}"
 source "${SHELL_REPO_DIR}/theme/zsh.sh"
-source "${SHELL_REPO_DIR}/target/linux/aliases.sh"
+source "${SHELL_REPO_DIR}/target/linux/environment.sh"
 
-### Context (desktop/server)
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
 [ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/linux.sh" ] && \
     source "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/linux.sh"
