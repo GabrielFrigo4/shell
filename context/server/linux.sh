@@ -5,7 +5,7 @@
 ### --------------------------------
 ### Packages (apt)
 ### --------------------------------
-alias upapt="sudo apt update && sudo apt upgrade -y"
-alias upflat="flatpak update -y"
+alias upapt="sudo apt update && sudo apt upgrade --yes"
+alias upflat="flatpak update --yes"
 alias upsnap="sudo snap refresh"
 alias upall="upapt && upflat"
