@@ -31,10 +31,10 @@ done
 unset _skip_next
 
 case "${SHELL_CONTEXT}" in
-	desktop|server) ;;
+	desktop|server|container) ;;
 	*)
-		echo "ERROR: Invalid context '${SHELL_CONTEXT}'. Use 'desktop' or 'server'."
-		echo "Usage: install.sh [--context desktop|server] [-c desktop|server]"
+		echo "ERROR: Invalid context '${SHELL_CONTEXT}'. Use 'desktop', 'server' or 'container'."
+		echo "Usage: install.sh [--context desktop|server|container] [-c desktop|server|container]"
 		exit 1
 		;;
 esac
