@@ -10,6 +10,11 @@ SHELL_REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 source "${SHELL_REPO_DIR}/theme/bash.sh"
 source "${SHELL_REPO_DIR}/target/linux/aliases.sh"
 
+### Context (desktop/server)
+SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
+[ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/linux.sh" ] && \
+    source "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/linux.sh"
+
 ### ================================
 ### SHELL CONFIGURATION
 ### ================================

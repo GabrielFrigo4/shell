@@ -26,5 +26,6 @@ path_back() {
 ### Path Dedup
 ### --------------------------------
 path_dedup() {
-	export PATH=$(printf "%s" "${PATH}" | awk -v RS=: -v ORS=: '!a[$(0)]++' | sed 's/:$//')
+	PATH=$(command printf "%s" "${PATH}" | command awk -v RS=: -v ORS=: '!a[$(0)]++' | command sed 's/:$//')
+	export PATH
 }

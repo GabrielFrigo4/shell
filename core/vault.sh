@@ -24,7 +24,7 @@ vault-keys() {
 	fi
 	for key in "${VAULT_DIR}/keys/"*.key; do
 		[ -f "${key}" ] || continue
-		ssh-add "${key}" 2> "/dev/null" && echo "Loaded: $(basename "${key}")"
+		command ssh-add "${key}" 2> "/dev/null" && echo "Loaded: $(command basename "${key}")"
 	done
 }
 

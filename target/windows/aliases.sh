@@ -4,7 +4,7 @@
 
 path_front "${HOME}/.local/bin"
 path_back "$(cygpath -u "$LOCALAPPDATA")/Coursier/data/bin"
-export PATH=$(printf "%s" "${PATH}" | awk -v RS=: -v ORS=: '!a[$(0)]++' | sed 's/:$//')
+path_dedup
 
 export C_INCLUDE_PATH="$(cygpath -m /usr/local/include)"
 export CPLUS_INCLUDE_PATH="$(cygpath -m /usr/local/include)"
@@ -50,32 +50,10 @@ unix-man() {
 ### --------------------------------
 alias wh="which"
 alias brw="lynx -use_mouse=on -nobrowse=on -nopause=on -show_cursor=off"
+
 ### --------------------------------
 ### Manual
 ### --------------------------------
 alias wman="win-man"
 alias uman="unix-man"
 alias mandoc="unix-man"
-### --------------------------------
-### Management
-### --------------------------------
-alias upsys="pacman --noconfirm -Syu"
-alias upall="upsys"
-alias pac="pacman"
-alias pacs="pacman -Ss"
-alias paci="pacman -S"
-alias pacr="pacman -Rcns"
-alias pacu="pacman -Syu"
-### --------------------------------
-### Emacs
-### --------------------------------
-alias ek="pkill emacs"
-alias es="runemacs --fg-daemon"
-alias er="ek && es"
-alias ec="emacsclientw --create-frame --alternate-editor \"\""
-alias oe="emacsclientw --create-frame --alternate-editor \"\" ."
-### --------------------------------
-### Code Editors
-### --------------------------------
-alias on="nvim ."
-alias ov="vim ."

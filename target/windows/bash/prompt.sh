@@ -28,6 +28,11 @@ command_not_found_handle() {
 
 source "${SHELL_REPO_DIR}/target/windows/aliases.sh"
 
+### Context (desktop/server)
+SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
+[ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/windows.sh" ] && \
+    source "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/windows.sh"
+
 ### ================================
 ### SHELL CONFIGURATION
 ### ================================
