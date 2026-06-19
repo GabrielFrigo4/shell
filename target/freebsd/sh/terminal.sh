@@ -24,7 +24,7 @@ if [ -z "${SHELL_INIT}" ]; then
 		export SHELL_INIT=1
 		export SHELL="${SHELL_TARGET}"
 		unset SHELL_TARGET
-		command printf "\033[H\033[2J\033[3J"
+		command echo -n $'\e[2J\e[3J\e[H'
 		exec "${SHELL}"
 	else
 		unset SHELL_TARGET
