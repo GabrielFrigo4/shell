@@ -40,16 +40,6 @@ case "${SHELL_CONTEXT}" in
 esac
 
 ### --------------------------------
-### Detect Shell
-### --------------------------------
-SHELL_NAME="$(ps -p "${PPID}" -o comm= 2> "/dev/null" | sed 's/^-//')"
-if [ "${SHELL_NAME}" = "sudo" ] || [ "${SHELL_NAME}" = "su" ]; then
-	GPID="$(ps -p "${PPID}" -o ppid= 2> "/dev/null" | tr -d ' ')"
-	SHELL_NAME="$(ps -p "${GPID}" -o comm= 2> "/dev/null" | sed 's/^-//')"
-fi
-[ -z "${SHELL_NAME}" ] && SHELL_NAME="$(basename "${SHELL}")"
-
-### --------------------------------
 ### Detect OS
 ### --------------------------------
 OS="unknown"
@@ -58,6 +48,37 @@ case "$(uname -s)" in
 	FreeBSD*)             OS="freebsd" ;;
 	MINGW*|CYGWIN*|MSYS*) OS="windows" ;;
 esac
+
+### --------------------------------
+### Detect Shell
+### --------------------------------
+SHELL_NAME="$(ps -p "${PPID}" -o comm= 2> "/dev/null" | sed 's/^-//')"
+if [ -z "${SHELL_NAME}" ]; then
+	if [ "${OS}" = "windows" ]; then
+		SHELL_NAME="$(ps 2> "/dev/null" | awk -v pid="${PPID}" '$1 == pid {print $8}' | awk -F'/' '{print $NF}' | sed 's/^-//; s/\.exe$//')"
+	else
+		SHELL_NAME="$(ps -o pid,comm 2> "/dev/null" | awk -v pid="${PPID}" '$1 == pid {print $2}' | awk -F'/' '{print $NF}' | sed 's/^-//; s/\.exe$//')"
+	fi
+fi
+if [ "${SHELL_NAME}" = "sudo" ] || [ "${SHELL_NAME}" = "su" ]; then
+	GPID="$(ps -p "${PPID}" -o ppid= 2> "/dev/null" | tr -d ' ')"
+	if [ -z "${GPID}" ]; then
+		if [ "${OS}" = "windows" ]; then
+			GPID="$(ps 2> "/dev/null" | awk -v pid="${PPID}" '$1 == pid {print $2}')"
+		else
+			GPID="$(ps -o pid,ppid 2> "/dev/null" | awk -v pid="${PPID}" '$1 == pid {print $2}')"
+		fi
+	fi
+	SHELL_NAME="$(ps -p "${GPID}" -o comm= 2> "/dev/null" | sed 's/^-//')"
+	if [ -z "${SHELL_NAME}" ]; then
+		if [ "${OS}" = "windows" ]; then
+			SHELL_NAME="$(ps 2> "/dev/null" | awk -v pid="${GPID}" '$1 == pid {print $8}' | awk -F'/' '{print $NF}' | sed 's/^-//; s/\.exe$//')"
+		else
+			SHELL_NAME="$(ps -o pid,comm 2> "/dev/null" | awk -v pid="${GPID}" '$1 == pid {print $2}' | awk -F'/' '{print $NF}' | sed 's/^-//; s/\.exe$//')"
+		fi
+	fi
+fi
+[ -z "${SHELL_NAME}" ] && SHELL_NAME="$(basename "${SHELL}")"
 
 echo "=== Shell Installer ==="
 echo "Detected repo:  ${SHELL_REPO_DIR}"

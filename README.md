@@ -6,7 +6,7 @@ Configurações, aliases e prompts para todos os ambientes do sistema.
 
 Você pode escolher o contexto do ambiente passando o parâmetro `--context` (opções: `desktop`, `server`, `container`). Por padrão, se não informado, assume `desktop`. Ou pode utilizar os scripts de atalho `install-desktop.sh`, `install-server.sh` e `install-container.sh`.
 
-**Linux / FreeBSD / macOS:**
+**Linux / FreeBSD / MacOS:**
 
 ```sh
 sudo git clone "https://github.com/GabrielFrigo4/Shell" "/usr/local/share/shell"
