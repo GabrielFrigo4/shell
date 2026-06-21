@@ -12,24 +12,28 @@
 
 ## 🚀 Instalação
 
-Você pode escolher o contexto do ambiente passando o parâmetro `--context` (opções: `desktop`, `server`, `container`). 
-Por padrão, se não for informado, o script assumirá o contexto `desktop`. 
+Você pode escolher o contexto do ambiente passando o parâmetro `--context` (opções: `desktop`, `server`, `container`).
+Por padrão, se não for informado, o script assumirá o contexto `desktop`.
 Você também pode utilizar os scripts de atalho: `install-desktop.sh`, `install-server.sh` e `install-container.sh`.
 
 ### 🐧 Linux / 😈 FreeBSD / 🍎 MacOS
+
 ```sh
 sudo git clone "https://github.com/GabrielFrigo4/Shell" "/usr/local/share/shell"
 sh "/usr/local/share/shell/install.sh" --context desktop
 ```
 
 ### 🪟 MSYS2 (Windows)
+
 ```sh
 git clone "https://github.com/GabrielFrigo4/Shell" "${HOME}/.shell"
 sh "${HOME}/.shell/install.sh" --context desktop
 ```
 
 ### 🔄 Pós-Instalação
+
 Reinicie o shell ou recarregue o arquivo `RC` manualmente:
+
 ```sh
 . ~/.shrc
 # ou
