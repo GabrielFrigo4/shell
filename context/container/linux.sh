@@ -1,11 +1,21 @@
 ### ================================
-### SERVER CONTEXT - Linux (Debian)
+### CONTAINER CONTEXT - Linux
 ### ================================
 
 ### --------------------------------
-### Packages (apt)
+### Packages
 ### --------------------------------
-alias upapt="sudo apt update && sudo apt upgrade --yes"
-alias upflat="flatpak update --yes"
-alias upsnap="sudo snap refresh"
-alias upall="upapt && upflat"
+case "$(detect_distro_family)" in
+	arch)
+		alias upsys="sudo pacman --noconfirm -Syu"
+		alias upall="upsys"
+		;;
+	debian)
+		alias upsys="sudo apt update && sudo apt upgrade --yes"
+		alias upall="upsys"
+		;;
+	fedora)
+		alias upsys="sudo dnf upgrade --yes"
+		alias upall="upsys"
+		;;
+esac

@@ -55,3 +55,46 @@ detect_shell() {
 
 	echo "${_name##*/}"
 }
+
+### --------------------------------
+### Detect Distro
+### --------------------------------
+detect_distro() {
+	if [ -f "/etc/os-release" ]; then
+		local _id="$(. /etc/os-release && echo "${ID}")"
+		echo "${_id:-unknown}"
+	elif [ -f "/etc/arch-release" ]; then
+		echo "arch"
+	elif [ -f "/etc/debian_version" ]; then
+		echo "debian"
+	else
+		echo "unknown"
+	fi
+}
+
+### --------------------------------
+### Detect Distro Family
+### --------------------------------
+detect_distro_family() {
+	local _id="$(detect_distro)"
+	local _like=""
+	[ -f "/etc/os-release" ] && _like="$(. /etc/os-release && echo "${ID_LIKE}")"
+
+	case "${_id}" in
+		arch|manjaro|endeavouros)             echo "arch" ;;
+		debian|ubuntu|linuxmint|pop|raspbian) echo "debian" ;;
+		fedora|rhel|centos|rocky|alma)        echo "fedora" ;;
+		opensuse*|sles)                       echo "suse" ;;
+		void)                                 echo "void" ;;
+		alpine)                               echo "alpine" ;;
+		*)
+			case "${_like}" in
+				*arch*)            echo "arch" ;;
+				*debian*|*ubuntu*) echo "debian" ;;
+				*fedora*|*rhel*)   echo "fedora" ;;
+				*suse*)            echo "suse" ;;
+				*)                 echo "unknown" ;;
+			esac
+			;;
+	esac
+}

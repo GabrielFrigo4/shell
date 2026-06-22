@@ -1,5 +1,5 @@
 ### ================================
-### DESKTOP CONTEXT - Linux (Arch)
+### DESKTOP CONTEXT - Linux
 ### ================================
 
 ### --------------------------------
@@ -25,17 +25,35 @@ alias mandoc="unix-man"
 ### --------------------------------
 ### Packages
 ### --------------------------------
-alias upyay="yay --noconfirm -Syu"
-alias upall="upyay"
-alias yays="yay -Ss"
-alias yayi="yay -S"
-alias yayr="yay -Rcns"
-alias yayu="yay -Syu"
-alias pac="pacman"
-alias pacs="pacman -Ss"
-alias paci="pacman -S"
-alias pacr="pacman -Rcns"
-alias pacu="pacman -Syu"
+case "$(detect_distro_family)" in
+	arch)
+		alias upsys="yay --noconfirm -Syu"
+		alias upall="upsys"
+		alias yays="yay -Ss"
+		alias yayi="yay -S"
+		alias yayr="yay -Rcns"
+		alias yayu="yay -Syu"
+		alias pac="pacman"
+		alias pacs="pacman -Ss"
+		alias paci="pacman -S"
+		alias pacr="pacman -Rcns"
+		alias pacu="pacman -Syu"
+		;;
+	debian)
+		alias upsys="sudo apt update && sudo apt upgrade --yes"
+		alias upall="upsys"
+		;;
+	fedora)
+		alias upsys="sudo dnf upgrade --yes"
+		alias upall="upsys"
+		;;
+esac
+
+### --------------------------------
+### Packages (extras)
+### --------------------------------
+command -v flatpak > "/dev/null" 2>&1 && alias upflat="flatpak update --yes"
+command -v snap    > "/dev/null" 2>&1 && alias upsnap="sudo snap refresh"
 
 ### --------------------------------
 ### Goto

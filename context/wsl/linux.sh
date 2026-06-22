@@ -1,5 +1,5 @@
 ### ================================
-### SERVER CONTEXT - Linux
+### WSL CONTEXT - Linux
 ### ================================
 
 ### --------------------------------
@@ -25,3 +25,18 @@ esac
 ### --------------------------------
 command -v flatpak > "/dev/null" 2>&1 && alias upflat="flatpak update --yes"
 command -v snap    > "/dev/null" 2>&1 && alias upsnap="sudo snap refresh"
+
+### --------------------------------
+### Windows Integration
+### --------------------------------
+alias explorer="explorer.exe"
+alias cmd="cmd.exe"
+alias powershell="powershell.exe"
+alias clip="clip.exe"
+alias winopen="cmd.exe /c start"
+
+### --------------------------------
+### Terminal Editors
+### --------------------------------
+alias on="nvim ."
+alias ov="vim ."
