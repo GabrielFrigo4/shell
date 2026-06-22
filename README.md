@@ -60,9 +60,10 @@ Reinicie o shell ou recarregue o arquivo `RC` manualmente:
 ## 🧠 Detecção Inteligente
 
 O projeto conta com módulos avançados de reconhecimento em `core/detect.sh` que mapeiam perfeitamente o seu ecossistema:
+
 - **OS e Shell:** Reconhece se você está no Linux, FreeBSD ou Windows (MSYS2), e identifica o shell rodando (`bash`, `zsh`, `sh`, etc.).
-- **Distribuição Linux e Família:** Ao rodar no Linux ou no WSL2, o módulo descobre a distribuição exata (`detect_distro`) e a agrupa pela família do gerenciador de pacotes base (`detect_distro_family` — ex: `debian`, `arch`, `fedora`). 
-Isso permite que os aliases universais (como `upall` e `upsys`) chamem as ferramentas corretas automaticamente sob os panos (`apt`, `pacman`/`yay`, ou `dnf`), sem sobrepor os comandos ou quebrar scripts. Gerenciadores isolados como `flatpak` e `snap` também são detectados e ganham comandos separados (`upflat` / `upsnap`) apenas se estiverem presentes no sistema.
+- **Distribuição Linux e Família:** Ao rodar no Linux ou no WSL2, o módulo descobre a distribuição exata (`detect_distro`) e a agrupa pela família do gerenciador de pacotes base (`detect_distro_family` — ex: `debian`, `arch`, `fedora`).
+  Isso permite que os aliases universais (como `upall` e `upsys`) chamem as ferramentas corretas automaticamente sob os panos (`apt`, `pacman`/`yay`, ou `dnf`), sem sobrepor os comandos ou quebrar scripts. Gerenciadores isolados como `flatpak` e `snap` também são detectados e ganham comandos separados (`upflat` / `upsnap`) apenas se estiverem presentes no sistema.
 
 ---
 
