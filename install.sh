@@ -42,54 +42,24 @@ esac
 ### --------------------------------
 ### Detect OS
 ### --------------------------------
-OS="unknown"
-case "$(uname -s)" in
-	Linux*)               OS="linux" ;;
-	FreeBSD*)             OS="freebsd" ;;
-	MINGW*|CYGWIN*|MSYS*) OS="windows" ;;
-esac
+. "${SHELL_REPO_DIR}/core/detect.sh"
+OS_NAME="$(detect_os)"
 
 ### --------------------------------
 ### Detect Shell
 ### --------------------------------
-SHELL_NAME="$(ps -p "${PPID}" -o comm= 2> "/dev/null" | sed 's/^-//')"
-if [ -z "${SHELL_NAME}" ]; then
-	if [ "${OS}" = "windows" ]; then
-		SHELL_NAME="$(ps 2> "/dev/null" | awk -v pid="${PPID}" '$1 == pid {print $8}' | awk -F'/' '{print $NF}' | sed 's/^-//; s/\.exe$//')"
-	else
-		SHELL_NAME="$(ps -o pid,comm 2> "/dev/null" | awk -v pid="${PPID}" '$1 == pid {print $2}' | awk -F'/' '{print $NF}' | sed 's/^-//; s/\.exe$//')"
-	fi
-fi
-if [ "${SHELL_NAME}" = "sudo" ] || [ "${SHELL_NAME}" = "su" ]; then
-	GPID="$(ps -p "${PPID}" -o ppid= 2> "/dev/null" | tr -d ' ')"
-	if [ -z "${GPID}" ]; then
-		if [ "${OS}" = "windows" ]; then
-			GPID="$(ps 2> "/dev/null" | awk -v pid="${PPID}" '$1 == pid {print $2}')"
-		else
-			GPID="$(ps -o pid,ppid 2> "/dev/null" | awk -v pid="${PPID}" '$1 == pid {print $2}')"
-		fi
-	fi
-	SHELL_NAME="$(ps -p "${GPID}" -o comm= 2> "/dev/null" | sed 's/^-//')"
-	if [ -z "${SHELL_NAME}" ]; then
-		if [ "${OS}" = "windows" ]; then
-			SHELL_NAME="$(ps 2> "/dev/null" | awk -v pid="${GPID}" '$1 == pid {print $8}' | awk -F'/' '{print $NF}' | sed 's/^-//; s/\.exe$//')"
-		else
-			SHELL_NAME="$(ps -o pid,comm 2> "/dev/null" | awk -v pid="${GPID}" '$1 == pid {print $2}' | awk -F'/' '{print $NF}' | sed 's/^-//; s/\.exe$//')"
-		fi
-	fi
-fi
-[ -z "${SHELL_NAME}" ] && SHELL_NAME="$(basename "${SHELL}")"
+SHELL_NAME="$(detect_shell)"
 
 echo "=== Shell Installer ==="
 echo "Detected repo:  ${SHELL_REPO_DIR}"
-echo "Detected OS:    ${OS}"
+echo "Detected OS:    ${OS_NAME}"
 echo "Detected shell: ${SHELL_NAME}"
 echo "Context:        ${SHELL_CONTEXT}"
 
 ### --------------------------------
 ### Permissions (shell repo)
 ### --------------------------------
-if [ "${OS}" != "windows" ]; then
+if [ "${OS_NAME}" != "windows" ]; then
 	sudo chown -R "$(id -un):$(id -gn)" "${SHELL_REPO_DIR}"
 	sudo find "${SHELL_REPO_DIR}" -type d -exec chmod 755 {} +
 	sudo find "${SHELL_REPO_DIR}" -type f -exec chmod 644 {} +
@@ -99,7 +69,7 @@ fi
 ### --------------------------------
 ### Validate
 ### --------------------------------
-PROMPT_FILE="${SHELL_REPO_DIR}/target/${OS}/${SHELL_NAME}/prompt.sh"
+PROMPT_FILE="${SHELL_REPO_DIR}/target/${OS_NAME}/${SHELL_NAME}/prompt.sh"
 if [ ! -f "${PROMPT_FILE}" ]; then
 	echo "ERROR: No prompt file found at: ${PROMPT_FILE}"
 	echo "Available configs:"
@@ -137,7 +107,7 @@ rm -f "${RC_FILE}"
 ### --------------------------------
 ### Clean RC file (root)
 ### --------------------------------
-if [ "${OS}" != "windows" ]; then
+if [ "${OS_NAME}" != "windows" ]; then
 	sudo rm -f "${ROOT_RC_FILE}"
 fi
 
@@ -151,7 +121,7 @@ case "${SHELL_NAME}" in
 		else
 			cp "${HOME}/.oh-my-zsh/templates/zshrc.zsh-template" "${HOME}/.zshrc"
 		fi
-		if [ "${OS}" != "windows" ]; then
+		if [ "${OS_NAME}" != "windows" ]; then
 			if [ ! -d "/root/.oh-my-zsh" ]; then
 				sudo env KEEP_ZSHRC=no OVERWRITE_CONFIRMATION=no sh -c 'curl -fsSL "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh" | zsh -s -- --unattended'
 			else
@@ -166,7 +136,7 @@ case "${SHELL_NAME}" in
 			cp "${HOME}/.oh-my-bash/templates/bashrc.osh-template" "${HOME}/.bashrc"
 		fi
 		sed -i.bak 's/OSH_THEME="[^"]*"/OSH_THEME=""/' "${HOME}/.bashrc" && rm -f "${HOME}/.bashrc.bak"
-		if [ "${OS}" != "windows" ]; then
+		if [ "${OS_NAME}" != "windows" ]; then
 			if [ ! -d "/root/.oh-my-bash" ]; then
 				sudo env KEEP_BASHRC=no sh -c 'curl -fsSL "https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh" | bash -s -- --unattended'
 			else
@@ -185,7 +155,7 @@ case "${SHELL_NAME}" in
 	*)        SOURCE_CMD="." ;;
 esac
 
-SOURCE_LINE="${SOURCE_CMD} \"\${SHELL_REPO_DIR}/target/${OS}/${SHELL_NAME}/prompt.sh\""
+SOURCE_LINE="${SOURCE_CMD} \"\${SHELL_REPO_DIR}/target/${OS_NAME}/${SHELL_NAME}/prompt.sh\""
 CORE_ENV_LINE="${SOURCE_CMD} \"\${SHELL_REPO_DIR}/core/environment.sh\""
 CORE_FUNC_LINE="${SOURCE_CMD} \"\${SHELL_REPO_DIR}/core/functions.sh\""
 CORE_VAULT_LINE="${SOURCE_CMD} \"\${SHELL_REPO_DIR}/core/vault.sh\""
@@ -225,7 +195,7 @@ fi
 ### --------------------------------
 ### Install (root)
 ### --------------------------------
-if [ "${OS}" != "windows" ]; then
+if [ "${OS_NAME}" != "windows" ]; then
 	echo "Target RC file: ${ROOT_RC_FILE} (root)"
 	if sudo grep -qF "${SOURCE_LINE}" "${ROOT_RC_FILE}" 2> "/dev/null"; then
 		echo "Shell config already installed in ${ROOT_RC_FILE}"

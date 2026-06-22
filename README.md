@@ -20,6 +20,12 @@ Você também pode utilizar os scripts de atalho: `install-desktop.sh`, `install
 
 ```sh
 sudo git clone "https://github.com/GabrielFrigo4/Shell" "/usr/local/share/shell"
+
+# Execute usando o seu shell de preferência:
+bash "/usr/local/share/shell/install.sh" --context desktop
+# ou
+zsh "/usr/local/share/shell/install.sh" --context desktop
+# ou
 sh "/usr/local/share/shell/install.sh" --context desktop
 ```
 
@@ -27,7 +33,11 @@ sh "/usr/local/share/shell/install.sh" --context desktop
 
 ```sh
 git clone "https://github.com/GabrielFrigo4/Shell" "${HOME}/.shell"
-sh "${HOME}/.shell/install.sh" --context desktop
+
+# Execute usando o seu shell de preferência:
+bash "${HOME}/.shell/install.sh" --context desktop
+# ou
+zsh "${HOME}/.shell/install.sh" --context desktop
 ```
 
 ### 🔄 Pós-Instalação
