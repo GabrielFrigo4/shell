@@ -5,7 +5,8 @@
 ### --------------------------------
 ### Plasma Window
 ### --------------------------------
-alias way='sh -c "setsid dbus-run-session startplasma-wayland > \"/dev/null\" 2>&1 &"'
+alias way='exec dbus-run-session startplasma-wayland'
+alias xorg='startx'
 
 ### --------------------------------
 ### Software

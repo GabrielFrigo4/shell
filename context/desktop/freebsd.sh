@@ -10,7 +10,8 @@ alias clear="echo -n $'\e[2J\e[3J\e[H'"
 ### --------------------------------
 ### Plasma Window
 ### --------------------------------
-alias way='sh -c "ck-launch-session dbus-run-session startplasma-wayland > \"/dev/null\" 2>&1 &"'
+alias way='exec ck-launch-session dbus-run-session startplasma-wayland'
+alias xorg='startx'
 
 ### --------------------------------
 ### Packages
