@@ -1,5 +1,5 @@
 ### ================================
-### FreeBSD sh - Entry Point
+### TERMINAL INITIALIZATION
 ### ================================
 
 . "${SHELL_REPO_DIR}/target/freebsd/sh/terminal.sh"
