@@ -33,7 +33,7 @@ Você também pode utilizar os scripts de atalho: `install-desktop.sh`, `install
 **1. Clone o repositório:**
 
 ```sh
-sudo git clone https://github.com/GabrielFrigo4/Shell" "/usr/local/share/shell"
+sudo git clone "https://github.com/GabrielFrigo4/Shell" "/usr/local/share/shell"
 ```
 
 **2. Execute a instalação:**
