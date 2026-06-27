@@ -1,18 +1,13 @@
 ### ================================
-### VAULT LOADER
+### VAULT LOADER E SSH
 ### ================================
 
 VAULT_DIR="${HOME}/.vault"
 
 ### --------------------------------
-### Config
+### Variáveis de Ambiente
 ### --------------------------------
-[ -f "${VAULT_DIR}/config.env" ] && . "${VAULT_DIR}/config.env"
-
-### --------------------------------
-### Servers
-### --------------------------------
-[ -f "${VAULT_DIR}/servers/servers.env" ] && . "${VAULT_DIR}/servers/servers.env"
+[ -f "${VAULT_DIR}/vault.sh" ] && . "${VAULT_DIR}/vault.sh"
 
 ### --------------------------------
 ### SSH Keys

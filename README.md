@@ -122,10 +122,8 @@ Para manter este repositório 100% público e seguro, o sistema possui uma integ
 
 Se o diretório `~/.vault` for detectado, o shell carregará automaticamente:
 
-- 🔑 **Variáveis de Ambiente:** Credenciais, tokens e chaves de API (`config.env`).
-- 📡 **Servidores:** Endereços de IP, portas e atalhos de conexão privados (`servers.env`).
+- 🔑 **Variáveis e Configurações:** Credenciais, tokens, chaves de API, endereços de servidores e atalhos de conexão privados (`vault.sh`).
 - 🛡️ **Chaves SSH:** O alias `vault-keys` detecta o seu `ssh-agent` rodando e adiciona automaticamente todas as suas chaves privadas contidas na pasta do cofre de forma segura e silenciosa.
-
 
 ## 🧠 Detecção Inteligente
 
