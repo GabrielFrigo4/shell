@@ -24,3 +24,17 @@ vault-keys() {
 }
 
 [ -S "${SSH_AUTH_SOCK}" ] && vault-keys 2> "/dev/null"
+
+### --------------------------------
+### Update Vault (upvt)
+### --------------------------------
+upvt() {
+	if [ -d "${VAULT_DIR}" ]; then
+		echo "🔄 Updating vault repository at ${VAULT_DIR}..."
+		command git -C "${VAULT_DIR}" pull
+		echo "♻️ Reloading shell environment..."
+		. "${HOME}/.$(detect_shell)rc" 2> "/dev/null" || true
+	else
+		echo "❌ ERROR: VAULT_DIR is not set or invalid."
+	fi
+}
