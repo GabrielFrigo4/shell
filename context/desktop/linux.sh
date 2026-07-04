@@ -7,20 +7,9 @@
 ### --------------------------------
 case "$(detect_distro_family)" in
 	arch)
-	    alias uppac="sudo pacman --noconfirm -Syu"
-		alias upyay="yay --noconfirm -Syu"
-		alias upsys="upyay"
+		alias upman="sudo pacman --noconfirm -Syu"
+		alias upsys="upman"
 		alias upall="upsys"
-
-		alias yays="yay -Ss"
-		alias yayi="yay -S"
-		alias yayr="yay -Rcns"
-		alias yayu="yay -Syu"
-		alias pac="pacman"
-		alias pacs="pacman -Ss"
-		alias paci="pacman -S"
-		alias pacr="pacman -Rcns"
-		alias pacu="pacman -Syu"
 		;;
 	debian)
 		alias upapt="sudo apt update && sudo apt upgrade --yes"
@@ -37,6 +26,7 @@ esac
 ### --------------------------------
 ### Packages Extras
 ### --------------------------------
+command -v yay     > "/dev/null" 2>&1 && alias upyay="yay --noconfirm -Syu"
 command -v flatpak > "/dev/null" 2>&1 && alias upflat="flatpak update --yes"
 command -v snap    > "/dev/null" 2>&1 && alias upsnap="sudo snap refresh"
 

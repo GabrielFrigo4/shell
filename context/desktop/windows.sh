@@ -5,13 +5,9 @@
 ### --------------------------------
 ### Packages
 ### --------------------------------
-alias upsys="pacman --noconfirm -Syu"
+alias upman="sudo pacman --noconfirm -Syu"
+alias upsys="upman"
 alias upall="upsys"
-alias pac="pacman"
-alias pacs="pacman -Ss"
-alias paci="pacman -S"
-alias pacr="pacman -Rcns"
-alias pacu="pacman -Syu"
 
 ### --------------------------------
 ### Emacs
