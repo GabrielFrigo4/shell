@@ -7,7 +7,7 @@
 ![Linux](https://img.shields.io/badge/🐧_Linux-Supported-blue)
 ![FreeBSD](https://img.shields.io/badge/😈_FreeBSD-Supported-red)
 ![MacOS](https://img.shields.io/badge/🍎_MacOS-Unsupported-lightgrey)
-![MSYS2 (Windows)](https://img.shields.io/badge/🪟_MSYS2-Supported-purple)
+![Windows](https://img.shields.io/badge/🪟_Windows-Supported-purple)
 
 ### Contextos de Ambiente
 
@@ -26,7 +26,6 @@
 
 Você pode escolher o contexto do ambiente passando o parâmetro `--context` (opções: `desktop`, `server`, `container`, `wsl`).
 Por padrão, se não for informado, o script assumirá o contexto `desktop`.
-Você também pode utilizar os scripts de atalho: `install-desktop.sh`, `install-server.sh`, `install-container.sh` e `install-wsl.sh`.
 
 ### 🐧 Linux / 😈 FreeBSD / 🍎 MacOS
 
@@ -79,7 +78,9 @@ zsh "/usr/local/share/shell/install.sh" --context wsl
 sh "/usr/local/share/shell/install.sh" --context wsl
 ```
 
-### 🪟 MSYS2 (Windows)
+### 🪟 Windows
+
+> 💡 **Ambiente:** No Windows, o projeto funciona utilizando o terminal do **MSYS2**.
 
 **1. Clone o repositório:**
 
@@ -130,7 +131,7 @@ Se o diretório `~/.vault` for detectado, o shell carregará automaticamente:
 
 O projeto conta com módulos avançados de reconhecimento em `core/detect.sh` que mapeiam perfeitamente o seu ecossistema:
 
-- **OS e Shell:** Reconhece se você está no 🐧 `Linux`, 😈 `FreeBSD`, 🍎 `MacOS` ou 🪟 `MSYS2`, e identifica o 🐚 `Shell` rodando (📜 `bash`, ⚡ `zsh`, ⚙️ `sh`).
+- **OS e Shell:** Reconhece se você está no 🐧 `Linux`, 😈 `FreeBSD`, 🍎 `MacOS` ou 🪟 `Windows` (via **MSYS2**), e identifica o 🐚 `Shell` rodando (📜 `bash`, ⚡ `zsh`, ⚙️ `sh`).
 - **Distribuição Linux e Família:** Ao rodar no 🐧 `Linux` ou no 🧩 `WSL2`, o módulo descobre a distribuição exata (`detect_distro`) e a agrupa pela família do gerenciador de pacotes base (`detect_distro_family` — ex: `debian`, `arch`, `fedora`).
   Isso permite que os aliases universais (como `upall` e `upsys`) chamem as ferramentas corretas automaticamente sob os panos (`apt`, `pacman`/`yay`, ou `dnf`), sem sobrepor os comandos ou quebrar scripts. Gerenciadores isolados como `flatpak` e `snap` também são detectados e ganham comandos separados (`upflat` / `upsnap`) apenas se estiverem presentes no sistema.
 
