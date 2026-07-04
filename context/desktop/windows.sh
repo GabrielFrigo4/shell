@@ -5,7 +5,7 @@
 ### --------------------------------
 ### Packages
 ### --------------------------------
-alias upman="sudo pacman --noconfirm -Syu"
+alias upman="pacman --noconfirm -Syu"
 alias upsys="upman"
 alias upall="upsys"
 
