@@ -138,11 +138,11 @@ O projeto conta com módulos avançados de reconhecimento em `library/detect.sh`
 ## 📁 Estrutura do Repositório
 
 - 🎨 **`target/`**: Configurações divididas por Sistema Operacional (🐧 `Linux`, 😈 `FreeBSD`, 🍎 `MacOS`, 🪟 `Windows`). Mantém a experiência visual exata 1:1, independentemente de ser um pinguim, demônio ou janela.
-- 📚 **`library/`**: Funções e lógicas universais (como detecção e utilitários), compatíveis com qualquer sistema POSIX.
-- ⚙️ **`core/`**: Definições base do ambiente e módulo de integração de segurança com o Vault.
-- 🎯 **`context/`**: Inicializadores e perfis de ambiente descritos abaixo.
-- 💻 **`context/desktop/`**: Com ferramentas ricas e configuração voltada para o uso pessoal (UI, aliases gráficos, etc).
-- 🌐 **`context/server/`**: Mais enxuto, direto ao ponto, ideal para servidores em produção.
-- 📦 **`context/container/`**: Foco em 📦 `Contêineres` como `LXC` e `Incus` (no 🐧 `Linux`) ou `Jails` e `Bastille` (no 😈 `FreeBSD`), utilizando uma versão otimizada do ambiente servidor.
-- 🧩 **`context/wsl/`**: Ambiente híbrido para 🧩 `WSL2`, com integração 🪟 `Windows` (explorer, cmd, powershell, clip) e gerenciamento de pacotes da distro.
-- 🖌️ **`theme/`**: Definições dos temas, cores e integrações de prompts como o Oh-My-Zsh ou Oh-My-Bash.
+- 📚 **`library/`**: A biblioteca padrão do projeto. Fornece o arsenal de ferramentas, utilitários de sistema e módulos de inteligência (como o rastreamento do SO), garantindo que operações complexas funcionem de forma limpa em qualquer plataforma POSIX.
+- ⚙️ **`core/`**: O núcleo do projeto. Responsável por inicializar as fundações do ambiente, variáveis essenciais e integrações primárias (como o Vault), servindo de base estrutural para todos os outros módulos e contextos.
+- 🎯 **`context/`**: O orquestrador de ambientes. Adapta dinamicamente o comportamento e as ferramentas do shell com base no seu escopo de uso atual, garantindo o fluxo de trabalho ideal para cada cenário:
+  - 💻 **`desktop/`**: O ambiente de produtividade primário. Carregado com um conjunto rico de ferramentas, atalhos gráficos e otimizações de interface projetadas para maximizar a eficiência e o conforto no uso diário.
+  - 🌐 **`server/`**: A fundação de alta performance. Um perfil extremamente enxuto, seguro e focado em estabilidade, projetado especificamente para servidores remotos e ambientes de produção onde agilidade é crucial.
+  - 📦 **`container/`**: O perfil para microambientes. Derivado do contexto servidor, é rigorosamente otimizado para a execução em 📦 `Contêineres` (como `LXC`/`Incus` no 🐧 `Linux` ou `Jails`/`Bastille` no 😈 `FreeBSD`), garantindo o mínimo de sobrecarga computacional.
+  - 🧩 **`wsl/`**: O ambiente híbrido de ponte. Une o melhor dos dois mundos, integrando o ecossistema 🐧 `Linux` do 🧩 `WSL2` de forma fluida com as ferramentas nativas do 🪟 `Windows` (interoperabilidade com Explorer, PowerShell, CMD e área de transferência).
+- 🖌️ **`theme/`**: A camada de identidade visual. Responsável por unificar a estética do terminal, gerenciando o prompt, esquema de cores e integrações com frameworks (como Oh-My-Zsh e Oh-My-Bash) para garantir uma experiência consistente e premium.
