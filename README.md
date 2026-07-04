@@ -129,7 +129,7 @@ Se o diretório `~/.vault` for detectado, o shell carregará automaticamente:
 
 ## 🧠 Detecção Inteligente
 
-O projeto conta com módulos avançados de reconhecimento em `core/detect.sh` que mapeiam perfeitamente o seu ecossistema:
+O projeto conta com módulos avançados de reconhecimento em `library/detect.sh` que mapeiam perfeitamente o seu ecossistema:
 
 - **OS e Shell:** Reconhece se você está no 🐧 `Linux`, 😈 `FreeBSD`, 🍎 `MacOS` ou 🪟 `Windows` (via **MSYS2**), e identifica o 🐚 `Shell` rodando (📜 `bash`, ⚡ `zsh`, ⚙️ `sh`).
 - **Distribuição Linux e Família:** Ao rodar no 🐧 `Linux` ou no 🧩 `WSL2`, o módulo descobre a distribuição exata (`detect_distro`) e a agrupa pela família do gerenciador de pacotes base (`detect_distro_family` — ex: `debian`, `arch`, `fedora`).
@@ -138,7 +138,8 @@ O projeto conta com módulos avançados de reconhecimento em `core/detect.sh` qu
 ## 📁 Estrutura do Repositório
 
 - 🎨 **`target/`**: Configurações divididas por Sistema Operacional (🐧 `Linux`, 😈 `FreeBSD`, 🍎 `MacOS`, 🪟 `Windows`). Mantém a experiência visual exata 1:1, independentemente de ser um pinguim, demônio ou janela.
-- ⚙️ **`core/`**: Funções e lógicas universais, compatíveis com qualquer sistema POSIX.
+- 📚 **`library/`**: Funções e lógicas universais (como detecção e utilitários), compatíveis com qualquer sistema POSIX.
+- ⚙️ **`core/`**: Definições base do ambiente e módulo de integração de segurança com o Vault.
 - 🎯 **`context/`**: Inicializadores e perfis de ambiente descritos abaixo.
 - 💻 **`context/desktop/`**: Com ferramentas ricas e configuração voltada para o uso pessoal (UI, aliases gráficos, etc).
 - 🌐 **`context/server/`**: Mais enxuto, direto ao ponto, ideal para servidores em produção.
