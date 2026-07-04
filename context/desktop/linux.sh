@@ -1,35 +1,17 @@
 ### ================================
-### DESKTOP CONTEXT - Linux
+### DESKTOP CONTEXT
 ### ================================
 
 ### --------------------------------
-### Plasma Window
-### --------------------------------
-alias way='exec dbus-run-session startplasma-wayland'
-alias xorg='startx'
-
-### --------------------------------
-### Software
-### --------------------------------
-alias wh="which"
-alias ds="disown"
-alias brw="lynx -use_mouse=on -nobrowse=on -nopause=on -show_cursor=off"
-alias mmdc="mmdc -p ~/.mermaid-puppeteer-config.json -c ~/.mermaid-theme-config.json -b \"#191919\" -s 4"
-
-### --------------------------------
-### Manual
-### --------------------------------
-alias wman="win-man"
-alias uman="unix-man"
-alias mandoc="unix-man"
-
-### --------------------------------
-### Packages
+### Packages Core
 ### --------------------------------
 case "$(detect_distro_family)" in
 	arch)
-		alias upsys="yay --noconfirm -Syu"
+	    alias uppac="sudo pacman --noconfirm -Syu"
+		alias upyay="yay --noconfirm -Syu"
+		alias upsys="upyay"
 		alias upall="upsys"
+
 		alias yays="yay -Ss"
 		alias yayi="yay -S"
 		alias yayr="yay -Rcns"
@@ -41,26 +23,28 @@ case "$(detect_distro_family)" in
 		alias pacu="pacman -Syu"
 		;;
 	debian)
-		alias upsys="sudo apt update && sudo apt upgrade --yes"
+		alias upapt="sudo apt update && sudo apt upgrade --yes"
+		alias upsys="upapt"
 		alias upall="upsys"
 		;;
 	fedora)
-		alias upsys="sudo dnf upgrade --yes"
+		alias updnf="sudo dnf upgrade --yes"
+		alias upsys="updnf"
 		alias upall="upsys"
 		;;
 esac
 
 ### --------------------------------
-### Packages (extras)
+### Packages Extras
 ### --------------------------------
 command -v flatpak > "/dev/null" 2>&1 && alias upflat="flatpak update --yes"
 command -v snap    > "/dev/null" 2>&1 && alias upsnap="sudo snap refresh"
 
 ### --------------------------------
-### Goto
+### Plasma Window
 ### --------------------------------
-alias desk="cd ~/'Área de trabalho'"
-alias down="cd ~/Downloads"
+alias way='exec dbus-run-session startplasma-wayland'
+alias xorg='startx'
 
 ### --------------------------------
 ### Emacs
@@ -89,18 +73,7 @@ alias on="nvim ."
 alias ov="vim ."
 
 ### --------------------------------
-### GUI Apps
+### Servers
 ### --------------------------------
-alias show="dolphin ."
-
-### --------------------------------
-### Select GPU
-### --------------------------------
-alias nvc="DRI_PRIME=1"
-alias hdc="DRI_PRIME=0"
-
-### --------------------------------
-### Select Theme
-### --------------------------------
-alias dark="GTK_THEME=Adwaita:dark"
-alias light="GTK_THEME=Adwaita:light"
+alias frigo-server='ssh -i "${FRIGO_SERVER_KEY}" "ubuntu@${FRIGO_SERVER_IP}"'
+alias orbs-server='ssh -i "${ORBS_SERVER_KEY}" "ubuntu@${ORBS_SERVER_IP}"'

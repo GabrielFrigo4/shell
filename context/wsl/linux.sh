@@ -1,9 +1,9 @@
 ### ================================
-### WSL CONTEXT - Linux
+### WSL CONTEXT
 ### ================================
 
 ### --------------------------------
-### Packages
+### Packages Core
 ### --------------------------------
 case "$(detect_distro_family)" in
 	arch)
@@ -21,22 +21,22 @@ case "$(detect_distro_family)" in
 esac
 
 ### --------------------------------
-### Packages (extras)
+### Packages Extras
 ### --------------------------------
 command -v flatpak > "/dev/null" 2>&1 && alias upflat="flatpak update --yes"
 command -v snap    > "/dev/null" 2>&1 && alias upsnap="sudo snap refresh"
-
-### --------------------------------
-### Windows Integration
-### --------------------------------
-alias explorer="explorer.exe"
-alias cmd="cmd.exe"
-alias powershell="powershell.exe"
-alias clip="clip.exe"
-alias winopen="cmd.exe /c start"
 
 ### --------------------------------
 ### Terminal Editors
 ### --------------------------------
 alias on="nvim ."
 alias ov="vim ."
+
+### --------------------------------
+### Windows Integration
+### --------------------------------
+alias explorer="explorer.exe"
+alias powershell="powershell.exe"
+alias pwsh="pwsh.exe"
+alias cmd="cmd.exe"
+alias clip="win32yank.exe"

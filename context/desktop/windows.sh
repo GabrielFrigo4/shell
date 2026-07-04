@@ -1,19 +1,6 @@
 ### ================================
-### DESKTOP CONTEXT - Windows (MSYS2)
+### DESKTOP CONTEXT
 ### ================================
-
-### --------------------------------
-### Software
-### --------------------------------
-alias wh="which"
-alias brw="lynx -use_mouse=on -nobrowse=on -nopause=on -show_cursor=off"
-
-### --------------------------------
-### Manual
-### --------------------------------
-alias wman="win-man"
-alias uman="unix-man"
-alias mandoc="unix-man"
 
 ### --------------------------------
 ### Packages
@@ -40,3 +27,9 @@ alias oe="emacsclientw --create-frame --alternate-editor \"\" ."
 ### --------------------------------
 alias on="nvim ."
 alias ov="vim ."
+
+### --------------------------------
+### Servers
+### --------------------------------
+alias frigo-server='ssh -i "${FRIGO_SERVER_KEY}" "ubuntu@${FRIGO_SERVER_IP}"'
+alias orbs-server='ssh -i "${ORBS_SERVER_KEY}" "ubuntu@${ORBS_SERVER_IP}"'

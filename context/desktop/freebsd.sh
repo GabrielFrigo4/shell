@@ -1,5 +1,5 @@
 ### ================================
-### DESKTOP CONTEXT - FreeBSD
+### DESKTOP CONTEXT
 ### ================================
 
 ### --------------------------------
@@ -8,16 +8,16 @@
 alias clear="echo -n $'\e[2J\e[3J\e[H'"
 
 ### --------------------------------
-### Plasma Window
-### --------------------------------
-alias way='exec ck-launch-session dbus-run-session startplasma-wayland'
-alias xorg='startx'
-
-### --------------------------------
 ### Packages
 ### --------------------------------
 alias uppkg="sudo pkg update && sudo pkg upgrade --yes"
 alias upall="uppkg"
+
+### --------------------------------
+### Plasma Window
+### --------------------------------
+alias way='exec ck-launch-session dbus-run-session startplasma-wayland'
+alias xorg='startx'
 
 ### --------------------------------
 ### Emacs
@@ -44,3 +44,9 @@ alias oc="code ."
 ### --------------------------------
 alias on="nvim ."
 alias ov="vim ."
+
+### --------------------------------
+### Servers
+### --------------------------------
+alias frigo-server='ssh -i "${FRIGO_SERVER_KEY}" "ubuntu@${FRIGO_SERVER_IP}"'
+alias orbs-server='ssh -i "${ORBS_SERVER_KEY}" "ubuntu@${ORBS_SERVER_IP}"'

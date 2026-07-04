@@ -45,7 +45,6 @@ setopt COMPLETE_IN_WORD
 ### ================================
 ### SHELL APPEARANCE
 ### ================================
-### Expects: PROMPT_OS_ICON, PROMPT_OS_COLOR (red|blue), PROMPT_OS_NAME
 
 () {
 	zstyle ':prompt:colors' reset     '%f%b'

@@ -1,9 +1,9 @@
 ### ================================
-### SERVER CONTEXT - Linux
+### SERVER CONTEXT
 ### ================================
 
 ### --------------------------------
-### Packages
+### Packages Core
 ### --------------------------------
 case "$(detect_distro_family)" in
 	arch)
@@ -21,7 +21,8 @@ case "$(detect_distro_family)" in
 esac
 
 ### --------------------------------
-### Packages (extras)
+### Packages Extras
 ### --------------------------------
 command -v flatpak > "/dev/null" 2>&1 && alias upflat="flatpak update --yes"
 command -v snap    > "/dev/null" 2>&1 && alias upsnap="sudo snap refresh"
+
