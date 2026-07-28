@@ -69,3 +69,88 @@ resh() {
 
 	echo "✅ Shell fully reinstalled and reloaded!"
 }
+
+### --------------------------------
+### Update Wi-Fi (upwf)
+### --------------------------------
+upwf() {
+	echo "📡 Updating Wi-Fi configurations..."
+
+	if ! env | grep -q "^WIFI_SSID_"; then
+		echo "⚠️ No Wi-Fi credentials found in the environment."
+		return 1
+	fi
+
+	if command -v nmcli > "/dev/null" 2>&1; then
+		echo "🐧 Network Manager (nmcli) detected. Applying Wi-Fi configurations..."
+		
+		env | grep "^WIFI_SSID_" | while IFS='=' read -r name ssid; do
+			suffix="${name#WIFI_SSID_}"
+			pass_var="WIFI_PASS_${suffix}"
+			eval pass="\$${pass_var}"
+			
+			if [ -n "$ssid" ] && [ -n "$pass" ]; then
+				if nmcli connection show "$ssid" > "/dev/null" 2>&1; then
+					echo "   🔄 Updating network: '$ssid'"
+					nmcli connection modify "$ssid" wifi-sec.psk "$pass" > "/dev/null" 2>&1
+				else
+					echo "   ➕ Adding network: '$ssid'"
+					nmcli connection add type wifi con-name "$ssid" ssid "$ssid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$pass" > "/dev/null" 2>&1
+				fi
+			fi
+		done
+		echo "✅ Linux Wi-Fi configs applied!"
+
+	elif [ "$(command uname -s 2> "/dev/null")" = "FreeBSD" ] || [ -f "/etc/wpa_supplicant.conf" ]; then
+		echo "😈 FreeBSD/wpa_supplicant detected. Syncing Wi-Fi configurations..."
+
+		tmp_conf=$(command mktemp)
+		{
+			echo "ctrl_interface=/var/run/wpa_supplicant"
+			echo "ctrl_interface_group=wheel"
+			echo "update_config=1"
+			echo ""
+		} > "$tmp_conf"
+
+		env | grep "^WIFI_SSID_" | while IFS='=' read -r name ssid; do
+			suffix="${name#WIFI_SSID_}"
+			pass_var="WIFI_PASS_${suffix}"
+			eval pass="\$${pass_var}"
+			
+			if [ -n "$ssid" ] && [ -n "$pass" ]; then
+				echo "   ➕ Mapping network: '$ssid'"
+				{
+					echo "network={"
+					echo "    ssid=\"$ssid\""
+					echo "    psk=\"$pass\""
+					echo "}"
+					echo ""
+				} >> "$tmp_conf"
+			fi
+		done
+
+		echo "   🔄 Overwriting /etc/wpa_supplicant.conf (sudo required)..."
+		command sudo cp "$tmp_conf" "/etc/wpa_supplicant.conf"
+		command rm -f "$tmp_conf"
+		
+		echo "   ⚡ Restarting network services..."
+		command sudo service netif restart > "/dev/null" 2>&1 || true
+		
+		echo "✅ FreeBSD Wi-Fi configs applied!"
+
+	elif command -v netsh > "/dev/null" 2>&1; then
+		echo "🪟 Windows Network Shell (netsh) detected."
+		echo "⚠️ Windows netsh auto-add requires XML profiles (not yet implemented)."
+	else
+		echo "❌ No supported Wi-Fi manager (nmcli/wpa_cli/netsh) found."
+	fi
+}
+
+### --------------------------------
+### Update Network (upnet)
+### --------------------------------
+upnet() {
+	echo "🌐 Starting network..."
+	upwf
+	echo "✅ Network update complete!"
+}
