@@ -105,12 +105,12 @@ upwf() {
 		echo "😈 FreeBSD/wpa_supplicant detected. Syncing Wi-Fi configurations..."
 
 		tmp_conf=$(command mktemp)
-		{
-			echo "ctrl_interface=/var/run/wpa_supplicant"
-			echo "ctrl_interface_group=wheel"
-			echo "update_config=1"
-			echo ""
-		} > "$tmp_conf"
+		cat <<-EOF > "$tmp_conf"
+			ctrl_interface=/var/run/wpa_supplicant
+			ctrl_interface_group=wheel
+			update_config=1
+			
+		EOF
 
 		env | grep "^WIFI_SSID_" | while IFS='=' read -r name ssid; do
 			suffix="${name#WIFI_SSID_}"
@@ -119,13 +119,13 @@ upwf() {
 			
 			if [ -n "$ssid" ] && [ -n "$pass" ]; then
 				echo "   ➕ Mapping network: '$ssid'"
-				{
-					echo "network={"
-					echo "    ssid=\"$ssid\""
-					echo "    psk=\"$pass\""
-					echo "}"
-					echo ""
-				} >> "$tmp_conf"
+				cat <<-EOF >> "$tmp_conf"
+					network={
+					    ssid="$ssid"
+					    psk="$pass"
+					}
+					
+				EOF
 			fi
 		done
 
@@ -155,33 +155,33 @@ upwf() {
 				echo "   ➕ Injecting profile: '$ssid'"
 				xml_file=$(command mktemp)
 
-				{
-					echo '<?xml version="1.0"?>'
-					echo '<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">'
-					echo "    <name>$ssid</name>"
-					echo "    <SSIDConfig>"
-					echo "        <SSID>"
-					echo "            <name>$ssid</name>"
-					echo "        </SSID>"
-					echo "    </SSIDConfig>"
-					echo "    <connectionType>ESS</connectionType>"
-					echo "    <connectionMode>auto</connectionMode>"
-					echo "    <MSM>"
-					echo "        <security>"
-					echo "            <authEncryption>"
-					echo "                <authentication>WPA2PSK</authentication>"
-					echo "                <encryption>AES</encryption>"
-					echo "                <useOneX>false</useOneX>"
-					echo "            </authEncryption>"
-					echo "            <sharedKey>"
-					echo "                <keyType>passPhrase</keyType>"
-					echo "                <protected>false</protected>"
-					echo "                <keyMaterial>$pass</keyMaterial>"
-					echo "            </sharedKey>"
-					echo "        </security>"
-					echo "    </MSM>"
-					echo "</WLANProfile>"
-				} > "$xml_file"
+				cat <<-EOF > "$xml_file"
+					<?xml version="1.0"?>
+					<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+					    <name>$ssid</name>
+					    <SSIDConfig>
+					        <SSID>
+					            <name>$ssid</name>
+					        </SSID>
+					    </SSIDConfig>
+					    <connectionType>ESS</connectionType>
+					    <connectionMode>auto</connectionMode>
+					    <MSM>
+					        <security>
+					            <authEncryption>
+					                <authentication>WPA2PSK</authentication>
+					                <encryption>AES</encryption>
+					                <useOneX>false</useOneX>
+					            </authEncryption>
+					            <sharedKey>
+					                <keyType>passPhrase</keyType>
+					                <protected>false</protected>
+					                <keyMaterial>$pass</keyMaterial>
+					            </sharedKey>
+					        </security>
+					    </MSM>
+					</WLANProfile>
+				EOF
 
 				win_path="$xml_file"
 				command -v cygpath > "/dev/null" 2>&1 && win_path=$(cygpath -w "$xml_file")
