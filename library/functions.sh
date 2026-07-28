@@ -105,7 +105,7 @@ upwf() {
 		echo "😈 FreeBSD/wpa_supplicant detected. Syncing Wi-Fi configurations..."
 
 		tmp_conf=$(command mktemp)
-		cat <<-EOF >| "$tmp_conf"
+		cat <<-EOF >| "${tmp_conf}"
 			ctrl_interface=/var/run/wpa_supplicant
 			ctrl_interface_group=wheel
 			update_config=1
@@ -119,7 +119,7 @@ upwf() {
 
 			if [ -n "$ssid" ] && [ -n "$pass" ]; then
 				echo "   ➕ Mapping network: '$ssid'"
-				cat <<-EOF >> "$tmp_conf"
+				cat <<-EOF >> "${tmp_conf}"
 					network={
 					    ssid="$ssid"
 					    psk="$pass"
@@ -129,17 +129,40 @@ upwf() {
 			fi
 		done
 
-		if command sudo cmp -s "$tmp_conf" "/etc/wpa_supplicant.conf" 2> "/dev/null"; then
-			echo "   👉 Configuration is already up-to-date. Skipping restart."
-			command rm -f "$tmp_conf"
+		wifi_dir="/etc"
+		wifi_target="${wifi_dir}/wpa_supplicant.conf"
+
+		if command sudo cmp -s "${tmp_conf}" "${wifi_target}" 2> "/dev/null"; then
+			echo "   👉 FreeBSD ${wifi_target} is already up-to-date."
 		else
-			echo "   🔄 Changes detected! Overwriting /etc/wpa_supplicant.conf..."
-			command sudo cp "$tmp_conf" "/etc/wpa_supplicant.conf"
+			echo "   🔄 Changes detected! Overwriting ${wifi_target}..."
+			command sudo cp "${tmp_conf}" "${wifi_target}"
 
 			echo "   ⚡ Restarting network stack (netif)..."
 			command sudo service netif restart > "/dev/null" 2>&1 || true
-			command rm -f "$tmp_conf"
 		fi
+
+		wifibox_dir="/usr/local/etc/wifibox"
+		wifibox_target="${wifibox_dir}/wpa_supplicant/wpa_supplicant.conf"
+
+		if [ -d "${wifibox_dir}" ] || command -v wifibox > "/dev/null" 2>&1 || [ -f "${wifibox_target}" ]; then
+			echo "   📦 Wifibox detected. Syncing Wifibox Wi-Fi configuration..."
+			command sudo mkdir -p "${wifibox_dir}/wpa_supplicant"
+
+			if command sudo cmp -s "${tmp_conf}" "${wifibox_target}" 2> "/dev/null"; then
+				echo "   👉 Wifibox configuration is already up-to-date."
+			else
+				echo "   🔄 Changes detected! Overwriting $wifibox_target..."
+				command sudo cp "${tmp_conf}" "${wifibox_target}"
+
+				if command sudo service wifibox status > "/dev/null" 2>&1; then
+					echo "   ⚡ Restarting wifibox service..."
+					command sudo service wifibox restart > "/dev/null" 2>&1 || true
+				fi
+			fi
+		fi
+
+		command rm -f "${tmp_conf}"
 
 		echo "✅ FreeBSD Wi-Fi configs applied!"
 
