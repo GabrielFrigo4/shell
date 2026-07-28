@@ -129,21 +129,71 @@ upwf() {
 			fi
 		done
 
-		echo "   🔄 Overwriting /etc/wpa_supplicant.conf (privilege required)..."
-		command sudo cp "$tmp_conf" "/etc/wpa_supplicant.conf"
-		command rm -f "$tmp_conf"
-		
-		echo "   ⚡ Reloading Wi-Fi configurations without disconnecting..."
-		command sudo killall -HUP wpa_supplicant > "/dev/null" 2>&1 || true
-		command sudo service netif restart > "/dev/null" 2>&1 || true
+		if command cmp -s "$tmp_conf" "/etc/wpa_supplicant.conf"; then
+			echo "   👉 Configuration is already up-to-date. Skipping restart."
+			command rm -f "$tmp_conf"
+		else
+			echo "   🔄 Changes detected! Overwriting /etc/wpa_supplicant.conf..."
+			command sudo cp "$tmp_conf" "/etc/wpa_supplicant.conf"
+			
+			echo "   ⚡ Restarting network stack (netif)..."
+			command sudo service netif restart > "/dev/null" 2>&1 || true
+			command rm -f "$tmp_conf"
+		fi
 		
 		echo "✅ FreeBSD Wi-Fi configs applied!"
 
 	elif command -v netsh > "/dev/null" 2>&1; then
-		echo "🪟 Windows Network Shell (netsh) detected."
-		echo "⚠️ Windows netsh auto-add requires XML profiles (not yet implemented)."
+		echo "🪟 Windows Network Shell (netsh) detected. Syncing Wi-Fi profiles..."
+
+		env | grep "^WIFI_SSID_" | while IFS='=' read -r name ssid; do
+			suffix="${name#WIFI_SSID_}"
+			pass_var="WIFI_PASS_${suffix}"
+			eval pass="\$${pass_var}"
+
+			if [ -n "$ssid" ] && [ -n "$pass" ]; then
+				echo "   ➕ Injecting profile: '$ssid'"
+				xml_file=$(command mktemp)
+
+				{
+					echo '<?xml version="1.0"?>'
+					echo '<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">'
+					echo "    <name>$ssid</name>"
+					echo "    <SSIDConfig>"
+					echo "        <SSID>"
+					echo "            <name>$ssid</name>"
+					echo "        </SSID>"
+					echo "    </SSIDConfig>"
+					echo "    <connectionType>ESS</connectionType>"
+					echo "    <connectionMode>auto</connectionMode>"
+					echo "    <MSM>"
+					echo "        <security>"
+					echo "            <authEncryption>"
+					echo "                <authentication>WPA2PSK</authentication>"
+					echo "                <encryption>AES</encryption>"
+					echo "                <useOneX>false</useOneX>"
+					echo "            </authEncryption>"
+					echo "            <sharedKey>"
+					echo "                <keyType>passPhrase</keyType>"
+					echo "                <protected>false</protected>"
+					echo "                <keyMaterial>$pass</keyMaterial>"
+					echo "            </sharedKey>"
+					echo "        </security>"
+					echo "    </MSM>"
+					echo "</WLANProfile>"
+				} > "$xml_file"
+
+				win_path="$xml_file"
+				command -v cygpath > "/dev/null" 2>&1 && win_path=$(cygpath -w "$xml_file")
+
+				command netsh wlan add profile filename="$win_path" > "/dev/null" 2>&1
+				command rm -f "$xml_file"
+			fi
+		done
+		echo "✅ Windows Wi-Fi configs applied!"
+
 	else
-		echo "❌ No supported Wi-Fi manager (nmcli/wpa_cli/netsh) found."
+		echo "❌ No supported Wi-Fi manager (nmcli/wpa_supplicant/netsh) found."
 	fi
 }
 
