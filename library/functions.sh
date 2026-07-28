@@ -116,7 +116,7 @@ upwf() {
 			suffix="${name#WIFI_SSID_}"
 			pass_var="WIFI_PASS_${suffix}"
 			eval pass="\$${pass_var}"
-			
+
 			if [ -n "$ssid" ] && [ -n "$pass" ]; then
 				echo "   ➕ Mapping network: '$ssid'"
 				cat <<-EOF >> "$tmp_conf"
@@ -135,12 +135,12 @@ upwf() {
 		else
 			echo "   🔄 Changes detected! Overwriting /etc/wpa_supplicant.conf..."
 			command sudo cp "$tmp_conf" "/etc/wpa_supplicant.conf"
-			
+
 			echo "   ⚡ Restarting network stack (netif)..."
 			command sudo service netif restart > "/dev/null" 2>&1 || true
 			command rm -f "$tmp_conf"
 		fi
-		
+
 		echo "✅ FreeBSD Wi-Fi configs applied!"
 
 	elif command -v netsh > "/dev/null" 2>&1; then
