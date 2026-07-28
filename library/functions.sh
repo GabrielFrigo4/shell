@@ -105,7 +105,7 @@ upwf() {
 		echo "😈 FreeBSD/wpa_supplicant detected. Syncing Wi-Fi configurations..."
 
 		tmp_conf=$(command mktemp)
-		cat <<-EOF > "$tmp_conf"
+		cat <<-EOF >| "$tmp_conf"
 			ctrl_interface=/var/run/wpa_supplicant
 			ctrl_interface_group=wheel
 			update_config=1
@@ -155,7 +155,7 @@ upwf() {
 				echo "   ➕ Injecting profile: '$ssid'"
 				xml_file=$(command mktemp)
 
-				cat <<-EOF > "$xml_file"
+				cat <<-EOF >| "$xml_file"
 					<?xml version="1.0"?>
 					<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
 					    <name>$ssid</name>
