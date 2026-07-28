@@ -84,7 +84,7 @@ upwf() {
 	if command -v nmcli > "/dev/null" 2>&1; then
 		echo "🐧 Network Manager (nmcli) detected. Applying Wi-Fi configurations..."
 
-		env | grep "^WIFI_SSID_" | while IFS='=' read -r name ssid; do
+		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r name ssid; do
 			suffix="${name#WIFI_SSID_}"
 			pass_var="WIFI_PASS_${suffix}"
 			eval pass="\$${pass_var}"
@@ -146,7 +146,7 @@ upwf() {
 	elif command -v netsh > "/dev/null" 2>&1; then
 		echo "🪟 Windows Network Shell (netsh) detected. Syncing Wi-Fi profiles..."
 
-		env | grep "^WIFI_SSID_" | while IFS='=' read -r name ssid; do
+		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r name ssid; do
 			suffix="${name#WIFI_SSID_}"
 			pass_var="WIFI_PASS_${suffix}"
 			eval pass="\$${pass_var}"
