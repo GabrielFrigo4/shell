@@ -129,11 +129,12 @@ upwf() {
 			fi
 		done
 
-		echo "   🔄 Overwriting /etc/wpa_supplicant.conf (sudo required)..."
+		echo "   🔄 Overwriting /etc/wpa_supplicant.conf (privilege required)..."
 		command sudo cp "$tmp_conf" "/etc/wpa_supplicant.conf"
 		command rm -f "$tmp_conf"
 		
-		echo "   ⚡ Restarting network services..."
+		echo "   ⚡ Reloading Wi-Fi configurations without disconnecting..."
+		command sudo killall -HUP wpa_supplicant > "/dev/null" 2>&1 || true
 		command sudo service netif restart > "/dev/null" 2>&1 || true
 		
 		echo "✅ FreeBSD Wi-Fi configs applied!"
