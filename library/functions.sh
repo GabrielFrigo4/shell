@@ -112,7 +112,7 @@ upwf() {
 
 		EOF
 
-		env | grep "^WIFI_SSID_" | while IFS='=' read -r name ssid; do
+		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r name ssid; do
 			suffix="${name#WIFI_SSID_}"
 			pass_var="WIFI_PASS_${suffix}"
 			eval pass="\$${pass_var}"
@@ -129,7 +129,7 @@ upwf() {
 			fi
 		done
 
-		if command cmp -s "$tmp_conf" "/etc/wpa_supplicant.conf"; then
+		if command sudo cmp -s "$tmp_conf" "/etc/wpa_supplicant.conf" 2> "/dev/null"; then
 			echo "   👉 Configuration is already up-to-date. Skipping restart."
 			command rm -f "$tmp_conf"
 		else
