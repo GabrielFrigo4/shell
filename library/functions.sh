@@ -83,12 +83,12 @@ upwf() {
 
 	if command -v nmcli > "/dev/null" 2>&1; then
 		echo "🐧 Network Manager (nmcli) detected. Applying Wi-Fi configurations..."
-		
+
 		env | grep "^WIFI_SSID_" | while IFS='=' read -r name ssid; do
 			suffix="${name#WIFI_SSID_}"
 			pass_var="WIFI_PASS_${suffix}"
 			eval pass="\$${pass_var}"
-			
+
 			if [ -n "$ssid" ] && [ -n "$pass" ]; then
 				if nmcli connection show "$ssid" > "/dev/null" 2>&1; then
 					echo "   🔄 Updating network: '$ssid'"
@@ -109,7 +109,7 @@ upwf() {
 			ctrl_interface=/var/run/wpa_supplicant
 			ctrl_interface_group=wheel
 			update_config=1
-			
+
 		EOF
 
 		env | grep "^WIFI_SSID_" | while IFS='=' read -r name ssid; do
@@ -124,7 +124,7 @@ upwf() {
 					    ssid="$ssid"
 					    psk="$pass"
 					}
-					
+
 				EOF
 			fi
 		done
