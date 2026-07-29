@@ -112,10 +112,17 @@ Reinicie o shell ou recarregue o arquivo `RC` manualmente:
 
 ## 🛠️ Gerenciamento do Ambiente
 
-O projeto inclui aliases inteligentes integrados para que você possa manter seu ambiente atualizado sem esforço, diretamente do terminal:
+O projeto inclui aliases e funções inteligentes integrados para que você possa manter seu ambiente atualizado, gerenciado e controlado sem esforço, diretamente do terminal:
 
 - 🔄 **`upsh` (Update Shell):** Sincroniza o seu repositório local (`git pull`) e recarrega as configurações atuais sem precisar fechar o terminal.
 - ♻️ **`resh` (Reinstall Shell):** Vai além da atualização. Ele baixa as novidades e reexecuta o script `install.sh` preservando o seu contexto atual (ex: `desktop` ou `server`). Ideal para quando há mudanças estruturais profundas no repositório.
+- 📡 **`upwf` (Update Wi-Fi):** Sincroniza automaticamente as credenciais de Wi-Fi definidas no ambiente (`WIFI_SSID_*` e `WIFI_PASS_*`) com o gerenciador nativo do sistema (`nmcli` no Linux, `wpa_supplicant` / `wifibox` no FreeBSD, ou `netsh` no Windows).
+- 🌐 **`upnet` (Update Network):** Orquestra a inicialização e sincronização completa da rede chamando o `upwf`.
+- 📦 **`upsys` / `upall` (Update System):** Atualiza todos os pacotes do sistema chamando dinamicamente o gerenciador nativo da distribuição (`upapt`, `upman`, `updnf` ou `uppkg`), além de integrar gerenciadores extras caso estejam presentes (`upyay`, `upflat`, `upsnap`).
+- ⚡ **`poweroff` & `reboot`:** Atalhos multiplataforma inteligentes que adaptam o comando de desligamento e reinicialização para o sistema correto:
+  - 🐧 **Linux:** `sudo shutdown -h now` / `sudo shutdown -r now`
+  - 😈 **FreeBSD:** `sudo shutdown -p now` / `sudo shutdown -r now` (utiliza `-p` para desligar a fonte de alimentação)
+  - 🪟 **Windows (MSYS2):** `shutdown.exe /s /t 0` / `shutdown.exe /r /t 0`
 
 ## 🔐 Integração com Vault (Segredos Seguros)
 

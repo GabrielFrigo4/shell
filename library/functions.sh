@@ -228,3 +228,52 @@ upnet() {
 	upwf
 	echo "✅ Network update complete!"
 }
+
+### --------------------------------
+### Poweroff System
+### --------------------------------
+poweroff() {
+	case "$(detect_os)" in
+		freebsd)
+			if [ "$(id -u)" -eq 0 ]; then
+				command shutdown -p now "$@"
+			elif command -v sudo > "/dev/null" 2>&1; then
+				command sudo shutdown -p now "$@"
+			else
+				command shutdown -p now "$@"
+			fi
+			;;
+		windows)
+			shutdown.exe /s /t 0 "$@"
+			;;
+		*)
+			if [ "$(id -u)" -eq 0 ]; then
+				command shutdown -h now "$@"
+			elif command -v sudo > "/dev/null" 2>&1; then
+				command sudo shutdown -h now "$@"
+			else
+				command shutdown -h now "$@"
+			fi
+			;;
+	esac
+}
+
+### --------------------------------
+### Reboot System
+### --------------------------------
+reboot() {
+	case "$(detect_os)" in
+		windows)
+			shutdown.exe /r /t 0 "$@"
+			;;
+		*)
+			if [ "$(id -u)" -eq 0 ]; then
+				command shutdown -r now "$@"
+			elif command -v sudo > "/dev/null" 2>&1; then
+				command sudo shutdown -r now "$@"
+			else
+				command shutdown -r now "$@"
+			fi
+			;;
+	esac
+}
