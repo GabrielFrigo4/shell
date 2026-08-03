@@ -8,10 +8,13 @@ triggers-setup() {
 	mkdir -p "${HOME}/.cache"
 	echo "# $(command date +%Y-%m-%d)" > "${TRIGGERS_CACHE}"
 
-	local IGNORE_LIST=" sh command eval alias unalias return echo printf test [ clear "
-	TRIGGERS=""
+	local IGNORE_LIST_BASE="sh command eval alias unalias return echo printf test [ clear"
+	local IGNORE_LIST_EXT="cat grep egrep awk sed wc head tail less more cut tr sort uniq xargs find ls"
+	local IGNORE_LIST_PKG="exa eza rg fd fzf jq bat ag ack htop tmux neofetch fastfetch"
+	local IGNORE_LIST=" ${IGNORE_LIST_BASE} ${IGNORE_LIST_EXT} ${IGNORE_LIST_PKG} "
+	local TRIGGERS=""
 
-	for file in /bin/* /sbin/* /usr/bin/* /usr/sbin/*; do
+	for file in /bin/* /usr/bin/*; do
 		if [ -f "$file" ] && [ -x "$file" ]; then
 			local cmd_name="${file##*/}"
 			case "${IGNORE_LIST}" in
@@ -21,11 +24,11 @@ triggers-setup() {
 		fi
 	done
 
-	for file in /usr/local/bin/? /usr/local/sbin/? \
-				/usr/local/bin/?? /usr/local/sbin/?? \
-				/usr/local/bin/??? /usr/local/sbin/??? \
-				/usr/local/bin/???? /usr/local/sbin/???? \
-				/usr/local/bin/????? /usr/local/sbin/?????; do
+	for file in /usr/local/bin/? \
+				/usr/local/bin/?? \
+				/usr/local/bin/??? \
+				/usr/local/bin/???? \
+				/usr/local/bin/?????; do
 		if [ -f "$file" ] && [ -x "$file" ]; then
 			local cmd_name="${file##*/}"
 			case "${IGNORE_LIST}" in
