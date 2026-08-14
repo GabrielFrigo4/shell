@@ -230,6 +230,99 @@ upnet() {
 }
 
 ### --------------------------------
+### Package Managers
+### --------------------------------
+upman() {
+	if [ "$(detect_os)" = "windows" ]; then
+		command pacman --noconfirm -Syu "$@"
+	else
+		command sudo pacman --noconfirm -Syu "$@"
+	fi
+}
+
+upapt() {
+	command sudo apt update && command sudo apt upgrade --yes "$@"
+}
+
+updnf() {
+	command sudo dnf upgrade --assumeyes "$@"
+}
+
+upzyp() {
+	command sudo zypper --non-interactive update "$@"
+}
+
+upxbps() {
+	command sudo xbps-install --yes -Su "$@"
+}
+
+upapk() {
+	command sudo apk update && command sudo apk upgrade "$@"
+}
+
+uppkg() {
+	command sudo pkg update && command sudo pkg upgrade --yes "$@"
+}
+
+upyay() {
+	command yay --noconfirm -Syu "$@"
+}
+
+upflat() {
+	command flatpak update --assumeyes "$@"
+}
+
+upsnap() {
+	command sudo snap refresh "$@"
+}
+
+### --------------------------------
+### Update System (upsys)
+### --------------------------------
+upsys() {
+	echo "📦 Updating OS system packages..."
+	case "$(detect_distro_family)" in
+		arch)   upman "$@" ;;
+		debian) upapt "$@" ;;
+		fedora) updnf "$@" ;;
+		suse)   upzyp "$@" ;;
+		void)   upxbps "$@" ;;
+		alpine) upapk "$@" ;;
+		*)
+			case "$(detect_os)" in
+				freebsd) uppkg "$@" ;;
+				windows) upman "$@" ;;
+			esac
+			;;
+	esac
+	echo "✅ OS system packages updated!"
+}
+
+### --------------------------------
+### Update All Packages (upall)
+### --------------------------------
+upall() {
+	upsys
+
+	if command -v yay > "/dev/null" 2>&1; then
+		echo "📦 Updating Yay (AUR) packages..."
+		upyay
+	fi
+
+	if command -v flatpak > "/dev/null" 2>&1; then
+		echo "📦 Updating Flatpak packages..."
+		upflat
+	fi
+
+	if command -v snap > "/dev/null" 2>&1; then
+		echo "📦 Updating Snap packages..."
+		upsnap
+	fi
+
+	echo "✅ All packages updated!"
+}
+
+### --------------------------------
 ### Poweroff System
 ### --------------------------------
 poweroff() {

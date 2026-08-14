@@ -16,6 +16,36 @@
 ![Container](https://img.shields.io/badge/📦-Container-yellow)
 ![WSL](https://img.shields.io/badge/🧩-WSL-blueviolet)
 
+```mermaid
+flowchart LR
+    subgraph OS ["🖥️ Plataformas"]
+        LNX["🐧 Linux"]
+        BSD["😈 FreeBSD"]
+        WIN["🪟 Windows (MSYS2)"]
+        MAC["🍎 MacOS (Futuro)"]
+    end
+
+    subgraph CTX ["🎯 Contextos"]
+        DSK["💻 Desktop"]
+        SRV["🌐 Server"]
+        CNT["📦 Container"]
+        WSL["🧩 WSL"]
+    end
+
+    LNX --> DSK
+    LNX --> SRV
+    LNX --> CNT
+    LNX --> WSL
+
+    BSD --> DSK
+    BSD --> SRV
+    BSD --> CNT
+
+    WIN --> DSK
+
+    MAC -.->|futuro| DSK
+```
+
 ### Shells Compatíveis
 
 ![Bash](https://img.shields.io/badge/📜_bash-100%25-green)
@@ -118,11 +148,31 @@ O projeto inclui aliases e funções inteligentes integrados para que você poss
 - ♻️ **`resh` (Reinstall Shell):** Vai além da atualização. Ele baixa as novidades e reexecuta o script `install.sh` preservando o seu contexto atual (ex: `desktop` ou `server`). Ideal para quando há mudanças estruturais profundas no repositório.
 - 📡 **`upwf` (Update Wi-Fi):** Sincroniza automaticamente as credenciais de Wi-Fi definidas no ambiente (`WIFI_SSID_*` e `WIFI_PASS_*`) com o gerenciador nativo do sistema (`nmcli` no Linux, `wpa_supplicant` / `wifibox` no FreeBSD, ou `netsh` no Windows).
 - 🌐 **`upnet` (Update Network):** Orquestra a inicialização e sincronização completa da rede chamando o `upwf`.
-- 📦 **`upsys` / `upall` (Update System):** Atualiza todos os pacotes do sistema chamando dinamicamente o gerenciador nativo da distribuição (`upapt`, `upman`, `updnf` ou `uppkg`), além de integrar gerenciadores extras caso estejam presentes (`upyay`, `upflat`, `upsnap`).
+- 📦 **`upsys` (Update System):** Atualiza os pacotes e repositórios nativos do sistema operacional chamando dinamicamente o gerenciador nativo da distribuição (`upapt`, `upman`, `updnf`, `uppkg`, `upzyp`, `upxbps` ou `upapk`).
+- 🚀 **`upall` (Update All):** Orquestrador universal de atualização completa. Executa o `upsys` e integra de forma encadeada todos os gerenciadores extras presentes no sistema (`upyay`, `upflat`, `upsnap`).
 - ⚡ **`poweroff` & `reboot`:** Atalhos multiplataforma inteligentes que adaptam o comando de desligamento e reinicialização para o sistema correto:
   - 🐧 **Linux:** `sudo shutdown -h now` / `sudo shutdown -r now`
   - 😈 **FreeBSD:** `sudo shutdown -p now` / `sudo shutdown -r now` (utiliza `-p` para desligar a fonte de alimentação)
   - 🪟 **Windows (MSYS2):** `shutdown.exe /s /t 0` / `shutdown.exe /r /t 0`
+
+```mermaid
+flowchart TD
+    UPALL["🚀 upall<br/><i>(Orquestrador Global)</i>"]
+    UPSYS["📦 upsys<br/><i>(Sistema Base)</i>"]
+
+    UPALL --> UPSYS
+    UPALL -.->|se instalado| YAY["📦 upyay<br/><i>(Arch AUR)</i>"]
+    UPALL -.->|se instalado| FLAT["📦 upflat<br/><i>(Flatpak)</i>"]
+    UPALL -.->|se instalado| SNAP["📦 upsnap<br/><i>(Snap)</i>"]
+
+    UPSYS --> DNF["updnf<br/><i>(Fedora / RHEL)</i>"]
+    UPSYS --> APT["upapt<br/><i>(Debian / Ubuntu)</i>"]
+    UPSYS --> MAN["upman<br/><i>(Arch / MSYS2)</i>"]
+    UPSYS --> PKG["uppkg<br/><i>(FreeBSD)</i>"]
+    UPSYS --> ZYP["upzyp<br/><i>(openSUSE)</i>"]
+    UPSYS --> XBPS["upxbps<br/><i>(Void Linux)</i>"]
+    UPSYS --> APK["upapk<br/><i>(Alpine)</i>"]
+```
 
 ## 🔐 Integração com Vault (Segredos Seguros)
 
@@ -139,10 +189,18 @@ Se o diretório `~/.vault` for detectado, o shell carregará automaticamente:
 O projeto conta com módulos avançados de reconhecimento em `library/detect.sh` que mapeiam perfeitamente o seu ecossistema:
 
 - **OS e Shell:** Reconhece se você está no 🐧 `Linux`, 😈 `FreeBSD`, 🍎 `MacOS` ou 🪟 `Windows` (via **MSYS2**), e identifica o 🐚 `Shell` rodando (📜 `bash`, ⚡ `zsh`, ⚙️ `sh`).
-- **Distribuição Linux e Família:** Ao rodar no 🐧 `Linux` ou no 🧩 `WSL2`, o módulo descobre a distribuição exata (`detect_distro`) e a agrupa pela família do gerenciador de pacotes base (`detect_distro_family` — ex: `debian`, `arch`, `fedora`).
-  Isso permite que os aliases universais (como `upall` e `upsys`) chamem as ferramentas corretas automaticamente sob os panos (`apt`, `pacman`/`yay`, ou `dnf`), sem sobrepor os comandos ou quebrar scripts. Gerenciadores isolados como `flatpak` e `snap` também são detectados e ganham comandos separados (`upflat` / `upsnap`) apenas se estiverem presentes no sistema.
+- **Distribuição Linux e Família:** Ao rodar no 🐧 `Linux` ou no 🧩 `WSL2`, o módulo descobre a distribuição exata (`detect_distro`) e a agrupa pela família do gerenciador de pacotes base (`detect_distro_family` — ex: `debian`, `arch`, `fedora`, `suse`, `void`, `alpine`).
+  Isso permite que `upsys` e `upall` chamem os comandos corretos (`upapt`, `upman`, `updnf`, `uppkg`, etc.) automaticamente sob os panos, sem conflitos. Gerenciadores isolados como `flatpak`, `snap` e `yay` (AUR) ganham comandos modulares dedicados (`upflat`, `upsnap`, `upyay`) que são orquestrados dinamicamente pelo `upall`.
 
 ## 📁 Estrutura do Repositório
+
+```mermaid
+flowchart TD
+    RC["🐚 Arquivo RC (~/.bashrc / ~/.zshrc / ~/.shrc)"] --> LIB["📚 1. library/*.sh<br/><i>(detect.sh & functions.sh)</i>"]
+    LIB --> CORE["⚙️ 2. core/*.sh<br/><i>(environment.sh & vault.sh)</i>"]
+    CORE --> TGT["🎨 3. target/{OS}/{SHELL}/prompt.sh<br/><i>(theme & target environment)</i>"]
+    TGT --> CTX["🎯 4. context/{CONTEXT}/{OS}.sh<br/><i>(desktop, server, container ou wsl)</i>"]
+```
 
 - 🎨 **`target/`**: Configurações divididas por Sistema Operacional (🐧 `Linux`, 😈 `FreeBSD`, 🍎 `MacOS`, 🪟 `Windows`). Mantém a experiência visual exata 1:1, independentemente de ser um pinguim, demônio ou janela.
 - 📚 **`library/`**: A biblioteca padrão do projeto. Fornece o arsenal de ferramentas, utilitários de sistema e módulos de inteligência (como o rastreamento do SO), garantindo que operações complexas funcionem de forma limpa em qualquer plataforma POSIX.

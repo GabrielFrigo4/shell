@@ -8,13 +8,6 @@
 alias clear="echo -n $'\e[2J\e[3J\e[H'"
 
 ### --------------------------------
-### Packages
-### --------------------------------
-alias uppkg="sudo pkg update && sudo pkg upgrade --yes"
-alias upsys="uppkg"
-alias upall="upsys"
-
-### --------------------------------
 ### Plasma Window
 ### --------------------------------
 alias way='exec ck-launch-session dbus-run-session startplasma-wayland'
