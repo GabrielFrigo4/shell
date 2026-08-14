@@ -302,23 +302,29 @@ upsys() {
 ### Update All Packages (upall)
 ### --------------------------------
 upall() {
-	upsys
+	echo "🚀 Starting full system update..."
+	echo ""
+	upsys "$@"
 
 	if command -v yay > "/dev/null" 2>&1; then
+		echo ""
 		echo "📦 Updating Yay (AUR) packages..."
-		upyay
+		upyay && echo "✅ Yay (AUR) packages updated!"
 	fi
 
 	if command -v flatpak > "/dev/null" 2>&1; then
+		echo ""
 		echo "📦 Updating Flatpak packages..."
-		upflat
+		upflat && echo "✅ Flatpak packages updated!"
 	fi
 
 	if command -v snap > "/dev/null" 2>&1; then
+		echo ""
 		echo "📦 Updating Snap packages..."
-		upsnap
+		upsnap && echo "✅ Snap packages updated!"
 	fi
 
+	echo ""
 	echo "✅ All packages updated!"
 }
 

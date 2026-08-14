@@ -21,7 +21,7 @@ flowchart LR
     subgraph OS ["🖥️ Plataformas"]
         LNX["🐧 Linux"]
         BSD["😈 FreeBSD"]
-        WIN["🪟 Windows (MSYS2)"]
+        WIN["🪟 Windows"]
         MAC["🍎 MacOS (Futuro)"]
     end
 
@@ -169,8 +169,8 @@ flowchart TD
     UPSYS --> APT["upapt<br/><i>(Debian / Ubuntu)</i>"]
     UPSYS --> MAN["upman<br/><i>(Arch / MSYS2)</i>"]
     UPSYS --> PKG["uppkg<br/><i>(FreeBSD)</i>"]
-    UPSYS --> ZYP["upzyp<br/><i>(openSUSE)</i>"]
-    UPSYS --> XBPS["upxbps<br/><i>(Void Linux)</i>"]
+    UPSYS --> ZYP["upzyp<br/><i>(OpenSUSE)</i>"]
+    UPSYS --> XBPS["upxbps<br/><i>(Void)</i>"]
     UPSYS --> APK["upapk<br/><i>(Alpine)</i>"]
 ```
 
