@@ -14,7 +14,7 @@ VAULT_DIR="${HOME}/.vault"
 ### --------------------------------
 vault-keys() {
 	if [ -z "${SSH_AUTH_SOCK}" ]; then
-		echo "ssh-agent not running"
+		echo "⚠️  ssh-agent não está em execução."
 		return 1
 	fi
 	for key in "${VAULT_DIR}/keys/"*.key; do
@@ -23,7 +23,7 @@ vault-keys() {
 	done
 }
 
-[ -S "${SSH_AUTH_SOCK}" ] && vault-keys 2> "/dev/null"
+[ -S "${SSH_AUTH_SOCK}" ] && ! ssh-add -l > "/dev/null" 2>&1 && vault-keys > "/dev/null" 2>&1
 
 ### --------------------------------
 ### Update Vault (upvt)
