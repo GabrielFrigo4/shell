@@ -29,10 +29,12 @@ alias oz="zed ."
 alias ant="antigravity-ide"
 
 ### --------------------------------
-### GUI Theme Integration
+### GUI Integration
 ### --------------------------------
 if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 	export GTK_THEME="$(detect_gtk_theme)"
 	export QT_STYLE_OVERRIDE="$(detect_qt_theme)"
 	export QT_QPA_PLATFORMTHEME="xdgdesktopportal"
+	export ELECTRON_OZONE_PLATFORM_HINT="auto"
+	export _JAVA_AWT_WM_NONREPARENTING=1
 fi
