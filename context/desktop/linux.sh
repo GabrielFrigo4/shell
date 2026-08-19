@@ -3,11 +3,6 @@
 ### ================================
 
 ### --------------------------------
-### Virtualization & Containers
-### --------------------------------
-command -v incus   > "/dev/null" 2>&1 && alias incus="LC_ALL=C incus"
-
-### --------------------------------
 ### Plasma Window
 ### --------------------------------
 alias way='exec dbus-run-session startplasma-wayland'
@@ -34,13 +29,8 @@ alias oz="zed ."
 alias ant="antigravity-ide"
 
 ### --------------------------------
-### Terminal Editors
+### GTK Theme Integration
 ### --------------------------------
-alias on="nvim ."
-alias ov="vim ."
-
-### --------------------------------
-### Servers
-### --------------------------------
-alias frigo-server='ssh -i "${FRIGO_SERVER_KEY}" "ubuntu@${FRIGO_SERVER_IP}"'
-alias orbs-server='ssh -i "${ORBS_SERVER_KEY}" "ubuntu@${ORBS_SERVER_IP}"'
+if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
+	export GTK_THEME="$(detect_gtk_theme)"
+fi

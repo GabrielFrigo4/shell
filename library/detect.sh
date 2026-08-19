@@ -98,3 +98,90 @@ detect_distro_family() {
 			;;
 	esac
 }
+
+### --------------------------------
+### Detect Desktop Environment
+### --------------------------------
+detect_desktop_environment() {
+	local _desktop="${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION}}"
+	case "${_desktop}" in
+		*[Kk][Dd][Ee]*|*[Pp]lasma*)         echo "kde" ;;
+		*[Gg][Nn][Oo][Mm][Ee]*)             echo "gnome" ;;
+		*[Xx][Ff][Cc][Ee]*)                 echo "xfce" ;;
+		*[Cc][Ii][Nn][Nn][Aa][Mm][Oo][Nn]*) echo "cinnamon" ;;
+		*[Mm][Aa][Tt][Ee]*)                 echo "mate" ;;
+		*[Ss][Ww][Aa][Yy]*)                 echo "sway" ;;
+		*[Hh][Yy][Pp][Rr][Ll][Aa][Nn][Dd]*) echo "hyprland" ;;
+		*)                                  echo "unknown" ;;
+	esac
+}
+
+### --------------------------------
+### Detect Color Scheme (dark/light)
+### --------------------------------
+detect_color_scheme() {
+	if command -v gdbus > "/dev/null" 2>&1; then
+		local _portal
+		_portal="$(gdbus call --session --dest org.freedesktop.portal.Desktop \
+			--object-path /org/freedesktop/portal/desktop \
+			--method org.freedesktop.portal.Settings.Read \
+			"org.freedesktop.appearance" "color-scheme" 2> "/dev/null")"
+		case "${_portal}" in
+			*uint32\ 1*) echo "dark"; return 0 ;;
+			*uint32\ 2*) echo "light"; return 0 ;;
+		esac
+	fi
+
+	if command -v gsettings > "/dev/null" 2>&1; then
+		local _gnome_scheme
+		_gnome_scheme="$(gsettings get org.gnome.desktop.interface color-scheme 2> "/dev/null")"
+		case "${_gnome_scheme}" in
+			*prefer-dark*)  echo "dark"; return 0 ;;
+			*prefer-light*) echo "light"; return 0 ;;
+		esac
+	fi
+
+	if command -v kreadconfig6 > "/dev/null" 2>&1; then
+		local _kde_scheme
+		_kde_scheme="$(kreadconfig6 --group General --key ColorScheme 2> "/dev/null")"
+		case "${_kde_scheme}" in
+			*[Dd]ark*)  echo "dark"; return 0 ;;
+			*[Ll]ight*) echo "light"; return 0 ;;
+		esac
+	elif command -v kreadconfig5 > "/dev/null" 2>&1; then
+		local _kde_scheme5
+		_kde_scheme5="$(kreadconfig5 --group General --key ColorScheme 2> "/dev/null")"
+		case "${_kde_scheme5}" in
+			*[Dd]ark*)  echo "dark"; return 0 ;;
+			*[Ll]ight*) echo "light"; return 0 ;;
+		esac
+	elif [ -f "${HOME}/.config/kdeglobals" ]; then
+		if grep -qi "ColorScheme=.*Dark" "${HOME}/.config/kdeglobals" 2> "/dev/null"; then
+			echo "dark"; return 0
+		elif grep -qi "ColorScheme=.*Light" "${HOME}/.config/kdeglobals" 2> "/dev/null"; then
+			echo "light"; return 0
+		fi
+	fi
+
+	echo "dark"
+}
+
+### --------------------------------
+### Detect GTK Theme
+### --------------------------------
+detect_gtk_theme() {
+	local _desktop_env="$(detect_desktop_environment)"
+	local _color_scheme="$(detect_color_scheme)"
+
+	if [ "${_color_scheme}" = "dark" ]; then
+		case "${_desktop_env}" in
+			kde) echo "Breeze-Dark" ;;
+			*)   echo "Adwaita:dark" ;;
+		esac
+	else
+		case "${_desktop_env}" in
+			kde) echo "Breeze" ;;
+			*)   echo "Adwaita" ;;
+		esac
+	fi
+}

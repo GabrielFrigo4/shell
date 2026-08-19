@@ -17,6 +17,8 @@ source "${SHELL_REPO_DIR}/theme/bash.sh"
 source "${SHELL_REPO_DIR}/target/freebsd/environment.sh"
 
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
+[ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh" ] && \
+    source "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh"
 [ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/freebsd.sh" ] && \
     source "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/freebsd.sh"
 

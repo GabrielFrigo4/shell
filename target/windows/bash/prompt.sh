@@ -28,6 +28,8 @@ command_not_found_handle() {
 source "${SHELL_REPO_DIR}/target/windows/environment.sh"
 
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
+[ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh" ] && \
+    source "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh"
 [ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/windows.sh" ] && \
     source "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/windows.sh"
 

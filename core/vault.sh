@@ -1,29 +1,20 @@
 ### ================================
-### VAULT LOADER E SSH
+### VAULT LOADER & SSH
 ### ================================
 
 VAULT_DIR="${HOME}/.vault"
 
 ### --------------------------------
-### Variáveis de Ambiente
+### Vault Environment
 ### --------------------------------
 [ -f "${VAULT_DIR}/vault.sh" ] && . "${VAULT_DIR}/vault.sh"
 
 ### --------------------------------
 ### SSH Keys
 ### --------------------------------
-vault-keys() {
-	if [ -z "${SSH_AUTH_SOCK}" ]; then
-		echo "⚠️  ssh-agent não está em execução."
-		return 1
-	fi
-	for key in "${VAULT_DIR}/keys/"*.key; do
-		[ -f "${key}" ] || continue
-		command ssh-add "${key}" 2> "/dev/null" && echo "Loaded: $(command basename "${key}")"
-	done
-}
-
-[ -S "${SSH_AUTH_SOCK}" ] && ! ssh-add -l > "/dev/null" 2>&1 && vault-keys > "/dev/null" 2>&1
+if [ -S "${SSH_AUTH_SOCK}" ] && ! ssh-add -l > "/dev/null" 2>&1; then
+	command -v vault-keys > "/dev/null" 2>&1 && vault-keys > "/dev/null" 2>&1
+fi
 
 ### --------------------------------
 ### Update Vault (upvt)

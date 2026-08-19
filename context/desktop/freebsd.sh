@@ -3,11 +3,6 @@
 ### ================================
 
 ### --------------------------------
-### Commands
-### --------------------------------
-alias clear="echo -n $'\e[2J\e[3J\e[H'"
-
-### --------------------------------
 ### Plasma Window
 ### --------------------------------
 alias way='exec ck-launch-session dbus-run-session startplasma-wayland'
@@ -34,13 +29,8 @@ alias ok="nohup kate . &> "/dev/null" &"
 alias oc="code ."
 
 ### --------------------------------
-### Terminal Editors
+### GTK Theme Integration
 ### --------------------------------
-alias on="nvim ."
-alias ov="vim ."
-
-### --------------------------------
-### Servers
-### --------------------------------
-alias frigo-server='ssh -i "${FRIGO_SERVER_KEY}" "ubuntu@${FRIGO_SERVER_IP}"'
-alias orbs-server='ssh -i "${ORBS_SERVER_KEY}" "ubuntu@${ORBS_SERVER_IP}"'
+if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
+	export GTK_THEME="$(detect_gtk_theme)"
+fi
