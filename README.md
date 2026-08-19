@@ -197,18 +197,24 @@ O projeto conta com módulos avançados de reconhecimento em `library/detect.sh`
 
 ```mermaid
 flowchart TD
-    RC["🐚 Arquivo RC (~/.bashrc / ~/.zshrc / ~/.shrc)"] --> LIB["📚 1. library/*.sh<br/><i>(detect.sh & functions.sh)</i>"]
-    LIB --> CORE["⚙️ 2. core/*.sh<br/><i>(environment.sh & vault.sh)</i>"]
-    CORE --> TGT["🎨 3. target/{OS}/{SHELL}/prompt.sh<br/><i>(theme & target environment)</i>"]
-    TGT --> CTX["🎯 4. context/{CONTEXT}/[common.sh & {OS}.sh]<br/><i>(desktop, server, container ou wsl)</i>"]
+    RC["🐚 Arquivo RC (~/.bashrc / ~/.zshrc / ~/.shrc)"] --> LIB["📚 1. library/*.sh"]
+    LIB --> CORE["⚙️ 2. core/*.sh"]
+    CORE --> TGT["🎨 3. target/{OS}/{SHELL}/prompt.sh"]
+
+    subgraph PROMPT_FLOW ["⚡ Orquestração por Sessão"]
+        TGT --> THM["🖌️ theme/{SHELL}.sh"]
+        TGT --> ENV["⚙️ target/{OS}/environment.sh"]
+        TGT --> CTX_COM["🧩 context/{CONTEXT}/common.sh"]
+        TGT --> CTX_OS["🎯 context/{CONTEXT}/{OS}.sh"]
+    end
 ```
 
-- 🎨 **`target/`**: Configurações divididas por Sistema Operacional (🐧 `Linux`, 😈 `FreeBSD`, 🍎 `MacOS`, 🪟 `Windows`). Mantém a experiência visual exata 1:1, independentemente de ser um pinguim, demônio ou janela.
-- 📚 **`library/`**: A biblioteca padrão do projeto. Fornece o arsenal de ferramentas, utilitários de sistema e módulos de inteligência (como o rastreamento do SO), garantindo que operações complexas funcionem de forma limpa em qualquer plataforma POSIX.
-- ⚙️ **`core/`**: O núcleo do projeto. Responsável por inicializar as fundações do ambiente, variáveis essenciais e integrações primárias (como o Vault), servindo de base estrutural para todos os outros módulos e contextos.
-- 🎯 **`context/`**: O orquestrador de ambientes. Adapta dinamicamente o comportamento e as ferramentas do shell com base no seu escopo de uso atual, garantindo o fluxo de trabalho ideal para cada cenário:
-  - 💻 **`desktop/`**: O ambiente de produtividade primário. Carregado com um conjunto rico de ferramentas, atalhos gráficos e otimizações de interface projetadas para maximizar a eficiência e o conforto no uso diário.
-  - 🌐 **`server/`**: A fundação de alta performance. Um perfil extremamente enxuto, seguro e focado em estabilidade, projetado especificamente para servidores remotos e ambientes de produção onde agilidade é crucial.
-  - 📦 **`container/`**: O perfil para microambientes. Derivado do contexto servidor, é rigorosamente otimizado para a execução em 📦 `Contêineres` (como `LXC`/`Incus` no 🐧 `Linux` ou `Jails`/`Bastille` no 😈 `FreeBSD`), garantindo o mínimo de sobrecarga computacional.
-  - 🧩 **`wsl/`**: O ambiente híbrido de ponte. Une o melhor dos dois mundos, integrando o ecossistema 🐧 `Linux` do 🧩 `WSL2` de forma fluida com as ferramentas nativas do 🪟 `Windows` (interoperabilidade com Explorer, PowerShell, CMD e área de transferência).
-- 🖌️ **`theme/`**: A camada de identidade visual. Responsável por unificar a estética do terminal, gerenciando o prompt, esquema de cores e integrações com frameworks (como Oh-My-Zsh e Oh-My-Bash) para garantir uma experiência consistente e premium.
+- 🎨 **`target/`**: Configurações divididas por Sistema Operacional (🐧 `Linux`, 😈 `FreeBSD`, 🍎 `MacOS`, 🪟 `Windows`). Mantém a experiência visual e comportamental exata 1:1, gerenciando caminhos, variáveis e comandos do SO (como `incus` no Linux e `clear` no FreeBSD).
+- 📚 **`library/`**: A biblioteca padrão do projeto. Fornece utilitários de sistema e módulos de inteligência (`detect.sh` e `functions.sh`), garantindo detecção precisa de SO, shell, distribuição, ambiente gráfico e esquemas de cores.
+- ⚙️ **`core/`**: O núcleo do projeto. Responsável por inicializar as fundações do ambiente, variáveis essenciais e a integração automática com o [Universal Vault Environment](https://github.com/GabrielFrigo4/Vault) (`vault.sh`).
+- 🎯 **`context/`**: O orquestrador de ambientes. Adapta dinamicamente as ferramentas com base no seu escopo atual através de uma camada comum (`common.sh`) e uma camada de SO (`{OS}.sh`):
+  - 💻 **`desktop/`**: Ambiente de produtividade gráfica com editores de código (`nvim`, `vim`, `kate`, `vscode`), atalhos de janelas/sessões e integração com `GTK_THEME`.
+  - 🌐 **`server/`**: Perfil extremamente enxuto, ágil e focado em estabilidade para servidores remotos e produção.
+  - 📦 **`container/`**: Perfil rigorosamente otimizado para microambientes (`LXC`/`Incus` no Linux ou `Jails`/`Bastille` no FreeBSD).
+  - 🧩 **`wsl/`**: Ambiente híbrido que integra o Linux do WSL2 diretamente com as ferramentas nativas do Windows (`explorer.exe`, `powershell.exe`, `cmd.exe`, `win32yank.exe`).
+- 🖌️ **`theme/`**: A camada de identidade visual. Unifica o prompt, paleta de cores ANSI/Zstyle, ícones Nerd Fonts e branch Git em todos os terminais.
