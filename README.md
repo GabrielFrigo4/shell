@@ -191,7 +191,9 @@ O projeto conta com módulos avançados de reconhecimento em `library/detect.sh`
 - **OS e Shell:** Reconhece se você está no 🐧 `Linux`, 😈 `FreeBSD`, 🍎 `MacOS` ou 🪟 `Windows` (via **MSYS2**), e identifica o 🐚 `Shell` rodando (📜 `bash`, ⚡ `zsh`, ⚙️ `sh`).
 - **Distribuição Linux e Família:** Ao rodar no 🐧 `Linux` ou no 🧩 `WSL2`, o módulo descobre a distribuição exata (`detect_distro`) e a agrupa pela família do gerenciador de pacotes base (`detect_distro_family` — ex: `debian`, `arch`, `fedora`, `suse`, `void`, `alpine`).
   Isso permite que `upsys` e `upall` chamem os comandos corretos (`upapt`, `upman`, `updnf`, `uppkg`, etc.) automaticamente sob os panos, sem conflitos. Gerenciadores isolados como `flatpak`, `snap` e `yay` (AUR) ganham comandos modulares dedicados (`upflat`, `upsnap`, `upyay`) que são orquestrados dinamicamente pelo `upall`.
-- **Desktop Environment & Dark Mode:** Identifica o ambiente gráfico (`detect_desktop_environment` — ex: `kde`, `gnome`, `xfce`, `sway`, `hyprland`), a preferência de esquema de cores do sistema (`detect_color_scheme` — `dark` ou `light` via XDG Portal / D-Bus / GSettings / KDE Globals) e determina o tema unificado (`detect_gtk_theme`), exportando dinamicamente a variável `GTK_THEME` (`Breeze-Dark` no KDE ou `Adwaita:dark` no GNOME/outros) para garantir coerência visual em aplicativos gráficos iniciados pelo shell.
+- **Desktop Environment & Dark Mode (GTK & Qt):** Identifica o ambiente gráfico (`detect_desktop_environment` — ex: `kde`, `gnome`, `xfce`, `sway`, `hyprland`), a preferência de esquema de cores do sistema (`detect_color_scheme` — `dark` ou `light` via XDG Portal / D-Bus / GSettings / KDE Globals) e mapeia os temas visuais unificados para ambas as toolkits:
+  - **GTK:** Exporta `GTK_THEME` (`Breeze-Dark` no KDE ou `Adwaita:dark` no GNOME/outros) via `detect_gtk_theme`.
+  - **Qt:** Exporta `QT_STYLE_OVERRIDE` (`Breeze-Dark` no KDE ou `Adwaita-Dark` no GNOME/outros) via `detect_qt_theme` e define `QT_QPA_PLATFORMTHEME="xdgdesktopportal"` para que ferramentas Qt (Wireshark, VLC, Kate, OBS) sigam o padrão do sistema automaticamente.
 
 ## 📁 Estrutura do Repositório
 

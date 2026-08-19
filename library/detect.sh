@@ -185,3 +185,23 @@ detect_gtk_theme() {
 		esac
 	fi
 }
+
+### --------------------------------
+### Detect Qt Theme
+### --------------------------------
+detect_qt_theme() {
+	local _desktop_env="$(detect_desktop_environment)"
+	local _color_scheme="$(detect_color_scheme)"
+
+	if [ "${_color_scheme}" = "dark" ]; then
+		case "${_desktop_env}" in
+			kde) echo "Breeze-Dark" ;;
+			*)   echo "Adwaita-Dark" ;;
+		esac
+	else
+		case "${_desktop_env}" in
+			kde) echo "Breeze" ;;
+			*)   echo "Adwaita" ;;
+		esac
+	fi
+}

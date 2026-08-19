@@ -29,8 +29,10 @@ alias ok="nohup kate . &> "/dev/null" &"
 alias oc="code ."
 
 ### --------------------------------
-### GTK Theme Integration
+### GUI Theme Integration
 ### --------------------------------
 if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 	export GTK_THEME="$(detect_gtk_theme)"
+	export QT_STYLE_OVERRIDE="$(detect_qt_theme)"
+	export QT_QPA_PLATFORMTHEME="xdgdesktopportal"
 fi
