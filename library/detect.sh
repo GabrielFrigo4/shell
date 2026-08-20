@@ -173,17 +173,33 @@ detect_gtk_theme() {
 	local _desktop_env="$(detect_desktop_environment)"
 	local _color_scheme="$(detect_color_scheme)"
 
-	if [ "${_color_scheme}" = "dark" ]; then
-		case "${_desktop_env}" in
-			kde) echo "Breeze-Dark" ;;
-			*)   echo "Adwaita:dark" ;;
-		esac
-	else
-		case "${_desktop_env}" in
-			kde) echo "Breeze" ;;
-			*)   echo "Adwaita" ;;
-		esac
-	fi
+	case "${_desktop_env}" in
+		kde)
+			if [ "${_color_scheme}" = "dark" ]; then
+				echo "Breeze-Dark"
+			else
+				echo "Breeze"
+			fi
+			;;
+		gnome)
+			echo ""
+			;;
+		*)
+			if [ "${_color_scheme}" = "dark" ]; then
+				if [ -d "/usr/share/themes/adw-gtk3-dark" ] || [ -d "${HOME}/.themes/adw-gtk3-dark" ]; then
+					echo "adw-gtk3-dark"
+				else
+					echo "Adwaita:dark"
+				fi
+			else
+				if [ -d "/usr/share/themes/adw-gtk3" ] || [ -d "${HOME}/.themes/adw-gtk3" ]; then
+					echo "adw-gtk3"
+				else
+					echo "Adwaita"
+				fi
+			fi
+			;;
+	esac
 }
 
 ### --------------------------------
@@ -193,15 +209,25 @@ detect_qt_theme() {
 	local _desktop_env="$(detect_desktop_environment)"
 	local _color_scheme="$(detect_color_scheme)"
 
-	if [ "${_color_scheme}" = "dark" ]; then
-		case "${_desktop_env}" in
-			kde) echo "Breeze-Dark" ;;
-			*)   echo "Adwaita-Dark" ;;
-		esac
+	if [ "${_desktop_env}" = "kde" ]; then
+		if [ "${_color_scheme}" = "dark" ]; then
+			echo "Breeze-Dark"
+		else
+			echo "Breeze"
+		fi
 	else
-		case "${_desktop_env}" in
-			kde) echo "Breeze" ;;
-			*)   echo "Adwaita" ;;
-		esac
+		echo ""
 	fi
+}
+
+### --------------------------------
+### Detect Qt Platform Theme
+### --------------------------------
+detect_qt_platform_theme() {
+	local _desktop_env="$(detect_desktop_environment)"
+
+	case "${_desktop_env}" in
+		kde) echo "xdgdesktopportal" ;;
+		*)   echo "gtk3" ;;
+	esac
 }

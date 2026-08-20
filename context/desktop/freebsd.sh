@@ -32,9 +32,23 @@ alias oc="code ."
 ### GUI Integration
 ### --------------------------------
 if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
-	export GTK_THEME="$(detect_gtk_theme)"
-	export QT_STYLE_OVERRIDE="$(detect_qt_theme)"
-	export QT_QPA_PLATFORMTHEME="xdgdesktopportal"
+	_gtk_theme="$(detect_gtk_theme)"
+	if [ -n "${_gtk_theme}" ]; then
+		export GTK_THEME="${_gtk_theme}"
+	else
+		unset GTK_THEME
+	fi
+	unset _gtk_theme
+
+	_qt_style="$(detect_qt_theme)"
+	if [ -n "${_qt_style}" ]; then
+		export QT_STYLE_OVERRIDE="${_qt_style}"
+	else
+		unset QT_STYLE_OVERRIDE
+	fi
+	unset _qt_style
+
+	export QT_QPA_PLATFORMTHEME="$(detect_qt_platform_theme)"
 	export ELECTRON_OZONE_PLATFORM_HINT="auto"
 	export _JAVA_AWT_WM_NONREPARENTING=1
 fi
