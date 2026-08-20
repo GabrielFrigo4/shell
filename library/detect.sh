@@ -227,7 +227,29 @@ detect_qt_platform_theme() {
 	local _desktop_env="$(detect_desktop_environment)"
 
 	case "${_desktop_env}" in
-		kde) echo "xdgdesktopportal" ;;
-		*)   echo "gtk3" ;;
+		kde)
+			echo "xdgdesktopportal"
+			;;
+		gnome|sway|hyprland)
+			if command -v qt6ct > "/dev/null" 2>&1; then
+				echo "qt6ct"
+			elif command -v qt5ct > "/dev/null" 2>&1; then
+				echo "qt5ct"
+			else
+				echo "xdgdesktopportal"
+			fi
+			;;
+		xfce|mate|cinnamon)
+			echo "gtk3"
+			;;
+		*)
+			if command -v qt6ct > "/dev/null" 2>&1; then
+				echo "qt6ct"
+			elif command -v qt5ct > "/dev/null" 2>&1; then
+				echo "qt5ct"
+			else
+				echo ""
+			fi
+			;;
 	esac
 }

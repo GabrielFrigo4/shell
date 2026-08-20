@@ -48,7 +48,14 @@ if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 	fi
 	unset _qt_style
 
-	export QT_QPA_PLATFORMTHEME="$(detect_qt_platform_theme)"
+	_qt_platform="$(detect_qt_platform_theme)"
+	if [ -n "${_qt_platform}" ]; then
+		export QT_QPA_PLATFORMTHEME="${_qt_platform}"
+	else
+		unset QT_QPA_PLATFORMTHEME
+	fi
+	unset _qt_platform
+
 	export ELECTRON_OZONE_PLATFORM_HINT="auto"
 	export _JAVA_AWT_WM_NONREPARENTING=1
 fi
