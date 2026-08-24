@@ -532,4 +532,3 @@ alias umntdev="umount-device"
 alias umdev="umount-device"
 alias udev="umount-device"
 alias unmount-device="umount-device"
-
