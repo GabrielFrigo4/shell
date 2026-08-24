@@ -389,9 +389,9 @@ mount-device() {
 		if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 			echo "📂 Abrindo gerenciador de arquivos..."
 			if command -v xdg-open > "/dev/null" 2>&1; then
-				nohup xdg-open "${_target}" > "/dev/null" 2>&1 &
+				(nohup xdg-open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
 			elif command -v gio > "/dev/null" 2>&1; then
-				nohup gio open "${_target}" > "/dev/null" 2>&1 &
+				(nohup gio open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
 			fi
 		fi
 		return 0
@@ -436,17 +436,17 @@ mount-device() {
 	fi
 
 	if [ "${_driver}" = "simple-mtpfs" ]; then
-		_output=$(simple-mtpfs "${_target}" 2>&1)
+		_output=$(simple-mtpfs -s -o direct_io "${_target}" 2>&1)
 		_status=$?
 		if [ "${_status}" -ne 0 ] && command -v sudo > "/dev/null" 2>&1; then
-			_output=$(command sudo simple-mtpfs -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)
+			_output=$(command sudo simple-mtpfs -s -o "direct_io,allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)
 			_status=$?
 		fi
 	else
-		_output=$(jmtpfs "${_target}" 2>&1)
+		_output=$(jmtpfs -s "${_target}" 2>&1)
 		_status=$?
 		if [ "${_status}" -ne 0 ] && command -v sudo > "/dev/null" 2>&1; then
-			_output=$(command sudo jmtpfs -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)
+			_output=$(command sudo jmtpfs -s -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)
 			_status=$?
 		fi
 	fi
@@ -456,9 +456,9 @@ mount-device() {
 		if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 			echo "📂 Abrindo gerenciador de arquivos..."
 			if command -v xdg-open > "/dev/null" 2>&1; then
-				nohup xdg-open "${_target}" > "/dev/null" 2>&1 &
+				(nohup xdg-open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
 			elif command -v gio > "/dev/null" 2>&1; then
-				nohup gio open "${_target}" > "/dev/null" 2>&1 &
+				(nohup gio open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
 			fi
 		fi
 	else
