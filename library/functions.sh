@@ -425,12 +425,30 @@ mount-device() {
 
 	echo "📱 Montando dispositivo MTP em ~/Device (via ${_driver})..."
 
+	if [ "$(detect_os)" = "freebsd" ]; then
+		if ! command kldstat -m fusefs > "/dev/null" 2>&1 && ! command kldstat -m fuse > "/dev/null" 2>&1; then
+			if [ "$(id -u)" -eq 0 ]; then
+				command kldload fusefs > "/dev/null" 2>&1 || true
+			elif command -v sudo > "/dev/null" 2>&1; then
+				command sudo kldload fusefs > "/dev/null" 2>&1 || true
+			fi
+		fi
+	fi
+
 	if [ "${_driver}" = "simple-mtpfs" ]; then
 		_output=$(simple-mtpfs "${_target}" 2>&1)
 		_status=$?
+		if [ "${_status}" -ne 0 ] && command -v sudo > "/dev/null" 2>&1; then
+			_output=$(command sudo simple-mtpfs -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)
+			_status=$?
+		fi
 	else
 		_output=$(jmtpfs "${_target}" 2>&1)
 		_status=$?
+		if [ "${_status}" -ne 0 ] && command -v sudo > "/dev/null" 2>&1; then
+			_output=$(command sudo jmtpfs -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)
+			_status=$?
+		fi
 	fi
 
 	if [ "${_status}" -eq 0 ] && command mount 2> "/dev/null" | grep -F " ${_target} " > "/dev/null" 2>&1; then
@@ -452,6 +470,13 @@ mount-device() {
 		echo "   2. Na notificação USB do dispositivo, selecione o modo 'Transferência de Arquivos (MTP)'."
 		echo "   3. Certifique-se de que o cabo USB está devidamente conectado."
 		echo "   4. Caso o dispositivo tenha sido desconectado abruptamente, reconecte o cabo USB."
+		if [ "$(detect_os)" = "freebsd" ]; then
+			echo ""
+			echo "😈 Dicas específicas para o FreeBSD:"
+			echo "   - Permissão de montagem para usuário: sudo sysctl vfs.usermount=1"
+			echo "   - Grupo de acesso USB: sudo pw groupmod operator -m $(id -un)"
+			echo "   - Módulo FUSE carregado: sudo kldload fusefs"
+		fi
 		return 1
 	fi
 }
@@ -473,6 +498,8 @@ umount-device() {
 	if [ "$(detect_os)" = "freebsd" ]; then
 		if command umount "${_target}" 2> "/dev/null"; then
 			_unmounted=1
+		elif command -v sudo > "/dev/null" 2>&1 && command sudo umount "${_target}" 2> "/dev/null"; then
+			_unmounted=1
 		fi
 	else
 		if command -v fusermount3 > "/dev/null" 2>&1 && command fusermount3 -u "${_target}" 2> "/dev/null"; then
@@ -480,6 +507,8 @@ umount-device() {
 		elif command -v fusermount > "/dev/null" 2>&1 && command fusermount -u "${_target}" 2> "/dev/null"; then
 			_unmounted=1
 		elif command umount "${_target}" 2> "/dev/null"; then
+			_unmounted=1
+		elif command -v sudo > "/dev/null" 2>&1 && command sudo umount "${_target}" 2> "/dev/null"; then
 			_unmounted=1
 		fi
 	fi
