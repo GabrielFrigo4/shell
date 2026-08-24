@@ -398,25 +398,25 @@ mount-device() {
 	fi
 
 	_driver=""
-	if command -v simple-mtpfs > "/dev/null" 2>&1; then
-		_driver="simple-mtpfs"
-	elif command -v jmtpfs > "/dev/null" 2>&1; then
+	if command -v jmtpfs > "/dev/null" 2>&1; then
 		_driver="jmtpfs"
+	elif command -v simple-mtpfs > "/dev/null" 2>&1; then
+		_driver="simple-mtpfs"
 	else
-		echo "❌ Nenhum driver MTP compatível (simple-mtpfs ou jmtpfs) foi encontrado."
+		echo "❌ Nenhum driver MTP compatível (jmtpfs ou simple-mtpfs) foi encontrado."
 		echo ""
 		echo "💡 Para instalar o driver necessário, execute:"
 		case "$(detect_distro_family)" in
 			fedora) echo "   sudo dnf install jmtpfs" ;;
-			debian) echo "   sudo apt install simple-mtpfs  # ou: sudo apt install jmtpfs" ;;
-			arch)   echo "   sudo pacman -S simple-mtpfs    # ou: sudo pacman -S jmtpfs" ;;
-			suse)   echo "   sudo zypper install simple-mtpfs  # ou: sudo zypper install jmtpfs" ;;
-			void)   echo "   sudo xbps-install -S simple-mtpfs" ;;
-			alpine) echo "   sudo apk add simple-mtpfs" ;;
+			debian) echo "   sudo apt install jmtpfs  # ou: sudo apt install simple-mtpfs" ;;
+			arch)   echo "   sudo pacman -S jmtpfs    # ou: sudo pacman -S simple-mtpfs" ;;
+			suse)   echo "   sudo zypper install jmtpfs  # ou: sudo zypper install simple-mtpfs" ;;
+			void)   echo "   sudo xbps-install -S jmtpfs" ;;
+			alpine) echo "   sudo apk add jmtpfs" ;;
 			*)
 				case "$(detect_os)" in
-					freebsd) echo "   sudo pkg install fusefs-simple-mtpfs  # ou: sudo pkg install fusefs-jmtpfs" ;;
-					*)       echo "   Instale 'simple-mtpfs' ou 'jmtpfs' através do gerenciador de pacotes do seu sistema." ;;
+					freebsd) echo "   sudo pkg install fusefs-jmtpfs  # ou: sudo pkg install fusefs-simple-mtpfs" ;;
+					*)       echo "   Instale 'jmtpfs' ou 'simple-mtpfs' através do gerenciador de pacotes do seu sistema." ;;
 				esac
 				;;
 		esac
@@ -435,18 +435,18 @@ mount-device() {
 		fi
 	fi
 
-	if [ "${_driver}" = "simple-mtpfs" ]; then
-		_output=$(simple-mtpfs -s -o direct_io "${_target}" 2>&1)
-		_status=$?
-		if [ "${_status}" -ne 0 ] && command -v sudo > "/dev/null" 2>&1; then
-			_output=$(command sudo simple-mtpfs -s -o "direct_io,allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)
-			_status=$?
-		fi
-	else
+	if [ "${_driver}" = "jmtpfs" ]; then
 		_output=$(jmtpfs -s "${_target}" 2>&1)
 		_status=$?
 		if [ "${_status}" -ne 0 ] && command -v sudo > "/dev/null" 2>&1; then
 			_output=$(command sudo jmtpfs -s -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)
+			_status=$?
+		fi
+	else
+		_output=$(simple-mtpfs -s -o direct_io "${_target}" 2>&1)
+		_status=$?
+		if [ "${_status}" -ne 0 ] && command -v sudo > "/dev/null" 2>&1; then
+			_output=$(command sudo simple-mtpfs -s -o "direct_io,allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)
 			_status=$?
 		fi
 	fi
