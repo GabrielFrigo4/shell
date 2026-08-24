@@ -154,6 +154,8 @@ O projeto inclui aliases e funções inteligentes integrados para que você poss
   - 🐧 **Linux:** `sudo shutdown -h now` / `sudo shutdown -r now`
   - 😈 **FreeBSD:** `sudo shutdown -p now` / `sudo shutdown -r now` (utiliza `-p` para desligar a fonte de alimentação)
   - 🪟 **Windows (MSYS2):** `shutdown.exe /s /t 0` / `shutdown.exe /r /t 0`
+- 📱 **`mount-device` (`mntdev`, `mdev`):** Monta dispositivos móveis (smartphones Android, tablets, e-readers) via MTP FUSE em `~/Device` com detecção automática de drivers (`simple-mtpfs` / `jmtpfs`), tratamento de erros e abertura automática do gerenciador de arquivos gráfico padrão (`xdg-open` / `gio open`).
+- 🔌 **`umount-device` (`umntdev`, `umdev`, `udev`):** Desmonta com segurança o ponto de montagem `~/Device` tratando as particularidades do Linux (`fusermount3` / `fusermount` / `umount`) e do FreeBSD (`umount`).
 
 ```mermaid
 flowchart TD

@@ -376,3 +376,131 @@ reboot() {
 			;;
 	esac
 }
+
+### --------------------------------
+### Mount Device (mount-device)
+### --------------------------------
+mount-device() {
+	_target="${HOME}/Device"
+	[ ! -d "${_target}" ] && command mkdir -p "${_target}"
+
+	if command mount 2> "/dev/null" | grep -F " ${_target} " > "/dev/null" 2>&1; then
+		echo "📱 Dispositivo já está montado em ~/Device."
+		if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
+			echo "📂 Abrindo gerenciador de arquivos..."
+			if command -v xdg-open > "/dev/null" 2>&1; then
+				nohup xdg-open "${_target}" > "/dev/null" 2>&1 &
+			elif command -v gio > "/dev/null" 2>&1; then
+				nohup gio open "${_target}" > "/dev/null" 2>&1 &
+			fi
+		fi
+		return 0
+	fi
+
+	_driver=""
+	if command -v simple-mtpfs > "/dev/null" 2>&1; then
+		_driver="simple-mtpfs"
+	elif command -v jmtpfs > "/dev/null" 2>&1; then
+		_driver="jmtpfs"
+	else
+		echo "❌ Nenhum driver MTP compatível (simple-mtpfs ou jmtpfs) foi encontrado."
+		echo ""
+		echo "💡 Para instalar o driver necessário, execute:"
+		case "$(detect_distro_family)" in
+			fedora) echo "   sudo dnf install jmtpfs" ;;
+			debian) echo "   sudo apt install simple-mtpfs  # ou: sudo apt install jmtpfs" ;;
+			arch)   echo "   sudo pacman -S simple-mtpfs    # ou: sudo pacman -S jmtpfs" ;;
+			suse)   echo "   sudo zypper install simple-mtpfs  # ou: sudo zypper install jmtpfs" ;;
+			void)   echo "   sudo xbps-install -S simple-mtpfs" ;;
+			alpine) echo "   sudo apk add simple-mtpfs" ;;
+			*)
+				case "$(detect_os)" in
+					freebsd) echo "   sudo pkg install fusefs-simple-mtpfs  # ou: sudo pkg install fusefs-jmtpfs" ;;
+					*)       echo "   Instale 'simple-mtpfs' ou 'jmtpfs' através do gerenciador de pacotes do seu sistema." ;;
+				esac
+				;;
+		esac
+		return 1
+	fi
+
+	echo "📱 Montando dispositivo MTP em ~/Device (via ${_driver})..."
+
+	if [ "${_driver}" = "simple-mtpfs" ]; then
+		_output=$(simple-mtpfs "${_target}" 2>&1)
+		_status=$?
+	else
+		_output=$(jmtpfs "${_target}" 2>&1)
+		_status=$?
+	fi
+
+	if [ "${_status}" -eq 0 ] && command mount 2> "/dev/null" | grep -F " ${_target} " > "/dev/null" 2>&1; then
+		echo "✅ Dispositivo montado com sucesso em ~/Device!"
+		if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
+			echo "📂 Abrindo gerenciador de arquivos..."
+			if command -v xdg-open > "/dev/null" 2>&1; then
+				nohup xdg-open "${_target}" > "/dev/null" 2>&1 &
+			elif command -v gio > "/dev/null" 2>&1; then
+				nohup gio open "${_target}" > "/dev/null" 2>&1 &
+			fi
+		fi
+	else
+		echo "❌ Falha ao montar o dispositivo em ~/Device."
+		[ -n "${_output}" ] && echo "   Log: ${_output}"
+		echo ""
+		echo "💡 Dicas para resolução:"
+		echo "   1. Desbloqueie a tela do dispositivo (mantenha a tela ligada)."
+		echo "   2. Na notificação USB do dispositivo, selecione o modo 'Transferência de Arquivos (MTP)'."
+		echo "   3. Certifique-se de que o cabo USB está devidamente conectado."
+		echo "   4. Caso o dispositivo tenha sido desconectado abruptamente, reconecte o cabo USB."
+		return 1
+	fi
+}
+
+### --------------------------------
+### Unmount Device (umount-device)
+### --------------------------------
+umount-device() {
+	_target="${HOME}/Device"
+
+	if ! command mount 2> "/dev/null" | grep -F " ${_target} " > "/dev/null" 2>&1; then
+		echo "ℹ️ O diretório ~/Device não está montado."
+		return 0
+	fi
+
+	echo "🔌 Desmontando ~/Device com segurança..."
+
+	_unmounted=0
+	if [ "$(detect_os)" = "freebsd" ]; then
+		if command umount "${_target}" 2> "/dev/null"; then
+			_unmounted=1
+		fi
+	else
+		if command -v fusermount3 > "/dev/null" 2>&1 && command fusermount3 -u "${_target}" 2> "/dev/null"; then
+			_unmounted=1
+		elif command -v fusermount > "/dev/null" 2>&1 && command fusermount -u "${_target}" 2> "/dev/null"; then
+			_unmounted=1
+		elif command umount "${_target}" 2> "/dev/null"; then
+			_unmounted=1
+		fi
+	fi
+
+	if [ "${_unmounted}" -eq 1 ] || ! command mount 2> "/dev/null" | grep -F " ${_target} " > "/dev/null" 2>&1; then
+		echo "✅ Dispositivo desmontado com sucesso de ~/Device."
+		echo "🔒 É seguro desconectar o cabo USB."
+	else
+		echo "❌ Não foi possível desmontar ~/Device."
+		echo "💡 Verifique se existem programas, terminais ou gerenciadores de arquivos abertos dentro de ~/Device."
+		return 1
+	fi
+}
+
+### --------------------------------
+### Device Aliases
+### --------------------------------
+alias mntdev="mount-device"
+alias mdev="mount-device"
+alias umntdev="umount-device"
+alias umdev="umount-device"
+alias udev="umount-device"
+alias unmount-device="umount-device"
+
