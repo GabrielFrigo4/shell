@@ -381,9 +381,9 @@ reboot() {
 ### Mount Device (mount-device)
 ### --------------------------------
 _find_desktop_device() {
-	for _base in "/run/user/$(id -u)/gvfs" "/var/run/user/$(id -u)/gvfs"; do
-		[ ! -d "${_base}" ] && continue
-		_found=$(command find "${_base}" -maxdepth 1 \( -name "mtp:*" -o -name "*mtp*" -o -name "sftp:*" \) 2> "/dev/null" | command head -n 1)
+	for _runtime in "${XDG_RUNTIME_DIR}" "/var/run/user/$(id -u)" "/run/user/$(id -u)"; do
+		[ -z "${_runtime}" ] || [ ! -d "${_runtime}" ] && continue
+		_found=$(command find "${_runtime}/gvfs" "${_runtime}" -maxdepth 2 \( -name "mtp:*" -o -name "*mtp*" -o -name "sftp:*" \) 2> "/dev/null" | command head -n 1)
 		[ -n "${_found}" ] && [ -d "${_found}" ] && echo "${_found}" && return 0
 	done
 	return 0
@@ -392,16 +392,17 @@ _find_desktop_device() {
 _find_kdeconnect_device() {
 	command -v kdeconnect-cli > "/dev/null" 2>&1 || return 0
 	local _dev
-	_dev="$(command kdeconnect-cli -a 2> "/dev/null" | command grep -oE '[a-f0-9]{32}' | command head -n 1)"
-	[ -z "${_dev}" ] && _dev="$(command kdeconnect-cli --list-available 2> "/dev/null" | command grep -oE '[a-f0-9]{32}' | command head -n 1)"
+	_dev="$(command kdeconnect-cli -a --id-only 2> "/dev/null" | command head -n 1)"
+	[ -z "${_dev}" ] && _dev="$(command kdeconnect-cli --list-available --id-only 2> "/dev/null" | command head -n 1)"
+	[ -z "${_dev}" ] && _dev="$(command kdeconnect-cli -a 2> "/dev/null" | command grep -oE '[a-zA-Z0-9_-]{8,}' | command head -n 1)"
 	[ -z "${_dev}" ] && return 0
 
 	command kdeconnect-cli -d "${_dev}" --mount > "/dev/null" 2>&1 || true
-	[ -d "/run/user/$(id -u)/${_dev}" ] && echo "/run/user/$(id -u)/${_dev}" && return 0
 
-	for _base in "/run/user/$(id -u)" "/var/run/user/$(id -u)"; do
-		[ ! -d "${_base}" ] && continue
-		_found=$(command find "${_base}" -maxdepth 2 \( -name "*${_dev}*" -o -name "*kdeconnect*" \) 2> "/dev/null" | command head -n 1)
+	for _runtime in "${XDG_RUNTIME_DIR}" "/var/run/user/$(id -u)" "/run/user/$(id -u)"; do
+		[ -z "${_runtime}" ] || [ ! -d "${_runtime}" ] && continue
+		[ -d "${_runtime}/${_dev}" ] && echo "${_runtime}/${_dev}" && return 0
+		_found=$(command find "${_runtime}" -maxdepth 3 \( -name "*${_dev}*" -o -name "*kdeconnect*" \) 2> "/dev/null" | command head -n 1)
 		[ -n "${_found}" ] && [ -d "${_found}" ] && echo "${_found}" && return 0
 	done
 	return 0
