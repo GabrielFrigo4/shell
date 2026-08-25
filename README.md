@@ -154,7 +154,7 @@ O projeto inclui aliases e funções inteligentes integrados para que você poss
   - 🐧 **Linux:** `sudo shutdown -h now` / `sudo shutdown -r now`
   - 😈 **FreeBSD:** `sudo shutdown -p now` / `sudo shutdown -r now` (utiliza `-p` para desligar a fonte de alimentação)
   - 🪟 **Windows (MSYS2):** `shutdown.exe /s /t 0` / `shutdown.exe /r /t 0`
-- 📱 **`mount-device` (`mntdev`, `mdev`):** Monta ou vincula dispositivos móveis em `~/Device` com resolução em cascata (`KDE/GNOME` -> `ADB` -> `MTP`), bloqueando MTP instável no FreeBSD e abrindo automaticamente o gerenciador de arquivos padrão.
+- 📱 **`mount-device` (`mntdev`, `mdev`):** Monta ou vincula dispositivos móveis em `~/Device` via ecossistemas modernos (`KDE Connect`, `GNOME/GSConnect` ou `ADB`), abrindo automaticamente o gerenciador de arquivos padrão.
 - 🔌 **`umount-device` (`umntdev`, `umdev`, `udev`):** Desmonta ou desvincula `~/Device` com segurança, removendo a pasta temporária e tratando particularidades do Linux e FreeBSD.
 
 ```mermaid

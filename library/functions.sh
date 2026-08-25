@@ -421,42 +421,12 @@ mount-device() {
 		fi
 	fi
 
-	if [ "$(detect_os)" = "freebsd" ]; then
-		[ -d "${_target}" ] && [ ! -L "${_target}" ] && command rmdir "${_target}" 2> "/dev/null"
-		echo "❌ No FreeBSD, MTP tradicional via FUSE é inviável e causa travamentos no sistema."
-		echo "💡 Utilize o KDE Connect / GSConnect ou ADB (android-tools) para acessar o dispositivo."
-		return 1
-	fi
-
-	_driver=""
-	command -v jmtpfs > "/dev/null" 2>&1 && _driver="jmtpfs"
-	[ -z "${_driver}" ] && command -v simple-mtpfs > "/dev/null" 2>&1 && _driver="simple-mtpfs"
-
-	if [ -n "${_driver}" ]; then
-		command mkdir -p "${_target}"
-		echo "📱 Montando dispositivo MTP em ~/Device (via ${_driver})..."
-
-		if [ "${_driver}" = "jmtpfs" ]; then
-			_output="$(jmtpfs -s "${_target}" 2>&1 || command sudo jmtpfs -s -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)"
-		else
-			_output="$(simple-mtpfs -s -o direct_io "${_target}" 2>&1 || command sudo simple-mtpfs -s -o "direct_io,allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)"
-		fi
-
-		if command mount 2> "/dev/null" | command grep -qF " ${_target} "; then
-			echo "✅ Dispositivo montado com sucesso em ~/Device!"
-			_open_file_manager "${_target}"
-			return 0
-		fi
-	fi
-
 	[ -d "${_target}" ] && [ ! -L "${_target}" ] && command rmdir "${_target}" 2> "/dev/null"
-	echo "❌ Falha ao montar o dispositivo em ~/Device."
-	[ -n "${_output}" ] && echo "   Log: ${_output}"
+	echo "❌ Nenhum dispositivo encontrado via KDE Connect, GNOME ou ADB."
 	echo ""
-	echo "💡 Dicas para resolução:"
-	echo "   1. Desbloqueie a tela do dispositivo."
-	echo "   2. Selecione 'Transferência de Arquivos (MTP)' ou 'Depuração USB' nas notificações USB."
-	echo "   3. Certifique-se de que o cabo USB está conectado firmemente."
+	echo "💡 Formas de conexão recomendadas:"
+	echo "   1. Sem fio: Conecte via KDE Connect (KDE) ou GSConnect (GNOME)."
+	echo "   2. Cabo USB: Conecte via GNOME (MTP nativo) ou ative a 'Depuração USB' (ADB)."
 	return 1
 }
 
@@ -465,7 +435,7 @@ _open_file_manager() {
 	[ -z "${DISPLAY}" ] && [ -z "${WAYLAND_DISPLAY}" ] && return 0
 
 	echo "📂 Abrindo gerenciador de arquivos..."
-	for _opener in xdg-open gio nautilus dolphin; do
+	for _opener in xdg-open gio nautilus dolphin thunar nemo caja pcmanfm-qt pcmanfm; do
 		if command -v "${_opener}" > "/dev/null" 2>&1; then
 			(nohup "${_opener}" "${1}" < "/dev/null" > "/dev/null" 2>&1 &)
 			return 0
