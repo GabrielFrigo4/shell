@@ -401,9 +401,21 @@ _find_kdeconnect_device() {
 
 	for _runtime in "${XDG_RUNTIME_DIR}" "/var/run/user/$(id -u)" "/run/user/$(id -u)"; do
 		[ -z "${_runtime}" ] || [ ! -d "${_runtime}" ] && continue
-		[ -d "${_runtime}/${_dev}" ] && echo "${_runtime}/${_dev}" && return 0
-		_found=$(command find "${_runtime}" -maxdepth 3 \( -name "*${_dev}*" -o -name "*kdeconnect*" \) 2> "/dev/null" | command head -n 1)
+
+		_found=$(command find "${_runtime}" -maxdepth 4 -path "*kio-fuse*/*" \( -name "*${_dev}*" -o -name "*kdeconnect*" \) 2> "/dev/null" | command head -n 1)
 		[ -n "${_found}" ] && [ -d "${_found}" ] && echo "${_found}" && return 0
+
+		if [ -d "${_runtime}/${_dev}" ] && [ "$(command ls -A "${_runtime}/${_dev}" 2> "/dev/null")" ]; then
+			echo "${_runtime}/${_dev}"
+			return 0
+		fi
+
+		for _dir in $(command find "${_runtime}" -maxdepth 3 \( -name "*${_dev}*" -o -name "*kdeconnect*" \) 2> "/dev/null"); do
+			if [ -d "${_dir}" ] && [ "$(command ls -A "${_dir}" 2> "/dev/null")" ]; then
+				echo "${_dir}"
+				return 0
+			fi
+		done
 	done
 	return 0
 }
