@@ -154,12 +154,12 @@ O projeto inclui aliases e funções inteligentes integrados para que você poss
   - 🐧 **Linux:** `sudo shutdown -h now` / `sudo shutdown -r now`
   - 😈 **FreeBSD:** `sudo shutdown -p now` / `sudo shutdown -r now` (utiliza `-p` para desligar a fonte de alimentação)
   - 🪟 **Windows (MSYS2):** `shutdown.exe /s /t 0` / `shutdown.exe /r /t 0`
-- 📱 **`mount-device` (`mntdev`, `mdev`):** Mapeia dispositivos móveis diretamente em `~/Device` com resolução inteligente em 4 estágios, integrando os motores virtuais assíncronos dos desktops sem risco de travamento de kernel:
+- 📱 **`mount-device` (`mntdev`, `mdev`):** *(Contexto Desktop)* Mapeia dispositivos móveis diretamente em `~/Device` com resolução inteligente em 4 estágios, integrando os motores virtuais assíncronos dos desktops sem risco de travamento de kernel:
   1. **Guarda de Idempotência:** Se `~/Device` já estiver vinculado ou montado, apenas abre o gerenciador de arquivos padrão e encerra.
   2. **Desktop Nativo (`GVfs` / `KIO-FUSE`):** Vincula sessões ativas do GNOME/XFCE/MATE/Cinnamon via Cabo USB (`mtp:*`) ou GSConnect sem fio (`sftp:*`), além de sessões ativas do Dolphin no KDE (`kio-mtp`).
   3. **KDE Connect (Wi-Fi):** Aciona o `kdeconnect-cli --mount` e vincula o sistema de arquivos remoto SFTP via `kio-fuse`.
   4. **ADB FUSE (`adbfs`):** Monta o armazenamento do Android via cabo USB em alta velocidade sem depender de interface gráfica (requer `android-tools` e `adbfs`).
-- 🔌 **`umount-device` (`umntdev`, `umdev`, `udev`):** Desmonta ou desvincula `~/Device` com segurança, encerra túneis de rede no KDE Connect, remove a pasta temporária do `$HOME` e trata particularidades do Linux e FreeBSD.
+- 🔌 **`umount-device` (`umntdev`, `umdev`, `udev`, `unmount-device`):** *(Contexto Desktop)* Desmonta ou desvincula `~/Device` com segurança, encerra túneis de rede no KDE Connect, remove a pasta temporária do `$HOME` e trata particularidades do Linux e FreeBSD. Protegido com guarda defensiva para preservar binários nativos do sistema.
 
 ```mermaid
 flowchart TD
@@ -224,7 +224,7 @@ flowchart TD
 - 📚 **`library/`**: A biblioteca padrão do projeto. Fornece utilitários de sistema e módulos de inteligência (`detect.sh` e `functions.sh`), garantindo detecção precisa de SO, shell, distribuição, ambiente gráfico e esquemas de cores.
 - ⚙️ **`core/`**: O núcleo do projeto. Responsável por inicializar as fundações do ambiente, variáveis essenciais e a integração automática com o [Universal Vault Environment](https://github.com/GabrielFrigo4/Vault) (`vault.sh`).
 - 🎯 **`context/`**: O orquestrador de ambientes. Adapta dinamicamente as ferramentas com base no seu escopo atual através de uma camada comum (`common.sh`) e uma camada de SO (`{OS}.sh`):
-  - 💻 **`desktop/`**: Ambiente de produtividade gráfica com editores de código (`nvim`, `vim`, `kate`, `vscode`), atalhos de janelas/sessões e integração com `GTK_THEME`.
+  - 💻 **`desktop/`**: Ambiente de produtividade gráfica com editores de código (`nvim`, `vim`, `kate`, `vscode`), atalhos de janelas/sessões, gerenciamento inteligente de dispositivos móveis (`mount-device`/`umount-device`) e integração com `GTK_THEME`.
   - 🌐 **`server/`**: Perfil extremamente enxuto, ágil e focado em estabilidade para servidores remotos e produção.
   - 📦 **`container/`**: Perfil rigorosamente otimizado para microambientes (`LXC`/`Incus` no Linux ou `Jails`/`Bastille` no FreeBSD).
   - 🧩 **`wsl/`**: Ambiente híbrido que integra o Linux do WSL2 diretamente com as ferramentas nativas do Windows (`explorer.exe`, `powershell.exe`, `cmd.exe`, `win32yank.exe`).
