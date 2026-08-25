@@ -380,6 +380,46 @@ reboot() {
 ### --------------------------------
 ### Mount Device (mount-device)
 ### --------------------------------
+_find_desktop_device() {
+	for _base in "/run/user/$(id -u)/gvfs" "/var/run/user/$(id -u)/gvfs"; do
+		[ ! -d "${_base}" ] && continue
+		_found=$(command find "${_base}" -maxdepth 1 \( -name "mtp:*" -o -name "*mtp*" -o -name "sftp:*" \) 2> "/dev/null" | command head -n 1)
+		[ -n "${_found}" ] && [ -d "${_found}" ] && echo "${_found}" && return 0
+	done
+	return 0
+}
+
+_find_kdeconnect_device() {
+	command -v kdeconnect-cli > "/dev/null" 2>&1 || return 0
+	local _dev
+	_dev="$(command kdeconnect-cli -a 2> "/dev/null" | command grep -oE '[a-f0-9]{32}' | command head -n 1)"
+	[ -z "${_dev}" ] && _dev="$(command kdeconnect-cli --list-available 2> "/dev/null" | command grep -oE '[a-f0-9]{32}' | command head -n 1)"
+	[ -z "${_dev}" ] && return 0
+
+	command kdeconnect-cli -d "${_dev}" --mount > "/dev/null" 2>&1 || true
+	[ -d "/run/user/$(id -u)/${_dev}" ] && echo "/run/user/$(id -u)/${_dev}" && return 0
+
+	for _base in "/run/user/$(id -u)" "/var/run/user/$(id -u)"; do
+		[ ! -d "${_base}" ] && continue
+		_found=$(command find "${_base}" -maxdepth 2 \( -name "*${_dev}*" -o -name "*kdeconnect*" \) 2> "/dev/null" | command head -n 1)
+		[ -n "${_found}" ] && [ -d "${_found}" ] && echo "${_found}" && return 0
+	done
+	return 0
+}
+
+_open_file_manager() {
+	[ -z "${1}" ] && return 0
+	[ -z "${DISPLAY}" ] && [ -z "${WAYLAND_DISPLAY}" ] && return 0
+
+	echo "📂 Abrindo gerenciador de arquivos..."
+	for _opener in xdg-open gio nautilus dolphin thunar nemo caja pcmanfm-qt pcmanfm; do
+		if command -v "${_opener}" > "/dev/null" 2>&1; then
+			(nohup "${_opener}" "${1}" < "/dev/null" > "/dev/null" 2>&1 &)
+			return 0
+		fi
+	done
+}
+
 mount-device() {
 	_target="${HOME}/Device"
 
@@ -393,15 +433,8 @@ mount-device() {
 		return 0
 	fi
 
-	_desktop_dir="$(command find /run/user/"$(id -u)"/gvfs /var/run/user/"$(id -u)"/gvfs /run/user/"$(id -u)"/kio-fuse-* /var/run/user/"$(id -u)"/kio-fuse-* -maxdepth 2 \( -name "mtp:*" -o -name "*mtp*" -o -name "sftp:*" \) 2> "/dev/null" | command head -n 1)"
-
-	if [ -z "${_desktop_dir}" ] && command -v kdeconnect-cli > "/dev/null" 2>&1; then
-		_kde_dev="$(command kdeconnect-cli -a --id-only 2> "/dev/null" | command head -n 1)"
-		if [ -n "${_kde_dev}" ]; then
-			command kdeconnect-cli -d "${_kde_dev}" --mount > "/dev/null" 2>&1 || true
-			_desktop_dir="$(command find /run/user/"$(id -u)"/kio-fuse-* /var/run/user/"$(id -u)"/kio-fuse-* -maxdepth 2 \( -name "*${_kde_dev}*" -o -name "*kdeconnect*" \) 2> "/dev/null" | command head -n 1)"
-		fi
-	fi
+	_desktop_dir="$(_find_desktop_device)"
+	[ -z "${_desktop_dir}" ] && _desktop_dir="$(_find_kdeconnect_device)"
 
 	if [ -n "${_desktop_dir}" ]; then
 		[ -d "${_target}" ] && [ ! -L "${_target}" ] && command rmdir "${_target}" 2> "/dev/null"
@@ -430,19 +463,9 @@ mount-device() {
 	return 1
 }
 
-_open_file_manager() {
-	[ -z "${1}" ] && return 0
-	[ -z "${DISPLAY}" ] && [ -z "${WAYLAND_DISPLAY}" ] && return 0
-
-	echo "📂 Abrindo gerenciador de arquivos..."
-	for _opener in xdg-open gio nautilus dolphin thunar nemo caja pcmanfm-qt pcmanfm; do
-		if command -v "${_opener}" > "/dev/null" 2>&1; then
-			(nohup "${_opener}" "${1}" < "/dev/null" > "/dev/null" 2>&1 &)
-			return 0
-		fi
-	done
-}
-
+### --------------------------------
+### Unmount Device (umount-device)
+### --------------------------------
 _unmount_target() {
 	if [ "$(detect_os)" = "freebsd" ]; then
 		command umount "${1}" 2> "/dev/null" || command sudo umount "${1}" 2> "/dev/null" || true
@@ -454,9 +477,6 @@ _unmount_target() {
 	fi
 }
 
-### --------------------------------
-### Unmount Device (umount-device)
-### --------------------------------
 umount-device() {
 	_target="${HOME}/Device"
 
