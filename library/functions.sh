@@ -451,6 +451,11 @@ mount-device() {
 	[ -z "${_desktop_dir}" ] && _desktop_dir="$(_find_kdeconnect_device)"
 
 	if [ -n "${_desktop_dir}" ]; then
+		if [ -d "${_desktop_dir}/storage/emulated/0" ]; then
+			_desktop_dir="${_desktop_dir}/storage/emulated/0"
+		elif [ -d "${_desktop_dir}/sdcard" ]; then
+			_desktop_dir="${_desktop_dir}/sdcard"
+		fi
 		[ -d "${_target}" ] && [ ! -L "${_target}" ] && command rmdir "${_target}" 2> "/dev/null"
 		command ln -sfn "${_desktop_dir}" "${_target}"
 		echo "✅ Dispositivo conectado via KDE/GNOME e vinculado a ~/Device!"
