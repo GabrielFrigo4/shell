@@ -382,102 +382,105 @@ reboot() {
 ### --------------------------------
 mount-device() {
 	_target="${HOME}/Device"
-	[ ! -d "${_target}" ] && command mkdir -p "${_target}"
 
-	if command mount 2> "/dev/null" | grep -F " ${_target} " > "/dev/null" 2>&1; then
+	if [ -L "${_target}" ]; then
+		echo "📱 Dispositivo já está acessível em ~/Device (vinculado a $(readlink "${_target}"))."
+		_open_file_manager "${_target}"
+		return 0
+	elif command mount 2> "/dev/null" | command grep -qF " ${_target} "; then
 		echo "📱 Dispositivo já está montado em ~/Device."
-		if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
-			echo "📂 Abrindo gerenciador de arquivos..."
-			if command -v xdg-open > "/dev/null" 2>&1; then
-				(nohup xdg-open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
-			elif command -v gio > "/dev/null" 2>&1; then
-				(nohup gio open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
-			fi
-		fi
+		_open_file_manager "${_target}"
 		return 0
 	fi
 
-	_driver=""
-	if command -v jmtpfs > "/dev/null" 2>&1; then
-		_driver="jmtpfs"
-	elif command -v simple-mtpfs > "/dev/null" 2>&1; then
-		_driver="simple-mtpfs"
-	else
-		echo "❌ Nenhum driver MTP compatível (jmtpfs ou simple-mtpfs) foi encontrado."
-		echo ""
-		echo "💡 Para instalar o driver necessário, execute:"
-		case "$(detect_distro_family)" in
-			fedora) echo "   sudo dnf install jmtpfs" ;;
-			debian) echo "   sudo apt install jmtpfs  # ou: sudo apt install simple-mtpfs" ;;
-			arch)   echo "   sudo pacman -S jmtpfs    # ou: sudo pacman -S simple-mtpfs" ;;
-			suse)   echo "   sudo zypper install jmtpfs  # ou: sudo zypper install simple-mtpfs" ;;
-			void)   echo "   sudo xbps-install -S jmtpfs" ;;
-			alpine) echo "   sudo apk add jmtpfs" ;;
-			*)
-				case "$(detect_os)" in
-					freebsd) echo "   sudo pkg install fusefs-jmtpfs  # ou: sudo pkg install fusefs-simple-mtpfs" ;;
-					*)       echo "   Instale 'jmtpfs' ou 'simple-mtpfs' através do gerenciador de pacotes do seu sistema." ;;
-				esac
-				;;
-		esac
-		return 1
+	_desktop_dir="$(command find /run/user/"$(id -u)"/gvfs /var/run/user/"$(id -u)"/gvfs -maxdepth 1 \( -name "mtp:*" -o -name "sftp:*" \) 2> "/dev/null" | command head -n 1)"
+
+	if [ -z "${_desktop_dir}" ] && command -v kdeconnect-cli > "/dev/null" 2>&1; then
+		_kde_dev="$(command kdeconnect-cli -a --id-only 2> "/dev/null" | command head -n 1)"
+		if [ -n "${_kde_dev}" ]; then
+			command kdeconnect-cli -d "${_kde_dev}" --mount > "/dev/null" 2>&1 || true
+			_desktop_dir="$(command find /run/user/"$(id -u)"/kio-fuse-* /var/run/user/"$(id -u)"/kio-fuse-* -maxdepth 2 \( -name "*${_kde_dev}*" -o -name "*kdeconnect*" \) 2> "/dev/null" | command head -n 1)"
+		fi
 	fi
 
-	echo "📱 Montando dispositivo MTP em ~/Device (via ${_driver})..."
+	if [ -n "${_desktop_dir}" ]; then
+		[ -d "${_target}" ] && [ ! -L "${_target}" ] && command rmdir "${_target}" 2> "/dev/null"
+		command ln -sfn "${_desktop_dir}" "${_target}"
+		echo "✅ Dispositivo conectado via KDE/GNOME e vinculado a ~/Device!"
+		_open_file_manager "${_target}"
+		return 0
+	fi
+
+	if command -v adbfs > "/dev/null" 2>&1 && command adb devices 2> "/dev/null" | command grep -qE '\bdevice\b'; then
+		command mkdir -p "${_target}"
+		echo "📱 Montando dispositivo Android via ADB em ~/Device..."
+		if adbfs "${_target}" > "/dev/null" 2>&1 || command sudo adbfs -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" > "/dev/null" 2>&1; then
+			echo "✅ Dispositivo Android montado com sucesso em ~/Device via ADB!"
+			_open_file_manager "${_target}"
+			return 0
+		fi
+	fi
 
 	if [ "$(detect_os)" = "freebsd" ]; then
-		if ! command kldstat -m fusefs > "/dev/null" 2>&1 && ! command kldstat -m fuse > "/dev/null" 2>&1; then
-			if [ "$(id -u)" -eq 0 ]; then
-				command kldload fusefs > "/dev/null" 2>&1 || true
-			elif command -v sudo > "/dev/null" 2>&1; then
-				command sudo kldload fusefs > "/dev/null" 2>&1 || true
-			fi
-		fi
-	fi
-
-	if [ "${_driver}" = "jmtpfs" ]; then
-		_output=$(jmtpfs -s "${_target}" 2>&1)
-		_status=$?
-		if [ "${_status}" -ne 0 ] && command -v sudo > "/dev/null" 2>&1; then
-			_output=$(command sudo jmtpfs -s -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)
-			_status=$?
-		fi
-	else
-		_output=$(simple-mtpfs -s -o direct_io "${_target}" 2>&1)
-		_status=$?
-		if [ "${_status}" -ne 0 ] && command -v sudo > "/dev/null" 2>&1; then
-			_output=$(command sudo simple-mtpfs -s -o "direct_io,allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)
-			_status=$?
-		fi
-	fi
-
-	if [ "${_status}" -eq 0 ] && command mount 2> "/dev/null" | grep -F " ${_target} " > "/dev/null" 2>&1; then
-		echo "✅ Dispositivo montado com sucesso em ~/Device!"
-		if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
-			echo "📂 Abrindo gerenciador de arquivos..."
-			if command -v xdg-open > "/dev/null" 2>&1; then
-				(nohup xdg-open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
-			elif command -v gio > "/dev/null" 2>&1; then
-				(nohup gio open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
-			fi
-		fi
-	else
-		echo "❌ Falha ao montar o dispositivo em ~/Device."
-		[ -n "${_output}" ] && echo "   Log: ${_output}"
-		echo ""
-		echo "💡 Dicas para resolução:"
-		echo "   1. Desbloqueie a tela do dispositivo (mantenha a tela ligada)."
-		echo "   2. Na notificação USB do dispositivo, selecione o modo 'Transferência de Arquivos (MTP)'."
-		echo "   3. Certifique-se de que o cabo USB está devidamente conectado."
-		echo "   4. Caso o dispositivo tenha sido desconectado abruptamente, reconecte o cabo USB."
-		if [ "$(detect_os)" = "freebsd" ]; then
-			echo ""
-			echo "😈 Dicas específicas para o FreeBSD:"
-			echo "   - Permissão de montagem para usuário: sudo sysctl vfs.usermount=1"
-			echo "   - Grupo de acesso USB: sudo pw groupmod operator -m $(id -un)"
-			echo "   - Módulo FUSE carregado: sudo kldload fusefs"
-		fi
+		[ -d "${_target}" ] && [ ! -L "${_target}" ] && command rmdir "${_target}" 2> "/dev/null"
+		echo "❌ No FreeBSD, MTP tradicional via FUSE é inviável e causa travamentos no sistema."
+		echo "💡 Utilize o KDE Connect / GSConnect ou ADB (android-tools) para acessar o dispositivo."
 		return 1
+	fi
+
+	_driver=""
+	command -v jmtpfs > "/dev/null" 2>&1 && _driver="jmtpfs"
+	[ -z "${_driver}" ] && command -v simple-mtpfs > "/dev/null" 2>&1 && _driver="simple-mtpfs"
+
+	if [ -n "${_driver}" ]; then
+		command mkdir -p "${_target}"
+		echo "📱 Montando dispositivo MTP em ~/Device (via ${_driver})..."
+
+		if [ "${_driver}" = "jmtpfs" ]; then
+			_output="$(jmtpfs -s "${_target}" 2>&1 || command sudo jmtpfs -s -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)"
+		else
+			_output="$(simple-mtpfs -s -o direct_io "${_target}" 2>&1 || command sudo simple-mtpfs -s -o "direct_io,allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" 2>&1)"
+		fi
+
+		if command mount 2> "/dev/null" | command grep -qF " ${_target} "; then
+			echo "✅ Dispositivo montado com sucesso em ~/Device!"
+			_open_file_manager "${_target}"
+			return 0
+		fi
+	fi
+
+	[ -d "${_target}" ] && [ ! -L "${_target}" ] && command rmdir "${_target}" 2> "/dev/null"
+	echo "❌ Falha ao montar o dispositivo em ~/Device."
+	[ -n "${_output}" ] && echo "   Log: ${_output}"
+	echo ""
+	echo "💡 Dicas para resolução:"
+	echo "   1. Desbloqueie a tela do dispositivo."
+	echo "   2. Selecione 'Transferência de Arquivos (MTP)' ou 'Depuração USB' nas notificações USB."
+	echo "   3. Certifique-se de que o cabo USB está conectado firmemente."
+	return 1
+}
+
+_open_file_manager() {
+	[ -z "${1}" ] && return 0
+	[ -z "${DISPLAY}" ] && [ -z "${WAYLAND_DISPLAY}" ] && return 0
+
+	echo "📂 Abrindo gerenciador de arquivos..."
+	for _opener in xdg-open gio nautilus dolphin; do
+		if command -v "${_opener}" > "/dev/null" 2>&1; then
+			(nohup "${_opener}" "${1}" < "/dev/null" > "/dev/null" 2>&1 &)
+			return 0
+		fi
+	done
+}
+
+_unmount_target() {
+	if [ "$(detect_os)" = "freebsd" ]; then
+		command umount "${1}" 2> "/dev/null" || command sudo umount "${1}" 2> "/dev/null" || true
+	else
+		command fusermount3 -u "${1}" 2> "/dev/null" || \
+		command fusermount -u "${1}" 2> "/dev/null" || \
+		command umount "${1}" 2> "/dev/null" || \
+		command sudo umount "${1}" 2> "/dev/null" || true
 	fi
 }
 
@@ -487,40 +490,40 @@ mount-device() {
 umount-device() {
 	_target="${HOME}/Device"
 
-	if ! command mount 2> "/dev/null" | grep -F " ${_target} " > "/dev/null" 2>&1; then
+	if [ -L "${_target}" ]; then
+		command rm -f "${_target}"
+		echo "✅ Vínculo ~/Device removido com sucesso."
+		echo "🔒 Dispositivo desvinculado do shell."
+		return 0
+	fi
+
+	if ! command mount 2> "/dev/null" | command grep -qF " ${_target} "; then
+		if [ -d "${_target}" ]; then
+			command rmdir "${_target}" 2> "/dev/null" && echo "🧹 Diretório não utilizado ~/Device foi removido."
+		fi
 		echo "ℹ️ O diretório ~/Device não está montado."
 		return 0
 	fi
 
 	echo "🔌 Desmontando ~/Device com segurança..."
 
-	_unmounted=0
-	if [ "$(detect_os)" = "freebsd" ]; then
-		if command umount "${_target}" 2> "/dev/null"; then
-			_unmounted=1
-		elif command -v sudo > "/dev/null" 2>&1 && command sudo umount "${_target}" 2> "/dev/null"; then
-			_unmounted=1
-		fi
-	else
-		if command -v fusermount3 > "/dev/null" 2>&1 && command fusermount3 -u "${_target}" 2> "/dev/null"; then
-			_unmounted=1
-		elif command -v fusermount > "/dev/null" 2>&1 && command fusermount -u "${_target}" 2> "/dev/null"; then
-			_unmounted=1
-		elif command umount "${_target}" 2> "/dev/null"; then
-			_unmounted=1
-		elif command -v sudo > "/dev/null" 2>&1 && command sudo umount "${_target}" 2> "/dev/null"; then
-			_unmounted=1
-		fi
+	if command -v kdeconnect-cli > "/dev/null" 2>&1; then
+		_kde_dev="$(command kdeconnect-cli -a --id-only 2> "/dev/null" | command head -n 1)"
+		[ -n "${_kde_dev}" ] && command kdeconnect-cli -d "${_kde_dev}" --unmount > "/dev/null" 2>&1 || true
 	fi
 
-	if [ "${_unmounted}" -eq 1 ] || ! command mount 2> "/dev/null" | grep -F " ${_target} " > "/dev/null" 2>&1; then
-		echo "✅ Dispositivo desmontado com sucesso de ~/Device."
+	_unmount_target "${_target}"
+
+	if ! command mount 2> "/dev/null" | command grep -qF " ${_target} "; then
+		[ -d "${_target}" ] && command rmdir "${_target}" 2> "/dev/null" || true
+		echo "✅ Dispositivo desmontado e pasta ~/Device removida com sucesso."
 		echo "🔒 É seguro desconectar o cabo USB."
-	else
-		echo "❌ Não foi possível desmontar ~/Device."
-		echo "💡 Verifique se existem programas, terminais ou gerenciadores de arquivos abertos dentro de ~/Device."
-		return 1
+		return 0
 	fi
+
+	echo "❌ Não foi possível desmontar ~/Device."
+	echo "💡 Verifique se existem programas, terminais ou gerenciadores de arquivos abertos dentro de ~/Device."
+	return 1
 }
 
 ### --------------------------------
