@@ -154,8 +154,12 @@ O projeto inclui aliases e funções inteligentes integrados para que você poss
   - 🐧 **Linux:** `sudo shutdown -h now` / `sudo shutdown -r now`
   - 😈 **FreeBSD:** `sudo shutdown -p now` / `sudo shutdown -r now` (utiliza `-p` para desligar a fonte de alimentação)
   - 🪟 **Windows (MSYS2):** `shutdown.exe /s /t 0` / `shutdown.exe /r /t 0`
-- 📱 **`mount-device` (`mntdev`, `mdev`):** Monta ou vincula dispositivos móveis em `~/Device` via ecossistemas modernos (`KDE Connect`, `GNOME/GSConnect` ou `ADB`), abrindo automaticamente o gerenciador de arquivos padrão.
-- 🔌 **`umount-device` (`umntdev`, `umdev`, `udev`):** Desmonta ou desvincula `~/Device` com segurança, removendo a pasta temporária e tratando particularidades do Linux e FreeBSD.
+- 📱 **`mount-device` (`mntdev`, `mdev`):** Mapeia dispositivos móveis diretamente em `~/Device` com resolução inteligente em 4 estágios, integrando os motores virtuais assíncronos dos desktops sem risco de travamento de kernel:
+  1. **Guarda de Idempotência:** Se `~/Device` já estiver vinculado ou montado, apenas abre o gerenciador de arquivos padrão e encerra.
+  2. **Desktop Nativo (`GVfs` / `KIO-FUSE`):** Vincula sessões ativas do GNOME/XFCE/MATE/Cinnamon via Cabo USB (`mtp:*`) ou GSConnect sem fio (`sftp:*`), além de sessões ativas do Dolphin no KDE (`kio-mtp`).
+  3. **KDE Connect (Wi-Fi):** Aciona o `kdeconnect-cli --mount` e vincula o sistema de arquivos remoto SFTP via `kio-fuse`.
+  4. **ADB FUSE (`adbfs`):** Monta o armazenamento do Android via cabo USB em alta velocidade sem depender de interface gráfica (requer `android-tools` e `adbfs`).
+- 🔌 **`umount-device` (`umntdev`, `umdev`, `udev`):** Desmonta ou desvincula `~/Device` com segurança, encerra túneis de rede no KDE Connect, remove a pasta temporária do `$HOME` e trata particularidades do Linux e FreeBSD.
 
 ```mermaid
 flowchart TD

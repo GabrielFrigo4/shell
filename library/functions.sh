@@ -393,7 +393,7 @@ mount-device() {
 		return 0
 	fi
 
-	_desktop_dir="$(command find /run/user/"$(id -u)"/gvfs /var/run/user/"$(id -u)"/gvfs -maxdepth 1 \( -name "mtp:*" -o -name "sftp:*" \) 2> "/dev/null" | command head -n 1)"
+	_desktop_dir="$(command find /run/user/"$(id -u)"/gvfs /var/run/user/"$(id -u)"/gvfs /run/user/"$(id -u)"/kio-fuse-* /var/run/user/"$(id -u)"/kio-fuse-* -maxdepth 2 \( -name "mtp:*" -o -name "*mtp*" -o -name "sftp:*" \) 2> "/dev/null" | command head -n 1)"
 
 	if [ -z "${_desktop_dir}" ] && command -v kdeconnect-cli > "/dev/null" 2>&1; then
 		_kde_dev="$(command kdeconnect-cli -a --id-only 2> "/dev/null" | command head -n 1)"
@@ -411,7 +411,7 @@ mount-device() {
 		return 0
 	fi
 
-	if command -v adbfs > "/dev/null" 2>&1 && command adb devices 2> "/dev/null" | command grep -qE '\bdevice\b'; then
+	if command -v "adbfs" > "/dev/null" 2>&1 && command adb devices 2> "/dev/null" | command grep -qE '\bdevice\b'; then
 		command mkdir -p "${_target}"
 		echo "📱 Montando dispositivo Android via ADB em ~/Device..."
 		if adbfs "${_target}" > "/dev/null" 2>&1 || command sudo adbfs -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" > "/dev/null" 2>&1; then
@@ -422,11 +422,11 @@ mount-device() {
 	fi
 
 	[ -d "${_target}" ] && [ ! -L "${_target}" ] && command rmdir "${_target}" 2> "/dev/null"
-	echo "❌ Nenhum dispositivo encontrado via KDE Connect, GNOME ou ADB."
+	echo "❌ Nenhum dispositivo encontrado via KDE/GNOME (MTP/GSConnect), KDE Connect ou ADB."
 	echo ""
 	echo "💡 Formas de conexão recomendadas:"
-	echo "   1. Sem fio: Conecte via KDE Connect (KDE) ou GSConnect (GNOME)."
-	echo "   2. Cabo USB: Conecte via GNOME (MTP nativo) ou ative a 'Depuração USB' (ADB)."
+	echo "   1. Cabo USB: Conecte via GNOME/KDE (MTP nativo) ou ative a 'Depuração USB' (ADB)."
+	echo "   2. Sem fio: Conecte via KDE Connect (KDE) ou GSConnect (GNOME)."
 	return 1
 }
 
