@@ -381,17 +381,27 @@ reboot() {
 ### Mount Device (mount-device)
 ### --------------------------------
 _find_desktop_device() {
-	for _runtime in "${XDG_RUNTIME_DIR}" "/var/run/user/$(id -u)" "/run/user/$(id -u)"; do
-		[ -z "${_runtime}" ] || [ ! -d "${_runtime}" ] && continue
-		_found=$(command find "${_runtime}/gvfs" "${_runtime}" -maxdepth 2 \( -name "mtp:*" -o -name "*mtp*" -o -name "sftp:*" \) 2> "/dev/null" | command head -n 1)
+	local _rt _found
+
+	for _rt in "${XDG_RUNTIME_DIR}/gvfs" "/var/run/user/$(id -u)/gvfs" "/run/user/$(id -u)/gvfs" "${HOME}/.gvfs"; do
+		[ -d "${_rt}" ] || continue
+		_found=$(command find "${_rt}" -maxdepth 1 \( -name "mtp:*" -o -name "*mtp*" -o -name "sftp:*" \) 2> "/dev/null" | command head -n 1)
 		[ -n "${_found}" ] && [ -d "${_found}" ] && echo "${_found}" && return 0
 	done
+
+	for _rt in "${XDG_RUNTIME_DIR}" "/var/run/user/$(id -u)" "/run/user/$(id -u)" "/tmp"; do
+		[ -d "${_rt}" ] || continue
+		_found=$(command find "${_rt}" -maxdepth 4 -path "*kio-fuse*/*" \( -name "*mtp*" -o -name "*kdeconnect*" \) 2> "/dev/null" | command head -n 1)
+		[ -n "${_found}" ] && [ -d "${_found}" ] && echo "${_found}" && return 0
+	done
+
 	return 0
 }
 
 _find_kdeconnect_device() {
 	command -v kdeconnect-cli > "/dev/null" 2>&1 || return 0
-	local _dev
+	local _dev _mount_dir _rt _found
+
 	_dev="$(command kdeconnect-cli -a --id-only 2> "/dev/null" | command head -n 1)"
 	[ -z "${_dev}" ] && _dev="$(command kdeconnect-cli --list-available --id-only 2> "/dev/null" | command head -n 1)"
 	[ -z "${_dev}" ] && _dev="$(command kdeconnect-cli -a 2> "/dev/null" | command grep -oE '[a-zA-Z0-9_-]{8,}' | command head -n 1)"
@@ -399,24 +409,15 @@ _find_kdeconnect_device() {
 
 	command kdeconnect-cli -d "${_dev}" --mount > "/dev/null" 2>&1 || true
 
-	for _runtime in "${XDG_RUNTIME_DIR}" "/var/run/user/$(id -u)" "/run/user/$(id -u)"; do
-		[ -z "${_runtime}" ] || [ ! -d "${_runtime}" ] && continue
+	_mount_dir=$(command mount 2> "/dev/null" | command grep -iE 'kdeconnect|sshfs' | command awk '{for(i=1;i<=NF;i++) if($i=="on") print $(i+1)}' | command head -n 1)
+	[ -n "${_mount_dir}" ] && [ -d "${_mount_dir}" ] && echo "${_mount_dir}" && return 0
 
-		_found=$(command find "${_runtime}" -maxdepth 4 -path "*kio-fuse*/*" \( -name "*${_dev}*" -o -name "*kdeconnect*" \) 2> "/dev/null" | command head -n 1)
+	for _rt in "${XDG_RUNTIME_DIR}" "/var/run/user/$(id -u)" "/run/user/$(id -u)" "/tmp"; do
+		[ -d "${_rt}" ] || continue
+		_found=$(command find "${_rt}" -maxdepth 4 \( -path "*kio-fuse*/*" -o -path "*kdeconnect*/*" -o -name "*${_dev}*" \) 2> "/dev/null" | command head -n 1)
 		[ -n "${_found}" ] && [ -d "${_found}" ] && echo "${_found}" && return 0
-
-		if [ -d "${_runtime}/${_dev}" ] && [ "$(command ls -A "${_runtime}/${_dev}" 2> "/dev/null")" ]; then
-			echo "${_runtime}/${_dev}"
-			return 0
-		fi
-
-		for _dir in $(command find "${_runtime}" -maxdepth 3 \( -name "*${_dev}*" -o -name "*kdeconnect*" \) 2> "/dev/null"); do
-			if [ -d "${_dir}" ] && [ "$(command ls -A "${_dir}" 2> "/dev/null")" ]; then
-				echo "${_dir}"
-				return 0
-			fi
-		done
 	done
+
 	return 0
 }
 
