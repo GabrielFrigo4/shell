@@ -110,6 +110,7 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
    - Recursos específicos do Zsh ficam exclusivamente em arquivos lidos pelo Zsh.
 7. **Citações Seguras (Quoting):**
    - Sempre envolva variáveis em aspas duplas: `"${VAR}"` para evitar *word splitting* indesejado e ataques de injeção de caminho.
+   - **Aspas Obrigatórias em Redirecionamentos:** SEMPRE use aspas ao redirecionar para o `/dev/null`: `> "/dev/null"` e `2> "/dev/null"` (nunca `> /dev/null` sem aspas).
 
 ---
 
