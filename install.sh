@@ -61,9 +61,9 @@ echo "Context:        ${SHELL_CONTEXT}"
 ### --------------------------------
 if [ "${OS_NAME}" != "windows" ]; then
 	sudo chown -R "$(id -un):$(id -gn)" "${SHELL_REPO_DIR}"
-	sudo find "${SHELL_REPO_DIR}" -type d -exec chmod 755 {} +
-	sudo find "${SHELL_REPO_DIR}" -type f -exec chmod 644 {} +
-	sudo find "${SHELL_REPO_DIR}" -name "*.sh" -exec chmod 755 {} +
+	sudo find "${SHELL_REPO_DIR}" -type d -exec chmod 0755 {} +
+	sudo find "${SHELL_REPO_DIR}" -type f -exec chmod 0644 {} +
+	sudo find "${SHELL_REPO_DIR}" -name "*.sh" -exec chmod 0755 {} +
 fi
 
 ### --------------------------------

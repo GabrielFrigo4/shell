@@ -52,6 +52,8 @@ flowchart LR
 ![Zsh](https://img.shields.io/badge/⚡_zsh-100%25-blue)
 ![Sh](https://img.shields.io/badge/⚙️_sh-100%25-red)
 
+> 📖 **Princípios de Engenharia:** Conheça os 17 princípios UNIX e boas práticas Clean Code aplicadas a este shell em [PRINCIPLES.md](PRINCIPLES.md).
+
 ## 🚀 Instalação
 
 Você pode escolher o contexto do ambiente passando o parâmetro `--context` (opções: `desktop`, `server`, `container`, `wsl`).
@@ -229,3 +231,15 @@ flowchart TD
   - 📦 **`container/`**: Perfil rigorosamente otimizado para microambientes (`LXC`/`Incus` no Linux ou `Jails`/`Bastille` no FreeBSD).
   - 🧩 **`wsl/`**: Ambiente híbrido que integra o Linux do WSL2 diretamente com as ferramentas nativas do Windows (`explorer.exe`, `powershell.exe`, `cmd.exe`, `win32yank.exe`).
 - 🖌️ **`theme/`**: A camada de identidade visual. Unifica o prompt, paleta de cores ANSI/Zstyle, ícones Nerd Fonts e branch Git em todos os terminais.
+
+---
+
+## 📜 Princípios e Padrões Obrigatórios deste Repositório
+
+Para preservar a performance interativa e estabilidade em todos os sistemas operacionais, qualquer contribuição neste repositório DEVE seguir estes padrões (veja detalhes em [PRINCIPLES.md](PRINCIPLES.md)):
+
+1. **Shebang Padrão Absoluto (`#!/usr/bin/env sh`):** Todo script de shell DEVE usar `#!/usr/bin/env sh`. Não use `#!/bin/sh` ou `#!/bin/bash` rígidos.
+2. **Permissões em 4 Dígitos Octais:** Utilize SEMPRE notação de 4 dígitos em comandos `chmod`: `chmod 0755` para diretórios e scripts executáveis; `chmod 0644` para arquivos de configuração e scripts sourced (`.sh`).
+3. **Regra do Silêncio (*Rule of Silence*):** Ao iniciar uma nova sessão ou conexão SSH, o terminal NÃO deve imprimir saídas de texto ou banners. O prompt deve aparecer em menos de 50 milissegundos.
+4. **Portabilidade POSIX:** Scripts compartilhados em `library/` e `core/` devem rodar no `/bin/sh` do FreeBSD sem depender de bashisms (sem `[[`, sem arrays bash, com aspas em todas as variáveis).
+5. **Zero Segredos:** Nenhuma credencial ou token pode residir neste repositório; toda integração confidencial é delegada ao `Vault`.

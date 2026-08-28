@@ -218,6 +218,8 @@ upwf() {
 	else
 		echo "❌ No supported Wi-Fi manager (nmcli/wpa_supplicant/netsh) found."
 	fi
+
+	unset name ssid suffix pass_var pass tmp_conf xml_file win_path wifi_dir wifi_target wifibox_dir wifibox_target 2> "/dev/null" || true
 }
 
 ### --------------------------------
@@ -333,28 +335,26 @@ upall() {
 ### --------------------------------
 poweroff() {
 	case "$(detect_os)" in
-		freebsd)
-			if [ "$(id -u)" -eq 0 ]; then
-				command shutdown -p now "$@"
-			elif command -v sudo > "/dev/null" 2>&1; then
-				command sudo shutdown -p now "$@"
-			else
-				command shutdown -p now "$@"
-			fi
-			;;
 		windows)
 			shutdown.exe /s /t 0 "$@"
+			return $?
+			;;
+		freebsd)
+			_flag="-p"
 			;;
 		*)
-			if [ "$(id -u)" -eq 0 ]; then
-				command shutdown -h now "$@"
-			elif command -v sudo > "/dev/null" 2>&1; then
-				command sudo shutdown -h now "$@"
-			else
-				command shutdown -h now "$@"
-			fi
+			_flag="-h"
 			;;
 	esac
+
+	if [ "$(id -u)" -eq 0 ]; then
+		command shutdown "${_flag}" now "$@"
+	elif command -v sudo > "/dev/null" 2>&1; then
+		command sudo shutdown "${_flag}" now "$@"
+	else
+		command shutdown "${_flag}" now "$@"
+	fi
+	unset _flag
 }
 
 ### --------------------------------
@@ -364,6 +364,7 @@ reboot() {
 	case "$(detect_os)" in
 		windows)
 			shutdown.exe /r /t 0 "$@"
+			return $?
 			;;
 		*)
 			if [ "$(id -u)" -eq 0 ]; then

@@ -3,7 +3,7 @@
 ### ================================
 
 git_branch() {
-	if git rev-parse --is-inside-work-tree &> "/dev/null"; then
+	if git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
 		local branch="$(git branch --show-current 2> "/dev/null" || git rev-parse --short HEAD 2> "/dev/null")"
 		if [ -n "$branch" ]; then
 			local is_dirty="$(git status --short -uno 2> "/dev/null" | tail -n1)"

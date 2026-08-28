@@ -16,7 +16,7 @@ command_not_found_handle() {
 	local cmd="${1}"
 	shift
 	for ext in .bat .cmd .exe; do
-		if command -v "${cmd}${ext}" &> "/dev/null"; then
+		if command -v "${cmd}${ext}" > "/dev/null" 2>&1; then
 			"${cmd}${ext}" "$@"
 			return $?
 		fi

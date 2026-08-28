@@ -15,7 +15,7 @@ alias ek="pkill emacs"
 alias es="emacs --daemon"
 alias er="ek && es"
 alias ec="emacsclient --create-frame --alternate-editor \"\""
-alias oe="nohup emacsclient --create-frame --alternate-editor \"\" . &> "/dev/null" &"
+alias oe="nohup emacsclient --create-frame --alternate-editor \"\" . > \"/dev/null\" 2>&1 &"
 
 ### --------------------------------
 ### Software
@@ -25,7 +25,7 @@ alias code="vscode"
 ### --------------------------------
 ### GUI Editors
 ### --------------------------------
-alias ok="nohup kate . &> "/dev/null" &"
+alias ok="nohup kate . > \"/dev/null\" 2>&1 &"
 alias oc="code ."
 
 ### --------------------------------
