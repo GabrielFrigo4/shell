@@ -68,17 +68,17 @@ setopt COMPLETE_IN_WORD
 	zstyle ':prompt:colors' b_white   '%B%F{15}'
 
 	_git_branch() {
-		if git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
-			local _branch="$(git branch --show-current 2> "/dev/null" || git rev-parse --short HEAD 2> "/dev/null")"
+		if command git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
+			local _branch="$(command git branch --show-current 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
 			if [[ -n "${_branch}" ]]; then
-				local y Y R M
-				zstyle -s ':prompt:colors' n_yellow y
-				zstyle -s ':prompt:colors' b_yellow Y
-				zstyle -s ':prompt:colors' b_red R
-				zstyle -s ':prompt:colors' b_magenta M
 				local _indicator=""
-				[[ -n "$(git status --short -uno 2> "/dev/null" | tail -n1)" ]] && _indicator="${Y}*"
-				echo "❮${R}󰊢 ${M}${_branch}${_indicator}${y}❯"
+				[[ -n "$(command git status --short -uno 2> "/dev/null" | command tail -n1)" ]] && _indicator="%B%F{11}*"
+				echo "❮%B%F{9}󰊢 %B%F{13}${_branch}${_indicator}%b%F{3}❯"
+			fi
+		elif [[ -d ".got" ]] && command -v got > "/dev/null" 2>&1; then
+			local _branch="$(command got branch 2> "/dev/null" || command got info 2> "/dev/null" | command awk '/work tree branch:/ {print $NF}')"
+			if [[ -n "${_branch}" ]]; then
+				echo "❮%B%F{9}󰊢 %B%F{13}${_branch}%b%F{3}❯"
 			fi
 		fi
 	}

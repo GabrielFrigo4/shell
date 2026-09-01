@@ -51,8 +51,11 @@ flowchart LR
 ![Bash](https://img.shields.io/badge/📜_bash-100%25-green)
 ![Zsh](https://img.shields.io/badge/⚡_zsh-100%25-blue)
 ![Sh](https://img.shields.io/badge/⚙️_sh-100%25-red)
+![Dash](https://img.shields.io/badge/💤_dash-dormant-lightgrey)
 
-> 📖 **Princípios de Engenharia:** Conheça os 17 princípios UNIX e boas práticas Clean Code aplicadas a este shell em [PRINCIPLES.md](PRINCIPLES.md).
+> 💤 **Nota sobre o Dash:** O shell `dash` permanece em estado dormente (delegando para o `sh`). Como o parser estrito do `dash` rejeita a declaração de funções em `kebab-case` (`path-front()`, `mount-device()`), optamos por não comprometer a arquitetura Clean Code do projeto por causa dele. Caso o `dash` implemente essa compatibilidade no futuro, o suporte florescerá!
+
+> 📖 **Princípios de Engenharia:** Conheça os 18 princípios UNIX e boas práticas Clean Code aplicadas a este shell em [PRINCIPLES.md](PRINCIPLES.md).
 
 ## 🚀 Instalação
 
@@ -242,7 +245,8 @@ flowchart TD
 | **Desktop (Linux/BSD)** | `xorg` | Inicia sessão X11 clássica (`startx`). |
 | **Servidores** | `frigo-server` / `orbs-server` | Conexão SSH autenticada via chaves privadas do Vault. |
 | **WSL (Linux no Windows)** | `explorer`, `powershell`, `pwsh`, `cmd`, `clip` | Atalhos diretos para utilitários do Windows nativo a partir do WSL. |
-| **FreeBSD (`sh`)** | `h` / `history`, `j`, `m`, `g`, `~`, `/`, `..`, `...`, `....`, `-- -` | Atalhos rápidos de navegação, histórico, jobs e paginação. |
+| **Linux (`sh`)** | `h` / `history`, `j`, `m`, `g`, `~`, `/`, `..`, `...`, `....`, `-- -`, `ls`, `ll`, `l` | Atalhos rápidos de navegação, paginação, listagem colorida e histórico. |
+| **FreeBSD (`sh`)** | `h` / `history`, `j`, `m`, `g`, `~`, `/`, `..`, `...`, `....`, `-- -`, `ls`, `ll`, `l` | Atalhos rápidos de navegação, paginação, listagem e histórico. |
 
 ## 🔐 Integração com Vault (Segredos Seguros)
 
@@ -292,7 +296,7 @@ flowchart TD
   - 🌐 **`server/`**: Perfil extremamente enxuto, ágil e focado em estabilidade para servidores remotos e produção.
   - 📦 **`container/`**: Perfil rigorosamente otimizado para microambientes (`LXC`/`Incus` no Linux ou `Jails`/`Bastille` no FreeBSD).
   - 🧩 **`wsl/`**: Ambiente híbrido que integra o Linux do WSL2 diretamente com as ferramentas nativas do Windows (`explorer.exe`, `powershell.exe`, `cmd.exe`, `win32yank.exe`).
-- 🖌️ **`theme/`**: A camada de identidade visual. Unifica o prompt, paleta de cores ANSI/Zstyle, ícones Nerd Fonts e branch Git em todos os terminais.
+- 🖌️ **`theme/`**: A camada de identidade visual. Unifica o prompt, paleta de cores ANSI/Zstyle, ícones Nerd Fonts e branch Git/Got em todos os terminais.
 
 ---
 

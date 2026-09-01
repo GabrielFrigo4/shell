@@ -86,6 +86,7 @@ case "${SHELL_NAME}" in
 	bash) RC_FILE="${HOME}/.bashrc" ;;
 	zsh)  RC_FILE="${HOME}/.zshrc" ;;
 	sh)   RC_FILE="${HOME}/.shrc" ;;
+	dash) RC_FILE="${HOME}/.dashrc" ;;
 	*)    RC_FILE="${HOME}/.${SHELL_NAME}rc" ;;
 esac
 
@@ -96,6 +97,7 @@ case "${SHELL_NAME}" in
 	bash) ROOT_RC_FILE="/root/.bashrc" ;;
 	zsh)  ROOT_RC_FILE="/root/.zshrc" ;;
 	sh)   ROOT_RC_FILE="/root/.shrc" ;;
+	dash) ROOT_RC_FILE="/root/.dashrc" ;;
 	*)    ROOT_RC_FILE="/root/.${SHELL_NAME}rc" ;;
 esac
 

@@ -166,6 +166,9 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
     - **`_SNAKE_CASE` (Maiúsculo com `_`) = Constantes Privadas de Módulo:** Constantes internas de infraestrutura com escopo restrito a módulos (ex: `_TRIGGERS_CACHE`, `_IGNORE_LIST_BASE`, `_IGNORE_LIST`).
     - **`snake_case` (Minúsculo sem `_`) = Variáveis Públicas:** Variáveis mutáveis públicas expostas para configuração interativa pelo usuário.
     - **Sem Gêmeos ou Wrappers Artificiais:** Não crie funções duplicadas (ex: um helper `_foo` só para criar um alias/função pública `foo` que não faz nada a mais). Ou a funcionalidade é **100% pública** (declarada uma única vez), ou é **100% privada** (com prefixo `_`).
+11. **Agnosticismo de Controle de Versão (VCS Agnosticism — Git & Got):**
+    - Todos os shells (**Bash**, **Zsh**, **Linux SH** e **FreeBSD SH**) e temas do repositório devem suportar de forma transparente tanto o **Git** quanto o **Got (Game of Trees)**.
+    - A detecção de branch e estado _dirty_ deve ser de tempo constante ($O(1)$) e **nunca** invocar binários externos se os diretórios de controle (`.git` ou `.got`) não existirem, garantindo latência zero em diretórios normais.
 
 ---
 

@@ -5,7 +5,7 @@
 ### --------------------------------
 ### Line Editing
 ### --------------------------------
-set -o emacs
+set -o emacs 2> "/dev/null" || true
 
 ### --------------------------------
 ### History
@@ -19,7 +19,7 @@ export HISTFILE="${HOME}/.sh_history"
 alias h='fc -l'
 alias j='jobs'
 alias m="${PAGER:-less}"
-alias g='egrep -i'
+alias g='grep -Ei'
 alias history='fc -l'
 
 ### --------------------------------
@@ -34,19 +34,6 @@ alias -- -='cd -'
 ### --------------------------------
 ### Directory Listing
 ### --------------------------------
-alias ls='ls -G'
-alias ll='ls -laFoG'
-alias l='ls -lG'
-
-### --------------------------------
-### Key Bindings
-### --------------------------------
-bind ^[[A ed-search-prev-history
-bind ^[[B ed-search-next-history
-bind "\e[1;5C" em-next-word
-bind "\e[1;5D" ed-prev-word
-bind ^[[5~ ed-move-to-beg
-bind ^[[6~ ed-move-to-end
-bind ^[[1~ ed-move-to-beg
-bind ^[[4~ ed-move-to-end
-bind ^[[3~ ed-delete-next-char
+alias ls='ls --color=auto'
+alias ll='ls -laF --color=auto'
+alias l='ls -l --color=auto'
