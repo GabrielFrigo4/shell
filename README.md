@@ -256,11 +256,32 @@ flowchart TD
 | Contexto / Target               | Comando / Alias                                 | Descrição                                                              |
 | :------------------------------ | :---------------------------------------------- | :--------------------------------------------------------------------- |
 | **Desktop (Linux/BSD)**         | `start-session [way\|xorg] [de]`                | Inicia sessão gráfica universal (prioriza Wayland e faz fallback para Xorg). |
-| **Desktop (Linux/BSD)**         | `start-way` / `way` [ambiente]                  | Inicia sessão Wayland (auto-detecta ou aceita `plasma`, `gnome`, `hyprland`, `sway`, `cosmic`, etc.). |
-| **Desktop (Linux/BSD)**         | `start-xorg` / `xorg` [ambiente]                | Inicia sessão X11 (auto-detecta ou aceita `plasma`, `gnome`, `xfce`, `i3`, `bspwm`, etc.). |
+| **Desktop (Linux/BSD)**         | `start-way` / `way` / `wayland` [de]            | Inicia sessão Wayland (auto-detecta ou aceita `plasma`, `gnome`, `hyprland`, `sway`, `cosmic`, etc.). |
+| **Desktop (Linux/BSD)**         | `start-xorg` / `xorg` / `x11` [de]              | Inicia sessão X11 (auto-detecta ou aceita `plasma`, `gnome`, `xfce`, `i3`, `bspwm`, etc.). |
 | **Servidores**                  | `frigo-server` / `orbs-server`                  | Conexão SSH autenticada via chaves privadas do Vault.                  |
 | **WSL (Linux no Windows)**      | `explorer`, `powershell`, `pwsh`, `cmd`, `clip` | Atalhos diretos para utilitários do Windows nativo a partir do WSL.    |
 | **POSIX Shell (`sh` / `dash`)** | `h` / `history`, `j`, `m`                       | Atalhos rápidos de histórico (`fc -l`), jobs e paginação (`${PAGER}`). |
+
+### 9. 🌐 Variáveis de Ambiente & Configurações Públicas
+
+| Variável | Descrição / Propósito | Origem / Padrão |
+| :--- | :--- | :--- |
+| `SHELL_REPO_DIR` | Caminho raiz do repositório clonado do Universal Shell. | `/usr/local/share/shell` (Linux/BSD) ou `~/.shell` (Windows) |
+| `SHELL_CONTEXT` | Contexto ativo carregado na sessão interativa. | `desktop` (padrão), `server`, `container`, `wsl` |
+| `SHELL` | Caminho do executável do shell ativo. | Auto-detectado dinamicamente (`bash`, `zsh`, `sh`) |
+| `EDITOR` / `VISUAL` | Editor de texto padrão do sistema. | Preserva o do usuário ou define via cascata (`nvim > hx > micro > ...`) |
+| `FILEMANAGER` | Gerenciador de arquivos preferido para abrir pastas no desktop. | Lido pelo `mount-device` (fallback para `dolphin`, `nautilus`, `thunar`, etc.) |
+| `COLORTERM` | Sinaliza suporte universal a 24-bit TrueColor RGB no terminal. | Exportado globalmente como `truecolor` |
+| `MICRO_TRUECOLOR` | Ativa suporte a TrueColor no editor Micro. | Exportado globalmente como `1` |
+| `GTK_THEME` | Tema visual aplicado a ferramentas GTK3/GTK4. | Auto-detectado (`Breeze-Dark`, `Adwaita:dark`, etc.) via XDG Portal / D-Bus |
+| `QT_QPA_PLATFORMTHEME` | Módulo de plataforma e diálogo de arquivos para aplicativos Qt. | Auto-detectado (`xdgdesktopportal`, `gtk3`, `qt6ct`, `qt5ct`) |
+| `QT_STYLE_OVERRIDE` | Motor de renderização de estilo para Qt. | Auto-detectado (`Breeze-Dark`, `Breeze`) |
+| `ELECTRON_OZONE_PLATFORM_HINT` | Ativa renderização nativa em Wayland para apps Electron. | Exportado globalmente como `auto` |
+| `_JAVA_AWT_WM_NONREPARENTING` | Corrige janelas cinzas em apps Java/Swing em WMs tiling e Wayland. | Exportado globalmente como `1` |
+| `EMACS_SOCKET_NAME` | Caminho do socket de autenticação do daemon Emacs. | `${HOME}/.emacs.d/var/server/auth/server` |
+| `HISTSIZE` / `HISTFILE` | Limite e arquivo de histórico persistente no POSIX `sh`. | `10000` comandos em `${HOME}/.sh_history` |
+| `WIFI_SSID_*` / `WIFI_PASS_*` | Credenciais de redes Wi-Fi lidas e sincronizadas pelo `upwf`/`upnet`. | Injetadas pelo `Vault` ou variáveis de ambiente |
+| `FRIGO_SERVER_*` / `ORBS_SERVER_*` | Chaves SSH e endereços IP de servidores remotos. | Injetados pelo `Vault` |
 
 ## 🔐 Integração com Vault (Segredos Seguros)
 

@@ -96,7 +96,7 @@ setopt COMPLETE_IN_WORD
 				if _is_raw_tty; then
 					local _indicator=""
 					[[ -n "$(command git status --short -uno 2> "/dev/null" | command tail -n1)" ]] && _indicator="%B%F{yellow}*"
-					echo " %B%F{blue}(%B%F{red}${_branch}${_indicator}%B%F{blue})%f%b "
+					echo " %B%F{blue}(%B%F{red}${_branch}${_indicator}%B%F{blue})%f%b"
 				else
 					local _indicator=""
 					[[ -n "$(command git status --short -uno 2> "/dev/null" | command tail -n1)" ]] && _indicator="%B%F{11}*"
@@ -107,7 +107,7 @@ setopt COMPLETE_IN_WORD
 			local _branch="$(command got branch 2> "/dev/null" || command got info 2> "/dev/null" | command awk '/work tree branch:/ {print $NF}')"
 			if [[ -n "${_branch}" ]]; then
 				if _is_raw_tty; then
-					echo " %B%F{blue}(%B%F{magenta}${_branch}%B%F{blue})%f%b "
+					echo " %B%F{blue}(%B%F{magenta}${_branch}%B%F{blue})%f%b"
 				else
 					echo "❮%B%F{9}󰊢 %B%F{13}${_branch}%b%F{3}❯"
 				fi
@@ -147,7 +147,7 @@ setopt COMPLETE_IN_WORD
 	esac
 
 	if _is_raw_tty; then
-		export PROMPT="${u}%n${B}@${M}%m ${B}(${C}zsh${B})${K}:${K}[${Y}%c${K}]${z}\$(_git_branch)${C}%#${z} "
+		export PROMPT="${u}%n${B}@${M}%m ${B}(${C}zsh${B})${K}:${K}[${Y}%c${K}]${z}\$(_git_branch)${C} %#${z} "
 	else
 		export PROMPT="
 ${y}${_os_color}${_os_icon}${M}${_os_name}${y}─${B} ${M}${_sh_name}${y}
