@@ -255,8 +255,9 @@ flowchart TD
 
 | Contexto / Target               | Comando / Alias                                 | Descrição                                                              |
 | :------------------------------ | :---------------------------------------------- | :--------------------------------------------------------------------- |
-| **Desktop (Linux/BSD)**         | `way`                                           | Inicia sessão Wayland (`startplasma-wayland`).                         |
-| **Desktop (Linux/BSD)**         | `xorg`                                          | Inicia sessão X11 clássica (`startx`).                                 |
+| **Desktop (Linux/BSD)**         | `start-session [way\|xorg] [de]`                | Inicia sessão gráfica universal (prioriza Wayland e faz fallback para Xorg). |
+| **Desktop (Linux/BSD)**         | `start-way` / `way` [ambiente]                  | Inicia sessão Wayland (auto-detecta ou aceita `plasma`, `gnome`, `hyprland`, `sway`, `cosmic`, etc.). |
+| **Desktop (Linux/BSD)**         | `start-xorg` / `xorg` [ambiente]                | Inicia sessão X11 (auto-detecta ou aceita `plasma`, `gnome`, `xfce`, `i3`, `bspwm`, etc.). |
 | **Servidores**                  | `frigo-server` / `orbs-server`                  | Conexão SSH autenticada via chaves privadas do Vault.                  |
 | **WSL (Linux no Windows)**      | `explorer`, `powershell`, `pwsh`, `cmd`, `clip` | Atalhos diretos para utilitários do Windows nativo a partir do WSL.    |
 | **POSIX Shell (`sh` / `dash`)** | `h` / `history`, `j`, `m`                       | Atalhos rápidos de histórico (`fc -l`), jobs e paginação (`${PAGER}`). |

@@ -243,3 +243,154 @@ if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 	export ELECTRON_OZONE_PLATFORM_HINT="auto"
 	export _JAVA_AWT_WM_NONREPARENTING=1
 fi
+
+### --------------------------------
+### Graphical Session Launchers
+### --------------------------------
+_exec_wayland() {
+	if [ "$(_detect_os)" = "freebsd" ] && command -v ck-launch-session > "/dev/null" 2>&1; then
+		if command -v dbus-run-session > "/dev/null" 2>&1; then
+			exec ck-launch-session dbus-run-session "$@"
+		else
+			exec ck-launch-session "$@"
+		fi
+	elif command -v dbus-run-session > "/dev/null" 2>&1; then
+		exec dbus-run-session "$@"
+	else
+		exec "$@"
+	fi
+}
+
+_try_wayland() {
+	local _bin
+	for _bin in "$@"; do
+		if command -v "${_bin}" > "/dev/null" 2>&1; then
+			if [ "${_bin}" = "gnome-session" ]; then
+				export XDG_SESSION_TYPE="wayland"
+				_exec_wayland gnome-session --session=gnome
+			elif [ "${_bin}" = "gnome-shell" ]; then
+				export XDG_SESSION_TYPE="wayland"
+				_exec_wayland gnome-shell --wayland
+			else
+				_exec_wayland "${_bin}"
+			fi
+		fi
+	done
+	return 1
+}
+
+_try_xorg() {
+	local _bin
+	for _bin in "$@"; do
+		if command -v "${_bin}" > "/dev/null" 2>&1; then
+			if [ "${_bin}" = "gnome-session" ]; then
+				exec startx "$(command -v gnome-session)" --session=gnome-xorg
+			elif [ "${_bin}" = "qtile" ]; then
+				exec startx "$(command -v qtile)" start
+			else
+				exec startx "$(command -v "${_bin}")"
+			fi
+		fi
+	done
+	return 1
+}
+
+_start_wayland() {
+	case "${1}" in
+		kde|plasma)    _try_wayland startplasma-wayland plasma-wayland-session ;;
+		gnome)         _try_wayland gnome-session gnome-shell ;;
+		hyprland|hypr) _try_wayland Hyprland hyprland ;;
+		sway)          _try_wayland sway ;;
+		cosmic)        _try_wayland cosmic-session start-cosmic ;;
+		niri)          _try_wayland niri-session niri ;;
+		river)         _try_wayland river ;;
+		wayfire)       _try_wayland wayfire ;;
+		labwc)         _try_wayland labwc ;;
+		dwl)           _try_wayland dwl ;;
+		hikari)        _try_wayland hikari ;;
+		weston)        _try_wayland weston ;;
+		"")            _try_wayland startplasma-wayland plasma-wayland-session gnome-session Hyprland hyprland sway cosmic-session start-cosmic niri-session niri river wayfire labwc dwl hikari weston ;;
+		*)             _try_wayland "${1}" ;;
+	esac
+}
+
+_start_xorg() {
+	command -v startx > "/dev/null" 2>&1 || command -v xinit > "/dev/null" 2>&1 || return 1
+
+	case "${1}" in
+		kde|plasma) _try_xorg startplasma-x11 startkde ;;
+		gnome)      _try_xorg gnome-session ;;
+		xfce|xfce4) _try_xorg startxfce4 ;;
+		mate)       _try_xorg mate-session ;;
+		cinnamon)   _try_xorg cinnamon-session ;;
+		lxqt)       _try_xorg startlxqt ;;
+		lxde)       _try_xorg startlxde ;;
+		i3)         _try_xorg i3 ;;
+		bspwm)      _try_xorg bspwm ;;
+		awesome)    _try_xorg awesome ;;
+		openbox)    _try_xorg openbox-session openbox ;;
+		dwm)        _try_xorg dwm ;;
+		xmonad)     _try_xorg xmonad ;;
+		qtile)      _try_xorg qtile ;;
+		fluxbox)    _try_xorg startfluxbox fluxbox ;;
+		"")
+			if [ -f "${HOME}/.xinitrc" ] || [ -f "${HOME}/.xsession" ] || [ -f "${HOME}/.Xclients" ]; then
+				exec startx
+			fi
+			_try_xorg startplasma-x11 startxfce4 gnome-session mate-session cinnamon-session startlxqt startlxde i3 bspwm awesome openbox-session dwm xmonad qtile startfluxbox
+			exec startx
+			;;
+		*)
+			_try_xorg "${1}"
+			;;
+	esac
+}
+
+start-session() {
+	if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
+		echo "⚠️ Uma sessão gráfica já está ativa (${WAYLAND_DISPLAY:-${DISPLAY}})."
+	fi
+
+	local _type="${1}"
+	local _env="${2}"
+
+	case "${_type}" in
+		way|wayland)
+			_start_wayland "${_env}" || {
+				echo "❌ Nenhum compositor ou ambiente Wayland '${_env:-detectado}' foi encontrado."
+				return 1
+			}
+			;;
+		xorg|x11)
+			_start_xorg "${_env}" || {
+				echo "❌ Nenhum ambiente ou gerenciador Xorg '${_env:-detectado}' foi encontrado."
+				return 1
+			}
+			;;
+		"")
+			_start_wayland "" || _start_xorg "" || {
+				echo "❌ Nenhum ambiente gráfico (Wayland ou Xorg) foi encontrado no sistema."
+				return 1
+			}
+			;;
+		*)
+			_start_wayland "${_type}" || _start_xorg "${_type}" || {
+				echo "❌ Ambiente '${_type}' não encontrado para Wayland ou Xorg."
+				return 1
+			}
+			;;
+	esac
+}
+
+### --------------------------------
+### Session Aliases
+### --------------------------------
+alias start-way="start-session way"
+alias start-wayland="start-session way"
+alias start-xorg="start-session xorg"
+alias start-x11="start-session xorg"
+
+alias way="start-session way"
+alias wayland="start-session way"
+alias xorg="start-session xorg"
+alias x11="start-session xorg"
