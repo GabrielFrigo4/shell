@@ -64,6 +64,8 @@ Por padrão, se não for informado, o script assumirá o contexto `desktop`.
 **1. Clone o repositório:**
 
 ```sh
+doas git clone "https://github.com/GabrielFrigo4/Shell" "/usr/local/share/shell"
+# ou
 sudo git clone "https://github.com/GabrielFrigo4/Shell" "/usr/local/share/shell"
 ```
 
@@ -142,26 +144,55 @@ Reinicie o shell ou recarregue o arquivo `RC` manualmente:
 
 > 💡 **Nota Importante:** O script detecta automaticamente o seu OS, distribuição 🐧 `Linux` e qual 🐚 `Shell` está rodando, e injeta as linhas de `source` no arquivo RC correto de forma inteligente — tanto para o seu usuário atual como para o `root`.
 
-## 🛠️ Gerenciamento do Ambiente
+## 🗺️ Mapa de Comandos Públicos & Atalhos
 
-O projeto inclui aliases e funções inteligentes integrados para que você possa manter seu ambiente atualizado, gerenciado e controlado sem esforço, diretamente do terminal:
+O projeto adota uma convenção estrita de nomenclatura para garantir máxima clareza e manter o seu autocompletion limpo:
+- 🌐 **`kebab-case` (ou termo único) = Comandos Públicos:** Utilitários e atalhos desenhados para você usar interativamente no terminal.
+- 🔒 **`_snake_case` (prefixo `_`) = Helpers Privados:** Funções internas de bootstrapping e infraestrutura que não poluem o autocompletion.
 
-- 🔄 **`upsh` (Update Shell):** Sincroniza o seu repositório local (`git pull`) e recarrega as configurações atuais sem precisar fechar o terminal.
-- ♻️ **`resh` (Reinstall Shell):** Vai além da atualização. Ele baixa as novidades e reexecuta o script `install.sh` preservando o seu contexto atual (ex: `desktop` ou `server`). Ideal para quando há mudanças estruturais profundas no repositório.
-- 📡 **`upwf` (Update Wi-Fi):** Sincroniza automaticamente as credenciais de Wi-Fi definidas no ambiente (`WIFI_SSID_*` e `WIFI_PASS_*`) com o gerenciador nativo do sistema (`nmcli` no Linux, `wpa_supplicant` / `wifibox` no FreeBSD, ou `netsh` no Windows).
-- 🌐 **`upnet` (Update Network):** Orquestra a inicialização e sincronização completa da rede chamando o `upwf`.
-- 📦 **`upsys` (Update System):** Atualiza os pacotes e repositórios nativos do sistema operacional chamando dinamicamente o gerenciador nativo da distribuição (`upapt`, `upman`, `updnf`, `uppkg`, `upzyp`, `upxbps` ou `upapk`).
-- 🚀 **`upall` (Update All):** Orquestrador universal de atualização completa. Executa o `upsys` e integra de forma encadeada todos os gerenciadores extras presentes no sistema (`upyay`, `upflat`, `upsnap`).
-- ⚡ **`poweroff` & `reboot`:** Atalhos multiplataforma inteligentes que adaptam o comando de desligamento e reinicialização para o sistema correto:
-  - 🐧 **Linux:** `sudo shutdown -h now` / `sudo shutdown -r now`
-  - 😈 **FreeBSD:** `sudo shutdown -p now` / `sudo shutdown -r now` (utiliza `-p` para desligar a fonte de alimentação)
-  - 🪟 **Windows (MSYS2):** `shutdown.exe /s /t 0` / `shutdown.exe /r /t 0`
-- 📱 **`mount-device` (`mntdev`, `mdev`):** *(Contexto Desktop)* Mapeia dispositivos móveis diretamente em `~/Device` com resolução inteligente em 4 estágios, integrando os motores virtuais assíncronos dos desktops sem risco de travamento de kernel:
-  1. **Guarda de Idempotência:** Se `~/Device` já estiver vinculado ou montado, apenas abre o gerenciador de arquivos padrão e encerra.
-  2. **Desktop Nativo (`GVfs` / `KIO-FUSE`):** Vincula sessões ativas do GNOME/XFCE/MATE/Cinnamon via Cabo USB (`mtp:*`) ou GSConnect sem fio (`sftp:*`), além de sessões ativas do Dolphin no KDE (`kio-mtp`).
-  3. **KDE Connect (Wi-Fi):** Aciona o `kdeconnect-cli --mount` e vincula o sistema de arquivos remoto SFTP via `kio-fuse`.
-  4. **ADB FUSE (`adbfs`):** Monta o armazenamento do Android via cabo USB em alta velocidade sem depender de interface gráfica (requer `android-tools` e `adbfs`).
-- 🔌 **`umount-device` (`umntdev`, `umdev`, `udev`, `unmount-device`):** *(Contexto Desktop)* Desmonta ou desvincula `~/Device` com segurança, encerra túneis de rede no KDE Connect, remove a pasta temporária do `$HOME` e trata particularidades do Linux e FreeBSD. Protegido com guarda defensiva para preservar binários nativos do sistema.
+
+### 1. ⚙️ Shell, Ambiente & Vault (Universais)
+
+| Comando / Alias | Descrição | Compatibilidade |
+| :--- | :--- | :--- |
+| `upsh` | Sincroniza o repositório local do shell (`git pull`) e recarrega a sessão. | Universal |
+| `resh` | Reexecuta o instalador `install.sh` preservando o contexto ativo (`desktop`, `server`, etc.). | Universal |
+| `upvt` | Sincroniza o repositório do cofre (`~/.vault`) e recarrega chaves e variáveis. | Linux, FreeBSD, macOS |
+| `path-front <dir>` | Insere um diretório no início do `$PATH` (prioridade máxima). | Universal |
+| `path-back <dir>` | Insere um diretório no fim do `$PATH` (prioridade mínima). | Universal |
+| `path-dedup` | Remove diretórios duplicados do `$PATH` preservando a ordem. | Universal |
+
+
+### 2. 📝 Editores de Texto & Terminal
+
+| Comando / Alias | Descrição | Editor Alvo |
+| :--- | :--- | :--- |
+| `editor [alvo]` / `e [alvo]` | Abre o editor padrão configurado. Se chamado sem argumentos, abre `.`. | `$VISUAL` / `$EDITOR` (com cascata Neovim > Helix > Micro > Kakoune > Nano > EE > MG > Vim > MC > VI) |
+| `on` | Abre o Neovim no diretório atual. | `nvim .` |
+| `ov` | Abre o Vim no diretório atual. | `vim .` |
+| `oh` | Abre o Helix no diretório atual. | `hx .` |
+| `om` | Abre o Micro no diretório atual. | `micro .` |
+| `oc` / `ocm` | Abre o VS Code ou VSCodium no diretório atual. | `code .` / `codium .` |
+| `oa` / `ant` | Abre ou executa o Antigravity IDE. | `antigravity-ide .` |
+| `oz` / `ok` / `og` | Abre Zed, Kate ou Geany no diretório atual. | `zed .` / `kate .` / `geany .` |
+| `es` / `ek` / `er` / `ec` / `oe` | Controle do daemon Emacs (start, kill, restart, client, open). | Emacs Daemon & Client |
+
+### 3. 📦 Atualização de Pacotes & Sistema Operacional
+
+| Comando | Descrição | Escopo / Gerenciador |
+| :--- | :--- | :--- |
+| `upall` | **Orquestrador Global:** Atualiza o sistema base + AUR + Flatpak + Snap. | Universal |
+| `upsys` | Atualiza os pacotes do sistema base detectando a distribuição nativa. | Universal |
+| `upaur` / `upyay` / `upparu` | Atualiza pacotes do Arch User Repository (prioriza `paru > yay`). | Arch Linux |
+| `upman` | Atualiza pacotes via Pacman. | Arch Linux / Windows (MSYS2) |
+| `upapt` | Atualiza repositórios e pacotes via APT. | Debian, Ubuntu, Mint, Pop!_OS |
+| `updnf` | Atualiza pacotes via DNF. | Fedora, RHEL, Rocky, Alma |
+| `upzyp` | Atualiza pacotes via Zypper. | openSUSE, SLES |
+| `upxbps` | Atualiza pacotes via XBPS. | Void Linux |
+| `upapk` | Atualiza pacotes via APK. | Alpine Linux |
+| `uppkg` | Atualiza pacotes via PKG. | FreeBSD |
+| `upflat` | Atualiza todos os Flatpaks instalados. | Linux |
+| `upsnap` | Atualiza todos os Snaps instalados. | Linux |
 
 ```mermaid
 flowchart TD
@@ -169,7 +200,7 @@ flowchart TD
     UPSYS["📦 upsys<br/><i>(Sistema Base)</i>"]
 
     UPALL --> UPSYS
-    UPALL -.->|se instalado| YAY["📦 upyay<br/><i>(Arch AUR)</i>"]
+    UPALL -.->|se instalado| AUR["📦 upaur<br/><i>(paru / yay)</i>"]
     UPALL -.->|se instalado| FLAT["📦 upflat<br/><i>(Flatpak)</i>"]
     UPALL -.->|se instalado| SNAP["📦 upsnap<br/><i>(Snap)</i>"]
 
@@ -181,6 +212,37 @@ flowchart TD
     UPSYS --> XBPS["upxbps<br/><i>(Void)</i>"]
     UPSYS --> APK["upapk<br/><i>(Alpine)</i>"]
 ```
+
+### 4. 🌐 Rede & Wi-Fi
+
+| Comando | Descrição | Backend Nativo |
+| :--- | :--- | :--- |
+| `upwf` | Sincroniza credenciais de Wi-Fi (`WIFI_SSID_*` / `WIFI_PASS_*`) com o SO. | Linux (`nmcli`), FreeBSD (`wpa_supplicant`/`wifibox`), Windows (`netsh`) |
+| `upnet` | Orquestrador de rede (executa `upwf` e valida conectividade). | Universal |
+
+### 5. ⚡ Controle de Energia
+
+| Comando | Descrição | Ação Nativa |
+| :--- | :--- | :--- |
+| `poweroff` | Desliga o computador com segurança via `_as_root`. | Linux (`shutdown -h now`), FreeBSD (`shutdown -p now`), Windows (`shutdown.exe /s /t 0`) |
+| `reboot` | Reinicia o computador com segurança via `_as_root`. | Linux/FreeBSD (`shutdown -r now`), Windows (`shutdown.exe /r /t 0`) |
+
+### 6. 📱 Gestão de Dispositivos Móveis *(Contexto Desktop)*
+
+| Comando / Alias | Descrição | Tecnologias Suportadas |
+| :--- | :--- | :--- |
+| `mount-device`<br/>`mntdev` / `mdev` | Mapeia celular em `~/Device` em 4 estágios inteligentes. | GNOME/XFCE MTP (`GVfs`), GSConnect, KDE Dolphin (`KIO-MTP`), KDE Connect (`KIO-FUSE`), ADB (`adbfs`) |
+| `umount-device`<br/>`umntdev` / `umdev` / `udev` | Desmonta `~/Device`, fecha túneis e remove o diretório com segurança. | `fusermount3`, `fusermount`, `umount`, KDE Connect CLI |
+
+### 7. 🖥️ Contextos Especiais & Integrações
+
+| Contexto / Target | Comando / Alias | Descrição |
+| :--- | :--- | :--- |
+| **Desktop (Linux/BSD)** | `way` | Inicia sessão Wayland (`startplasma-wayland`). |
+| **Desktop (Linux/BSD)** | `xorg` | Inicia sessão X11 clássica (`startx`). |
+| **Servidores** | `frigo-server` / `orbs-server` | Conexão SSH autenticada via chaves privadas do Vault. |
+| **WSL (Linux no Windows)** | `explorer`, `powershell`, `pwsh`, `cmd`, `clip` | Atalhos diretos para utilitários do Windows nativo a partir do WSL. |
+| **FreeBSD (`sh`)** | `h` / `history`, `j`, `m`, `g`, `~`, `/`, `..`, `...`, `....`, `-- -` | Atalhos rápidos de navegação, histórico, jobs e paginação. |
 
 ## 🔐 Integração com Vault (Segredos Seguros)
 
@@ -197,11 +259,11 @@ Se o diretório `~/.vault` for detectado, o shell carregará automaticamente:
 O projeto conta com módulos avançados de reconhecimento em `library/detect.sh` que mapeiam perfeitamente o seu ecossistema:
 
 - **OS e Shell:** Reconhece se você está no 🐧 `Linux`, 😈 `FreeBSD`, 🍎 `MacOS` ou 🪟 `Windows` (via **MSYS2**), e identifica o 🐚 `Shell` rodando (📜 `bash`, ⚡ `zsh`, ⚙️ `sh`).
-- **Distribuição Linux e Família:** Ao rodar no 🐧 `Linux` ou no 🧩 `WSL2`, o módulo descobre a distribuição exata (`detect_distro`) e a agrupa pela família do gerenciador de pacotes base (`detect_distro_family` — ex: `debian`, `arch`, `fedora`, `suse`, `void`, `alpine`).
-  Isso permite que `upsys` e `upall` chamem os comandos corretos (`upapt`, `upman`, `updnf`, `uppkg`, etc.) automaticamente sob os panos, sem conflitos. Gerenciadores isolados como `flatpak`, `snap` e `yay` (AUR) ganham comandos modulares dedicados (`upflat`, `upsnap`, `upyay`) que são orquestrados dinamicamente pelo `upall`.
-- **Desktop Environment & Dark Mode (GTK, Qt, Electron, Java):** Identifica o ambiente gráfico (`detect_desktop_environment` — ex: `kde`, `gnome`, `xfce`, `sway`, `hyprland`), a preferência de esquema de cores do sistema (`detect_color_scheme` — `dark` ou `light` via XDG Portal / D-Bus / GSettings / KDE Globals) e mapeia as variáveis de integração para todos os principais ecossistemas:
-  - **GTK:** Mapeia `GTK_THEME` inteligentemente via `detect_gtk_theme` (`Breeze-Dark` no KDE para alinhar ferramentas GTK à paleta do Plasma, integração nativa via GSettings no GNOME sem forçar overrides que degradem o Libadwaita GTK4, e `adw-gtk3-dark`/`Adwaita:dark` em WMs).
-  - **Qt:** Mapeia `QT_QPA_PLATFORMTHEME` dinamicamente (`xdgdesktopportal` no GNOME/KDE/Sway/Hyprland, `gtk3` em XFCE/MATE/Cinnamon ou `qt6ct`/`qt5ct` via `detect_qt_platform_theme`) e gerencia `QT_STYLE_OVERRIDE` (`Breeze-Dark`/`Breeze` no KDE via `detect_qt_theme`). Em desktops baseados em GTK, a presença do motor de estilo **Plasma Breeze (Qt6)** e do gerenciador **`qt6ct`** (Qt6 Configuration Tool) garante paletas escuras perfeitas, fontes e ícones coerentes para ferramentas Qt puras (Wireshark, VLC, OBS) e do KDE (Kate, Krita).
+- **Distribuição Linux e Família:** Ao rodar no 🐧 `Linux` ou no 🧩 `WSL2`, o módulo descobre a distribuição exata (`_detect_distro`) e a agrupa pela família do gerenciador de pacotes base (`_detect_distro_family` — ex: `debian`, `arch`, `fedora`, `suse`, `void`, `alpine`).
+  Isso permite que `upsys` e `upall` chamem os comandos corretos (`upapt`, `upman`, `updnf`, `uppkg`, etc.) automaticamente sob os panos, sem conflitos. Gerenciadores isolados como `flatpak`, `snap` e `paru`/`yay` (AUR) ganham comandos modulares dedicados (`upflat`, `upsnap`, `upaur`, `upyay`, `upparu`) que são orquestrados dinamicamente pelo `upall`.
+- **Desktop Environment & Dark Mode (GTK, Qt, Electron, Java):** Identifica o ambiente gráfico (`_detect_desktop_environment` — ex: `kde`, `gnome`, `xfce`, `sway`, `hyprland`), a preferência de esquema de cores do sistema (`_detect_color_scheme` — `dark` ou `light` via XDG Portal / D-Bus / GSettings / KDE Globals) e mapeia as variáveis de integração para todos os principais ecossistemas:
+  - **GTK:** Mapeia `GTK_THEME` inteligentemente via `_detect_gtk_theme` (`Breeze-Dark` no KDE para alinhar ferramentas GTK à paleta do Plasma, integração nativa via GSettings no GNOME sem forçar overrides que degradem o Libadwaita GTK4, e `adw-gtk3-dark`/`Adwaita:dark` em WMs).
+  - **Qt:** Mapeia `QT_QPA_PLATFORMTHEME` dinamicamente (`xdgdesktopportal` no GNOME/KDE/Sway/Hyprland, `gtk3` em XFCE/MATE/Cinnamon ou `qt6ct`/`qt5ct` via `_detect_qt_platform_theme`) e gerencia `QT_STYLE_OVERRIDE` (`Breeze-Dark`/`Breeze` no KDE via `_detect_qt_theme`). Em desktops baseados em GTK, a presença do motor de estilo **Plasma Breeze (Qt6)** e do gerenciador **`qt6ct`** (Qt6 Configuration Tool) garante paletas escuras perfeitas, fontes e ícones coerentes para ferramentas Qt puras (Wireshark, VLC, OBS) e do KDE (Kate, Krita).
   - **Electron (Wayland):** Define `ELECTRON_OZONE_PLATFORM_HINT="auto"` para que apps como VSCode, Discord, Obsidian e Spotify rodem com renderização nítida nativa no Wayland.
   - **Java / Swing:** Exporta `_JAVA_AWT_WM_NONREPARENTING=1` para garantir renderização perfeita de IDEs JetBrains, DBeaver e Ghidra sem telas cinzas.
 - **Terminal TrueColor (24-bit RGB):** Exporta globalmente `COLORTERM="truecolor"` e `MICRO_TRUECOLOR=1`, garantindo renderização de 16 milhões de cores em utilitários CLI (`micro`, `bat`, `eza`, `fzf`, `neovim`).

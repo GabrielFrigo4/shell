@@ -2,20 +2,20 @@
 ### SHELL APPEARANCE
 ### ================================
 
-git_branch() {
+_git_branch() {
 	_git_branch=" "
 	if command git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
-		local branch="$(command git branch --show-current 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
-		if [ -n "$branch" ]; then
-			local is_dirty="$(command git status --short -uno 2> "/dev/null" | command tail -n1)"
-			local indicator=""
-			[ -n "$is_dirty" ] && indicator="${Y}*"
-			_git_branch=" ${B}(${R}${branch}${indicator}${B})${z} "
+		local _branch="$(command git branch --show-current 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
+		if [ -n "${_branch}" ]; then
+			local _is_dirty="$(command git status --short -uno 2> "/dev/null" | command tail -n1)"
+			local _indicator=""
+			[ -n "${_is_dirty}" ] && _indicator="${Y}*"
+			_git_branch=" ${B}(${R}${_branch}${_indicator}${B})${z} "
 		fi
 	fi
 }
 
-update_prompt() {
+_update_prompt() {
 	local z="\[\e[0m\]"
 	local R="\[\e[1;91m\]"
 	local G="\[\e[1;92m\]"
@@ -26,31 +26,31 @@ update_prompt() {
 	local K="\[\e[1;90m\]"
 
 	local _git_branch
-	git_branch
+	_git_branch
 
-	local u
-	if [ "$(command id -u)" -eq 0 ]; then u="${R}"; else u="${G}"; fi
+	local _u
+	if [ "$(command id -u)" -eq 0 ]; then _u="${R}"; else _u="${G}"; fi
 
-	local cur_user="$(command id -un)"
-	local cur_host="$(command hostname -s)"
-	local cur_dir="${PWD##*/}"
-	[ "${PWD}" = "${HOME}" ] && cur_dir="~"
-	[ "${PWD}" = "/" ] && cur_dir="/"
+	local _cur_user="$(command id -un)"
+	local _cur_host="$(command hostname -s)"
+	local _cur_dir="${PWD##*/}"
+	[ "${PWD}" = "${HOME}" ] && _cur_dir="~"
+	[ "${PWD}" = "/" ] && _cur_dir="/"
 
-	export PS1="${u}${cur_user}${B}@${M}${cur_host}${K}:${K}[${Y}${cur_dir}${K}]${z}${_git_branch}${C}\$${z} "
+	export PS1="${_u}${_cur_user}${B}@${M}${_cur_host}${K}:${K}[${Y}${_cur_dir}${K}]${z}${_git_branch}${C}\$${z} "
 }
 
-alias :="update_prompt; command :"
-update_prompt
+alias :="_update_prompt; command :"
+_update_prompt
 
-run_and_update() {
-	local cmd="${1}"
+_run_and_update() {
+	local _cmd="${1}"
 	shift
-	command "$cmd" "$@"
-	local ret=$?
-	update_prompt
-	return $ret
+	command "${_cmd}" "$@"
+	local _ret=$?
+	_update_prompt
+	return ${_ret}
 }
 
-alias triggers-reset="rm -f ${TRIGGERS_CACHE} && triggers-setup && . ${TRIGGERS_CACHE}"
-. "${TRIGGERS_CACHE}"
+alias triggers-reset="rm -f ${_TRIGGERS_CACHE} && _triggers_setup && . ${_TRIGGERS_CACHE}"
+. "${_TRIGGERS_CACHE}"

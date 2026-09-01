@@ -7,6 +7,28 @@
 ### --------------------------------
 alias on="nvim ."
 alias ov="vim ."
+alias oh="hx ."
+alias om="micro ."
+
+### --------------------------------
+### GUI Editors
+### --------------------------------
+alias ok="nohup kate . > \"/dev/null\" 2>&1 &"
+alias og="nohup geany . > \"/dev/null\" 2>&1 &"
+alias oc="code ."
+alias ocm="codium ."
+alias oa="antigravity-ide ."
+alias oz="zed ."
+alias ant="antigravity-ide"
+
+### --------------------------------
+### Emacs
+### --------------------------------
+alias ek="pkill emacs"
+alias es="emacs --daemon"
+alias er="ek && es"
+alias ec="emacsclient --create-frame --alternate-editor \"\""
+alias oe="nohup emacsclient --create-frame --alternate-editor \"\" . > \"/dev/null\" 2>&1 &"
 
 ### --------------------------------
 ### Servers
@@ -64,6 +86,11 @@ _open_file_manager() {
 	local _opener
 
 	echo "📂 Abrindo gerenciador de arquivos..."
+	if [ -n "${FILEMANAGER}" ] && command -v "${FILEMANAGER}" > "/dev/null" 2>&1; then
+		(nohup "${FILEMANAGER}" "${1}" < "/dev/null" > "/dev/null" 2>&1 &)
+		return 0
+	fi
+
 	for _opener in xdg-open gio nautilus dolphin thunar nemo caja pcmanfm-qt pcmanfm; do
 		if command -v "${_opener}" > "/dev/null" 2>&1; then
 			(nohup "${_opener}" "${1}" < "/dev/null" > "/dev/null" 2>&1 &)
@@ -105,7 +132,7 @@ mount-device() {
 	if command -v "adbfs" > "/dev/null" 2>&1 && command adb devices 2> "/dev/null" | command grep -qE '\bdevice\b'; then
 		command mkdir -p "${_target}"
 		echo "📱 Montando dispositivo Android via ADB em ~/Device..."
-		if adbfs "${_target}" > "/dev/null" 2>&1 || command sudo adbfs -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" > "/dev/null" 2>&1; then
+		if adbfs "${_target}" > "/dev/null" 2>&1 || _as_root adbfs -o "allow_other,uid=$(id -u),gid=$(id -g)" "${_target}" > "/dev/null" 2>&1; then
 			echo "✅ Dispositivo Android montado com sucesso em ~/Device via ADB!"
 			_open_file_manager "${_target}"
 			return 0
@@ -122,13 +149,13 @@ mount-device() {
 }
 
 _unmount_target() {
-	if [ "$(detect_os)" = "freebsd" ]; then
-		command umount "${1}" 2> "/dev/null" || command sudo umount "${1}" 2> "/dev/null" || true
+	if [ "$(_detect_os)" = "freebsd" ]; then
+		command umount "${1}" 2> "/dev/null" || _as_root umount "${1}" 2> "/dev/null" || true
 	else
 		command fusermount3 -u "${1}" 2> "/dev/null" || \
 		command fusermount -u "${1}" 2> "/dev/null" || \
 		command umount "${1}" 2> "/dev/null" || \
-		command sudo umount "${1}" 2> "/dev/null" || true
+		_as_root umount "${1}" 2> "/dev/null" || true
 	fi
 }
 
@@ -185,3 +212,34 @@ if ! command -v udev > "/dev/null" 2>&1; then
 	alias udev="umount-device"
 fi
 
+### --------------------------------
+### GUI Integration
+### --------------------------------
+if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
+	_gtk_theme="$(_detect_gtk_theme)"
+	if [ -n "${_gtk_theme}" ]; then
+		export GTK_THEME="${_gtk_theme}"
+	else
+		unset GTK_THEME
+	fi
+	unset _gtk_theme
+
+	_qt_style="$(_detect_qt_theme)"
+	if [ -n "${_qt_style}" ]; then
+		export QT_STYLE_OVERRIDE="${_qt_style}"
+	else
+		unset QT_STYLE_OVERRIDE
+	fi
+	unset _qt_style
+
+	_qt_platform="$(_detect_qt_platform_theme)"
+	if [ -n "${_qt_platform}" ]; then
+		export QT_QPA_PLATFORMTHEME="${_qt_platform}"
+	else
+		unset QT_QPA_PLATFORMTHEME
+	fi
+	unset _qt_platform
+
+	export ELECTRON_OZONE_PLATFORM_HINT="auto"
+	export _JAVA_AWT_WM_NONREPARENTING=1
+fi

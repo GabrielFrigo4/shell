@@ -1,7 +1,7 @@
 # 📜 Princípios de Engenharia & Filosofia do Repositório (Shell)
 
-> *"Rule of Silence: When a program has nothing surprising to say, it should say nothing."*  
-> — Eric S. Raymond, *The Art of UNIX Programming* (2003)
+> _"Rule of Silence: When a program has nothing surprising to say, it should say nothing."_  
+> — Eric S. Raymond, _The Art of UNIX Programming_ (2003)
 
 O repositório **Universal Shell Environment** é o coração interativo da **Tríade de Produtividade** (`Configuration`, `Shell`, `Vault`). Ele é responsável por prover uma experiência consistente, ágil e prazerosa na linha de comando, independentemente de estarmos em uma máquina Desktop, Servidor, Container Docker/Jail ou WSL, rodando sobre FreeBSD, Linux ou Windows.
 
@@ -9,10 +9,12 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
 
 ---
 
-## 🏛️ Os 17 Princípios UNIX (*The Art of UNIX Programming*, 2003)
+## 🏛️ Os 17 Princípios UNIX (_The Art of UNIX Programming_, 2003)
 
-### 1. Regra da Modularidade (*Rule of Modularity*)
-> *Escreva partes simples conectadas por interfaces limpas.*
+### 1. Regra da Modularidade (_Rule of Modularity_)
+
+> _Escreva partes simples conectadas por interfaces limpas._
+
 - O Shell é rigidamente dividido em:
   - `core/`: O ciclo de vida base e carregamento do ambiente.
   - `context/`: Especializações de acordo com a máquina (`desktop`, `server`, `container`, `wsl`).
@@ -20,75 +22,115 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
   - `library/`: Funções utilitárias reutilizáveis.
   - `theme/`: Renderização visual de prompts (Bash, Zsh).
 
-### 2. Regra da Clareza (*Rule of Clarity*)
-> *Clareza é melhor que esperteza.*
+### 2. Regra da Clareza (_Rule of Clarity_)
+
+> _Clareza é melhor que esperteza._
+
 - Aliases e funções devem ter intenção transparente. Um alias complexo de 5 linhas deve virar uma função documentada dentro de `library/functions.sh`.
 - Nomes de funções devem ser intuitivos (`upwf` para subir Wi-Fi, `mkcd` para criar pasta e entrar).
 
-### 3. Regra da Composição (*Rule of Composition*)
-> *Projete programas para serem conectados a outros programas.*
+### 3. Regra da Composição (_Rule of Composition_)
+
+> _Projete programas para serem conectados a outros programas._
+
 - Toda função utilitária criada neste repositório deve respeitar o fluxo de pipes do Unix (`|`). As saídas de dados devem ir para `stdout` limpas de caracteres ANSI de cor quando não estiverem conectadas a um terminal interativo (`[ -t 1 ]`).
 
-### 4. Regra da Separação (*Rule of Separation*)
-> *Separe a política do mecanismo; separe o motor da interface.*
+### 4. Regra da Separação (_Rule of Separation_)
+
+> _Separe a política do mecanismo; separe o motor da interface._
+
 - O mecanismo de detecção do ambiente (`library/detect.sh`) é completamente separado da política de atalhos e variáveis de ambiente aplicadas (`context/`). O tema visual (`theme/`) apenas lê dados e renderiza, sem executar lógica de negócio pesada.
 
-### 5. Regra da Simplicidade (*Rule of Simplicity*)
-> *Projete para a simplicidade; adicione complexidade apenas onde estritamente necessário.*
+### 5. Regra da Simplicidade (_Rule of Simplicity_)
+
+> _Projete para a simplicidade; adicione complexidade apenas onde estritamente necessário._
+
 - Evitamos intencionalmente frameworks monolíticos e lentos (como Oh-My-Zsh padrão com 50 plugins ativados). O Universal Shell provê uma base enxuta, leve e rápida feita à mão, que inicializa em milissegundos.
 
-### 6. Regra da Parcimônia (*Rule of Parsimony*)
-> *Escreva um programa grande apenas quando estiver claro por demonstração que nada mais resolverá.*
+### 6. Regra da Parcimônia (_Rule of Parsimony_)
+
+> _Escreva um programa grande apenas quando estiver claro por demonstração que nada mais resolverá._
+
 - Só adicionamos aliases ou funções que realmente usamos no dia a dia. Evite "acumular" coleções de centenas de comandos que nunca serão digitados.
 
-### 7. Regra da Transparência (*Rule of Transparency*)
-> *Projete para a visibilidade para tornar inspeção e depuração fáceis.*
+### 7. Regra da Transparência (_Rule of Transparency_)
+
+> _Projete para a visibilidade para tornar inspeção e depuração fáceis._
+
 - Qualquer função ou alias pode ser inspecionada na hora pelo próprio terminal (`type comando` ou `which comando`).
 - As variáveis globais exportadas são prefixadas ou padronizadas para evitar conflitos silenciosos.
 
-### 8. Regra da Robustez (*Rule of Robustness*)
-> *A robustez é filha da transparência e da simplicidade.*
+### 8. Regra da Robustez (_Rule of Robustness_)
+
+> _A robustez é filha da transparência e da simplicidade._
+
 - Tratamento defensivo: antes de criar um alias para um utilitário externo (ex: `bat`, `eza`, `fzf`), o shell verifica se o binário realmente existe no sistema (`command -v`), evitando erros de comando inexistente.
 - **Degradação Graciosa:** Se o `Vault` não estiver instalado ou montado na máquina, o Shell funciona perfeitamente em modo anônimo, sem travar nem exibir mensagens de erro assustadoras.
 
-### 9. Regra da Representação (*Rule of Representation*)
-> *Dobre o conhecimento em dados para que a lógica do programa possa ser estúpida e robusta.*
+### 9. Regra da Representação (_Rule of Representation_)
+
+> _Dobre o conhecimento em dados para que a lógica do programa possa ser estúpida e robusta._
+
 - Configurações de PATH, variáveis e atalhos são declaradas em listas diretas, evitando bifurcações excessivas de `if/else`.
 
-### 10. Regra do Menor Espanto (*Rule of Least Surprise*)
-> *No design de interfaces, sempre faça a coisa menos surpreendente.*
+### 10. Regra do Menor Espanto (_Rule of Least Surprise_)
+
+> _No design de interfaces, sempre faça a coisa menos surpreendente._
+
 - O shell não deve alterar o comportamento esperado de comandos fundamentais do Unix (como `rm`, `mv`, `cp`) de maneiras perigosas ou bizarras. Flags padrão de CLI e atalhos canônicos do Readline/Zshline (`Ctrl+A`, `Ctrl+E`, `Ctrl+R`) devem funcionar consistentemente.
 
-### 11. Regra do Silêncio (*Rule of Silence*)
-> *Quando um programa não tem nada surpreendente a dizer, ele não deve dizer nada.*
+### 11. Regra do Silêncio (_Rule of Silence_)
+
+> _Quando um programa não tem nada surpreendente a dizer, ele não deve dizer nada._
+
 - **Princípio Sagrado da Inicialização:** Ao abrir uma nova aba de terminal ou conexão SSH, o Shell **não deve imprimir texto, mensagens de boas-vindas barulhentas, nem banners lentos**. O prompt deve aparecer instantaneamente e em silêncio absoluto.
 
-### 12. Regra do Reparo (*Rule of Repair*)
-> *Quando você precisar falhar, falhe ruidosamente e o mais rápido possível.*
+### 12. Regra do Reparo (_Rule of Repair_)
+
+> _Quando você precisar falhar, falhe ruidosamente e o mais rápido possível._
+
 - Se uma função da `library/` receber parâmetros inválidos, ela emite uma mensagem clara no `stderr` e retorna código de saída diferente de 0 imediatamente.
 
-### 13. Regra da Economia (*Rule of Economy*)
-> *O tempo do programador é caro; economize-o em preferência ao tempo da máquina.*
+### 13. Regra da Economia (_Rule of Economy_)
+
+> _O tempo do programador é caro; economize-o em preferência ao tempo da máquina._
+
 - O objetivo central do Universal Shell é economizar micro-segundos mentais e toques de digitação do desenvolvedor todos os dias, com prompts inteligentes que exibem branch git, status de erro e ambiente de forma rápida.
 
-### 14. Regra da Geração (*Rule of Generation*)
-> *Evite codificação manual; escreva programas para escrever programas quando puder.*
+### 14. Regra da Geração (_Rule of Generation_)
+
+> _Evite codificação manual; escreva programas para escrever programas quando puder._
+
 - Automação do instalador (`install.sh`) para linkar e configurar automaticamente `.bashrc`, `.zshrc` e `.profile` para o usuário de forma automática.
 
-### 15. Regra da Otimização (*Rule of Optimization*)
-> *Prototipe antes de polir. Faça funcionar antes de otimizar.*
+### 15. Regra da Otimização (_Rule of Optimization_)
+
+> _Prototipe antes de polir. Faça funcionar antes de otimizar._
+
 - No entanto, para o shell interativo, a **latência de inicialização é um requisito funcional**: meça o tempo de startup (ex: `time zsh -i -c exit`) e mantenha-o preferencialmente **abaixo de 50 milissegundos**.
 
-### 16. Regra da Diversidade (*Rule of Diversity*)
-> *Desconfie de todas as afirmações de "uma única maneira verdadeira".*
+### 16. Regra da Diversidade (_Rule of Diversity_)
+
+> _Desconfie de todas as afirmações de "uma única maneira verdadeira"._
+
 - Compatibilidade universal com múltiplos shells:
   - **Zsh:** Shell primário interativo moderno com autocompletion avançado.
   - **Bash:** Shell padrão universal presente na maioria das distribuições Linux e servidores.
   - **Sh:** Shell POSIX leve e fundamental (FreeBSD `/bin/sh`, Debian `dash`), essencial para inicialização rápida e sistemas embarcados.
 
-### 17. Regra da Extensibilidade (*Rule of Extensibility*)
-> *Projete para o futuro, porque ele chegará antes do que você imagina.*
+### 17. Regra da Extensibilidade (_Rule of Extensibility_)
+
+> _Projete para o futuro, porque ele chegará antes do que você imagina._
+
 - Facilidade de adicionar um novo contexto (ex: `cloud`, `ci`) ou um novo target de SO sem precisar alterar a base do `core/environment.sh`.
+
+### 18. Regra da Soberania do Usuário (_Rule of User Sovereignty_)
+
+> _Honre a escolha explícita e deliberada do usuário antes de impor padrões genéricos._
+
+- **Cascata de Preferência Consciente:** Ferramentas modernas e minimalistas instaladas ativamente pelo usuário têm prioridade de execução sobre padrões legados (ex: `doas > sudo`, `paru > yay`, `nvim/hx/micro > nano`).
+- **Não-Invasividade:** O Shell nunca sobrescreve variáveis de ambiente previamente definidas pelo usuário (`$EDITOR`, `$VISUAL`, `$PAGER`, `$FILEMANAGER`), utilizando sempre o padrão defensivo `${VAR:-default}` ou verificando se a variável já está preenchida (`[ -z "${VAR}" ]`).
+- **Compatibilidade Transparente:** Quando uma ferramenta preferida substituir outra, prover mapeamentos/aliases bidirecionais para que hábitos de digitação não quebrem o fluxo diário de trabalho.
 
 ---
 
@@ -104,13 +146,26 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
    - Todo script executável de shell neste repositório DEVE iniciar com `#!/usr/bin/env sh`.
    - Evita caminhos rígidos como `#!/bin/sh` ou `#!/usr/bin/bash`, garantindo portabilidade entre FreeBSD, Linux e macOS.
 5. **Permissões em 4 Dígitos Octais:**
-   - Use sempre a notação de 4 dígitos em comandos `chmod` (`chmod 0755` para diretórios e scripts executáveis públicos, `chmod 0644` para arquivos de configuração e bibliotecas sourced). O zero inicial deixa explícito que bits especiais (*setuid*, *setgid*, *sticky*) estão zerados.
+   - Use sempre a notação de 4 dígitos em comandos `chmod` (`chmod 0755` para diretórios e scripts executáveis públicos, `chmod 0644` para arquivos de configuração e bibliotecas sourced). O zero inicial deixa explícito que bits especiais (_setuid_, _setgid_, _sticky_) estão zerados.
 6. **Portabilidade POSIX vs Extensões Zsh/Bash:**
    - Scripts que declaram `#!/usr/bin/env sh` devem ser estritamente compatíveis com a norma POSIX e com o `/bin/sh` do FreeBSD (sem usar `[[`, sem `function foo()`, sem arrays bash).
    - Recursos específicos do Zsh ficam exclusivamente em arquivos lidos pelo Zsh.
 7. **Citações Seguras (Quoting):**
-   - Sempre envolva variáveis em aspas duplas: `"${VAR}"` para evitar *word splitting* indesejado e ataques de injeção de caminho.
+   - Sempre envolva variáveis em aspas duplas: `"${VAR}"` para evitar _word splitting_ indesejado e ataques de injeção de caminho.
    - **Aspas Obrigatórias em Redirecionamentos:** SEMPRE use aspas ao redirecionar para o `/dev/null`: `> "/dev/null"` e `2> "/dev/null"` (nunca `> /dev/null` sem aspas).
+8. **Elevação de Privilégios Agregada (`_as_root` & `doas > sudo`):**
+   - Nunca chame `sudo` diretamente de forma rígida (_hardcoded_) em scripts ou instaladores.
+   - Utilize sempre o helper `_as_root` da `library/detect.sh`, que respeita se a sessão já é `root`, prioriza `doas` (minimalismo e segurança) e faz fallback transparente para `sudo`.
+9. **Respeito a Variáveis Pré-Existentes:**
+   - Variáveis de preferências do usuário (como `$EDITOR`, `$VISUAL`, `$FILEMANAGER`) só devem ser atribuídas se estiverem vazias ou não-declaradas, respeitando o arquivo `.profile` e o `Vault` do desenvolvedor.
+10. **Convenção Estrita de Nomenclatura & Sem Funções Gêmeas:**
+    - **`kebab-case` (ou termo simples) = Funções / Comandos Públicos:** Utilitários e atalhos destinados à invocação interativa pelo usuário no terminal (ex: `path-front`, `path-back`, `path-dedup`, `mount-device`, `umount-device`, `editor`, `upsh`, `upall`). Definidas **diretamente como públicas**, sem camadas de indireção.
+    - **`_snake_case` (prefixo `_`) = Helpers Privados & Variáveis Locais:** Funções internas de bootstrapping/infraestrutura e variáveis temporárias de escopo local (ex: `_as_root`, `_detect_os`, `_git_branch`, `_target`, `_file`, `_pass`). Mantém o autocompletion do usuário 100% limpo e sem poluição.
+    - **`KEBAB-CASE` = Funções Públicas de Valor Constante (Getters):** Funções públicas que retornam um valor fixo/imutável ou constante de sistema.
+    - **`SNAKE_CASE` (Maiúsculo) = Constantes e Variáveis de Ambiente Globais:** Variáveis públicas acessíveis pelo ambiente e lidas por outros processos/linguagens (ex: `PATH`, `SHELL_REPO_DIR`, `SHELL_CONTEXT`, `EMACS_SOCKET_NAME`).
+    - **`_SNAKE_CASE` (Maiúsculo com `_`) = Constantes Privadas de Módulo:** Constantes internas de infraestrutura com escopo restrito a módulos (ex: `_TRIGGERS_CACHE`, `_IGNORE_LIST_BASE`, `_IGNORE_LIST`).
+    - **`snake_case` (Minúsculo sem `_`) = Variáveis Públicas:** Variáveis mutáveis públicas expostas para configuração interativa pelo usuário.
+    - **Sem Gêmeos ou Wrappers Artificiais:** Não crie funções duplicadas (ex: um helper `_foo` só para criar um alias/função pública `foo` que não faz nada a mais). Ou a funcionalidade é **100% pública** (declarada uma única vez), ou é **100% privada** (com prefixo `_`).
 
 ---
 

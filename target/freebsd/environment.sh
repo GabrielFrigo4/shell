@@ -5,9 +5,9 @@
 ### --------------------------------
 ### Path
 ### --------------------------------
-path_front "${HOME}/.local/bin"
-path_front "${HOME}/.cargo/bin"
-path_dedup
+path-front "${HOME}/.local/bin"
+path-front "${HOME}/.cargo/bin"
+path-dedup
 
 ### --------------------------------
 ### Variables

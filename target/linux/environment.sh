@@ -5,10 +5,10 @@
 ### --------------------------------
 ### Path
 ### --------------------------------
-path_front "${HOME}/.local/bin"
-path_back  "${HOME}/.cargo/bin"
-path_back  "${HOME}/.platformio/penv/bin"
-path_dedup
+path-front "${HOME}/.local/bin"
+path-back  "${HOME}/.cargo/bin"
+path-back  "${HOME}/.platformio/penv/bin"
+path-dedup
 
 ### --------------------------------
 ### Variables

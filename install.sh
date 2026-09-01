@@ -43,12 +43,12 @@ esac
 ### Detect OS
 ### --------------------------------
 . "${SHELL_REPO_DIR}/library/detect.sh"
-OS_NAME="$(detect_os)"
+OS_NAME="$(_detect_os)"
 
 ### --------------------------------
 ### Detect Shell
 ### --------------------------------
-SHELL_NAME="$(detect_shell)"
+SHELL_NAME="$(_detect_shell)"
 
 echo "=== Shell Installer ==="
 echo "Detected repo:  ${SHELL_REPO_DIR}"
@@ -60,10 +60,10 @@ echo "Context:        ${SHELL_CONTEXT}"
 ### Permissions (shell repo)
 ### --------------------------------
 if [ "${OS_NAME}" != "windows" ]; then
-	sudo chown -R "$(id -un):$(id -gn)" "${SHELL_REPO_DIR}"
-	sudo find "${SHELL_REPO_DIR}" -type d -exec chmod 0755 {} +
-	sudo find "${SHELL_REPO_DIR}" -type f -exec chmod 0644 {} +
-	sudo find "${SHELL_REPO_DIR}" -name "*.sh" -exec chmod 0755 {} +
+	_as_root chown -R "$(id -un):$(id -gn)" "${SHELL_REPO_DIR}"
+	_as_root find "${SHELL_REPO_DIR}" -type d -exec chmod 0755 {} +
+	_as_root find "${SHELL_REPO_DIR}" -type f -exec chmod 0644 {} +
+	[ -f "${SHELL_REPO_DIR}/install.sh" ] && _as_root chmod 0755 "${SHELL_REPO_DIR}/install.sh"
 fi
 
 ### --------------------------------
@@ -108,7 +108,7 @@ rm -f "${RC_FILE}"
 ### Clean RC file (root)
 ### --------------------------------
 if [ "${OS_NAME}" != "windows" ]; then
-	sudo rm -f "${ROOT_RC_FILE}"
+	_as_root rm -f "${ROOT_RC_FILE}"
 fi
 
 ### --------------------------------
@@ -123,9 +123,9 @@ case "${SHELL_NAME}" in
 		fi
 		if [ "${OS_NAME}" != "windows" ]; then
 			if [ ! -d "/root/.oh-my-zsh" ]; then
-				sudo env KEEP_ZSHRC=no OVERWRITE_CONFIRMATION=no sh -c 'curl -fsSL "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh" | zsh -s -- --unattended'
+				_as_root env KEEP_ZSHRC=no OVERWRITE_CONFIRMATION=no sh -c 'curl -fsSL "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh" | zsh -s -- --unattended'
 			else
-				sudo cp "/root/.oh-my-zsh/templates/zshrc.zsh-template" "/root/.zshrc"
+				_as_root cp "/root/.oh-my-zsh/templates/zshrc.zsh-template" "/root/.zshrc"
 			fi
 		fi
 		;;
@@ -138,11 +138,11 @@ case "${SHELL_NAME}" in
 		sed -i.bak 's/OSH_THEME="[^"]*"/OSH_THEME=""/' "${HOME}/.bashrc" && rm -f "${HOME}/.bashrc.bak"
 		if [ "${OS_NAME}" != "windows" ]; then
 			if [ ! -d "/root/.oh-my-bash" ]; then
-				sudo env KEEP_BASHRC=no sh -c 'curl -fsSL "https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh" | bash -s -- --unattended'
+				_as_root env KEEP_BASHRC=no sh -c 'curl -fsSL "https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh" | bash -s -- --unattended'
 			else
-				sudo cp "/root/.oh-my-bash/templates/bashrc.osh-template" "/root/.bashrc"
+				_as_root cp "/root/.oh-my-bash/templates/bashrc.osh-template" "/root/.bashrc"
 			fi
-			sudo sed -i.bak 's/OSH_THEME="[^"]*"/OSH_THEME=""/' "/root/.bashrc" && sudo rm -f "/root/.bashrc.bak"
+			_as_root sed -i.bak 's/OSH_THEME="[^"]*"/OSH_THEME=""/' "/root/.bashrc" && _as_root rm -f "/root/.bashrc.bak"
 		fi
 		;;
 esac
@@ -150,10 +150,7 @@ esac
 ### --------------------------------
 ### Source lines to inject
 ### --------------------------------
-case "${SHELL_NAME}" in
-	bash|zsh) SOURCE_CMD="source" ;;
-	*)        SOURCE_CMD="." ;;
-esac
+SOURCE_CMD="."
 
 REPO_DIR_LINE="export SHELL_REPO_DIR=\"${SHELL_REPO_DIR}\""
 CONTEXT_LINE="export SHELL_CONTEXT=\"${SHELL_CONTEXT}\""
@@ -197,11 +194,11 @@ fi
 ### --------------------------------
 if [ "${OS_NAME}" != "windows" ]; then
 	echo "Target RC file: ${ROOT_RC_FILE} (root)"
-	if sudo grep -qF "${SOURCE_LINE}" "${ROOT_RC_FILE}" 2> "/dev/null"; then
+	if _as_root grep -qF "${SOURCE_LINE}" "${ROOT_RC_FILE}" 2> "/dev/null"; then
 		echo "Shell config already installed in ${ROOT_RC_FILE}"
 		echo "Skipping."
 	else
-		echo "${SETUP_BLOCK}" | sudo tee -a "${ROOT_RC_FILE}" > "/dev/null"
+		echo "${SETUP_BLOCK}" | _as_root tee -a "${ROOT_RC_FILE}" > "/dev/null"
 		echo "Done! Added source lines to ${ROOT_RC_FILE}"
 	fi
 fi

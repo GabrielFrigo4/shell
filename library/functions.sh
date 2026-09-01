@@ -5,7 +5,7 @@
 ### --------------------------------
 ### Path Front (highest priority)
 ### --------------------------------
-path_front() {
+path-front() {
 	case ":${PATH}:" in
 		*":${1}:"*) ;;
 		*) [ -d "${1}" ] && export PATH="${1}:${PATH}" ;;
@@ -15,7 +15,7 @@ path_front() {
 ### --------------------------------
 ### Path Back (lowest priority)
 ### --------------------------------
-path_back() {
+path-back() {
 	case ":${PATH}:" in
 		*":${1}:"*) ;;
 		*) [ -d "${1}" ] && export PATH="${PATH}:${1}" ;;
@@ -25,10 +25,11 @@ path_back() {
 ### --------------------------------
 ### Path Dedup
 ### --------------------------------
-path_dedup() {
+path-dedup() {
 	PATH=$(command printf "%s" "${PATH}" | command awk -v RS=: -v ORS=: '!a[$0]++' | command sed 's/:$//')
 	export PATH
 }
+
 
 ### --------------------------------
 ### Update Shell (upsh)
@@ -38,7 +39,7 @@ upsh() {
 		echo "🔄 Updating shell repository at ${SHELL_REPO_DIR}..."
 		command git -C "${SHELL_REPO_DIR}" pull
 		echo "♻️ Reloading shell environment..."
-		. "${HOME}/.$(detect_shell)rc" 2> "/dev/null" || true
+		. "${HOME}/.$(_detect_shell)rc" 2> "/dev/null" || true
 	else
 		echo "❌ ERROR: SHELL_REPO_DIR is not set or invalid."
 		echo "Please re-run the install.sh script from your shell repository."
@@ -62,10 +63,10 @@ resh() {
 	}
 
 	echo "🔧 Re-running install.sh with context '${SHELL_CONTEXT:-desktop}'..."
-	"$(command -v "$(detect_shell)" 2> "/dev/null")" "${SHELL_REPO_DIR}/install.sh" --context "${SHELL_CONTEXT:-desktop}"
+	"$(command -v "$(_detect_shell)" 2> "/dev/null")" "${SHELL_REPO_DIR}/install.sh" --context "${SHELL_CONTEXT:-desktop}"
 
 	echo "♻️ Reloading shell environment..."
-	. "${HOME}/.$(detect_shell)rc" 2> "/dev/null" || true
+	. "${HOME}/.$(_detect_shell)rc" 2> "/dev/null" || true
 
 	echo "✅ Shell fully reinstalled and reloaded!"
 }
@@ -84,18 +85,18 @@ upwf() {
 	if command -v nmcli > "/dev/null" 2>&1; then
 		echo "🐧 Network Manager (nmcli) detected. Applying Wi-Fi configurations..."
 
-		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r name ssid; do
-			suffix="${name#WIFI_SSID_}"
-			pass_var="WIFI_PASS_${suffix}"
-			eval pass="\$${pass_var}"
+		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r _name _ssid; do
+			_suffix="${_name#WIFI_SSID_}"
+			_pass_var="WIFI_PASS_${_suffix}"
+			eval _pass="\$${_pass_var}"
 
-			if [ -n "$ssid" ] && [ -n "$pass" ]; then
-				if nmcli connection show "$ssid" > "/dev/null" 2>&1; then
-					echo "   🔄 Updating network: '$ssid'"
-					nmcli connection modify "$ssid" wifi-sec.psk "$pass" > "/dev/null" 2>&1
+			if [ -n "${_ssid}" ] && [ -n "${_pass}" ]; then
+				if nmcli connection show "${_ssid}" > "/dev/null" 2>&1; then
+					echo "   🔄 Updating network: '${_ssid}'"
+					nmcli connection modify "${_ssid}" wifi-sec.psk "${_pass}" > "/dev/null" 2>&1
 				else
-					echo "   ➕ Adding network: '$ssid'"
-					nmcli connection add type wifi con-name "$ssid" ssid "$ssid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$pass" > "/dev/null" 2>&1
+					echo "   ➕ Adding network: '${_ssid}'"
+					nmcli connection add type wifi con-name "${_ssid}" ssid "${_ssid}" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${_pass}" > "/dev/null" 2>&1
 				fi
 			fi
 		done
@@ -104,87 +105,87 @@ upwf() {
 	elif [ "$(command uname -s 2> "/dev/null")" = "FreeBSD" ] || [ -f "/etc/wpa_supplicant.conf" ]; then
 		echo "😈 FreeBSD/wpa_supplicant detected. Syncing Wi-Fi configurations..."
 
-		tmp_conf=$(command mktemp)
-		cat <<-EOF >| "${tmp_conf}"
+		_tmp_conf=$(command mktemp)
+		cat <<-EOF >| "${_tmp_conf}"
 			ctrl_interface=/var/run/wpa_supplicant
 			ctrl_interface_group=wheel
 			update_config=1
 
 		EOF
 
-		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r name ssid; do
-			suffix="${name#WIFI_SSID_}"
-			pass_var="WIFI_PASS_${suffix}"
-			eval pass="\$${pass_var}"
+		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r _name _ssid; do
+			_suffix="${_name#WIFI_SSID_}"
+			_pass_var="WIFI_PASS_${_suffix}"
+			eval _pass="\$${_pass_var}"
 
-			if [ -n "$ssid" ] && [ -n "$pass" ]; then
-				echo "   ➕ Mapping network: '$ssid'"
-				cat <<-EOF >> "${tmp_conf}"
+			if [ -n "${_ssid}" ] && [ -n "${_pass}" ]; then
+				echo "   ➕ Mapping network: '${_ssid}'"
+				cat <<-EOF >> "${_tmp_conf}"
 					network={
-					    ssid="$ssid"
-					    psk="$pass"
+					    ssid="${_ssid}"
+					    psk="${_pass}"
 					}
 
 				EOF
 			fi
 		done
 
-		wifi_dir="/etc"
-		wifi_target="${wifi_dir}/wpa_supplicant.conf"
+		_wifi_dir="/etc"
+		_wifi_target="${_wifi_dir}/wpa_supplicant.conf"
 
-		if command sudo cmp -s "${tmp_conf}" "${wifi_target}" 2> "/dev/null"; then
-			echo "   👉 FreeBSD ${wifi_target} is already up-to-date."
+		if _as_root cmp -s "${_tmp_conf}" "${_wifi_target}" 2> "/dev/null"; then
+			echo "   👉 FreeBSD ${_wifi_target} is already up-to-date."
 		else
-			echo "   🔄 Changes detected! Overwriting ${wifi_target}..."
-			command sudo cp "${tmp_conf}" "${wifi_target}"
+			echo "   🔄 Changes detected! Overwriting ${_wifi_target}..."
+			_as_root cp "${_tmp_conf}" "${_wifi_target}"
 
 			echo "   ⚡ Restarting network stack (netif)..."
-			command sudo service netif restart > "/dev/null" 2>&1 || true
+			_as_root service netif restart > "/dev/null" 2>&1 || true
 		fi
 
-		wifibox_dir="/usr/local/etc/wifibox"
-		wifibox_target="${wifibox_dir}/wpa_supplicant/wpa_supplicant.conf"
+		_wifibox_dir="/usr/local/etc/wifibox"
+		_wifibox_target="${_wifibox_dir}/wpa_supplicant/wpa_supplicant.conf"
 
-		if [ -d "${wifibox_dir}" ] || command -v wifibox > "/dev/null" 2>&1 || [ -f "${wifibox_target}" ]; then
+		if [ -d "${_wifibox_dir}" ] || command -v wifibox > "/dev/null" 2>&1 || [ -f "${_wifibox_target}" ]; then
 			echo "   📦 Wifibox detected. Syncing Wifibox Wi-Fi configuration..."
-			command sudo mkdir -p "${wifibox_dir}/wpa_supplicant"
+			_as_root mkdir -p "${_wifibox_dir}/wpa_supplicant"
 
-			if command sudo cmp -s "${tmp_conf}" "${wifibox_target}" 2> "/dev/null"; then
+			if _as_root cmp -s "${_tmp_conf}" "${_wifibox_target}" 2> "/dev/null"; then
 				echo "   👉 Wifibox configuration is already up-to-date."
 			else
-				echo "   🔄 Changes detected! Overwriting $wifibox_target..."
-				command sudo cp "${tmp_conf}" "${wifibox_target}"
+				echo "   🔄 Changes detected! Overwriting ${_wifibox_target}..."
+				_as_root cp "${_tmp_conf}" "${_wifibox_target}"
 
-				if command sudo service wifibox status > "/dev/null" 2>&1; then
+				if _as_root service wifibox status > "/dev/null" 2>&1; then
 					echo "   ⚡ Restarting wifibox service..."
-					command sudo service wifibox restart > "/dev/null" 2>&1 || true
+					_as_root service wifibox restart > "/dev/null" 2>&1 || true
 				fi
 			fi
 		fi
 
-		command rm -f "${tmp_conf}"
+		command rm -f "${_tmp_conf}"
 
 		echo "✅ FreeBSD Wi-Fi configs applied!"
 
 	elif command -v netsh > "/dev/null" 2>&1; then
 		echo "🪟 Windows Network Shell (netsh) detected. Syncing Wi-Fi profiles..."
 
-		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r name ssid; do
-			suffix="${name#WIFI_SSID_}"
-			pass_var="WIFI_PASS_${suffix}"
-			eval pass="\$${pass_var}"
+		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r _name _ssid; do
+			_suffix="${_name#WIFI_SSID_}"
+			_pass_var="WIFI_PASS_${_suffix}"
+			eval _pass="\$${_pass_var}"
 
-			if [ -n "$ssid" ] && [ -n "$pass" ]; then
-				echo "   ➕ Injecting profile: '$ssid'"
-				xml_file=$(command mktemp)
+			if [ -n "${_ssid}" ] && [ -n "${_pass}" ]; then
+				echo "   ➕ Injecting profile: '${_ssid}'"
+				_xml_file=$(command mktemp)
 
-				cat <<-EOF >| "$xml_file"
+				cat <<-EOF >| "${_xml_file}"
 					<?xml version="1.0"?>
 					<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
-					    <name>$ssid</name>
+					    <name>${_ssid}</name>
 					    <SSIDConfig>
 					        <SSID>
-					            <name>$ssid</name>
+					            <name>${_ssid}</name>
 					        </SSID>
 					    </SSIDConfig>
 					    <connectionType>ESS</connectionType>
@@ -199,18 +200,18 @@ upwf() {
 					            <sharedKey>
 					                <keyType>passPhrase</keyType>
 					                <protected>false</protected>
-					                <keyMaterial>$pass</keyMaterial>
+					                <keyMaterial>${_pass}</keyMaterial>
 					            </sharedKey>
 					        </security>
 					    </MSM>
 					</WLANProfile>
 				EOF
 
-				win_path="$xml_file"
-				command -v cygpath > "/dev/null" 2>&1 && win_path=$(cygpath -w "$xml_file")
+				_win_path="${_xml_file}"
+				command -v cygpath > "/dev/null" 2>&1 && _win_path=$(cygpath -w "${_xml_file}")
 
-				command netsh wlan add profile filename="$win_path" > "/dev/null" 2>&1
-				command rm -f "$xml_file"
+				command netsh wlan add profile filename="${_win_path}" > "/dev/null" 2>&1
+				command rm -f "${_xml_file}"
 			fi
 		done
 		echo "✅ Windows Wi-Fi configs applied!"
@@ -219,7 +220,7 @@ upwf() {
 		echo "❌ No supported Wi-Fi manager (nmcli/wpa_supplicant/netsh) found."
 	fi
 
-	unset name ssid suffix pass_var pass tmp_conf xml_file win_path wifi_dir wifi_target wifibox_dir wifibox_target 2> "/dev/null" || true
+	unset _name _ssid _suffix _pass_var _pass _tmp_conf _xml_file _win_path _wifi_dir _wifi_target _wifibox_dir _wifibox_target 2> "/dev/null" || true
 }
 
 ### --------------------------------
@@ -235,39 +236,51 @@ upnet() {
 ### Package Managers
 ### --------------------------------
 upman() {
-	if [ "$(detect_os)" = "windows" ]; then
+	if [ "$(_detect_os)" = "windows" ]; then
 		command pacman --noconfirm -Syu "$@"
 	else
-		command sudo pacman --noconfirm -Syu "$@"
+		_as_root pacman --noconfirm -Syu "$@"
 	fi
 }
 
 upapt() {
-	command sudo apt update && command sudo apt upgrade --yes "$@"
+	_as_root apt update && _as_root apt upgrade --yes "$@"
 }
 
 updnf() {
-	command sudo dnf upgrade --assumeyes "$@"
+	_as_root dnf upgrade --assumeyes "$@"
 }
 
 upzyp() {
-	command sudo zypper --non-interactive update "$@"
+	_as_root zypper --non-interactive update "$@"
 }
 
 upxbps() {
-	command sudo xbps-install --yes -Su "$@"
+	_as_root xbps-install --yes -Su "$@"
 }
 
 upapk() {
-	command sudo apk update && command sudo apk upgrade "$@"
+	_as_root apk update && _as_root apk upgrade "$@"
 }
 
 uppkg() {
-	command sudo pkg update && command sudo pkg upgrade --yes "$@"
+	_as_root pkg update && _as_root pkg upgrade --yes "$@"
+}
+
+upaur() {
+	if command -v paru > "/dev/null" 2>&1; then
+		command paru --noconfirm -Syu "$@"
+	elif command -v yay > "/dev/null" 2>&1; then
+		command yay --noconfirm -Syu "$@"
+	fi
 }
 
 upyay() {
-	command yay --noconfirm -Syu "$@"
+	upaur "$@"
+}
+
+upparu() {
+	upaur "$@"
 }
 
 upflat() {
@@ -275,7 +288,7 @@ upflat() {
 }
 
 upsnap() {
-	command sudo snap refresh "$@"
+	_as_root snap refresh "$@"
 }
 
 ### --------------------------------
@@ -283,7 +296,7 @@ upsnap() {
 ### --------------------------------
 upsys() {
 	echo "📦 Updating OS system packages..."
-	case "$(detect_distro_family)" in
+	case "$(_detect_distro_family)" in
 		arch)   upman "$@" ;;
 		debian) upapt "$@" ;;
 		fedora) updnf "$@" ;;
@@ -291,7 +304,7 @@ upsys() {
 		void)   upxbps "$@" ;;
 		alpine) upapk "$@" ;;
 		*)
-			case "$(detect_os)" in
+			case "$(_detect_os)" in
 				freebsd) uppkg "$@" ;;
 				windows) upman "$@" ;;
 			esac
@@ -308,10 +321,10 @@ upall() {
 	echo ""
 	upsys "$@"
 
-	if command -v yay > "/dev/null" 2>&1; then
+	if command -v paru > "/dev/null" 2>&1 || command -v yay > "/dev/null" 2>&1; then
 		echo ""
-		echo "📦 Updating Yay (AUR) packages..."
-		upyay && echo "✅ Yay (AUR) packages updated!"
+		echo "📦 Updating AUR packages..."
+		upaur "$@" && echo "✅ AUR packages updated!"
 	fi
 
 	if command -v flatpak > "/dev/null" 2>&1; then
@@ -334,7 +347,7 @@ upall() {
 ### Poweroff System
 ### --------------------------------
 poweroff() {
-	case "$(detect_os)" in
+	case "$(_detect_os)" in
 		windows)
 			shutdown.exe /s /t 0 "$@"
 			return $?
@@ -347,13 +360,7 @@ poweroff() {
 			;;
 	esac
 
-	if [ "$(id -u)" -eq 0 ]; then
-		command shutdown "${_flag}" now "$@"
-	elif command -v sudo > "/dev/null" 2>&1; then
-		command sudo shutdown "${_flag}" now "$@"
-	else
-		command shutdown "${_flag}" now "$@"
-	fi
+	_as_root shutdown "${_flag}" now "$@"
 	unset _flag
 }
 
@@ -361,19 +368,13 @@ poweroff() {
 ### Reboot System
 ### --------------------------------
 reboot() {
-	case "$(detect_os)" in
+	case "$(_detect_os)" in
 		windows)
 			shutdown.exe /r /t 0 "$@"
 			return $?
 			;;
 		*)
-			if [ "$(id -u)" -eq 0 ]; then
-				command shutdown -r now "$@"
-			elif command -v sudo > "/dev/null" 2>&1; then
-				command sudo shutdown -r now "$@"
-			else
-				command shutdown -r now "$@"
-			fi
+			_as_root shutdown -r now "$@"
 			;;
 	esac
 }

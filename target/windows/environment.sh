@@ -5,9 +5,9 @@
 ### --------------------------------
 ### Path
 ### --------------------------------
-path_front "${HOME}/.local/bin"
-path_back "$(cygpath -u "$LOCALAPPDATA")/Coursier/data/bin"
-path_dedup
+path-front "${HOME}/.local/bin"
+path-back "$(cygpath -u "$LOCALAPPDATA")/Coursier/data/bin"
+path-dedup
 
 ### --------------------------------
 ### Variables

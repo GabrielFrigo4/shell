@@ -5,7 +5,7 @@
 ### --------------------------------
 ### Detect OS
 ### --------------------------------
-detect_os() {
+_detect_os() {
 	case "$(uname -s)" in
 		Linux*)               echo "linux" ;;
 		FreeBSD*)             echo "freebsd" ;;
@@ -17,9 +17,9 @@ detect_os() {
 ### --------------------------------
 ### Detect Shell
 ### --------------------------------
-detect_shell() {
+_detect_shell() {
 	local _pid="$$"
-	local _os="$(detect_os)"
+	local _os="$(_detect_os)"
 	local _name
 
 	_name="$(command ps -p "${_pid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
@@ -32,7 +32,7 @@ detect_shell() {
 		fi
 	fi
 
-	if [ "${_name}" = "sudo" ] || [ "${_name}" = "su" ]; then
+	if [ "${_name}" = "sudo" ] || [ "${_name}" = "doas" ] || [ "${_name}" = "su" ]; then
 		local _gpid="$(command ps -p "${_pid}" -o ppid= 2> "/dev/null" | command tr -d ' ')"
 		if [ -z "${_gpid}" ]; then
 			if [ "${_os}" = "windows" ]; then
@@ -59,7 +59,7 @@ detect_shell() {
 ### --------------------------------
 ### Detect Distro
 ### --------------------------------
-detect_distro() {
+_detect_distro() {
 	if [ -f "/etc/os-release" ]; then
 		local _id="$(. /etc/os-release && echo "${ID}")"
 		echo "${_id:-unknown}"
@@ -75,8 +75,8 @@ detect_distro() {
 ### --------------------------------
 ### Detect Distro Family
 ### --------------------------------
-detect_distro_family() {
-	local _id="$(detect_distro)"
+_detect_distro_family() {
+	local _id="$(_detect_distro)"
 	local _like=""
 	[ -f "/etc/os-release" ] && _like="$(. /etc/os-release && echo "${ID_LIKE}")"
 
@@ -102,7 +102,7 @@ detect_distro_family() {
 ### --------------------------------
 ### Detect Desktop Environment
 ### --------------------------------
-detect_desktop_environment() {
+_detect_desktop_environment() {
 	local _desktop="${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION}}"
 	case "${_desktop}" in
 		*[Kk][Dd][Ee]*|*[Pp]lasma*)         echo "kde" ;;
@@ -119,7 +119,7 @@ detect_desktop_environment() {
 ### --------------------------------
 ### Detect Color Scheme (dark/light)
 ### --------------------------------
-detect_color_scheme() {
+_detect_color_scheme() {
 	if command -v gdbus > "/dev/null" 2>&1; then
 		local _portal
 		_portal="$(gdbus call --session --dest org.freedesktop.portal.Desktop \
@@ -169,9 +169,9 @@ detect_color_scheme() {
 ### --------------------------------
 ### Detect GTK Theme
 ### --------------------------------
-detect_gtk_theme() {
-	local _desktop_env="$(detect_desktop_environment)"
-	local _color_scheme="$(detect_color_scheme)"
+_detect_gtk_theme() {
+	local _desktop_env="$(_detect_desktop_environment)"
+	local _color_scheme="$(_detect_color_scheme)"
 
 	case "${_desktop_env}" in
 		kde)
@@ -205,9 +205,9 @@ detect_gtk_theme() {
 ### --------------------------------
 ### Detect Qt Theme
 ### --------------------------------
-detect_qt_theme() {
-	local _desktop_env="$(detect_desktop_environment)"
-	local _color_scheme="$(detect_color_scheme)"
+_detect_qt_theme() {
+	local _desktop_env="$(_detect_desktop_environment)"
+	local _color_scheme="$(_detect_color_scheme)"
 
 	if [ "${_desktop_env}" = "kde" ]; then
 		if [ "${_color_scheme}" = "dark" ]; then
@@ -223,8 +223,8 @@ detect_qt_theme() {
 ### --------------------------------
 ### Detect Qt Platform Theme
 ### --------------------------------
-detect_qt_platform_theme() {
-	local _desktop_env="$(detect_desktop_environment)"
+_detect_qt_platform_theme() {
+	local _desktop_env="$(_detect_desktop_environment)"
 
 	case "${_desktop_env}" in
 		kde)
@@ -252,4 +252,20 @@ detect_qt_platform_theme() {
 			fi
 			;;
 	esac
+}
+
+### --------------------------------
+### Run as Root (_as_root)
+### --------------------------------
+_as_root() {
+	if [ "$(id -u)" -eq 0 ]; then
+		"$@"
+	elif command -v doas > "/dev/null" 2>&1; then
+		command doas "$@"
+	elif command -v sudo > "/dev/null" 2>&1; then
+		command sudo "$@"
+	else
+		echo "❌ ERROR: Neither 'doas' nor 'sudo' was found to execute command with root privileges." >&2
+		return 1
+	fi
 }

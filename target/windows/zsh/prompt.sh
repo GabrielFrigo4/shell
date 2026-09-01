@@ -6,32 +6,33 @@ PROMPT_OS_ICON=" "
 PROMPT_OS_COLOR="blue"
 PROMPT_OS_NAME="MSYS2-$MSYSTEM"
 
-source "${SHELL_REPO_DIR}/theme/zsh.sh"
+. "${SHELL_REPO_DIR}/theme/zsh.sh"
 
 ### ================================
 ### SHELL ENVIRONMENT
 ### ================================
 
 command_not_found_handler() {
-	local cmd="${1}"
+	local _cmd="${1}"
+	local _ext
 	shift
-	for ext in .bat .cmd .exe; do
-		if (( $+commands[${cmd}${ext}] )); then
-			"${cmd}${ext}" "$@"
+	for _ext in .bat .cmd .exe; do
+		if (( $+commands[${_cmd}${_ext}] )); then
+			"${_cmd}${_ext}" "$@"
 			return $?
 		fi
 	done
-	echo "zsh: ${cmd}: command not found" >&2
+	echo "zsh: ${_cmd}: command not found" >&2
 	return 127
 }
 
-source "${SHELL_REPO_DIR}/target/windows/environment.sh"
+. "${SHELL_REPO_DIR}/target/windows/environment.sh"
 
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
 [ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh" ] && \
-    source "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh"
+    . "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh"
 [ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/windows.sh" ] && \
-    source "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/windows.sh"
+    . "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/windows.sh"
 
 ### ================================
 ### SHELL CONFIGURATION

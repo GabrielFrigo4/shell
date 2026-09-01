@@ -2,7 +2,7 @@
 ### VAULT LOADER & SSH
 ### ================================
 
-VAULT_DIR="${HOME}/.vault"
+VAULT_DIR="${VAULT_DIR:-${HOME}/.vault}"
 
 ### --------------------------------
 ### Vault Environment
@@ -24,7 +24,7 @@ upvt() {
 		echo "🔄 Updating vault repository at ${VAULT_DIR}..."
 		command git -C "${VAULT_DIR}" pull
 		echo "♻️ Reloading shell environment..."
-		. "${HOME}/.$(detect_shell)rc" 2> "/dev/null" || true
+		. "${HOME}/.$(_detect_shell)rc" 2> "/dev/null" || true
 	else
 		echo "❌ ERROR: VAULT_DIR is not set or invalid."
 	fi

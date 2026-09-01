@@ -67,18 +67,18 @@ setopt COMPLETE_IN_WORD
 	zstyle ':prompt:colors' b_cyan    '%B%F{14}'
 	zstyle ':prompt:colors' b_white   '%B%F{15}'
 
-	git_branch() {
+	_git_branch() {
 		if git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
-			local branch="$(git branch --show-current 2> "/dev/null" || git rev-parse --short HEAD 2> "/dev/null")"
-			if [[ -n "$branch" ]]; then
+			local _branch="$(git branch --show-current 2> "/dev/null" || git rev-parse --short HEAD 2> "/dev/null")"
+			if [[ -n "${_branch}" ]]; then
 				local y Y R M
 				zstyle -s ':prompt:colors' n_yellow y
 				zstyle -s ':prompt:colors' b_yellow Y
 				zstyle -s ':prompt:colors' b_red R
 				zstyle -s ':prompt:colors' b_magenta M
-				local indicator=""
-				[[ -n "$(git status --short -uno 2> "/dev/null" | tail -n1)" ]] && indicator="${Y}*"
-				echo "❮${R}󰊢 ${M}${branch}${indicator}${y}❯"
+				local _indicator=""
+				[[ -n "$(git status --short -uno 2> "/dev/null" | tail -n1)" ]] && _indicator="${Y}*"
+				echo "❮${R}󰊢 ${M}${_branch}${_indicator}${y}❯"
 			fi
 		fi
 	}
@@ -103,19 +103,19 @@ setopt COMPLETE_IN_WORD
 		zstyle -s ':prompt:colors' b_green u
 	fi
 
-	local os_icon="${PROMPT_OS_ICON}"
-	local os_name="${PROMPT_OS_NAME}"
-	local sh_name="$ZSH_NAME"
+	local _os_icon="${PROMPT_OS_ICON}"
+	local _os_name="${PROMPT_OS_NAME}"
+	local _sh_name="$ZSH_NAME"
 
-	local os_color
+	local _os_color
 	case "$PROMPT_OS_COLOR" in
-		red)  os_color="$R" ;;
-		blue) os_color="$B" ;;
-		*)    os_color="$B" ;;
+		red)  _os_color="$R" ;;
+		blue) _os_color="$B" ;;
+		*)    _os_color="$B" ;;
 	esac
 
 	export PROMPT="
-${y}${os_color}${os_icon}${M}${os_name}${y}─${B} ${M}${sh_name}${y}
-${y}┌──❮ ${G} %*${y} ❯─❮ ${G} %D{%d/%m/%y}${y} ❯─❮ ${Y} ${C}%c${y} ❯─ ❮${B} ${u}%n${y}❯ \$(git_branch)
+${y}${_os_color}${_os_icon}${M}${_os_name}${y}─${B} ${M}${_sh_name}${y}
+${y}┌──❮ ${G} %*${y} ❯─❮ ${G} %D{%d/%m/%y}${y} ❯─❮ ${Y} ${C}%c${y} ❯─ ❮${B} ${u}%n${y}❯ \$(_git_branch)
 ${y}└─${B}${z} "
 }
