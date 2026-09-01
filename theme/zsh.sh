@@ -49,43 +49,43 @@ setopt COMPLETE_IN_WORD
 () {
 	zstyle ':prompt:colors' reset     '%f%b'
 
-	zstyle ':prompt:colors' n_black   '%b%F{0}'
-	zstyle ':prompt:colors' n_red     '%b%F{1}'
-	zstyle ':prompt:colors' n_green   '%b%F{2}'
-	zstyle ':prompt:colors' n_yellow  '%b%F{3}'
-	zstyle ':prompt:colors' n_blue    '%b%F{4}'
-	zstyle ':prompt:colors' n_magenta '%b%F{5}'
-	zstyle ':prompt:colors' n_cyan    '%b%F{6}'
-	zstyle ':prompt:colors' n_white   '%b%F{7}'
+	zstyle ':prompt:colors' n_black   '%b%F{black}'
+	zstyle ':prompt:colors' n_red     '%b%F{red}'
+	zstyle ':prompt:colors' n_green   '%b%F{green}'
+	zstyle ':prompt:colors' n_yellow  '%b%F{yellow}'
+	zstyle ':prompt:colors' n_blue    '%b%F{blue}'
+	zstyle ':prompt:colors' n_magenta '%b%F{magenta}'
+	zstyle ':prompt:colors' n_cyan    '%b%F{cyan}'
+	zstyle ':prompt:colors' n_white   '%b%F{white}'
 
-	zstyle ':prompt:colors' b_gray    '%B%F{8}'
-	zstyle ':prompt:colors' b_red     '%B%F{9}'
-	zstyle ':prompt:colors' b_green   '%B%F{10}'
-	zstyle ':prompt:colors' b_yellow  '%B%F{11}'
-	zstyle ':prompt:colors' b_blue    '%B%F{12}'
-	zstyle ':prompt:colors' b_magenta '%B%F{13}'
-	zstyle ':prompt:colors' b_cyan    '%B%F{14}'
-	zstyle ':prompt:colors' b_white   '%B%F{15}'
+	zstyle ':prompt:colors' b_gray    '%B%F{black}'
+	zstyle ':prompt:colors' b_red     '%B%F{red}'
+	zstyle ':prompt:colors' b_green   '%B%F{green}'
+	zstyle ':prompt:colors' b_yellow  '%B%F{yellow}'
+	zstyle ':prompt:colors' b_blue    '%B%F{blue}'
+	zstyle ':prompt:colors' b_magenta '%B%F{magenta}'
+	zstyle ':prompt:colors' b_cyan    '%B%F{cyan}'
+	zstyle ':prompt:colors' b_white   '%B%F{white}'
 
 	_git_branch() {
 		if command git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
 			local _branch="$(command git branch --show-current 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
 			if [[ -n "${_branch}" ]]; then
 				local _indicator=""
-				[[ -n "$(command git status --short -uno 2> "/dev/null" | command tail -n1)" ]] && _indicator="%B%F{11}*"
+				[[ -n "$(command git status --short -uno 2> "/dev/null" | command tail -n1)" ]] && _indicator="%B%F{yellow}*"
 				if _is_raw_tty; then
-					echo " %B%F{12}(%B%F{9}${_branch}${_indicator}%B%F{12})%f%b "
+					echo " %B%F{blue}(%B%F{red}${_branch}${_indicator}%B%F{blue})%f%b "
 				else
-					echo "❮%B%F{9}󰊢 %B%F{13}${_branch}${_indicator}%b%F{3}❯"
+					echo "❮%B%F{red}󰊢 %B%F{magenta}${_branch}${_indicator}%b%F{yellow}❯"
 				fi
 			fi
 		elif [[ -d ".got" ]] && command -v got > "/dev/null" 2>&1; then
 			local _branch="$(command got branch 2> "/dev/null" || command got info 2> "/dev/null" | command awk '/work tree branch:/ {print $NF}')"
 			if [[ -n "${_branch}" ]]; then
 				if _is_raw_tty; then
-					echo " %B%F{12}(%B%F{13}${_branch}%B%F{12})%f%b "
+					echo " %B%F{blue}(%B%F{magenta}${_branch}%B%F{blue})%f%b "
 				else
-					echo "❮%B%F{9}󰊢 %B%F{13}${_branch}%b%F{3}❯"
+					echo "❮%B%F{red}󰊢 %B%F{magenta}${_branch}%b%F{yellow}❯"
 				fi
 			fi
 		fi
