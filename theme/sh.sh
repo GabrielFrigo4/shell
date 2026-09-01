@@ -21,17 +21,19 @@ _git_branch() {
 }
 
 _update_prompt() {
-	local _u
+	local _u _sym
 	if [ "$(command id -u)" -eq 0 ]; then
 		_u="\[\e[1;91m\]"
+		_sym="#"
 	else
 		_u="\[\e[1;92m\]"
+		_sym="\$"
 	fi
 
 	local _git_branch
 	_git_branch
 
-	export PS1="${_u}\u\[\e[1;94m\]@\[\e[1;95m\]\h \[\e[1;94m\](\[\e[1;96m\]sh\[\e[1;94m\])\[\e[1;90m\]:[\[\e[1;93m\]\W\[\e[1;90m\]]\[\e[0m\]${_git_branch} \[\e[1;96m\]\$\[\e[0m\] "
+	export PS1="${_u}\u\[\e[1;94m\]@\[\e[1;95m\]\h \[\e[1;94m\](\[\e[1;96m\]sh\[\e[1;94m\])\[\e[1;90m\]:[\[\e[1;93m\]\W\[\e[1;90m\]]\[\e[0m\]${_git_branch} \[\e[1;96m\]${_sym}\[\e[0m\] "
 }
 
 ### --------------------------------
