@@ -128,7 +128,7 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
 
 > _Honre a escolha explícita e deliberada do usuário antes de impor padrões genéricos._
 
-- **Cascata de Preferência Consciente:** Ferramentas modernas e minimalistas instaladas ativamente pelo usuário têm prioridade de execução sobre padrões legados (ex: `doas > sudo`, `paru > yay`, `nvim/hx/micro > nano`).
+- **Cascata de Preferência Consciente:** Ferramentas modernas e minimalistas instaladas ativamente pelo usuário têm prioridade de execução sobre padrões legados em atalhos interativos (ex: `doas > sudo`, `paru > yay`, `nvim/hx/micro > nano`, `eza > exa > ls`, `rg > grep`, `bat > cat`, `fd > find`), com detecção inteligente de consoles TTY brutos para evitar poluição visual de ícones.
 - **Não-Invasividade:** O Shell nunca sobrescreve variáveis de ambiente previamente definidas pelo usuário (`$EDITOR`, `$VISUAL`, `$PAGER`, `$FILEMANAGER`), utilizando sempre o padrão defensivo `${VAR:-default}` ou verificando se a variável já está preenchida (`[ -z "${VAR}" ]`).
 - **Compatibilidade Transparente:** Quando uma ferramenta preferida substituir outra, prover mapeamentos/aliases bidirecionais para que hábitos de digitação não quebrem o fluxo diário de trabalho.
 
@@ -155,7 +155,7 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
    - **Aspas Obrigatórias em Redirecionamentos:** SEMPRE use aspas ao redirecionar para o `/dev/null`: `> "/dev/null"` e `2> "/dev/null"` (nunca `> /dev/null` sem aspas).
 8. **Elevação de Privilégios Agregada (`_as_root` & `doas > sudo`):**
    - Nunca chame `sudo` diretamente de forma rígida (_hardcoded_) em scripts ou instaladores.
-   - Utilize sempre o helper `_as_root` da `library/detect.sh`, que respeita se a sessão já é `root`, prioriza `doas` (minimalismo e segurança) e faz fallback transparente para `sudo`.
+   - Utilize sempre o helper `_as_root` da `library/functions.sh`, que respeita se a sessão já é `root`, prioriza `doas` (minimalismo e segurança) e faz fallback transparente para `sudo`.
 9. **Respeito a Variáveis Pré-Existentes:**
    - Variáveis de preferências do usuário (como `$EDITOR`, `$VISUAL`, `$FILEMANAGER`) só devem ser atribuídas se estiverem vazias ou não-declaradas, respeitando o arquivo `.profile` e o `Vault` do desenvolvedor.
 10. **Convenção Estrita de Nomenclatura & Sem Funções Gêmeas:**
@@ -169,6 +169,10 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
 11. **Agnosticismo de Controle de Versão (VCS Agnosticism — Git & Got):**
     - Todos os shells (**Bash**, **Zsh**, **Linux SH** e **FreeBSD SH**) e temas do repositório devem suportar de forma transparente tanto o **Git** quanto o **Got (Game of Trees)**.
     - A detecção de branch e estado _dirty_ deve ser de tempo constante ($O(1)$) e **nunca** invocar binários externos se os diretórios de controle (`.git` ou `.got`) não existirem, garantindo latência zero em diretórios normais.
+12. **Taxonomia e Contratos de Funções de Biblioteca (`library/`):**
+    - **Getters de Inspeção (`_detect_*`):** Funções em `library/detect.sh` que retornam uma string no `stdout` representando a entidade ou binário identificado (ex: `_detect_os`, `_detect_distro`, `_detect_color_scheme`, `_detect_eza`, `_detect_privilege_escalator`). Retornam vazio caso não encontrem.
+    - **Predicados Booleanos (`_is_*` / `_has_*`):** Funções que realizam testes lógicos e retornam código de saída numérico (`return 0` para verdadeiro, `return 1` para falso) sem emitir saída no `stdout` (ex: `_is_raw_tty`, `_is_generic_editor`).
+    - **Executores Operacionais (`_as_*` / `_run_*`):** Funções que realizam ações e executam comandos do sistema operacional (`"$@"`), residindo exclusivamente em `library/functions.sh` (ex: `_as_root`).
 
 ---
 

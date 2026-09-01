@@ -8,11 +8,13 @@
 
 | Área | Status | Cobertura |
 | :--- | :---: | :--- |
-| **🖥️ Plataformas Base** | 🟢 Estável | Linux, FreeBSD, Windows (MSYS2) |
+| **🖥️ Plataformas Base** | 🟢 Estável | Linux, FreeBSD, Windows (MSYS2), macOS (base) |
 | **🐚 Shells Nativos** | 🟢 Estável | Bash, Zsh, POSIX sh (Linux & FreeBSD) |
 | **🎯 Contextos** | 🟢 Estável | Desktop, Server, Container, WSL |
+| **🎨 Temas & TTY** | 🟢 Estável | Adaptação dinâmica PTY / Raw TTY em Zsh, Bash e Sh |
+| **⚡ Modern CLI** | 🟢 Estável | Cascata inteligente (`eza`, `bat`, `rg`, `fd` > nativos) |
 | **🌳 VCS & Prompts** | 🟢 Estável | Git e Got (Game of Trees) |
-| **💎 Clean Code** | 🟢 100% | 18 Princípios UNIX & Taxonomia de 6 níveis |
+| **💎 Clean Code** | 🟢 100% | 18 Princípios UNIX & Taxonomia de 3 níveis de biblioteca |
 
 ---
 

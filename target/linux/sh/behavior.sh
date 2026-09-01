@@ -19,21 +19,5 @@ export HISTFILE="${HOME}/.sh_history"
 alias h='fc -l'
 alias j='jobs'
 alias m="${PAGER:-less}"
-alias g='grep -Ei'
 alias history='fc -l'
 
-### --------------------------------
-### Navigation
-### --------------------------------
-alias ~='cd ~'
-alias ..='cd ..'
-alias ...='cd ../..'
-alias ....='cd ../../..'
-alias -- -='cd -'
-
-### --------------------------------
-### Directory Listing
-### --------------------------------
-alias ls='ls --color=auto'
-alias ll='ls -laF --color=auto'
-alias l='ls -l --color=auto'

@@ -9,6 +9,7 @@ _detect_os() {
 	case "$(uname -s)" in
 		Linux*)               echo "linux" ;;
 		FreeBSD*)             echo "freebsd" ;;
+		Darwin*)              echo "macos" ;;
 		MINGW*|CYGWIN*|MSYS*) echo "windows" ;;
 		*)                    echo "unknown" ;;
 	esac
@@ -87,12 +88,15 @@ _detect_distro_family() {
 		opensuse*|sles)                       echo "suse" ;;
 		void)                                 echo "void" ;;
 		alpine)                               echo "alpine" ;;
+		gentoo|funtoo|calculate)              echo "gentoo" ;;
+		nixos)                                echo "nixos" ;;
 		*)
 			case "${_like}" in
 				*arch*)            echo "arch" ;;
 				*debian*|*ubuntu*) echo "debian" ;;
 				*fedora*|*rhel*)   echo "fedora" ;;
 				*suse*)            echo "suse" ;;
+				*gentoo*)          echo "gentoo" ;;
 				*)                 echo "unknown" ;;
 			esac
 			;;
@@ -105,14 +109,17 @@ _detect_distro_family() {
 _detect_desktop_environment() {
 	local _desktop="${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION}}"
 	case "${_desktop}" in
-		*[Kk][Dd][Ee]*|*[Pp]lasma*)         echo "kde" ;;
-		*[Gg][Nn][Oo][Mm][Ee]*)             echo "gnome" ;;
-		*[Xx][Ff][Cc][Ee]*)                 echo "xfce" ;;
-		*[Cc][Ii][Nn][Nn][Aa][Mm][Oo][Nn]*) echo "cinnamon" ;;
-		*[Mm][Aa][Tt][Ee]*)                 echo "mate" ;;
-		*[Ss][Ww][Aa][Yy]*)                 echo "sway" ;;
-		*[Hh][Yy][Pp][Rr][Ll][Aa][Nn][Dd]*) echo "hyprland" ;;
-		*)                                  echo "unknown" ;;
+		*[Kk][Dd][Ee]*|*[Pp]lasma*)                                          echo "kde" ;;
+		*[Gg][Nn][Oo][Mm][Ee]*)                                              echo "gnome" ;;
+		*[Xx][Ff][Cc][Ee]*)                                                  echo "xfce" ;;
+		*[Cc][Ii][Nn][Nn][Aa][Mm][Oo][Nn]*)                                  echo "cinnamon" ;;
+		*[Mm][Aa][Tt][Ee]*)                                                  echo "mate" ;;
+		*[Cc][Oo][Ss][Mm][Ii][Cc]*)                                          echo "cosmic" ;;
+		*[Ll][Xx][Qq][Tt]*)                                                  echo "lxqt" ;;
+		*[Ss][Ww][Aa][Yy]*)                                                  echo "sway" ;;
+		*[Hh][Yy][Pp][Rr][Ll][Aa][Nn][Dd]*)                                  echo "hyprland" ;;
+		*[Ii]3*|*[Bb][Ss][Pp][Ww][Mm]*|*[Rr][Ii][Vv][Ee][Rr]*|*[Dd][Ww][Mm]*) echo "wm" ;;
+		*)                                                                   echo "unknown" ;;
 	esac
 }
 
@@ -255,17 +262,84 @@ _detect_qt_platform_theme() {
 }
 
 ### --------------------------------
-### Run as Root (_as_root)
+### Detect Eza/Exa Binary
 ### --------------------------------
-_as_root() {
-	if [ "$(id -u)" -eq 0 ]; then
-		"$@"
-	elif command -v doas > "/dev/null" 2>&1; then
-		command doas "$@"
-	elif command -v sudo > "/dev/null" 2>&1; then
-		command sudo "$@"
-	else
-		echo "❌ ERROR: Neither 'doas' nor 'sudo' was found to execute command with root privileges." >&2
-		return 1
+_detect_eza() {
+	if command -v eza > "/dev/null" 2>&1; then
+		echo "eza"
+	elif command -v exa > "/dev/null" 2>&1; then
+		echo "exa"
+	elif [ -x "${HOME}/.cargo/bin/eza" ]; then
+		echo "${HOME}/.cargo/bin/eza"
+	elif [ -x "${HOME}/.cargo/bin/exa" ]; then
+		echo "${HOME}/.cargo/bin/exa"
 	fi
+}
+
+### --------------------------------
+### Detect Bat/Batcat Binary
+### --------------------------------
+_detect_bat() {
+	if command -v bat > "/dev/null" 2>&1; then
+		echo "bat"
+	elif command -v batcat > "/dev/null" 2>&1; then
+		echo "batcat"
+	elif [ -x "${HOME}/.cargo/bin/bat" ]; then
+		echo "${HOME}/.cargo/bin/bat"
+	fi
+}
+
+### --------------------------------
+### Detect Ripgrep Binary
+### --------------------------------
+_detect_rg() {
+	if command -v rg > "/dev/null" 2>&1; then
+		echo "rg"
+	elif command -v ripgrep > "/dev/null" 2>&1; then
+		echo "ripgrep"
+	elif [ -x "${HOME}/.cargo/bin/rg" ]; then
+		echo "${HOME}/.cargo/bin/rg"
+	fi
+}
+
+### --------------------------------
+### Detect Rust Fd-Find Binary
+### --------------------------------
+_detect_fd() {
+	if command -v fd > "/dev/null" 2>&1; then
+		echo "fd"
+	elif command -v fdfind > "/dev/null" 2>&1; then
+		echo "fdfind"
+	elif command -v fd-find > "/dev/null" 2>&1; then
+		echo "fd-find"
+	elif [ -x "${HOME}/.cargo/bin/fd" ]; then
+		echo "${HOME}/.cargo/bin/fd"
+	fi
+}
+
+### --------------------------------
+### Detect Privilege Escalator
+### --------------------------------
+_detect_privilege_escalator() {
+	if [ "$(id -u)" -eq 0 ]; then
+		echo "root"
+	elif command -v doas > "/dev/null" 2>&1; then
+		echo "doas"
+	elif command -v sudo > "/dev/null" 2>&1; then
+		echo "sudo"
+	fi
+}
+
+### --------------------------------
+### Detect Raw TTY (Console)
+### --------------------------------
+_is_raw_tty() {
+	case "${TERM}" in
+		linux|dumb|vt100|cons25*) return 0 ;;
+	esac
+
+	case "$(command tty 2> "/dev/null")" in
+		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/console) return 0 ;;
+		*) return 1 ;;
+	esac
 }

@@ -40,14 +40,11 @@ case "${SHELL_CONTEXT}" in
 esac
 
 ### --------------------------------
-### Detect OS
+### Detect Environment
 ### --------------------------------
 . "${SHELL_REPO_DIR}/library/detect.sh"
+. "${SHELL_REPO_DIR}/library/functions.sh"
 OS_NAME="$(_detect_os)"
-
-### --------------------------------
-### Detect Shell
-### --------------------------------
 SHELL_NAME="$(_detect_shell)"
 
 echo "=== Shell Installer ==="

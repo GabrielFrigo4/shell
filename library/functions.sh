@@ -3,6 +3,25 @@
 ### ================================
 
 ### --------------------------------
+### Privilege Escalation (_as_root)
+### --------------------------------
+_as_root() {
+	local _escalator="$(_detect_privilege_escalator)"
+	case "${_escalator}" in
+		root)
+			"$@"
+			;;
+		doas|sudo)
+			command "${_escalator}" "$@"
+			;;
+		*)
+			echo "❌ ERROR: Neither 'doas' nor 'sudo' was found to execute command with root privileges." >&2
+			return 1
+			;;
+	esac
+}
+
+### --------------------------------
 ### Path Front (highest priority)
 ### --------------------------------
 path-front() {
@@ -29,7 +48,6 @@ path-dedup() {
 	PATH=$(command printf "%s" "${PATH}" | command awk -v RS=: -v ORS=: '!a[$0]++' | command sed 's/:$//')
 	export PATH
 }
-
 
 ### --------------------------------
 ### Update Shell (upsh)

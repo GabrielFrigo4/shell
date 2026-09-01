@@ -19,24 +19,7 @@ export HISTFILE="${HOME}/.sh_history"
 alias h='fc -l'
 alias j='jobs'
 alias m="${PAGER:-less}"
-alias g='egrep -i'
 alias history='fc -l'
-
-### --------------------------------
-### Navigation
-### --------------------------------
-alias ~='cd ~'
-alias ..='cd ..'
-alias ...='cd ../..'
-alias ....='cd ../../..'
-alias -- -='cd -'
-
-### --------------------------------
-### Directory Listing
-### --------------------------------
-alias ls='ls -G'
-alias ll='ls -laFoG'
-alias l='ls -lG'
 
 ### --------------------------------
 ### Key Bindings

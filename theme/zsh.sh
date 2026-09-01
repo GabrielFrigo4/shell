@@ -73,12 +73,20 @@ setopt COMPLETE_IN_WORD
 			if [[ -n "${_branch}" ]]; then
 				local _indicator=""
 				[[ -n "$(command git status --short -uno 2> "/dev/null" | command tail -n1)" ]] && _indicator="%B%F{11}*"
-				echo "❮%B%F{9}󰊢 %B%F{13}${_branch}${_indicator}%b%F{3}❯"
+				if _is_raw_tty; then
+					echo " %B%F{12}(%B%F{9}${_branch}${_indicator}%B%F{12})%f%b "
+				else
+					echo "❮%B%F{9}󰊢 %B%F{13}${_branch}${_indicator}%b%F{3}❯"
+				fi
 			fi
 		elif [[ -d ".got" ]] && command -v got > "/dev/null" 2>&1; then
 			local _branch="$(command got branch 2> "/dev/null" || command got info 2> "/dev/null" | command awk '/work tree branch:/ {print $NF}')"
 			if [[ -n "${_branch}" ]]; then
-				echo "❮%B%F{9}󰊢 %B%F{13}${_branch}%b%F{3}❯"
+				if _is_raw_tty; then
+					echo " %B%F{12}(%B%F{13}${_branch}%B%F{12})%f%b "
+				else
+					echo "❮%B%F{9}󰊢 %B%F{13}${_branch}%b%F{3}❯"
+				fi
 			fi
 		fi
 	}
@@ -114,8 +122,12 @@ setopt COMPLETE_IN_WORD
 		*)    _os_color="$B" ;;
 	esac
 
-	export PROMPT="
+	if _is_raw_tty; then
+		export PROMPT="${u}%n${B}@${M}%m${K}:${K}[${Y}%c${K}]${z}\$(_git_branch)${C}%#${z} "
+	else
+		export PROMPT="
 ${y}${_os_color}${_os_icon}${M}${_os_name}${y}─${B} ${M}${_sh_name}${y}
 ${y}┌──❮ ${G} %*${y} ❯─❮ ${G} %D{%d/%m/%y}${y} ❯─❮ ${Y} ${C}%c${y} ❯─ ❮${B} ${u}%n${y}❯ \$(_git_branch)
 ${y}└─${B}${z} "
+	fi
 }

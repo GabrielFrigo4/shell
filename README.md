@@ -155,7 +155,6 @@ O projeto adota uma convenção estrita de nomenclatura para garantir máxima cl
 - 🌐 **`kebab-case` (ou termo único) = Comandos Públicos:** Utilitários e atalhos desenhados para você usar interativamente no terminal.
 - 🔒 **`_snake_case` (prefixo `_`) = Helpers Privados:** Funções internas de bootstrapping e infraestrutura que não poluem o autocompletion.
 
-
 ### 1. ⚙️ Shell, Ambiente & Vault (Universais)
 
 | Comando / Alias | Descrição | Compatibilidade |
@@ -166,7 +165,6 @@ O projeto adota uma convenção estrita de nomenclatura para garantir máxima cl
 | `path-front <dir>` | Insere um diretório no início do `$PATH` (prioridade máxima). | Universal |
 | `path-back <dir>` | Insere um diretório no fim do `$PATH` (prioridade mínima). | Universal |
 | `path-dedup` | Remove diretórios duplicados do `$PATH` preservando a ordem. | Universal |
-
 
 ### 2. 📝 Editores de Texto & Terminal
 
@@ -239,7 +237,20 @@ flowchart TD
 | `mount-device`<br/>`mntdev` / `mdev` | Mapeia celular em `~/Device` em 4 estágios inteligentes. | GNOME/XFCE MTP (`GVfs`), GSConnect, KDE Dolphin (`KIO-MTP`), KDE Connect (`KIO-FUSE`), ADB (`adbfs`) |
 | `umount-device`<br/>`umntdev` / `umdev` / `udev` | Desmonta `~/Device`, fecha túneis e remove o diretório com segurança. | `fusermount3`, `fusermount`, `umount`, KDE Connect CLI |
 
-### 7. 🖥️ Contextos Especiais & Integrações
+### 7. ⚡ Utilitários Modernos, Atalhos & Navegação
+
+| Comando / Alias | Descrição | Ferramenta Alvo & Fallback |
+| :--- | :--- | :--- |
+| `l` | Listagem enxuta com ícones e agrupamento de diretórios. | `eza` > `exa` > `ls` (usa `ls` nativo em TTY bruto) |
+| `ll` | Listagem detalhada com metadados, permissões e status Git. | `eza -la --git` > `exa -la --git` > `ls -laF` |
+| `la` | Listagem incluindo arquivos ocultos. | `eza -a` > `exa -a` > `ls -a` |
+| `lt` | Exibição da árvore de diretórios (*tree view*). | `eza --tree` > `exa --tree` > `tree` |
+| `g <termo>` | Busca rápida em arquivos. | `rg --smart-case` > `grep -Ei` |
+| `c <arquivo>` / `b` | Visualização formatada com destaque de sintaxe. | `bat --paging=never` > `cat` (usa `cat` em TTY bruto) |
+| `f <nome>` / `ff` | Busca rápida de arquivos e diretórios. | `fd` / `fd --hidden --no-ignore` > `find` |
+| `~`, `/`, `..`, `...`, `....`, `-- -` | Atalhos rápidos de navegação no sistema de arquivos. | `cd ~`, `cd /`, `cd ..`, `cd ../..`, `cd ../../..`, `cd -` |
+
+### 8. 🖥️ Contextos Especiais & Integrações
 
 | Contexto / Target | Comando / Alias | Descrição |
 | :--- | :--- | :--- |
@@ -247,8 +258,7 @@ flowchart TD
 | **Desktop (Linux/BSD)** | `xorg` | Inicia sessão X11 clássica (`startx`). |
 | **Servidores** | `frigo-server` / `orbs-server` | Conexão SSH autenticada via chaves privadas do Vault. |
 | **WSL (Linux no Windows)** | `explorer`, `powershell`, `pwsh`, `cmd`, `clip` | Atalhos diretos para utilitários do Windows nativo a partir do WSL. |
-| **Linux (`sh` / `dash`)** | `h` / `history`, `j`, `m`, `g`, `~`, `/`, `..`, `...`, `....`, `-- -`, `ls`, `ll`, `l` | Atalhos rápidos de navegação, paginação, listagem colorida e histórico. |
-| **FreeBSD (`sh` / `dash`)** | `h` / `history`, `j`, `m`, `g`, `~`, `/`, `..`, `...`, `....`, `-- -`, `ls`, `ll`, `l` | Atalhos rápidos de navegação, paginação, listagem e histórico. |
+| **POSIX Shell (`sh` / `dash`)** | `h` / `history`, `j`, `m` | Atalhos rápidos de histórico (`fc -l`), jobs e paginação (`${PAGER}`). |
 
 ## 🔐 Integração com Vault (Segredos Seguros)
 
@@ -298,7 +308,7 @@ flowchart TD
   - 🌐 **`server/`**: Perfil extremamente enxuto, ágil e focado em estabilidade para servidores remotos e produção.
   - 📦 **`container/`**: Perfil rigorosamente otimizado para microambientes (`LXC`/`Incus` no Linux ou `Jails`/`Bastille` no FreeBSD).
   - 🧩 **`wsl/`**: Ambiente híbrido que integra o Linux do WSL2 diretamente com as ferramentas nativas do Windows (`explorer.exe`, `powershell.exe`, `cmd.exe`, `win32yank.exe`).
-- 🖌️ **`theme/`**: A camada de identidade visual. Unifica o prompt, paleta de cores ANSI/Zstyle, ícones Nerd Fonts e branch Git/Got em todos os terminais.
+- 🖌️ **`theme/`**: A camada de identidade visual. Unifica o prompt, paleta de cores ANSI/Zstyle, ícones Nerd Fonts e branch Git/Got em todos os terminais, com adaptação dinâmica para modo TTY bruto (compatível 1:1 com o tema clássico do `sh`).
 
 ---
 
