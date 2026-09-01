@@ -42,7 +42,7 @@ _update_prompt() {
 	[ "${PWD}" = "${HOME}" ] && _cur_dir="~"
 	[ "${PWD}" = "/" ] && _cur_dir="/"
 
-	export PS1="${_u}${_cur_user}${B}@${M}${_cur_host}${K}:${K}[${Y}${_cur_dir}${K}]${z}${_git_branch}${C}\$${z} "
+	export PS1="${_u}${_cur_user}${B}@${M}${_cur_host} ${B}(${C}sh${B})${K}:${K}[${Y}${_cur_dir}${K}]${z}${_git_branch}${C}\$${z} "
 }
 
 alias :="_update_prompt; command :"

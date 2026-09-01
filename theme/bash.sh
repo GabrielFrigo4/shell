@@ -71,7 +71,7 @@ _update_prompt() {
 	if _is_raw_tty; then
 		local _git_info="$(_git_branch)"
 		[ -n "${_git_info}" ] && _git_info="${_git_info} "
-		PS1="${_usr_color}\u${C_BRT_BLUE}@${C_BRT_MAGENTA}\h${C_BRT_GRAY}:${C_BRT_GRAY}[${C_BRT_YELLOW}\W${C_BRT_GRAY}]${C_RESET}${_git_info}${C_BRT_CYAN}\$${C_RESET} "
+		PS1="${_usr_color}\u${C_BRT_BLUE}@${C_BRT_MAGENTA}\h ${C_BRT_BLUE}(${C_BRT_CYAN}bash${C_BRT_BLUE})${C_BRT_GRAY}:${C_BRT_GRAY}[${C_BRT_YELLOW}\W${C_BRT_GRAY}]${C_RESET}${_git_info}${C_BRT_CYAN}\$${C_RESET} "
 	else
 		PS1="\n${C_NORM_YELLOW}${_os_color}${_os_icon}${C_BRT_MAGENTA}${_os_name}${C_NORM_YELLOW}─${C_BRT_BLUE} ${C_BRT_MAGENTA}${_sh_name}${C_NORM_YELLOW}"
 		PS1+="\n${C_NORM_YELLOW}┌──❮ ${C_BRT_GREEN} \t${C_NORM_YELLOW} ❯─❮ ${C_BRT_GREEN} \D{%d/%m/%y}${C_NORM_YELLOW} ❯─❮ ${C_BRT_YELLOW} ${C_BRT_CYAN}\W${C_NORM_YELLOW} ❯─ ❮${C_BRT_BLUE} ${_usr_color}\u${C_NORM_YELLOW}❯ $(_git_branch)"

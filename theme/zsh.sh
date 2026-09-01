@@ -123,7 +123,7 @@ setopt COMPLETE_IN_WORD
 	esac
 
 	if _is_raw_tty; then
-		export PROMPT="${u}%n${B}@${M}%m${K}:${K}[${Y}%c${K}]${z}\$(_git_branch)${C}%#${z} "
+		export PROMPT="${u}%n${B}@${M}%m ${B}(${C}zsh${B})${K}:${K}[${Y}%c${K}]${z}\$(_git_branch)${C}%#${z} "
 	else
 		export PROMPT="
 ${y}${_os_color}${_os_icon}${M}${_os_name}${y}─${B} ${M}${_sh_name}${y}
