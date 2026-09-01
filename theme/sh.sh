@@ -9,7 +9,7 @@ _git_branch() {
 		if [ -n "${_branch}" ]; then
 			local _is_dirty="$(command git status --short -uno 2> "/dev/null" | command tail -n1)"
 			local _indicator=""
-			[ -n "${_is_dirty}" ] && _indicator="*"
+			[ -n "${_is_dirty}" ] && _indicator="\[\e[1;93m\]*"
 			_git_branch=" \[\e[1;94m\](\[\e[1;91m\]${_branch}${_indicator}\[\e[1;94m\])\[\e[0m\]"
 		fi
 	elif [ -d ".got" ] && command -v got > "/dev/null" 2>&1; then
@@ -31,7 +31,7 @@ _update_prompt() {
 	local _git_branch
 	_git_branch
 
-	export PS1="${_u}\u\[\e[1;94m\]@\[\e[1;95m\]\h \[\e[1;94m\](\[\e[1;96m\]sh\[\e[1;94m\])\[\e[1;90m\]:[\[\e[1;93m\]\W\[\e[1;90m\]]\[\e[0m\]${_git_branch} \[\e[1;96m\]\$ \[\e[0m\]"
+	export PS1="${_u}\u\[\e[1;94m\]@\[\e[1;95m\]\h \[\e[1;94m\](\[\e[1;96m\]sh\[\e[1;94m\])\[\e[1;90m\]:[\[\e[1;93m\]\W\[\e[1;90m\]]\[\e[0m\]${_git_branch} \[\e[1;96m\]\$\[\e[0m\] "
 }
 
 ### --------------------------------
