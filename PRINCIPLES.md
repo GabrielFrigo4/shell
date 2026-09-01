@@ -20,7 +20,7 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
   - `context/`: Especializações de acordo com a máquina (`desktop`, `server`, `container`, `wsl`).
   - `target/`: Especializações de acordo com o sistema operacional (`linux`, `freebsd`, `windows`).
   - `library/`: Funções utilitárias reutilizáveis.
-  - `theme/`: Renderização visual de prompts (Bash, Zsh).
+  - `theme/`: Renderização visual de prompts (Bash, Zsh, Sh).
 
 ### 2. Regra da Clareza (_Rule of Clarity_)
 

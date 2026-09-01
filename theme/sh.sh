@@ -1,5 +1,5 @@
 ### ================================
-### SHELL APPEARANCE
+### SHELL APPEARANCE (SH)
 ### ================================
 
 _git_branch() {
@@ -43,6 +43,34 @@ _update_prompt() {
 	[ "${PWD}" = "/" ] && _cur_dir="/"
 
 	export PS1="${_u}${_cur_user}${B}@${M}${_cur_host} ${B}(${C}sh${B})${K}:${K}[${Y}${_cur_dir}${K}]${z}${_git_branch}${C}\$${z} "
+}
+
+### --------------------------------
+### Precision Triggers
+### --------------------------------
+cd() {
+	if command -v builtin > "/dev/null" 2>&1; then
+		builtin cd "$@"
+	else
+		command cd "$@"
+	fi
+	local _ret=$?
+	_update_prompt
+	return ${_ret}
+}
+
+git() {
+	command git "$@"
+	local _ret=$?
+	_update_prompt
+	return ${_ret}
+}
+
+got() {
+	command got "$@"
+	local _ret=$?
+	_update_prompt
+	return ${_ret}
 }
 
 alias :="_update_prompt; command :"
