@@ -39,30 +39,20 @@ _update_prompt() {
 ### --------------------------------
 ### Precision Triggers
 ### --------------------------------
-cd() {
-	if command -v builtin > "/dev/null" 2>&1; then
-		builtin cd "$@"
-	else
-		command cd "$@"
-	fi
-	local _ret=$?
-	_update_prompt
-	return ${_ret}
+_create_trigger() {
+	for _cmd in "$@"; do
+		eval "
+		${_cmd}() {
+			command ${_cmd} \"\$@\"
+			local _ret=\$?
+			_update_prompt
+			return \${_ret}
+		}
+		"
+	done
 }
 
-git() {
-	command git "$@"
-	local _ret=$?
-	_update_prompt
-	return ${_ret}
-}
-
-got() {
-	command got "$@"
-	local _ret=$?
-	_update_prompt
-	return ${_ret}
-}
+_create_trigger cd git got
 
 alias :="_update_prompt; command :"
 _update_prompt
