@@ -55,7 +55,7 @@ _update_prompt() {
 	_sh_name="${_sh_name%.exe}"
 
 	local _os_color
-	case "$PROMPT_OS_COLOR" in
+	case "${PROMPT_OS_COLOR}" in
 		red)  _os_color="${C_BRT_RED}" ;;
 		blue) _os_color="${C_BRT_BLUE}" ;;
 		*)    _os_color="${C_BRT_BLUE}" ;;

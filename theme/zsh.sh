@@ -113,13 +113,13 @@ setopt COMPLETE_IN_WORD
 
 	local _os_icon="${PROMPT_OS_ICON}"
 	local _os_name="${PROMPT_OS_NAME}"
-	local _sh_name="$ZSH_NAME"
+	local _sh_name="${ZSH_NAME}"
 
 	local _os_color
-	case "$PROMPT_OS_COLOR" in
-		red)  _os_color="$R" ;;
-		blue) _os_color="$B" ;;
-		*)    _os_color="$B" ;;
+	case "${PROMPT_OS_COLOR}" in
+		red)  _os_color="${R}" ;;
+		blue) _os_color="${B}" ;;
+		*)    _os_color="${B}" ;;
 	esac
 
 	if _is_raw_tty; then
