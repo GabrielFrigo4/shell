@@ -152,50 +152,51 @@ Reinicie o shell ou recarregue o arquivo `RC` manualmente:
 ## 🗺️ Mapa de Comandos Públicos & Atalhos
 
 O projeto adota uma convenção estrita de nomenclatura para garantir máxima clareza e manter o seu autocompletion limpo:
+
 - 🌐 **`kebab-case` (ou termo único) = Comandos Públicos:** Utilitários e atalhos desenhados para você usar interativamente no terminal.
 - 🔒 **`_snake_case` (prefixo `_`) = Helpers Privados:** Funções internas de bootstrapping e infraestrutura que não poluem o autocompletion.
 
 ### 1. ⚙️ Shell, Ambiente & Vault (Universais)
 
-| Comando / Alias | Descrição | Compatibilidade |
-| :--- | :--- | :--- |
-| `upsh` | Sincroniza o repositório local do shell (`git pull`) e recarrega a sessão. | Universal |
-| `resh` | Reexecuta o instalador `install.sh` preservando o contexto ativo (`desktop`, `server`, etc.). | Universal |
-| `upvt` | Sincroniza o repositório do cofre (`~/.vault`) e recarrega chaves e variáveis. | Linux, FreeBSD, macOS |
-| `path-front <dir>` | Insere um diretório no início do `$PATH` (prioridade máxima). | Universal |
-| `path-back <dir>` | Insere um diretório no fim do `$PATH` (prioridade mínima). | Universal |
-| `path-dedup` | Remove diretórios duplicados do `$PATH` preservando a ordem. | Universal |
+| Comando / Alias    | Descrição                                                                                     | Compatibilidade       |
+| :----------------- | :-------------------------------------------------------------------------------------------- | :-------------------- |
+| `upsh`             | Sincroniza o repositório local do shell (`git pull`) e recarrega a sessão.                    | Universal             |
+| `resh`             | Reexecuta o instalador `install.sh` preservando o contexto ativo (`desktop`, `server`, etc.). | Universal             |
+| `upvt`             | Sincroniza o repositório do cofre (`~/.vault`) e recarrega chaves e variáveis.                | Linux, FreeBSD, macOS |
+| `path-front <dir>` | Insere um diretório no início do `$PATH` (prioridade máxima).                                 | Universal             |
+| `path-back <dir>`  | Insere um diretório no fim do `$PATH` (prioridade mínima).                                    | Universal             |
+| `path-dedup`       | Remove diretórios duplicados do `$PATH` preservando a ordem.                                  | Universal             |
 
 ### 2. 📝 Editores de Texto & Terminal
 
-| Comando / Alias | Descrição | Editor Alvo |
-| :--- | :--- | :--- |
-| `editor [alvo]` / `e [alvo]` | Abre o editor padrão configurado. Se chamado sem argumentos, abre `.`. | `$VISUAL` / `$EDITOR` (com cascata Neovim > Helix > Micro > Kakoune > Nano > EE > MG > Vim > MC > VI) |
-| `on` | Abre o Neovim no diretório atual. | `nvim .` |
-| `ov` | Abre o Vim no diretório atual. | `vim .` |
-| `oh` | Abre o Helix no diretório atual. | `hx .` |
-| `om` | Abre o Micro no diretório atual. | `micro .` |
-| `oc` / `ocm` | Abre o VS Code ou VSCodium no diretório atual. | `code .` / `codium .` |
-| `oa` / `ant` | Abre ou executa o Antigravity IDE. | `antigravity-ide .` |
-| `oz` / `ok` / `og` | Abre Zed, Kate ou Geany no diretório atual. | `zed .` / `kate .` / `geany .` |
-| `es` / `ek` / `er` / `ec` / `oe` | Controle do daemon Emacs (start, kill, restart, client, open). | Emacs Daemon & Client |
+| Comando / Alias                  | Descrição                                                              | Editor Alvo                                                                                           |
+| :------------------------------- | :--------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------- |
+| `editor [alvo]` / `e [alvo]`     | Abre o editor padrão configurado. Se chamado sem argumentos, abre `.`. | `$VISUAL` / `$EDITOR` (com cascata Neovim > Helix > Micro > Kakoune > Nano > EE > MG > Vim > MC > VI) |
+| `on`                             | Abre o Neovim no diretório atual.                                      | `nvim .`                                                                                              |
+| `ov`                             | Abre o Vim no diretório atual.                                         | `vim .`                                                                                               |
+| `oh`                             | Abre o Helix no diretório atual.                                       | `hx .`                                                                                                |
+| `om`                             | Abre o Micro no diretório atual.                                       | `micro .`                                                                                             |
+| `oc` / `ocm`                     | Abre o VS Code ou VSCodium no diretório atual.                         | `code .` / `codium .`                                                                                 |
+| `oa` / `ant`                     | Abre ou executa o Antigravity IDE.                                     | `antigravity-ide .`                                                                                   |
+| `oz` / `ok` / `og`               | Abre Zed, Kate ou Geany no diretório atual.                            | `zed .` / `kate .` / `geany .`                                                                        |
+| `es` / `ek` / `er` / `ec` / `oe` | Controle do daemon Emacs (start, kill, restart, client, open).         | Emacs Daemon & Client                                                                                 |
 
 ### 3. 📦 Atualização de Pacotes & Sistema Operacional
 
-| Comando | Descrição | Escopo / Gerenciador |
-| :--- | :--- | :--- |
-| `upall` | **Orquestrador Global:** Atualiza o sistema base + AUR + Flatpak + Snap. | Universal |
-| `upsys` | Atualiza os pacotes do sistema base detectando a distribuição nativa. | Universal |
-| `upaur` / `upyay` / `upparu` | Atualiza pacotes do Arch User Repository (prioriza `paru > yay`). | Arch Linux |
-| `upman` | Atualiza pacotes via Pacman. | Arch Linux / Windows (MSYS2) |
-| `upapt` | Atualiza repositórios e pacotes via APT. | Debian, Ubuntu, Mint, Pop!_OS |
-| `updnf` | Atualiza pacotes via DNF. | Fedora, RHEL, Rocky, Alma |
-| `upzyp` | Atualiza pacotes via Zypper. | openSUSE, SLES |
-| `upxbps` | Atualiza pacotes via XBPS. | Void Linux |
-| `upapk` | Atualiza pacotes via APK. | Alpine Linux |
-| `uppkg` | Atualiza pacotes via PKG. | FreeBSD |
-| `upflat` | Atualiza todos os Flatpaks instalados. | Linux |
-| `upsnap` | Atualiza todos os Snaps instalados. | Linux |
+| Comando                      | Descrição                                                                | Escopo / Gerenciador           |
+| :--------------------------- | :----------------------------------------------------------------------- | :----------------------------- |
+| `upall`                      | **Orquestrador Global:** Atualiza o sistema base + AUR + Flatpak + Snap. | Universal                      |
+| `upsys`                      | Atualiza os pacotes do sistema base detectando a distribuição nativa.    | Universal                      |
+| `upaur` / `upyay` / `upparu` | Atualiza pacotes do Arch User Repository (prioriza `paru > yay`).        | Arch Linux                     |
+| `upman`                      | Atualiza pacotes via Pacman.                                             | Arch Linux / Windows (MSYS2)   |
+| `upapt`                      | Atualiza repositórios e pacotes via APT.                                 | Debian, Ubuntu, Mint, Pop!\_OS |
+| `updnf`                      | Atualiza pacotes via DNF.                                                | Fedora, RHEL, Rocky, Alma      |
+| `upzyp`                      | Atualiza pacotes via Zypper.                                             | openSUSE, SLES                 |
+| `upxbps`                     | Atualiza pacotes via XBPS.                                               | Void Linux                     |
+| `upapk`                      | Atualiza pacotes via APK.                                                | Alpine Linux                   |
+| `uppkg`                      | Atualiza pacotes via PKG.                                                | FreeBSD                        |
+| `upflat`                     | Atualiza todos os Flatpaks instalados.                                   | Linux                          |
+| `upsnap`                     | Atualiza todos os Snaps instalados.                                      | Linux                          |
 
 ```mermaid
 flowchart TD
@@ -218,47 +219,47 @@ flowchart TD
 
 ### 4. 🌐 Rede & Wi-Fi
 
-| Comando | Descrição | Backend Nativo |
-| :--- | :--- | :--- |
-| `upwf` | Sincroniza credenciais de Wi-Fi (`WIFI_SSID_*` / `WIFI_PASS_*`) com o SO. | Linux (`nmcli`), FreeBSD (`wpa_supplicant`/`wifibox`), Windows (`netsh`) |
-| `upnet` | Orquestrador de rede (executa `upwf` e valida conectividade). | Universal |
+| Comando | Descrição                                                                 | Backend Nativo                                                           |
+| :------ | :------------------------------------------------------------------------ | :----------------------------------------------------------------------- |
+| `upwf`  | Sincroniza credenciais de Wi-Fi (`WIFI_SSID_*` / `WIFI_PASS_*`) com o SO. | Linux (`nmcli`), FreeBSD (`wpa_supplicant`/`wifibox`), Windows (`netsh`) |
+| `upnet` | Orquestrador de rede (executa `upwf` e valida conectividade).             | Universal                                                                |
 
 ### 5. ⚡ Controle de Energia
 
-| Comando | Descrição | Ação Nativa |
-| :--- | :--- | :--- |
-| `poweroff` | Desliga o computador com segurança via `_as_root`. | Linux (`shutdown -h now`), FreeBSD (`shutdown -p now`), Windows (`shutdown.exe /s /t 0`) |
-| `reboot` | Reinicia o computador com segurança via `_as_root`. | Linux/FreeBSD (`shutdown -r now`), Windows (`shutdown.exe /r /t 0`) |
+| Comando    | Descrição                                           | Ação Nativa                                                                              |
+| :--------- | :-------------------------------------------------- | :--------------------------------------------------------------------------------------- |
+| `poweroff` | Desliga o computador com segurança via `_as_root`.  | Linux (`shutdown -h now`), FreeBSD (`shutdown -p now`), Windows (`shutdown.exe /s /t 0`) |
+| `reboot`   | Reinicia o computador com segurança via `_as_root`. | Linux/FreeBSD (`shutdown -r now`), Windows (`shutdown.exe /r /t 0`)                      |
 
-### 6. 📱 Gestão de Dispositivos Móveis *(Contexto Desktop)*
+### 6. 📱 Gestão de Dispositivos Móveis _(Contexto Desktop)_
 
-| Comando / Alias | Descrição | Tecnologias Suportadas |
-| :--- | :--- | :--- |
-| `mount-device`<br/>`mntdev` / `mdev` | Mapeia celular em `~/Device` em 4 estágios inteligentes. | GNOME/XFCE MTP (`GVfs`), GSConnect, KDE Dolphin (`KIO-MTP`), KDE Connect (`KIO-FUSE`), ADB (`adbfs`) |
-| `umount-device`<br/>`umntdev` / `umdev` / `udev` | Desmonta `~/Device`, fecha túneis e remove o diretório com segurança. | `fusermount3`, `fusermount`, `umount`, KDE Connect CLI |
+| Comando / Alias                                  | Descrição                                                             | Tecnologias Suportadas                                                                               |
+| :----------------------------------------------- | :-------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- |
+| `mount-device`<br/>`mntdev` / `mdev`             | Mapeia celular em `~/Device` em 4 estágios inteligentes.              | GNOME/XFCE MTP (`GVfs`), GSConnect, KDE Dolphin (`KIO-MTP`), KDE Connect (`KIO-FUSE`), ADB (`adbfs`) |
+| `umount-device`<br/>`umntdev` / `umdev` / `udev` | Desmonta `~/Device`, fecha túneis e remove o diretório com segurança. | `fusermount3`, `fusermount`, `umount`, KDE Connect CLI                                               |
 
 ### 7. ⚡ Utilitários Modernos, Atalhos & Navegação
 
-| Comando / Alias | Descrição | Ferramenta Alvo & Fallback |
-| :--- | :--- | :--- |
-| `l` | Listagem enxuta com ícones e agrupamento de diretórios. | `eza` > `exa` > `ls` (usa `ls` nativo em TTY bruto) |
-| `ll` | Listagem detalhada com metadados, permissões e status Git. | `eza -la --git` > `exa -la --git` > `ls -laF` |
-| `la` | Listagem incluindo arquivos ocultos. | `eza -a` > `exa -a` > `ls -a` |
-| `lt` | Exibição da árvore de diretórios (*tree view*). | `eza --tree` > `exa --tree` > `tree` |
-| `g <termo>` | Busca rápida em arquivos. | `rg --smart-case` > `grep -Ei` |
-| `c <arquivo>` / `b` | Visualização formatada com destaque de sintaxe. | `bat --paging=never` > `cat` (usa `cat` em TTY bruto) |
-| `f <nome>` / `ff` | Busca rápida de arquivos e diretórios. | `fd` / `fd --hidden --no-ignore` > `find` |
-| `~`, `/`, `..`, `...`, `....`, `-- -` | Atalhos rápidos de navegação no sistema de arquivos. | `cd ~`, `cd /`, `cd ..`, `cd ../..`, `cd ../../..`, `cd -` |
+| Comando / Alias                       | Descrição                                                  | Ferramenta Alvo & Fallback                                 |
+| :------------------------------------ | :--------------------------------------------------------- | :--------------------------------------------------------- |
+| `l`                                   | Listagem enxuta com ícones e agrupamento de diretórios.    | `eza` > `exa` > `ls` (usa `ls` nativo em TTY bruto)        |
+| `ll`                                  | Listagem detalhada com metadados, permissões e status Git. | `eza -la --git` > `exa -la --git` > `ls -laF`              |
+| `la`                                  | Listagem incluindo arquivos ocultos.                       | `eza -a` > `exa -a` > `ls -a`                              |
+| `lt`                                  | Exibição da árvore de diretórios (_tree view_).            | `eza --tree` > `exa --tree` > `tree`                       |
+| `g <termo>`                           | Busca rápida em arquivos.                                  | `rg --smart-case` > `grep -Ei`                             |
+| `c <arquivo>` / `b`                   | Visualização formatada com destaque de sintaxe.            | `bat --paging=never` > `cat` (usa `cat` em TTY bruto)      |
+| `f <nome>` / `ff`                     | Busca rápida de arquivos e diretórios.                     | `fd` / `fd --hidden --no-ignore` > `find`                  |
+| `~`, `/`, `..`, `...`, `....`, `-- -` | Atalhos rápidos de navegação no sistema de arquivos.       | `cd ~`, `cd /`, `cd ..`, `cd ../..`, `cd ../../..`, `cd -` |
 
 ### 8. 🖥️ Contextos Especiais & Integrações
 
-| Contexto / Target | Comando / Alias | Descrição |
-| :--- | :--- | :--- |
-| **Desktop (Linux/BSD)** | `way` | Inicia sessão Wayland (`startplasma-wayland`). |
-| **Desktop (Linux/BSD)** | `xorg` | Inicia sessão X11 clássica (`startx`). |
-| **Servidores** | `frigo-server` / `orbs-server` | Conexão SSH autenticada via chaves privadas do Vault. |
-| **WSL (Linux no Windows)** | `explorer`, `powershell`, `pwsh`, `cmd`, `clip` | Atalhos diretos para utilitários do Windows nativo a partir do WSL. |
-| **POSIX Shell (`sh` / `dash`)** | `h` / `history`, `j`, `m` | Atalhos rápidos de histórico (`fc -l`), jobs e paginação (`${PAGER}`). |
+| Contexto / Target               | Comando / Alias                                 | Descrição                                                              |
+| :------------------------------ | :---------------------------------------------- | :--------------------------------------------------------------------- |
+| **Desktop (Linux/BSD)**         | `way`                                           | Inicia sessão Wayland (`startplasma-wayland`).                         |
+| **Desktop (Linux/BSD)**         | `xorg`                                          | Inicia sessão X11 clássica (`startx`).                                 |
+| **Servidores**                  | `frigo-server` / `orbs-server`                  | Conexão SSH autenticada via chaves privadas do Vault.                  |
+| **WSL (Linux no Windows)**      | `explorer`, `powershell`, `pwsh`, `cmd`, `clip` | Atalhos diretos para utilitários do Windows nativo a partir do WSL.    |
+| **POSIX Shell (`sh` / `dash`)** | `h` / `history`, `j`, `m`                       | Atalhos rápidos de histórico (`fc -l`), jobs e paginação (`${PAGER}`). |
 
 ## 🔐 Integração com Vault (Segredos Seguros)
 
@@ -318,6 +319,6 @@ Para preservar a performance interativa e estabilidade em todos os sistemas oper
 
 1. **Shebang Padrão Absoluto (`#!/usr/bin/env sh`):** Todo script de shell DEVE usar `#!/usr/bin/env sh`. Não use `#!/bin/sh` ou `#!/bin/bash` rígidos.
 2. **Permissões em 4 Dígitos Octais:** Utilize SEMPRE notação de 4 dígitos em comandos `chmod`: `chmod 0755` para diretórios e scripts executáveis; `chmod 0644` para arquivos de configuração e scripts sourced (`.sh`).
-3. **Regra do Silêncio (*Rule of Silence*):** Ao iniciar uma nova sessão ou conexão SSH, o terminal NÃO deve imprimir saídas de texto ou banners. O prompt deve aparecer em menos de 50 milissegundos.
+3. **Regra do Silêncio (_Rule of Silence_):** Ao iniciar uma nova sessão ou conexão SSH, o terminal NÃO deve imprimir saídas de texto ou banners. O prompt deve aparecer em menos de 50 milissegundos.
 4. **Portabilidade POSIX:** Scripts compartilhados em `library/` e `core/` devem rodar no `/bin/sh` do FreeBSD sem depender de bashisms (sem `[[`, sem arrays bash, com aspas em todas as variáveis).
 5. **Zero Segredos:** Nenhuma credencial ou token pode residir neste repositório; toda integração confidencial é delegada ao `Vault`.
