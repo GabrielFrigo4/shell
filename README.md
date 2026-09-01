@@ -143,6 +143,8 @@ Reinicie o shell ou recarregue o arquivo `RC` manualmente:
 . ~/.zshrc
 # ou
 . ~/.shrc
+# ou
+. ~/.dashrc
 ```
 
 > 💡 **Nota Importante:** O script detecta automaticamente o seu OS, distribuição 🐧 `Linux` e qual 🐚 `Shell` está rodando, e injeta as linhas de `source` no arquivo RC correto de forma inteligente — tanto para o seu usuário atual como para o `root`.
@@ -245,8 +247,8 @@ flowchart TD
 | **Desktop (Linux/BSD)** | `xorg` | Inicia sessão X11 clássica (`startx`). |
 | **Servidores** | `frigo-server` / `orbs-server` | Conexão SSH autenticada via chaves privadas do Vault. |
 | **WSL (Linux no Windows)** | `explorer`, `powershell`, `pwsh`, `cmd`, `clip` | Atalhos diretos para utilitários do Windows nativo a partir do WSL. |
-| **Linux (`sh`)** | `h` / `history`, `j`, `m`, `g`, `~`, `/`, `..`, `...`, `....`, `-- -`, `ls`, `ll`, `l` | Atalhos rápidos de navegação, paginação, listagem colorida e histórico. |
-| **FreeBSD (`sh`)** | `h` / `history`, `j`, `m`, `g`, `~`, `/`, `..`, `...`, `....`, `-- -`, `ls`, `ll`, `l` | Atalhos rápidos de navegação, paginação, listagem e histórico. |
+| **Linux (`sh` / `dash`)** | `h` / `history`, `j`, `m`, `g`, `~`, `/`, `..`, `...`, `....`, `-- -`, `ls`, `ll`, `l` | Atalhos rápidos de navegação, paginação, listagem colorida e histórico. |
+| **FreeBSD (`sh` / `dash`)** | `h` / `history`, `j`, `m`, `g`, `~`, `/`, `..`, `...`, `....`, `-- -`, `ls`, `ll`, `l` | Atalhos rápidos de navegação, paginação, listagem e histórico. |
 
 ## 🔐 Integração com Vault (Segredos Seguros)
 
