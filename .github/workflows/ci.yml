@@ -23,31 +23,34 @@ jobs:
       - name: Install Shell Interpreters
         run: |
           sudo apt-get update
-          sudo apt-get install -y zsh dash
+          sudo apt-get install -y zsh
 
       - name: Whitespace & Formatting Check (git diff --check)
         run: |
-          echo "Checking formatting and trailing whitespace..."
+          ### --------------------------------
+          ### Whitespace & Formatting
+          ### --------------------------------
           git diff --check HEAD~1..HEAD 2> "/dev/null" || git diff --check
-
-      - name: POSIX Shell Syntax Check (sh -n)
-        run: |
-          echo "Validating POSIX sh syntax..."
-          find . -name "*.sh" -not -path "./.git/*" -exec sh -n {} +
 
       - name: Bash Syntax Check (bash -n)
         run: |
-          echo "Validating Bash syntax..."
-          find . -name "*.sh" -not -path "./.git/*" -exec bash -n {} +
+          ### --------------------------------
+          ### Bash & Shared Shell Syntax
+          ### --------------------------------
+          find . -name "*.sh" -not -path "./.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec bash -n {} +
 
       - name: Zsh Syntax Check (zsh -n)
         run: |
-          echo "Validating Zsh syntax..."
-          find . -name "*.sh" -not -path "./.git/*" -exec zsh -n {} +
+          ### --------------------------------
+          ### Zsh Syntax
+          ### --------------------------------
+          find . -name "*.sh" -not -path "./.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +
 
       - name: Quoted Redirects Rule (> "/dev/null")
         run: |
-          echo "Enforcing quoted redirects rule..."
+          ### --------------------------------
+          ### Quoting & Security Rules
+          ### --------------------------------
           UNQUOTED=$(grep -rn '> /dev/null' --include="*.sh" . | grep -v '> "/dev/null"' || true)
           if [ -n "${UNQUOTED}" ]; then
             echo "❌ Unquoted redirect '> /dev/null' found in:"
@@ -71,6 +74,9 @@ jobs:
 
       - name: Test OS Detection
         run: |
+          ### --------------------------------
+          ### Linux OS Detection
+          ### --------------------------------
           . ./library/detect.sh
           OS=$(_detect_os)
           echo "Detected OS: ${OS}"
@@ -78,6 +84,9 @@ jobs:
 
       - name: Test Core Loading in Bash
         run: |
+          ### --------------------------------
+          ### Linux Bash Environment
+          ### --------------------------------
           bash -c '
             export SHELL_REPO_DIR="${PWD}"
             export SHELL_CONTEXT="desktop"
@@ -92,6 +101,9 @@ jobs:
 
       - name: Test Core Loading in Zsh
         run: |
+          ### --------------------------------
+          ### Linux Zsh Environment
+          ### --------------------------------
           zsh -c '
             export SHELL_REPO_DIR="${PWD}"
             export SHELL_CONTEXT="desktop"
@@ -105,6 +117,9 @@ jobs:
 
       - name: Measure Shell Startup Latency (< 50ms)
         run: |
+          ### --------------------------------
+          ### Startup Latency Benchmark
+          ### --------------------------------
           bash -c '
             START=$(date +%s%N)
             export SHELL_REPO_DIR="${PWD}"
@@ -132,20 +147,29 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Test on FreeBSD (Latest 15.x)
+      - name: Test on FreeBSD (Latest 15.x - sh, bash, zsh)
         uses: vmactions/freebsd-vm@v1
         with:
           release: "15"
           usesh: true
           run: |
-            echo "=== Running on FreeBSD Native VM ==="
+            ### ================================
+            ### FREEBSD ENVIRONMENT
+            ### ================================
             freebsd-version || uname -a
             . ./library/detect.sh
             OS=$(_detect_os)
             echo "Detected OS: ${OS}"
             [ "${OS}" = "freebsd" ] || { echo "Expected freebsd, got ${OS}"; exit 1; }
 
-            echo "Validating FreeBSD /bin/sh syntax..."
+            ### --------------------------------
+            ### Dependencies (Bash & Zsh)
+            ### --------------------------------
+            pkg install -y bash zsh
+
+            ### --------------------------------
+            ### 1. FreeBSD /bin/sh
+            ### --------------------------------
             sh -n library/functions.sh
             sh -n core/environment.sh
             sh -n target/freebsd/environment.sh
@@ -153,10 +177,49 @@ jobs:
             sh -n target/freebsd/sh/prompt.sh
             sh -n theme/sh.sh
 
-            echo "Testing clear alias and ANSI-C quoting in FreeBSD sh..."
-            . ./target/freebsd/environment.sh
-            alias clear
-            echo "FreeBSD tests completed successfully!"
+            sh -c '
+              export SHELL_REPO_DIR="${PWD}"
+              export SHELL_CONTEXT="desktop"
+              . ./library/detect.sh
+              . ./library/functions.sh
+              . ./core/environment.sh
+              . ./target/freebsd/environment.sh
+              . ./theme/sh.sh
+              _update_prompt
+              alias clear
+              echo "FreeBSD /bin/sh prompt: ${PS1}"
+            '
+
+            ### --------------------------------
+            ### 2. FreeBSD Bash
+            ### --------------------------------
+            bash -n theme/bash.sh
+            bash -c '
+              export SHELL_REPO_DIR="${PWD}"
+              export SHELL_CONTEXT="desktop"
+              . ./library/detect.sh
+              . ./library/functions.sh
+              . ./core/environment.sh
+              . ./target/freebsd/environment.sh
+              . ./theme/bash.sh
+              _update_prompt
+              echo "FreeBSD Bash prompt: ${PS1}"
+            '
+
+            ### --------------------------------
+            ### 3. FreeBSD Zsh
+            ### --------------------------------
+            zsh -n theme/zsh.sh
+            zsh -c '
+              export SHELL_REPO_DIR="${PWD}"
+              export SHELL_CONTEXT="desktop"
+              . ./library/detect.sh
+              . ./library/functions.sh
+              . ./core/environment.sh
+              . ./target/freebsd/environment.sh
+              . ./theme/zsh.sh
+              echo "FreeBSD Zsh prompt: ${PROMPT}"
+            '
 
   windows:
     name: 🪟 Windows (MSYS2) Matrix
@@ -173,18 +236,49 @@ jobs:
           update: true
           install: bash zsh
 
-      - name: Test in MSYS2 Shell
+      - name: Test in MSYS2 Shell (Bash & Zsh)
         shell: msys2 {0}
         run: |
+          ### ================================
+          ### MSYS2 ENVIRONMENT
+          ### ================================
           . ./library/detect.sh
           OS=$(_detect_os)
           echo "Detected OS: ${OS}"
           [ "${OS}" = "windows" ] || { echo "Expected windows, got ${OS}"; exit 1; }
 
-          echo "Validating Windows target prompts..."
+          ### --------------------------------
+          ### Windows Target Prompts
+          ### --------------------------------
           bash -n target/windows/bash/prompt.sh
           zsh -n target/windows/zsh/prompt.sh
-          echo "Windows MSYS2 tests completed successfully!"
+
+          ### --------------------------------
+          ### MSYS2 Bash
+          ### --------------------------------
+          bash -c '
+            export SHELL_REPO_DIR="${PWD}"
+            . ./library/detect.sh
+            . ./library/functions.sh
+            . ./core/environment.sh
+            . ./target/windows/environment.sh
+            . ./theme/bash.sh
+            _update_prompt
+            echo "Windows MSYS2 Bash OK"
+          '
+
+          ### --------------------------------
+          ### MSYS2 Zsh
+          ### --------------------------------
+          zsh -c '
+            export SHELL_REPO_DIR="${PWD}"
+            . ./library/detect.sh
+            . ./library/functions.sh
+            . ./core/environment.sh
+            . ./target/windows/environment.sh
+            . ./theme/zsh.sh
+            echo "Windows MSYS2 Zsh OK"
+          '
 
   macos:
     name: 🍎 macOS (Darwin) Matrix
@@ -194,13 +288,39 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Test Detection & Scripts
+      - name: Test Detection & Scripts in Zsh and Bash
         run: |
+          ### ================================
+          ### MACOS ENVIRONMENT
+          ### ================================
           . ./library/detect.sh
           OS=$(_detect_os)
           echo "Detected OS: ${OS}"
           [ "${OS}" = "macos" ] || { echo "Expected macos, got ${OS}"; exit 1; }
 
-          bash -n theme/bash.sh
+          ### --------------------------------
+          ### macOS Zsh
+          ### --------------------------------
           zsh -n theme/zsh.sh
-          echo "macOS tests completed successfully!"
+          zsh -c '
+            export SHELL_REPO_DIR="${PWD}"
+            . ./library/detect.sh
+            . ./library/functions.sh
+            . ./core/environment.sh
+            . ./theme/zsh.sh
+            echo "macOS Zsh OK"
+          '
+
+          ### --------------------------------
+          ### macOS Bash
+          ### --------------------------------
+          bash -n theme/bash.sh
+          bash -c '
+            export SHELL_REPO_DIR="${PWD}"
+            . ./library/detect.sh
+            . ./library/functions.sh
+            . ./core/environment.sh
+            . ./theme/bash.sh
+            _update_prompt
+            echo "macOS Bash OK"
+          '

@@ -51,6 +51,10 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
    - Variáveis globais de ambiente: `SNAKE_CASE` maiúsculo (`SHELL_REPO_DIR`, `SHELL_CONTEXT`).
    - Sem funções gêmeas: declare diretamente a função pública final.
 
+5. **Delimitadores de Largura Zero em Prompts (`\[...\]` e `\e`):**
+   - No FreeBSD `/bin/sh` (`libedit`) e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar estritamente contidos entre `\[` e `\]` (ex: `_c_red="\[\e[1;91m\]"`).
+   - Sem `\[...\]`, a `libedit` computa bytes ANSI como colunas físicas ocupadas, quebrando a contagem de quebra de linha e causando sobreposição de caracteres (`\r`) e cursor travado sobre o início do prompt.
+
 ---
 
 ## 3. Procedimento para Criar um Novo Comando / Editor
@@ -94,11 +98,16 @@ Ao concluir qualquer alteração em arquivos `.sh` ou `.md`, execute obrigatoria
 # 1. Verificar espaços residuais, tabs misturados e quebras de linha
 git diff --check
 
-# 2. Validar sintaxe em modo estrito POSIX
-find . -name "*.sh" -exec sh -n {} +
+# 2. Executar o pre-commit hook oficial
+./.githooks/pre-commit
 
-# 3. Validar sintaxe em modo Bash
-find . -name "*.sh" -exec bash -n {} +
+# 3. Validar sintaxe na Matriz Multi-Shell:
+# - Bash & Shared Shells:
+find . -name "*.sh" -not -path "./.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec bash -n {} +
+# - Zsh:
+find . -name "*.sh" -not -path "./.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +
+# - FreeBSD /bin/sh (executado no FreeBSD nativo ou no runner FreeBSD do CI):
+sh -n library/functions.sh && sh -n core/environment.sh && sh -n theme/sh.sh
 
 # 4. Validar permissões octais corretas
 find . -type d -exec chmod 0755 {} +

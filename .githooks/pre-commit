@@ -25,21 +25,23 @@ if ! git diff --check --cached; then
 fi
 
 ### --------------------------------
-### POSIX Shell Syntax Check
+### Bash & Shared Shell Syntax Check
 ### --------------------------------
-echo "  ↳ Validating POSIX sh syntax (sh -n)..."
-if ! find . -name "*.sh" -not -path "./.git/*" -exec sh -n {} +; then
-	echo "❌ [pre-commit] Syntax error detected by 'sh -n'!" >&2
+echo "  ↳ Validating Bash & Shared Shell syntax (bash -n)..."
+if ! find . -name "*.sh" -not -path "./.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec bash -n {} +; then
+	echo "❌ [pre-commit] Syntax error detected by 'bash -n'!" >&2
 	exit 1
 fi
 
 ### --------------------------------
-### Bash Syntax Check
+### Zsh Syntax Check
 ### --------------------------------
-echo "  ↳ Validating Bash syntax (bash -n)..."
-if ! find . -name "*.sh" -not -path "./.git/*" -exec bash -n {} +; then
-	echo "❌ [pre-commit] Syntax error detected by 'bash -n'!" >&2
-	exit 1
+if command -v zsh > "/dev/null" 2>&1; then
+	echo "  ↳ Validating Zsh syntax (zsh -n)..."
+	if ! find . -name "*.sh" -not -path "./.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +; then
+		echo "❌ [pre-commit] Syntax error detected by 'zsh -n'!" >&2
+		exit 1
+	fi
 fi
 
 ### --------------------------------

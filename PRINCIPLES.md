@@ -150,6 +150,8 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
 6. **Linha de Base FreeBSD `/bin/sh` & Adoção Universal de `$'\e...'` e `echo -n`:**
    - O **FreeBSD `/bin/sh`** é a régua máxima e a linha de base canônica de portabilidade para os scripts compartilhados do projeto. Não nivelamos o projeto por restrições arcaicas ou minimalismo desnecessário.
    - **Adoção Universal de ANSI-C Quoting (`$''`) e `echo -n`:** O padrão `echo -n $'\e...'` é suportado em todos os shells do nosso ecossistema — FreeBSD `/bin/sh`, Bash, Zsh e até pelo Dash moderno (além de padronizado no POSIX Issue 8). Ele é expressamente o padrão preferido para sequências de controle de tela e atalhos interativos como `clear` (`alias clear="echo -n $'\e[2J\e[3J\e[H'"`), eliminando a necessidade de octal críptico (`\033`) em prol de máxima legibilidade e clareza Clean Code.
+   - **Delimitadores de Largura Zero em Prompts (`\[...\]` e `\e`):** No FreeBSD `/bin/sh` com edição interativa (`set -o emacs`), a biblioteca `libedit` (Editline) gerencia a linha de comando. Toda sequência de escape ANSI inserida no `$PS1` DEVE ser obrigatoriamente delimitada por `\[` e `\]` (`_c_red="\[\e[1;91m\]"`). Sem esses marcadores, a `libedit` contabiliza cada byte de escape como caractere visível de largura 1, quebrando a contagem de colunas físicas e provocando sobreposição de linhas (`\r`) e cursor congelado no início do texto.
+   - **Extensões de Nomenclatura no FreeBSD `/bin/sh` vs `dash`:** O parser em C do `/bin/sh` no FreeBSD suporta hífens em nomes de função (`kebab-case`). Em contraste, interpretadores como o `dash` do Debian/Ubuntu aplicam a restrição estrita da BNF POSIX IEEE 1003.1 (que aceita apenas `[a-zA-Z_][a-zA-Z0-9_]*`, falhando com `Bad function name`). A régua de compatibilidade do projeto é o ecossistema FreeBSD/Bash/Zsh, e não o `dash`.
    - Scripts que declaram `#!/usr/bin/env sh` devem manter compatibilidade com essa base do FreeBSD `sh` (sem `[[`, sem `function foo()`, sem arrays associativos de bash).
    - Recursos específicos do Zsh e Bash ficam estritamente em seus respectivos targets (`zsh/`, `bash/`).
 7. **Detecção Interativa de Terminal (`[ -t 1 ]`):**
@@ -164,7 +166,7 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
 10. **Respeito a Variáveis Pré-Existentes:**
     - Variáveis de preferências do usuário (como `$EDITOR`, `$VISUAL`, `$FILEMANAGER`) só devem ser atribuídas se estiverem vazias ou não-declaradas, respeitando o arquivo `.profile` e o `Vault` do desenvolvedor.
 11. **Convenção Estrita de Nomenclatura & Sem Funções Gêmeas:**
-    - **`kebab-case` (ou termo simples) = Funções / Comandos Públicos:** Utilitários e atalhos destinados à invocação interativa pelo usuário no terminal (ex: `path-front`, `path-back`, `path-dedup`, `mount-device`, `umount-device`, `editor`, `update-shell`, `update-all`). Definidas **diretamente como públicas**, sem camadas de indireção.
+    - **`kebab-case` (ou termo simples) = Funções / Comandos Públicos:** Utilitários e atalhos destinados à invocação interativa pelo usuário no terminal (ex: `path-front`, `path-back`, `path-dedup`, `mount-device`, `umount-device`, `editor`, `update-shell`, `update-all`). Definidas **diretamente como públicas**, suportadas nativamente no FreeBSD `/bin/sh`, Bash e Zsh, sem camadas artificiais de indireção.
     - **`_snake_case` (prefixo `_`) = Helpers Privados & Variáveis Locais:** Funções internas de bootstrapping/infraestrutura e variáveis temporárias de escopo local (ex: `_as_root`, `_detect_os`, `_git_branch`, `_target`, `_file`, `_pass`). Mantém o autocompletion do usuário 100% limpo e sem poluição.
     - **`KEBAB-CASE` = Funções Públicas de Valor Constante (Getters):** Funções públicas que retornam um valor fixo/imutável ou constante de sistema.
     - **`SNAKE_CASE` (Maiúsculo) = Constantes e Variáveis de Ambiente Globais:** Variáveis públicas acessíveis pelo ambiente e lidas por outros processos/linguagens (ex: `PATH`, `SHELL_REPO_DIR`, `SHELL_CONTEXT`, `EMACS_SOCKET_NAME`).
@@ -178,6 +180,24 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
     - **Getters de Inspeção (`_detect_*`):** Funções em `library/detect.sh` que retornam uma string no `stdout` representando a entidade ou binário identificado (ex: `_detect_os`, `_detect_distro`, `_detect_color_scheme`, `_detect_eza`, `_detect_privilege_escalator`). Retornam vazio caso não encontrem.
     - **Predicados Booleanos (`_is_*` / `_has_*`):** Funções que realizam testes lógicos e retornam código de saída numérico (`return 0` para verdadeiro, `return 1` para falso) sem emitir saída no `stdout` (ex: `_is_raw_tty`, `_is_generic_editor`).
     - **Executores Operacionais (`_as_*` / `_run_*`):** Funções que realizam ações e executam comandos do sistema operacional (`"$@"`), residindo exclusivamente em `library/functions.sh` (ex: `_as_root`).
+14. **Padrão Exclusivo de Comentários Estruturais & Proibição de Comentários Inline:**
+    - **Código Autoexplicativo (Princípio do Silêncio):** Comentários explicativos inline ("aqui verifica x", "faz loop em y") são **expressamente proibidos**. O código deve expressar sua intenção através de nomes limpos, funções focadas e arquitetura modular.
+    - **Único Formato de Comentário Permitido:** O único comentário aceito em arquivos de script e workflows de CI/CD são os **blocos delimitadores visuais estruturais** de dois níveis.
+    - **Hierarquia de Dois Níveis:**
+      - **Seção Principal (Módulo / Suíte / Contexto):** Três hashes seguidos de espaço e exatamente 32 sinais de igual (`=`). Título em CAIXA ALTA. Fechamento com régua idêntica à abertura:
+        ```sh
+        ### ================================
+        ### NOME DO MODULO (ESPECIFICADOR)
+        ### ================================
+        ```
+      - **Subseção (Passo / Bloco Lógico):** Três hashes seguidos de espaço e exatamente 32 hífens (`-`). Título em Capital Case. Fechamento com régua idêntica à abertura:
+        ```sh
+        ### --------------------------------
+        ### Nome da Secao
+        ### --------------------------------
+        ```
+    - **Regra do Não-Vazamento (Boundary Rule):** A linha delimitadora possui exatamente 36 colunas (`### ` + 32 caracteres separadores). O texto do título DEVE ser conciso e **JAMAIS vazar ou ultrapassar** o comprimento da régua delimitadora (máximo de 32 caracteres no texto do título). Títulos que vazam quebram a estética simétrica e violam o padrão de qualidade do repositório.
+    - **Padronização em Workflows de CI/CD:** Scripts embutidos no CI/CD (`.github/workflows/ci.yml`) devem seguir rigorosamente este mesmo padrão estrutural, sendo estritamente vedado o uso de separadores arbitrários ou improvisados (como `echo "=== ... ==="`).
 
 ---
 
