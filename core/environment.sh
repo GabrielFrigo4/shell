@@ -242,3 +242,36 @@ alias ..="cd .."
 alias ...="cd ../.."
 alias ....="cd ../../.."
 alias -- -="cd -"
+
+### --------------------------------
+### Universal Update Aliases
+### --------------------------------
+alias u="update-all"
+alias upall="update-all"
+alias upsys="update-system"
+alias upsh="update-shell"
+alias resh="reinstall-shell"
+alias upwf="update-wifi"
+alias upnet="update-network"
+
+### --------------------------------
+### Package Managers (Defensive)
+### --------------------------------
+command -v update-pacman > "/dev/null" 2>&1 && alias upman="update-pacman"
+command -v update-apt > "/dev/null" 2>&1 && alias upapt="update-apt"
+command -v update-dnf > "/dev/null" 2>&1 && alias updnf="update-dnf"
+command -v update-zypper > "/dev/null" 2>&1 && alias upzyp="update-zypper"
+command -v update-xbps > "/dev/null" 2>&1 && alias upxbps="update-xbps"
+command -v update-apk > "/dev/null" 2>&1 && alias upapk="update-apk"
+command -v update-pkg > "/dev/null" 2>&1 && alias uppkg="update-pkg"
+
+if command -v update-aur > "/dev/null" 2>&1; then
+	alias upaur="update-aur"
+	alias upyay="update-aur"
+	alias upparu="update-aur"
+	alias update-yay="update-aur"
+	alias update-paru="update-aur"
+fi
+
+command -v update-flatpak > "/dev/null" 2>&1 && alias upflat="update-flatpak"
+command -v update-snap > "/dev/null" 2>&1 && alias upsnap="update-snap"

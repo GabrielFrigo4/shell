@@ -3,32 +3,114 @@
 ### ================================
 
 ### --------------------------------
-### Terminal Editors
+### Terminal Editors (Defensive)
 ### --------------------------------
-alias on="nvim ."
-alias ov="vim ."
-alias oh="hx ."
-alias om="micro ."
+if command -v nvim > "/dev/null" 2>&1; then
+	open-neovim() {
+		command nvim "${1:-.}"
+	}
+	alias open-nvim="open-neovim"
+	alias on="open-neovim"
+fi
+
+if command -v vim > "/dev/null" 2>&1; then
+	open-vim() {
+		command vim "${1:-.}"
+	}
+	alias ov="open-vim"
+fi
+
+if command -v hx > "/dev/null" 2>&1; then
+	open-helix() {
+		command hx "${1:-.}"
+	}
+	alias open-hx="open-helix"
+	alias oh="open-helix"
+fi
+
+if command -v micro > "/dev/null" 2>&1; then
+	open-micro() {
+		command micro "${1:-.}"
+	}
+	alias om="open-micro"
+fi
 
 ### --------------------------------
-### GUI Editors
+### GUI Editors (Defensive)
 ### --------------------------------
-alias ok="nohup kate . > \"/dev/null\" 2>&1 &"
-alias og="nohup geany . > \"/dev/null\" 2>&1 &"
-alias oc="code ."
-alias ocm="codium ."
-alias oa="antigravity-ide ."
-alias oz="zed ."
-alias ant="antigravity-ide"
+if command -v kate > "/dev/null" 2>&1; then
+	open-kate() {
+		command nohup kate "${1:-.}" > "/dev/null" 2>&1 &
+	}
+	alias ok="open-kate"
+fi
+
+if command -v geany > "/dev/null" 2>&1; then
+	open-geany() {
+		command nohup geany "${1:-.}" > "/dev/null" 2>&1 &
+	}
+	alias og="open-geany"
+fi
+
+if command -v code > "/dev/null" 2>&1 || command -v vscode > "/dev/null" 2>&1; then
+	open-code() {
+		if command -v code > "/dev/null" 2>&1; then
+			command code "${1:-.}"
+		else
+			command vscode "${1:-.}"
+		fi
+	}
+	alias oc="open-code"
+fi
+
+if command -v codium > "/dev/null" 2>&1; then
+	open-codium() {
+		command codium "${1:-.}"
+	}
+	alias ocm="open-codium"
+fi
+
+if command -v antigravity-ide > "/dev/null" 2>&1; then
+	open-antigravity() {
+		command antigravity-ide "${1:-.}"
+	}
+	alias open-ant="open-antigravity"
+	alias oa="open-antigravity"
+	alias ant="antigravity-ide"
+fi
+
+if command -v zed > "/dev/null" 2>&1; then
+	open-zed() {
+		command zed "${1:-.}"
+	}
+	alias oz="open-zed"
+fi
 
 ### --------------------------------
-### Emacs
+### Emacs Daemon & Client (Defensive)
 ### --------------------------------
-alias ek="pkill emacs"
-alias es="emacs --daemon"
-alias er="ek && es"
-alias ec="emacsclient --create-frame --alternate-editor \"\""
-alias oe="nohup emacsclient --create-frame --alternate-editor \"\" . > \"/dev/null\" 2>&1 &"
+if command -v emacs > "/dev/null" 2>&1 || command -v emacsclient > "/dev/null" 2>&1; then
+	emacs-kill() {
+		command pkill emacs
+	}
+	emacs-start() {
+		command emacs --daemon
+	}
+	emacs-restart() {
+		emacs-kill && emacs-start
+	}
+	emacs-client() {
+		command emacsclient --create-frame --alternate-editor "" "$@"
+	}
+	emacs-open() {
+		command nohup emacsclient --create-frame --alternate-editor "" "${1:-.}" > "/dev/null" 2>&1 &
+	}
+	alias ek="emacs-kill"
+	alias es="emacs-start"
+	alias er="emacs-restart"
+	alias ec="emacs-client"
+	alias oe="emacs-open"
+fi
 
 ### --------------------------------
 ### Servers

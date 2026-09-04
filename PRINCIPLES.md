@@ -27,7 +27,7 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
 > _Clareza é melhor que esperteza._
 
 - Aliases e funções devem ter intenção transparente. Um alias complexo de 5 linhas deve virar uma função documentada dentro de `library/functions.sh`.
-- Nomes de funções devem ser intuitivos (`upwf` para subir Wi-Fi, `mkcd` para criar pasta e entrar).
+- Nomes de funções devem ser intuitivos e descritivos em `kebab-case` (`update-wifi` para sincronizar Wi-Fi, `update-all` para atualização global), com aliases curtos correspondentes para máxima velocidade interativa (`upwf`, `upall`, `u`).
 
 ### 3. Regra da Composição (_Rule of Composition_)
 
@@ -159,7 +159,7 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
 9. **Respeito a Variáveis Pré-Existentes:**
    - Variáveis de preferências do usuário (como `$EDITOR`, `$VISUAL`, `$FILEMANAGER`) só devem ser atribuídas se estiverem vazias ou não-declaradas, respeitando o arquivo `.profile` e o `Vault` do desenvolvedor.
 10. **Convenção Estrita de Nomenclatura & Sem Funções Gêmeas:**
-    - **`kebab-case` (ou termo simples) = Funções / Comandos Públicos:** Utilitários e atalhos destinados à invocação interativa pelo usuário no terminal (ex: `path-front`, `path-back`, `path-dedup`, `mount-device`, `umount-device`, `editor`, `upsh`, `upall`). Definidas **diretamente como públicas**, sem camadas de indireção.
+    - **`kebab-case` (ou termo simples) = Funções / Comandos Públicos:** Utilitários e atalhos destinados à invocação interativa pelo usuário no terminal (ex: `path-front`, `path-back`, `path-dedup`, `mount-device`, `umount-device`, `editor`, `update-shell`, `update-all`). Definidas **diretamente como públicas**, sem camadas de indireção.
     - **`_snake_case` (prefixo `_`) = Helpers Privados & Variáveis Locais:** Funções internas de bootstrapping/infraestrutura e variáveis temporárias de escopo local (ex: `_as_root`, `_detect_os`, `_git_branch`, `_target`, `_file`, `_pass`). Mantém o autocompletion do usuário 100% limpo e sem poluição.
     - **`KEBAB-CASE` = Funções Públicas de Valor Constante (Getters):** Funções públicas que retornam um valor fixo/imutável ou constante de sistema.
     - **`SNAKE_CASE` (Maiúsculo) = Constantes e Variáveis de Ambiente Globais:** Variáveis públicas acessíveis pelo ambiente e lidas por outros processos/linguagens (ex: `PATH`, `SHELL_REPO_DIR`, `SHELL_CONTEXT`, `EMACS_SOCKET_NAME`).

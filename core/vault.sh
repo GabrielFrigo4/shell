@@ -17,9 +17,9 @@ if [ -S "${SSH_AUTH_SOCK}" ] && ! ssh-add -l > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### Update Vault (upvt)
+### Update Vault (update-vault)
 ### --------------------------------
-upvt() {
+update-vault() {
 	if [ -d "${VAULT_DIR}" ]; then
 		echo "🔄 Updating vault repository at ${VAULT_DIR}..."
 		command git -C "${VAULT_DIR}" pull
@@ -29,3 +29,4 @@ upvt() {
 		echo "❌ ERROR: VAULT_DIR is not set or invalid."
 	fi
 }
+alias upvt="update-vault"

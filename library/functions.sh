@@ -50,9 +50,9 @@ path-dedup() {
 }
 
 ### --------------------------------
-### Update Shell (upsh)
+### Update Shell (update-shell)
 ### --------------------------------
-upsh() {
+update-shell() {
 	if [ -n "${SHELL_REPO_DIR}" ] && [ -d "${SHELL_REPO_DIR}" ]; then
 		echo "🔄 Updating shell repository at ${SHELL_REPO_DIR}..."
 		command git -C "${SHELL_REPO_DIR}" pull
@@ -65,9 +65,9 @@ upsh() {
 }
 
 ### --------------------------------
-### Reinstall Shell (resh)
+### Reinstall Shell (reinstall-shell)
 ### --------------------------------
-resh() {
+reinstall-shell() {
 	if [ -z "${SHELL_REPO_DIR}" ] || [ ! -d "${SHELL_REPO_DIR}" ]; then
 		echo "❌ ERROR: SHELL_REPO_DIR is not set or invalid."
 		echo "Please re-run the install.sh script from your shell repository."
@@ -90,9 +90,9 @@ resh() {
 }
 
 ### --------------------------------
-### Update Wi-Fi (upwf)
+### Update Wi-Fi (update-wifi)
 ### --------------------------------
-upwf() {
+update-wifi() {
 	echo "📡 Updating Wi-Fi configurations..."
 
 	if ! env | grep -q "^WIFI_SSID_"; then
@@ -242,89 +242,101 @@ upwf() {
 }
 
 ### --------------------------------
-### Update Network (upnet)
+### Update Network (update-network)
 ### --------------------------------
-upnet() {
+update-network() {
 	echo "🌐 Starting network..."
-	upwf
+	update-wifi
 	echo "✅ Network update complete!"
 }
 
 ### --------------------------------
-### Package Managers
+### Package Managers (Defensive)
 ### --------------------------------
-upman() {
-	if [ "$(_detect_os)" = "windows" ]; then
-		command pacman --noconfirm -Syu "$@"
-	else
-		_as_root pacman --noconfirm -Syu "$@"
-	fi
-}
+if command -v pacman > "/dev/null" 2>&1; then
+	update-pacman() {
+		if [ "$(_detect_os)" = "windows" ]; then
+			command pacman --noconfirm -Syu "$@"
+		else
+			_as_root pacman --noconfirm -Syu "$@"
+		fi
+	}
+fi
 
-upapt() {
-	_as_root apt update && _as_root apt upgrade --yes "$@"
-}
+if command -v apt > "/dev/null" 2>&1; then
+	update-apt() {
+		_as_root apt update && _as_root apt upgrade --yes "$@"
+	}
+fi
 
-updnf() {
-	_as_root dnf upgrade --assumeyes "$@"
-}
+if command -v dnf > "/dev/null" 2>&1; then
+	update-dnf() {
+		_as_root dnf upgrade --assumeyes "$@"
+	}
+fi
 
-upzyp() {
-	_as_root zypper --non-interactive update "$@"
-}
+if command -v zypper > "/dev/null" 2>&1; then
+	update-zypper() {
+		_as_root zypper --non-interactive update "$@"
+	}
+fi
 
-upxbps() {
-	_as_root xbps-install --yes -Su "$@"
-}
+if command -v xbps-install > "/dev/null" 2>&1; then
+	update-xbps() {
+		_as_root xbps-install --yes -Su "$@"
+	}
+fi
 
-upapk() {
-	_as_root apk update && _as_root apk upgrade "$@"
-}
+if command -v apk > "/dev/null" 2>&1; then
+	update-apk() {
+		_as_root apk update && _as_root apk upgrade "$@"
+	}
+fi
 
-uppkg() {
-	_as_root pkg update && _as_root pkg upgrade --yes "$@"
-}
+if command -v pkg > "/dev/null" 2>&1; then
+	update-pkg() {
+		_as_root pkg update && _as_root pkg upgrade --yes "$@"
+	}
+fi
 
-upaur() {
-	if command -v paru > "/dev/null" 2>&1; then
-		command paru --noconfirm -Syu "$@"
-	elif command -v yay > "/dev/null" 2>&1; then
-		command yay --noconfirm -Syu "$@"
-	fi
-}
+if command -v paru > "/dev/null" 2>&1 || command -v yay > "/dev/null" 2>&1; then
+	update-aur() {
+		if command -v paru > "/dev/null" 2>&1; then
+			command paru --noconfirm -Syu "$@"
+		elif command -v yay > "/dev/null" 2>&1; then
+			command yay --noconfirm -Syu "$@"
+		fi
+	}
+fi
 
-upyay() {
-	upaur "$@"
-}
+if command -v flatpak > "/dev/null" 2>&1; then
+	update-flatpak() {
+		command flatpak update --assumeyes "$@"
+	}
+fi
 
-upparu() {
-	upaur "$@"
-}
-
-upflat() {
-	command flatpak update --assumeyes "$@"
-}
-
-upsnap() {
-	_as_root snap refresh "$@"
-}
+if command -v snap > "/dev/null" 2>&1; then
+	update-snap() {
+		_as_root snap refresh "$@"
+	}
+fi
 
 ### --------------------------------
-### Update System (upsys)
+### Update System (update-system)
 ### --------------------------------
-upsys() {
+update-system() {
 	echo "📦 Updating OS system packages..."
 	case "$(_detect_distro_family)" in
-		arch)   upman "$@" ;;
-		debian) upapt "$@" ;;
-		fedora) updnf "$@" ;;
-		suse)   upzyp "$@" ;;
-		void)   upxbps "$@" ;;
-		alpine) upapk "$@" ;;
+		arch)   command -v update-pacman > "/dev/null" 2>&1 && update-pacman "$@" ;;
+		debian) command -v update-apt > "/dev/null" 2>&1 && update-apt "$@" ;;
+		fedora) command -v update-dnf > "/dev/null" 2>&1 && update-dnf "$@" ;;
+		suse)   command -v update-zypper > "/dev/null" 2>&1 && update-zypper "$@" ;;
+		void)   command -v update-xbps > "/dev/null" 2>&1 && update-xbps "$@" ;;
+		alpine) command -v update-apk > "/dev/null" 2>&1 && update-apk "$@" ;;
 		*)
 			case "$(_detect_os)" in
-				freebsd) uppkg "$@" ;;
-				windows) upman "$@" ;;
+				freebsd) command -v update-pkg > "/dev/null" 2>&1 && update-pkg "$@" ;;
+				windows) command -v update-pacman > "/dev/null" 2>&1 && update-pacman "$@" ;;
 			esac
 			;;
 	esac
@@ -332,29 +344,29 @@ upsys() {
 }
 
 ### --------------------------------
-### Update All Packages (upall)
+### Update All Packages (update-all)
 ### --------------------------------
-upall() {
+update-all() {
 	echo "🚀 Starting full system update..."
 	echo ""
-	upsys "$@"
+	update-system "$@"
 
-	if command -v paru > "/dev/null" 2>&1 || command -v yay > "/dev/null" 2>&1; then
+	if command -v update-aur > "/dev/null" 2>&1; then
 		echo ""
 		echo "📦 Updating AUR packages..."
-		upaur "$@" && echo "✅ AUR packages updated!"
+		update-aur "$@" && echo "✅ AUR packages updated!"
 	fi
 
-	if command -v flatpak > "/dev/null" 2>&1; then
+	if command -v update-flatpak > "/dev/null" 2>&1; then
 		echo ""
 		echo "📦 Updating Flatpak packages..."
-		upflat && echo "✅ Flatpak packages updated!"
+		update-flatpak && echo "✅ Flatpak packages updated!"
 	fi
 
 	if command -v snap > "/dev/null" 2>&1; then
 		echo ""
 		echo "📦 Updating Snap packages..."
-		upsnap && echo "✅ Snap packages updated!"
+		update-snap && echo "✅ Snap packages updated!"
 	fi
 
 	echo ""
