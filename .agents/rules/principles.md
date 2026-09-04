@@ -39,6 +39,7 @@ Essas diretrizes são de aplicação obrigatória para qualquer modificação ou
   ### --------------------------------
   ```
 - **Regra Estrita do Não-Vazamento:** A régua divisora tem exatamente 32 caracteres separadores (total de 36 colunas com `### `). O texto do título DEVE ser conciso e **JAMAIS vazar além da régua** (máximo de 32 caracteres).
+- **Não-Enumeração de Títulos:** Evite numerar títulos de seções (`1. Passo`, `2. Passo`). Numeração só é tolerada se for intrínseca à identidade ou dependência do conceito; caso contrário, use títulos puramente semânticos.
 - **Sem Comentários Ad-Hoc no CI/CD:** Scripts embutidos no CI/CD devem usar esses mesmos blocos, sendo vedado o uso de `echo "=== ... ==="` ou separadores improvisados.
 - Não adicione anotações operacionais como `(Defensive)` nos comentários principais.
 

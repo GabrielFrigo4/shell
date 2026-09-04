@@ -72,20 +72,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y zsh
 
-      - name: Test OS Detection
+      - name: Test Linux Environment (Bash & Zsh)
         run: |
-          ### --------------------------------
-          ### Linux OS Detection
-          ### --------------------------------
+          ### ================================
+          ### LINUX ENVIRONMENT
+          ### ================================
           . ./library/detect.sh
           OS=$(_detect_os)
           echo "Detected OS: ${OS}"
           [ "${OS}" = "linux" ] || { echo "Expected linux, got ${OS}"; exit 1; }
 
-      - name: Test Core Loading in Bash
-        run: |
           ### --------------------------------
-          ### Linux Bash Environment
+          ### Linux Target Prompts
+          ### --------------------------------
+          bash -n target/linux/bash/prompt.sh
+          zsh -n target/linux/zsh/prompt.sh
+
+          ### --------------------------------
+          ### Linux Bash
           ### --------------------------------
           bash -c '
             export SHELL_REPO_DIR="${PWD}"
@@ -99,10 +103,8 @@ jobs:
             echo "Bash Prompt loaded OK: ${PS1}"
           '
 
-      - name: Test Core Loading in Zsh
-        run: |
           ### --------------------------------
-          ### Linux Zsh Environment
+          ### Linux Zsh
           ### --------------------------------
           zsh -c '
             export SHELL_REPO_DIR="${PWD}"
@@ -115,8 +117,6 @@ jobs:
             echo "Zsh Prompt loaded OK: ${PROMPT}"
           '
 
-      - name: Measure Shell Startup Latency (< 50ms)
-        run: |
           ### --------------------------------
           ### Startup Latency Benchmark
           ### --------------------------------
@@ -168,7 +168,7 @@ jobs:
             pkg install -y bash zsh
 
             ### --------------------------------
-            ### 1. FreeBSD /bin/sh
+            ### FreeBSD /bin/sh
             ### --------------------------------
             sh -n library/functions.sh
             sh -n core/environment.sh
@@ -191,7 +191,7 @@ jobs:
             '
 
             ### --------------------------------
-            ### 2. FreeBSD Bash
+            ### FreeBSD Bash
             ### --------------------------------
             bash -n theme/bash.sh
             bash -c '
@@ -207,7 +207,7 @@ jobs:
             '
 
             ### --------------------------------
-            ### 3. FreeBSD Zsh
+            ### FreeBSD Zsh
             ### --------------------------------
             zsh -n theme/zsh.sh
             zsh -c '

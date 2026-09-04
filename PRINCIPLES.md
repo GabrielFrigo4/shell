@@ -197,6 +197,7 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
         ### --------------------------------
         ```
     - **Regra do Não-Vazamento (Boundary Rule):** A linha delimitadora possui exatamente 36 colunas (`### ` + 32 caracteres separadores). O texto do título DEVE ser conciso e **JAMAIS vazar ou ultrapassar** o comprimento da régua delimitadora (máximo de 32 caracteres no texto do título). Títulos que vazam quebram a estética simétrica e violam o padrão de qualidade do repositório.
+    - **Regra da Não-Enumeração de Títulos:** Evite numerar títulos de seções e subseções (ex: prefira `### FreeBSD /bin/sh` a `### 1. FreeBSD /bin/sh`). A enumeração deve ser evitada em geral, sendo tolerada apenas quando a numeração for um requisito estritamente intrínseco à identidade, protocolo ou dependência direta do conceito (onde a omissão do número destruiria o significado do processo). Em qualquer outro caso, use sempre títulos puramente semânticos.
     - **Padronização em Workflows de CI/CD:** Scripts embutidos no CI/CD (`.github/workflows/ci.yml`) devem seguir rigorosamente este mesmo padrão estrutural, sendo estritamente vedado o uso de separadores arbitrários ou improvisados (como `echo "=== ... ==="`).
 
 ---

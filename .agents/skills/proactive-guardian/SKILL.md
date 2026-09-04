@@ -51,6 +51,7 @@ Sempre que ler, editar ou inspecionar qualquer script `.sh`, valide silenciosame
 - [ ] **Sem Comentários Inline:** O código deve ser autoexplicativo. Comentários explicativos triviais inline são proibidos e devem ser removidos.
 - [ ] **Padrão Canônico (32 `=` ou `-`):** Seções principais devem usar `### ================================` e subseções `### --------------------------------`.
 - [ ] **Regra do Não-Vazamento:** O título interno DEVE ter no máximo 32 caracteres e JAMAIS vazar além da régua divisora.
+- [ ] **Não-Enumeração Arbitrária:** Títulos de seções não devem ser numerados (evitar '1.', '2.'), a menos que a ordem numérica seja intrínseca à identidade do conceito.
 - [ ] **Sem Separadores Ad-Hoc:** Eliminar `echo "=== ... ==="` em scripts de CI/CD ou instaladores, convertendo-os para o padrão estrutural limpo.
 
 ---
