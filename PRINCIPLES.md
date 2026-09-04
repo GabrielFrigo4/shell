@@ -153,7 +153,7 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
    - Scripts que declaram `#!/usr/bin/env sh` devem manter compatibilidade com essa base do FreeBSD `sh` (sem `[[`, sem `function foo()`, sem arrays associativos de bash).
    - Recursos específicos do Zsh e Bash ficam estritamente em seus respectivos targets (`zsh/`, `bash/`).
 7. **Detecção Interativa de Terminal (`[ -t 1 ]`):**
-   - Toda emissão de sequências de escape ANSI (cores, posicionamento, reset de cursor `\033[0 q`) em rotinas e wrappers deve ser condicionada ao descritor de arquivo 1 (`stdout`) conectado a um terminal interativo (`[ -t 1 ]`).
+   - Toda emissão de sequências de escape ANSI (cores, posicionamento ou reset de cursor como `[ -t 1 ] && echo -n $'\e[0 q'`) deve ser estritamente condicionada ao descritor de arquivo 1 (`stdout`) conectado a um terminal interativo (`[ -t 1 ]`).
    - Evita corromper arquivos ou pipelines quando saídas forem redirecionadas para arquivos de log ou comandos externos (`cmd > file` ou `cmd | grep`).
 8. **Citações Seguras (Quoting):**
    - Sempre envolva variáveis em aspas duplas: `"${VAR}"` para evitar _word splitting_ indesejado e ataques de injeção de caminho.

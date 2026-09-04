@@ -32,7 +32,7 @@ if command -v hx > "/dev/null" 2>&1; then
 	hx() {
 		command hx "$@"
 		local _status=$?
-		[ -t 1 ] && command printf '\033[0 q'
+		[ -t 1 ] && echo -n $'\e[0 q'
 		return ${_status}
 	}
 

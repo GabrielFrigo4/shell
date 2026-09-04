@@ -1,0 +1,206 @@
+name: Universal Shell CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: 🔍 Lint & Syntax Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Shell Interpreters
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh dash
+
+      - name: Whitespace & Formatting Check (git diff --check)
+        run: |
+          echo "Checking formatting and trailing whitespace..."
+          git diff --check HEAD~1..HEAD 2> "/dev/null" || git diff --check
+
+      - name: POSIX Shell Syntax Check (sh -n)
+        run: |
+          echo "Validating POSIX sh syntax..."
+          find . -name "*.sh" -not -path "./.git/*" -exec sh -n {} +
+
+      - name: Bash Syntax Check (bash -n)
+        run: |
+          echo "Validating Bash syntax..."
+          find . -name "*.sh" -not -path "./.git/*" -exec bash -n {} +
+
+      - name: Zsh Syntax Check (zsh -n)
+        run: |
+          echo "Validating Zsh syntax..."
+          find . -name "*.sh" -not -path "./.git/*" -exec zsh -n {} +
+
+      - name: Quoted Redirects Rule (> "/dev/null")
+        run: |
+          echo "Enforcing quoted redirects rule..."
+          UNQUOTED=$(grep -rn '> /dev/null' --include="*.sh" . | grep -v '> "/dev/null"' || true)
+          if [ -n "${UNQUOTED}" ]; then
+            echo "❌ Unquoted redirect '> /dev/null' found in:"
+            echo "${UNQUOTED}"
+            exit 1
+          fi
+          echo "✅ All redirects are properly quoted."
+
+  linux:
+    name: 🐧 Linux Environment & Smoke Test
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Shells
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh
+
+      - name: Test OS Detection
+        run: |
+          . ./library/detect.sh
+          OS=$(_detect_os)
+          echo "Detected OS: ${OS}"
+          [ "${OS}" = "linux" ] || { echo "Expected linux, got ${OS}"; exit 1; }
+
+      - name: Test Core Loading in Bash
+        run: |
+          bash -c '
+            export SHELL_REPO_DIR="${PWD}"
+            export SHELL_CONTEXT="desktop"
+            . ./library/detect.sh
+            . ./library/functions.sh
+            . ./core/environment.sh
+            . ./target/linux/environment.sh
+            . ./theme/bash.sh
+            _update_prompt
+            echo "Bash Prompt loaded OK: ${PS1}"
+          '
+
+      - name: Test Core Loading in Zsh
+        run: |
+          zsh -c '
+            export SHELL_REPO_DIR="${PWD}"
+            export SHELL_CONTEXT="desktop"
+            . ./library/detect.sh
+            . ./library/functions.sh
+            . ./core/environment.sh
+            . ./target/linux/environment.sh
+            . ./theme/zsh.sh
+            echo "Zsh Prompt loaded OK: ${PROMPT}"
+          '
+
+      - name: Measure Shell Startup Latency (< 50ms)
+        run: |
+          bash -c '
+            START=$(date +%s%N)
+            export SHELL_REPO_DIR="${PWD}"
+            . ./library/detect.sh
+            . ./library/functions.sh
+            . ./core/environment.sh
+            . ./target/linux/environment.sh
+            . ./theme/bash.sh
+            _update_prompt
+            END=$(date +%s%N)
+            DIFF=$(( (END - START) / 1000000 ))
+            echo "Bash load time: ${DIFF}ms"
+            if [ "${DIFF}" -gt 50 ]; then
+              echo "⚠️ Warning: Load time exceeded 50ms on CI runner: ${DIFF}ms"
+            else
+              echo "⚡ Performance within 50ms target!"
+            fi
+          '
+
+  freebsd:
+    name: 😈 FreeBSD Matrix
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Test on FreeBSD (Latest 15.x)
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "15"
+          usesh: true
+          run: |
+            echo "=== Running on FreeBSD Native VM ==="
+            freebsd-version || uname -a
+            . ./library/detect.sh
+            OS=$(_detect_os)
+            echo "Detected OS: ${OS}"
+            [ "${OS}" = "freebsd" ] || { echo "Expected freebsd, got ${OS}"; exit 1; }
+
+            echo "Validating FreeBSD /bin/sh syntax..."
+            sh -n library/functions.sh
+            sh -n core/environment.sh
+            sh -n target/freebsd/environment.sh
+            sh -n target/freebsd/sh/terminal.sh
+            sh -n target/freebsd/sh/prompt.sh
+            sh -n theme/sh.sh
+
+            echo "Testing clear alias and ANSI-C quoting in FreeBSD sh..."
+            . ./target/freebsd/environment.sh
+            alias clear
+            echo "FreeBSD tests completed successfully!"
+
+  windows:
+    name: 🪟 Windows (MSYS2) Matrix
+    needs: lint
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: bash zsh
+
+      - name: Test in MSYS2 Shell
+        shell: msys2 {0}
+        run: |
+          . ./library/detect.sh
+          OS=$(_detect_os)
+          echo "Detected OS: ${OS}"
+          [ "${OS}" = "windows" ] || { echo "Expected windows, got ${OS}"; exit 1; }
+
+          echo "Validating Windows target prompts..."
+          bash -n target/windows/bash/prompt.sh
+          zsh -n target/windows/zsh/prompt.sh
+          echo "Windows MSYS2 tests completed successfully!"
+
+  macos:
+    name: 🍎 macOS (Darwin) Matrix
+    needs: lint
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Test Detection & Scripts
+        run: |
+          . ./library/detect.sh
+          OS=$(_detect_os)
+          echo "Detected OS: ${OS}"
+          [ "${OS}" = "macos" ] || { echo "Expected macos, got ${OS}"; exit 1; }
+
+          bash -n theme/bash.sh
+          zsh -n theme/zsh.sh
+          echo "macOS tests completed successfully!"

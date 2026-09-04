@@ -2,14 +2,14 @@
 ### SHELL APPEARANCE (SH)
 ### ================================
 
-_c_reset="$(command printf '\033[0m')"
-_c_red="$(command printf '\033[1;91m')"
-_c_green="$(command printf '\033[1;92m')"
-_c_yellow="$(command printf '\033[1;93m')"
-_c_blue="$(command printf '\033[1;94m')"
-_c_magenta="$(command printf '\033[1;95m')"
-_c_cyan="$(command printf '\033[1;96m')"
-_c_gray="$(command printf '\033[1;90m')"
+_c_reset=$'\e[0m'
+_c_red=$'\e[1;91m'
+_c_green=$'\e[1;92m'
+_c_yellow=$'\e[1;93m'
+_c_blue=$'\e[1;94m'
+_c_magenta=$'\e[1;95m'
+_c_cyan=$'\e[1;96m'
+_c_gray=$'\e[1;90m'
 
 _git_branch() {
 	_git_info=""

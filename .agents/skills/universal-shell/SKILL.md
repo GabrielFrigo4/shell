@@ -40,9 +40,9 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
      ```
 
 3. **Proteção de Terminal (`[ -t 1 ]`):**
-   - Sequências de escape ANSI que interagem com o emulador de terminal (como `\033[0 q` para reset de cursor) DEVEM ser condicionadas a `[ -t 1 ]` para evitar corromper pipes e arquivos de log:
+   - Sequências de escape ANSI que interagem com o emulador de terminal (como `echo -n $'\e[0 q'` para reset de cursor) DEVEM ser condicionadas a `[ -t 1 ]` para evitar corromper pipes e arquivos de log:
      ```sh
-     [ -t 1 ] && command printf '\033[0 q'
+     [ -t 1 ] && echo -n $'\e[0 q'
      ```
 
 4. **Taxonomia Estrita de Nomes:**
@@ -71,13 +71,13 @@ Quando criar uma nova função de abertura de editor ou utilitário interativo:
    fi
    ```
 2. **Se a ferramenta alterar o cursor do terminal (como o Helix):**
-   Crie um wrapper local que capture o exit status e envie `\033[0 q` antes de retornar:
+   Crie um wrapper local que capture o exit status e envie `echo -n $'\e[0 q'` antes de retornar:
    ```sh
    <bin>() {
-   	command <bin> "$@"
-   	local _status=$?
-   	[ -t 1 ] && command printf '\033[0 q'
-   	return ${_status}
+       command <bin> "$@"
+       local _status=$?
+       [ -t 1 ] && echo -n $'\e[0 q'
+       return ${_status}
    }
    ```
 3. **Atualize a documentação em sincronia:**

@@ -15,6 +15,7 @@
 | **⚡ Modern CLI**       | 🟢 Estável | Cascata inteligente (`eza`, `bat`, `rg`, `fd` > nativos) |
 | **🌳 VCS & Prompts**    | 🟢 Estável | Git e Got (Game of Trees)                                |
 | **💎 Clean Code**       |  🟢 100%   | 18 Princípios UNIX & Taxonomia de 3 níveis de biblioteca |
+| **🧪 Automação & CI/CD** | 🟢 Estável | Git Hooks locais (`.githooks/pre-commit`) + GitHub Actions multi-OS |
 
 ---
 
@@ -29,10 +30,6 @@
 
 - [ ] **Container (`context/container/`):** Otimizações específicas para Docker, Podman e Jails (desativação de timers pesados e polling de disco).
 - [ ] **Servidor (`context/server/`):** Utilitários rápidos para inspeção de portas abertas (`ports`), monitoramento de logs em tempo real (`logs`) e status de serviços (`services`).
-
-### 3. 🧪 Automação & Qualidade (CI/CD)
-
-- [ ] **GitHub Actions:** Pipeline automatizado de linting e validação de sintaxe POSIX (`sh -n`), integridade de finais de linha (`\n`) e regras de permissões octais.
 
 ---
 

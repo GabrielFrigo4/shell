@@ -12,9 +12,9 @@ Essas diretrizes são de aplicação obrigatória para qualquer modificação ou
   ```sh
   command -v <bin> > "/dev/null" 2>&1 && alias <nome>="<bin>"
   ```
-- Sempre proteja chamadas de manipulação do terminal ou cursor (`\033[0 q`) verificando se o descritor 1 é um TTY:
+- Sempre proteja chamadas de manipulação do terminal ou cursor (`echo -n $'\e[0 q'`) verificando se o descritor 1 é um TTY:
   ```sh
-  [ -t 1 ] && command printf '\033[0 q'
+  [ -t 1 ] && echo -n $'\e[0 q'
   ```
 
 ## 3. Convenção Estrita de Nomenclatura

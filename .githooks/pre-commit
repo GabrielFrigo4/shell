@@ -1,0 +1,57 @@
+#!/usr/bin/env sh
+
+### ================================
+### PRE-COMMIT HOOK
+### ================================
+
+set -e
+
+### --------------------------------
+### Setup & Repository Root
+### --------------------------------
+_repo_root="$(git rev-parse --show-toplevel 2> "/dev/null" || pwd)"
+cd "${_repo_root}"
+
+echo "🔍 [pre-commit] Executing Universal Shell quality gates..."
+
+### --------------------------------
+### Whitespace & Formatting Check
+### --------------------------------
+echo "  ↳ Checking whitespace and formatting (git diff --check)..."
+if ! git diff --check --cached; then
+	echo "❌ [pre-commit] Whitespace or EOF formatting error detected!" >&2
+	echo "   Run 'git diff --check --cached' to inspect issues." >&2
+	exit 1
+fi
+
+### --------------------------------
+### POSIX Shell Syntax Check
+### --------------------------------
+echo "  ↳ Validating POSIX sh syntax (sh -n)..."
+if ! find . -name "*.sh" -not -path "./.git/*" -exec sh -n {} +; then
+	echo "❌ [pre-commit] Syntax error detected by 'sh -n'!" >&2
+	exit 1
+fi
+
+### --------------------------------
+### Bash Syntax Check
+### --------------------------------
+echo "  ↳ Validating Bash syntax (bash -n)..."
+if ! find . -name "*.sh" -not -path "./.git/*" -exec bash -n {} +; then
+	echo "❌ [pre-commit] Syntax error detected by 'bash -n'!" >&2
+	exit 1
+fi
+
+### --------------------------------
+### Quoting & Security Rules
+### --------------------------------
+echo "  ↳ Enforcing quoted redirects (> \"/dev/null\")..."
+_unquoted_null=$(git diff --cached -S "> /dev/null" --name-only | grep '\.sh$' 2> "/dev/null" || true)
+if [ -n "${_unquoted_null}" ]; then
+	echo "❌ [pre-commit] Unquoted redirect '> /dev/null' detected in: ${_unquoted_null}" >&2
+	echo "   Use '> \"/dev/null\"' with quotes as required by PRINCIPLES.md." >&2
+	exit 1
+fi
+
+echo "✅ [pre-commit] All quality gates passed cleanly!"
+exit 0

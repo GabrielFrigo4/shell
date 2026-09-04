@@ -61,6 +61,11 @@ if [ "${OS_NAME}" != "windows" ]; then
 	_as_root find "${SHELL_REPO_DIR}" -type d -exec chmod 0755 {} +
 	_as_root find "${SHELL_REPO_DIR}" -type f -exec chmod 0644 {} +
 	[ -f "${SHELL_REPO_DIR}/install.sh" ] && _as_root chmod 0755 "${SHELL_REPO_DIR}/install.sh"
+	[ -f "${SHELL_REPO_DIR}/.githooks/pre-commit" ] && _as_root chmod 0755 "${SHELL_REPO_DIR}/.githooks/pre-commit"
+fi
+
+if [ -d "${SHELL_REPO_DIR}/.git" ] && command -v git > "/dev/null" 2>&1; then
+	command git -C "${SHELL_REPO_DIR}" config core.hooksPath .githooks 2> "/dev/null" || true
 fi
 
 ### --------------------------------
