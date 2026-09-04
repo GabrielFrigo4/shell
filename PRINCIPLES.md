@@ -1,15 +1,15 @@
 # 📜 Princípios de Engenharia & Filosofia do Repositório (Shell)
 
-> _"Rule of Silence: When a program has nothing surprising to say, it should say nothing."_  
+> _"Rule of Silence: When a program has nothing surprising to say, it should say nothing."_<br>
 > — Eric S. Raymond, _The Art of UNIX Programming_ (2003)
 
 O repositório **Universal Shell Environment** é o coração interativo da **Tríade de Produtividade** (`Configuration`, `Shell`, `Vault`). Ele é responsável por prover uma experiência consistente, ágil e prazerosa na linha de comando, independentemente de estarmos em uma máquina Desktop, Servidor, Container Docker/Jail ou WSL, rodando sobre FreeBSD, Linux ou Windows.
 
-Para garantir que o terminal permaneça instantâneo, extensível e agradável no dia a dia, todas as contribuições devem seguir com fidelidade os **17 Princípios UNIX**, as diretrizes de **Clean Code** adaptadas ao ecossistema de shells, e os padrões de performance interativa.
+Para garantir que o terminal permaneça instantâneo, extensível e agradável no dia a dia, todas as contribuições devem seguir com fidelidade os **18 Princípios de Engenharia** (17 Princípios UNIX de Eric S. Raymond + Regra da Soberania do Usuário), as diretrizes de **Clean Code** adaptadas ao ecossistema de shells, e os padrões de performance interativa.
 
 ---
 
-## 🏛️ Os 17 Princípios UNIX (_The Art of UNIX Programming_, 2003)
+## 🏛️ Os 18 Princípios de Design (17 Princípios UNIX + Soberania do Usuário)
 
 ### 1. Regra da Modularidade (_Rule of Modularity_)
 
@@ -187,7 +187,7 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
       - **Seção Principal (Módulo / Suíte / Contexto):** Três hashes seguidos de espaço e exatamente 32 sinais de igual (`=`). Título em CAIXA ALTA. Fechamento com régua idêntica à abertura:
         ```sh
         ### ================================
-        ### NOME DO MODULO (ESPECIFICADOR)
+        ### NOME DO MODULO OU CONTEXTO
         ### ================================
         ```
       - **Subseção (Passo / Bloco Lógico):** Três hashes seguidos de espaço e exatamente 32 hífens (`-`). Título em Capital Case. Fechamento com régua idêntica à abertura:
@@ -197,6 +197,7 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
         ### --------------------------------
         ```
     - **Regra do Não-Vazamento (Boundary Rule):** A linha delimitadora possui exatamente 36 colunas (`### ` + 32 caracteres separadores). O texto do título DEVE ser conciso e **JAMAIS vazar ou ultrapassar** o comprimento da régua delimitadora (máximo de 32 caracteres no texto do título). Títulos que vazam quebram a estética simétrica e violam o padrão de qualidade do repositório.
+    - **Sem Parênteses ou Anotações Redundantes:** O título do bloco deve ser conciso e sem anotações secundárias entre parênteses (ex: prefira `### Default Editor` a `### Default Editor (Cascade)` e `### Update Vault` a `### Update Vault (update-vault)`).
     - **Regra da Não-Enumeração de Títulos:** Evite numerar títulos de seções e subseções (ex: prefira `### FreeBSD /bin/sh` a `### 1. FreeBSD /bin/sh`). A enumeração deve ser evitada em geral, sendo tolerada apenas quando a numeração for um requisito estritamente intrínseco à identidade, protocolo ou dependência direta do conceito (onde a omissão do número destruiria o significado do processo). Em qualquer outro caso, use sempre títulos puramente semânticos.
     - **Padronização em Workflows de CI/CD:** Scripts embutidos no CI/CD (`.github/workflows/ci.yml`) devem seguir rigorosamente este mesmo padrão estrutural, sendo estritamente vedado o uso de separadores arbitrários ou improvisados (como `echo "=== ... ==="`).
 

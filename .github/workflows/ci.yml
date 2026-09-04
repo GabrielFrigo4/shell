@@ -60,19 +60,19 @@ jobs:
           echo "✅ All redirects are properly quoted."
 
   linux:
-    name: 🐧 Linux Environment & Smoke Test
+    name: 🐧 Linux (Ubuntu) Matrix
     needs: lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Shells
+      - name: Install Shell Interpreters
         run: |
           sudo apt-get update
           sudo apt-get install -y zsh
 
-      - name: Test Linux Environment (Bash & Zsh)
+      - name: Test in Linux Shell (Bash & Zsh)
         run: |
           ### ================================
           ### LINUX ENVIRONMENT
@@ -140,14 +140,14 @@ jobs:
           '
 
   freebsd:
-    name: 😈 FreeBSD Matrix
+    name: 😈 FreeBSD (15.x) Matrix
     needs: lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Test on FreeBSD (Latest 15.x - sh, bash, zsh)
+      - name: Test in FreeBSD Shell (sh, bash, zsh)
         uses: vmactions/freebsd-vm@v1
         with:
           release: "15"
@@ -163,7 +163,7 @@ jobs:
             [ "${OS}" = "freebsd" ] || { echo "Expected freebsd, got ${OS}"; exit 1; }
 
             ### --------------------------------
-            ### Dependencies (Bash & Zsh)
+            ### Dependencies
             ### --------------------------------
             pkg install -y bash zsh
 
@@ -288,7 +288,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Test Detection & Scripts in Zsh and Bash
+      - name: Test in macOS Shell (Zsh & Bash)
         run: |
           ### ================================
           ### MACOS ENVIRONMENT
@@ -299,16 +299,23 @@ jobs:
           [ "${OS}" = "macos" ] || { echo "Expected macos, got ${OS}"; exit 1; }
 
           ### --------------------------------
+          ### macOS Target Prompts
+          ### --------------------------------
+          bash -n target/macos/bash/prompt.sh
+          zsh -n target/macos/zsh/prompt.sh
+
+          ### --------------------------------
           ### macOS Zsh
           ### --------------------------------
           zsh -n theme/zsh.sh
           zsh -c '
             export SHELL_REPO_DIR="${PWD}"
+            export SHELL_CONTEXT="desktop"
             . ./library/detect.sh
             . ./library/functions.sh
             . ./core/environment.sh
-            . ./theme/zsh.sh
-            echo "macOS Zsh OK"
+            . ./target/macos/zsh/prompt.sh
+            echo "macOS Zsh prompt OK: ${PROMPT}"
           '
 
           ### --------------------------------
@@ -317,10 +324,11 @@ jobs:
           bash -n theme/bash.sh
           bash -c '
             export SHELL_REPO_DIR="${PWD}"
+            export SHELL_CONTEXT="desktop"
             . ./library/detect.sh
             . ./library/functions.sh
             . ./core/environment.sh
-            . ./theme/bash.sh
+            . ./target/macos/bash/prompt.sh
             _update_prompt
-            echo "macOS Bash OK"
+            echo "macOS Bash prompt OK: ${PS1}"
           '

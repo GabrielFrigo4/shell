@@ -6,7 +6,7 @@
 
 ![Linux](https://img.shields.io/badge/🐧_Linux-Supported-blue)
 ![FreeBSD](https://img.shields.io/badge/😈_FreeBSD-Supported-red)
-![MacOS](https://img.shields.io/badge/🍎_MacOS-Unsupported-lightgrey)
+![MacOS](https://img.shields.io/badge/🍎_MacOS-Supported-blue)
 ![Windows](https://img.shields.io/badge/🪟_Windows-Supported-purple)
 
 ### Contextos de Ambiente
@@ -22,7 +22,7 @@ flowchart LR
         LNX["🐧 Linux"]
         BSD["😈 FreeBSD"]
         WIN["🪟 Windows"]
-        MAC["🍎 MacOS (Futuro)"]
+        MAC["🍎 MacOS"]
     end
 
     subgraph CTX ["🎯 Contextos"]
@@ -43,7 +43,7 @@ flowchart LR
 
     WIN --> DSK
 
-    MAC -.->|futuro| DSK
+    MAC --> DSK
 ```
 
 ### Shells Compatíveis

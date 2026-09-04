@@ -3,7 +3,7 @@
 ### ================================
 
 ### --------------------------------
-### Privilege Escalation (_as_root)
+### Privilege Escalation
 ### --------------------------------
 _as_root() {
 	local _escalator="$(_detect_privilege_escalator)"
@@ -22,7 +22,7 @@ _as_root() {
 }
 
 ### --------------------------------
-### Path Front (highest priority)
+### Path Front
 ### --------------------------------
 path-front() {
 	case ":${PATH}:" in
@@ -32,7 +32,7 @@ path-front() {
 }
 
 ### --------------------------------
-### Path Back (lowest priority)
+### Path Back
 ### --------------------------------
 path-back() {
 	case ":${PATH}:" in
@@ -50,7 +50,7 @@ path-dedup() {
 }
 
 ### --------------------------------
-### Update Shell (update-shell)
+### Update Shell
 ### --------------------------------
 update-shell() {
 	if [ -n "${SHELL_REPO_DIR}" ] && [ -d "${SHELL_REPO_DIR}" ]; then
@@ -65,7 +65,7 @@ update-shell() {
 }
 
 ### --------------------------------
-### Reinstall Shell (reinstall-shell)
+### Reinstall Shell
 ### --------------------------------
 reinstall-shell() {
 	if [ -z "${SHELL_REPO_DIR}" ] || [ ! -d "${SHELL_REPO_DIR}" ]; then
@@ -90,7 +90,7 @@ reinstall-shell() {
 }
 
 ### --------------------------------
-### Update Wi-Fi (update-wifi)
+### Update Wi-Fi
 ### --------------------------------
 update-wifi() {
 	echo "📡 Updating Wi-Fi configurations..."
@@ -242,7 +242,7 @@ update-wifi() {
 }
 
 ### --------------------------------
-### Update Network (update-network)
+### Update Network
 ### --------------------------------
 update-network() {
 	echo "🌐 Starting network..."
@@ -322,7 +322,7 @@ if command -v snap > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### Update System (update-system)
+### Update System
 ### --------------------------------
 update-system() {
 	echo "📦 Updating OS system packages..."
@@ -344,7 +344,7 @@ update-system() {
 }
 
 ### --------------------------------
-### Update All Packages (update-all)
+### Update All Packages
 ### --------------------------------
 update-all() {
 	echo "🚀 Starting full system update..."

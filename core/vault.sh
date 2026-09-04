@@ -17,7 +17,7 @@ if [ -S "${SSH_AUTH_SOCK}" ] && ! ssh-add -l > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### Update Vault (update-vault)
+### Update Vault
 ### --------------------------------
 update-vault() {
 	if [ -d "${VAULT_DIR}" ]; then

@@ -1,3 +1,3 @@
 ### ================================
-### SERVER CONTEXT (FREEBSD)
+### SERVER CONTEXT FREEBSD
 ### ================================

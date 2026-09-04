@@ -124,7 +124,7 @@ _detect_desktop_environment() {
 }
 
 ### --------------------------------
-### Detect Color Scheme (dark/light)
+### Detect Color Scheme
 ### --------------------------------
 _detect_color_scheme() {
 	if command -v gdbus > "/dev/null" 2>&1; then
@@ -331,7 +331,7 @@ _detect_privilege_escalator() {
 }
 
 ### --------------------------------
-### Detect Raw TTY (Console)
+### Detect Raw TTY
 ### --------------------------------
 _is_raw_tty() {
 	case "${TERM}" in

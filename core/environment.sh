@@ -41,7 +41,7 @@ elif command -v yay > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### Default Editor (Cascade)
+### Default Editor
 ### --------------------------------
 _is_generic_editor() {
 	case "${1}" in
@@ -84,7 +84,7 @@ _fd_bin="$(_detect_fd)"
 unset _bat_bin _fd_bin
 
 ### --------------------------------
-### Directory Listing (Cascade)
+### Directory Listing
 ### --------------------------------
 unalias ls 2> "/dev/null" || true
 eval 'ls() {
@@ -144,7 +144,7 @@ fi
 unset _ls_l _ls_ll _ls_la _eza_bin
 
 ### --------------------------------
-### Search in Files (Ripgrep)
+### Search in Files
 ### --------------------------------
 unalias grep 2> "/dev/null" || true
 eval 'grep() {
@@ -173,7 +173,7 @@ fi
 unset _rg_bin
 
 ### --------------------------------
-### File Preview (Bat / Cat)
+### File Preview
 ### --------------------------------
 unalias cat 2> "/dev/null" || true
 eval 'cat() {
@@ -197,7 +197,7 @@ fi
 unset _bat_bin
 
 ### --------------------------------
-### File & Path Search (Fd / Find)
+### File & Path Search
 ### --------------------------------
 unalias find 2> "/dev/null" || true
 eval 'find() {
