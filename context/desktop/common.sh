@@ -3,11 +3,15 @@
 ### ================================
 
 ### --------------------------------
-### Terminal Editors (Defensive)
+### Terminal Editors
 ### --------------------------------
 if command -v nvim > "/dev/null" 2>&1; then
 	open-neovim() {
-		command nvim "${1:-.}"
+		if [ "$#" -eq 0 ]; then
+			command nvim .
+		else
+			command nvim "$@"
+		fi
 	}
 	alias open-nvim="open-neovim"
 	alias on="open-neovim"
@@ -15,49 +19,79 @@ fi
 
 if command -v vim > "/dev/null" 2>&1; then
 	open-vim() {
-		command vim "${1:-.}"
+		if [ "$#" -eq 0 ]; then
+			command vim .
+		else
+			command vim "$@"
+		fi
 	}
 	alias ov="open-vim"
 fi
 
 if command -v hx > "/dev/null" 2>&1; then
+	hx() {
+		command hx "$@"
+		local _status=$?
+		[ -t 1 ] && command printf '\033[0 q'
+		return ${_status}
+	}
+
 	open-helix() {
-		command hx "${1:-.}"
+		if [ "$#" -eq 0 ]; then
+			hx .
+		else
+			hx "$@"
+		fi
 	}
 	alias open-hx="open-helix"
 	alias oh="open-helix"
+	alias h="open-helix"
 fi
 
 if command -v micro > "/dev/null" 2>&1; then
 	open-micro() {
-		command micro "${1:-.}"
+		if [ "$#" -eq 0 ]; then
+			command micro .
+		else
+			command micro "$@"
+		fi
 	}
 	alias om="open-micro"
 fi
 
 ### --------------------------------
-### GUI Editors (Defensive)
+### GUI Editors
 ### --------------------------------
 if command -v kate > "/dev/null" 2>&1; then
 	open-kate() {
-		command nohup kate "${1:-.}" > "/dev/null" 2>&1 &
+		if [ "$#" -eq 0 ]; then
+			command nohup kate . > "/dev/null" 2>&1 &
+		else
+			command nohup kate "$@" > "/dev/null" 2>&1 &
+		fi
 	}
 	alias ok="open-kate"
 fi
 
 if command -v geany > "/dev/null" 2>&1; then
 	open-geany() {
-		command nohup geany "${1:-.}" > "/dev/null" 2>&1 &
+		if [ "$#" -eq 0 ]; then
+			command nohup geany . > "/dev/null" 2>&1 &
+		else
+			command nohup geany "$@" > "/dev/null" 2>&1 &
+		fi
 	}
 	alias og="open-geany"
 fi
 
 if command -v code > "/dev/null" 2>&1 || command -v vscode > "/dev/null" 2>&1; then
 	open-code() {
-		if command -v code > "/dev/null" 2>&1; then
-			command code "${1:-.}"
+		local _bin="code"
+		command -v code > "/dev/null" 2>&1 || _bin="vscode"
+		if [ "$#" -eq 0 ]; then
+			command "${_bin}" .
 		else
-			command vscode "${1:-.}"
+			command "${_bin}" "$@"
 		fi
 	}
 	alias oc="open-code"
@@ -65,14 +99,22 @@ fi
 
 if command -v codium > "/dev/null" 2>&1; then
 	open-codium() {
-		command codium "${1:-.}"
+		if [ "$#" -eq 0 ]; then
+			command codium .
+		else
+			command codium "$@"
+		fi
 	}
 	alias ocm="open-codium"
 fi
 
 if command -v antigravity-ide > "/dev/null" 2>&1; then
 	open-antigravity() {
-		command antigravity-ide "${1:-.}"
+		if [ "$#" -eq 0 ]; then
+			command antigravity-ide .
+		else
+			command antigravity-ide "$@"
+		fi
 	}
 	alias open-ant="open-antigravity"
 	alias oa="open-antigravity"
@@ -81,13 +123,17 @@ fi
 
 if command -v zed > "/dev/null" 2>&1; then
 	open-zed() {
-		command zed "${1:-.}"
+		if [ "$#" -eq 0 ]; then
+			command zed .
+		else
+			command zed "$@"
+		fi
 	}
 	alias oz="open-zed"
 fi
 
 ### --------------------------------
-### Emacs Daemon & Client (Defensive)
+### Emacs Daemon & Client
 ### --------------------------------
 if command -v emacs > "/dev/null" 2>&1 || command -v emacsclient > "/dev/null" 2>&1; then
 	emacs-kill() {
@@ -103,7 +149,11 @@ if command -v emacs > "/dev/null" 2>&1 || command -v emacsclient > "/dev/null" 2
 		command emacsclient --create-frame --alternate-editor "" "$@"
 	}
 	emacs-open() {
-		command nohup emacsclient --create-frame --alternate-editor "" "${1:-.}" > "/dev/null" 2>&1 &
+		if [ "$#" -eq 0 ]; then
+			command nohup emacsclient --create-frame --alternate-editor "" . > "/dev/null" 2>&1 &
+		else
+			command nohup emacsclient --create-frame --alternate-editor "" "$@" > "/dev/null" 2>&1 &
+		fi
 	}
 	alias ek="emacs-kill"
 	alias es="emacs-start"

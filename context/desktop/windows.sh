@@ -1,9 +1,9 @@
 ### ================================
-### DESKTOP CONTEXT
+### DESKTOP CONTEXT (WINDOWS)
 ### ================================
 
 ### --------------------------------
-### Emacs (Defensive)
+### Emacs
 ### --------------------------------
 if command -v runemacs > "/dev/null" 2>&1 || command -v emacsclientw > "/dev/null" 2>&1; then
 	emacs-kill() {
@@ -19,7 +19,11 @@ if command -v runemacs > "/dev/null" 2>&1 || command -v emacsclientw > "/dev/nul
 		emacsclientw --create-frame --alternate-editor "" "$@"
 	}
 	emacs-open() {
-		emacsclientw --create-frame --alternate-editor "" "${1:-.}"
+		if [ "$#" -eq 0 ]; then
+			emacsclientw --create-frame --alternate-editor "" .
+		else
+			emacsclientw --create-frame --alternate-editor "" "$@"
+		fi
 	}
 	alias ek="emacs-kill"
 	alias es="emacs-start"

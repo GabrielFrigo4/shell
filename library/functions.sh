@@ -251,7 +251,7 @@ update-network() {
 }
 
 ### --------------------------------
-### Package Managers (Defensive)
+### Package Managers
 ### --------------------------------
 if command -v pacman > "/dev/null" 2>&1; then
 	update-pacman() {
@@ -360,13 +360,13 @@ update-all() {
 	if command -v update-flatpak > "/dev/null" 2>&1; then
 		echo ""
 		echo "📦 Updating Flatpak packages..."
-		update-flatpak && echo "✅ Flatpak packages updated!"
+		update-flatpak "$@" && echo "✅ Flatpak packages updated!"
 	fi
 
-	if command -v snap > "/dev/null" 2>&1; then
+	if command -v update-snap > "/dev/null" 2>&1; then
 		echo ""
 		echo "📦 Updating Snap packages..."
-		update-snap && echo "✅ Snap packages updated!"
+		update-snap "$@" && echo "✅ Snap packages updated!"
 	fi
 
 	echo ""

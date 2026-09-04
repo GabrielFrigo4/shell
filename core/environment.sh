@@ -255,7 +255,7 @@ alias upwf="update-wifi"
 alias upnet="update-network"
 
 ### --------------------------------
-### Package Managers (Defensive)
+### Package Managers
 ### --------------------------------
 command -v update-pacman > "/dev/null" 2>&1 && alias upman="update-pacman"
 command -v update-apt > "/dev/null" 2>&1 && alias upapt="update-apt"

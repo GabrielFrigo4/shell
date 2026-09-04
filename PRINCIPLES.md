@@ -147,18 +147,23 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
    - Evita caminhos rígidos como `#!/bin/sh` ou `#!/usr/bin/bash`, garantindo portabilidade entre FreeBSD, Linux e macOS.
 5. **Permissões em 4 Dígitos Octais:**
    - Use sempre a notação de 4 dígitos em comandos `chmod` (`chmod 0755` para diretórios e scripts executáveis públicos, `chmod 0644` para arquivos de configuração e bibliotecas sourced). O zero inicial deixa explícito que bits especiais (_setuid_, _setgid_, _sticky_) estão zerados.
-6. **Portabilidade POSIX vs Extensões Zsh/Bash:**
-   - Scripts que declaram `#!/usr/bin/env sh` devem ser estritamente compatíveis com a norma POSIX e com o `/bin/sh` do FreeBSD (sem usar `[[`, sem `function foo()`, sem arrays bash).
-   - Recursos específicos do Zsh ficam exclusivamente em arquivos lidos pelo Zsh.
-7. **Citações Seguras (Quoting):**
+6. **Linha de Base FreeBSD `/bin/sh` & Adoção Universal de `$'\e...'` e `echo -n`:**
+   - O **FreeBSD `/bin/sh`** é a régua máxima e a linha de base canônica de portabilidade para os scripts compartilhados do projeto. Não nivelamos o projeto por restrições arcaicas ou minimalismo desnecessário.
+   - **Adoção Universal de ANSI-C Quoting (`$''`) e `echo -n`:** O padrão `echo -n $'\e...'` é suportado em todos os shells do nosso ecossistema — FreeBSD `/bin/sh`, Bash, Zsh e até pelo Dash moderno (além de padronizado no POSIX Issue 8). Ele é expressamente o padrão preferido para sequências de controle de tela e atalhos interativos como `clear` (`alias clear="echo -n $'\e[2J\e[3J\e[H'"`), eliminando a necessidade de octal críptico (`\033`) em prol de máxima legibilidade e clareza Clean Code.
+   - Scripts que declaram `#!/usr/bin/env sh` devem manter compatibilidade com essa base do FreeBSD `sh` (sem `[[`, sem `function foo()`, sem arrays associativos de bash).
+   - Recursos específicos do Zsh e Bash ficam estritamente em seus respectivos targets (`zsh/`, `bash/`).
+7. **Detecção Interativa de Terminal (`[ -t 1 ]`):**
+   - Toda emissão de sequências de escape ANSI (cores, posicionamento, reset de cursor `\033[0 q`) em rotinas e wrappers deve ser condicionada ao descritor de arquivo 1 (`stdout`) conectado a um terminal interativo (`[ -t 1 ]`).
+   - Evita corromper arquivos ou pipelines quando saídas forem redirecionadas para arquivos de log ou comandos externos (`cmd > file` ou `cmd | grep`).
+8. **Citações Seguras (Quoting):**
    - Sempre envolva variáveis em aspas duplas: `"${VAR}"` para evitar _word splitting_ indesejado e ataques de injeção de caminho.
    - **Aspas Obrigatórias em Redirecionamentos:** SEMPRE use aspas ao redirecionar para o `/dev/null`: `> "/dev/null"` e `2> "/dev/null"` (nunca `> /dev/null` sem aspas).
-8. **Elevação de Privilégios Agregada (`_as_root` & `doas > sudo`):**
+9. **Elevação de Privilégios Agregada (`_as_root` & `doas > sudo`):**
    - Nunca chame `sudo` diretamente de forma rígida (_hardcoded_) em scripts ou instaladores.
    - Utilize sempre o helper `_as_root` da `library/functions.sh`, que respeita se a sessão já é `root`, prioriza `doas` (minimalismo e segurança) e faz fallback transparente para `sudo`.
-9. **Respeito a Variáveis Pré-Existentes:**
-   - Variáveis de preferências do usuário (como `$EDITOR`, `$VISUAL`, `$FILEMANAGER`) só devem ser atribuídas se estiverem vazias ou não-declaradas, respeitando o arquivo `.profile` e o `Vault` do desenvolvedor.
-10. **Convenção Estrita de Nomenclatura & Sem Funções Gêmeas:**
+10. **Respeito a Variáveis Pré-Existentes:**
+    - Variáveis de preferências do usuário (como `$EDITOR`, `$VISUAL`, `$FILEMANAGER`) só devem ser atribuídas se estiverem vazias ou não-declaradas, respeitando o arquivo `.profile` e o `Vault` do desenvolvedor.
+11. **Convenção Estrita de Nomenclatura & Sem Funções Gêmeas:**
     - **`kebab-case` (ou termo simples) = Funções / Comandos Públicos:** Utilitários e atalhos destinados à invocação interativa pelo usuário no terminal (ex: `path-front`, `path-back`, `path-dedup`, `mount-device`, `umount-device`, `editor`, `update-shell`, `update-all`). Definidas **diretamente como públicas**, sem camadas de indireção.
     - **`_snake_case` (prefixo `_`) = Helpers Privados & Variáveis Locais:** Funções internas de bootstrapping/infraestrutura e variáveis temporárias de escopo local (ex: `_as_root`, `_detect_os`, `_git_branch`, `_target`, `_file`, `_pass`). Mantém o autocompletion do usuário 100% limpo e sem poluição.
     - **`KEBAB-CASE` = Funções Públicas de Valor Constante (Getters):** Funções públicas que retornam um valor fixo/imutável ou constante de sistema.
@@ -166,10 +171,10 @@ Para garantir que o terminal permaneça instantâneo, extensível e agradável n
     - **`_SNAKE_CASE` (Maiúsculo com `_`) = Constantes Privadas de Módulo:** Constantes internas de infraestrutura com escopo restrito a módulos (ex: `_TRIGGERS_CACHE`, `_IGNORE_LIST_BASE`, `_IGNORE_LIST`).
     - **`snake_case` (Minúsculo sem `_`) = Variáveis Públicas:** Variáveis mutáveis públicas expostas para configuração interativa pelo usuário.
     - **Sem Gêmeos ou Wrappers Artificiais:** Não crie funções duplicadas (ex: um helper `_foo` só para criar um alias/função pública `foo` que não faz nada a mais). Ou a funcionalidade é **100% pública** (declarada uma única vez), ou é **100% privada** (com prefixo `_`).
-11. **Agnosticismo de Controle de Versão (VCS Agnosticism — Git & Got):**
+12. **Agnosticismo de Controle de Versão (VCS Agnosticism — Git & Got):**
     - Todos os shells (**Bash**, **Zsh**, **Linux SH** e **FreeBSD SH**) e temas do repositório devem suportar de forma transparente tanto o **Git** quanto o **Got (Game of Trees)**.
     - A detecção de branch e estado _dirty_ deve ser de tempo constante ($O(1)$) e **nunca** invocar binários externos se os diretórios de controle (`.git` ou `.got`) não existirem, garantindo latência zero em diretórios normais.
-12. **Taxonomia e Contratos de Funções de Biblioteca (`library/`):**
+13. **Taxonomia e Contratos de Funções de Biblioteca (`library/`):**
     - **Getters de Inspeção (`_detect_*`):** Funções em `library/detect.sh` que retornam uma string no `stdout` representando a entidade ou binário identificado (ex: `_detect_os`, `_detect_distro`, `_detect_color_scheme`, `_detect_eza`, `_detect_privilege_escalator`). Retornam vazio caso não encontrem.
     - **Predicados Booleanos (`_is_*` / `_has_*`):** Funções que realizam testes lógicos e retornam código de saída numérico (`return 0` para verdadeiro, `return 1` para falso) sem emitir saída no `stdout` (ex: `_is_raw_tty`, `_is_generic_editor`).
     - **Executores Operacionais (`_as_*` / `_run_*`):** Funções que realizam ações e executam comandos do sistema operacional (`"$@"`), residindo exclusivamente em `library/functions.sh` (ex: `_as_root`).
