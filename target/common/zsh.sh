@@ -47,6 +47,8 @@ setopt COMPLETE_IN_WORD
 ### --------------------------------
 setopt EXTENDED_GLOB
 setopt GLOB_DOTS
+setopt NULL_GLOB
+setopt KSH_GLOB
 
 ### --------------------------------
 ### Completion Engine

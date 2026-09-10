@@ -30,6 +30,12 @@ shopt -s cdspell 2> "/dev/null" || true
 shopt -s dirspell 2> "/dev/null" || true
 
 ### --------------------------------
+### Globbing
+### --------------------------------
+shopt -s globstar 2> "/dev/null" || true
+shopt -s extglob  2> "/dev/null" || true
+
+### --------------------------------
 ### System Completions (Lazy Load)
 ### --------------------------------
 if ! shopt -oq posix; then
