@@ -5,9 +5,20 @@
 
 SHELL_REPO_DIR="$(cd "$(dirname "${0}")" && pwd)"
 unset IFS
+[ -n "${ZSH_VERSION:-}" ] && setopt SH_WORD_SPLIT 2> "/dev/null" || true
 
 ### --------------------------------
+### Active Shell Elevation Guard
+### --------------------------------
+if [ -z "${BASH_VERSION:-}" ] && [ -z "${ZSH_VERSION:-}" ] && [ "$(uname -s 2> "/dev/null")" = "Linux" ]; then
+	if command -v zsh > "/dev/null" 2>&1; then
+		exec zsh "$0" "$@"
+	elif command -v bash > "/dev/null" 2>&1; then
+		exec bash "$0" "$@"
+	fi
+fi
 
+### --------------------------------
 ### Parse Arguments
 ### --------------------------------
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
@@ -80,21 +91,21 @@ else
 	TARGET_SHELLS=""
 	case "${OS_NAME}" in
 		linux)
-			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
 			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
+			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
 			;;
 		freebsd)
-			TARGET_SHELLS="${TARGET_SHELLS} sh"
-			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
 			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
+			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
+			TARGET_SHELLS="${TARGET_SHELLS} sh"
 			;;
 		macos)
 			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
 			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
 			;;
 		windows)
-			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
 			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
+			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
 			;;
 		*)
 			TARGET_SHELLS="${SHELL_NAME}"

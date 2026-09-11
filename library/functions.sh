@@ -141,6 +141,31 @@ update-editors() {
 }
 
 ### --------------------------------
+### Update Git Repositories
+### --------------------------------
+update-git() {
+	_target_root="${1:-${PWD}}"
+	if [ ! -d "${_target_root}" ]; then
+		echo "❌ ERROR: Diretório não encontrado: ${_target_root}"
+		return 1
+	fi
+
+	echo "🔄 [upgit] Buscando e atualizando repositórios Git em: ${_target_root}"
+	echo ""
+
+	find "${_target_root}" -maxdepth 3 -name ".git" 2> "/dev/null" | while read -r _git_entry; do
+		_repo_dir="$(dirname "${_git_entry}")"
+		echo "# ----------------------------------------------------------------"
+		echo "# ${_repo_dir}"
+		echo "# ----------------------------------------------------------------"
+		command git -C "${_repo_dir}" pull --ff-only 2> "/dev/null" || command git -C "${_repo_dir}" pull || echo "⚠️  Falha ao atualizar ${_repo_dir}"
+		echo ""
+	done
+
+	unset _target_root _git_entry _repo_dir
+}
+
+### --------------------------------
 ### Reinstall Shell
 ### --------------------------------
 reinstall-shell() {
@@ -163,11 +188,15 @@ reinstall-shell() {
 		_args="${_args} --framework"
 	fi
 
-	echo "🔧 Re-running install.sh with context '${SHELL_CONTEXT:-desktop}'..."
-	sh "${SHELL_REPO_DIR}/install.sh" ${_args} "$@"
+	local _cur_shell="$(_detect_shell)"
+	local _cur_bin
+	_cur_bin="$(command -v "${_cur_shell}" 2> "/dev/null" || command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || command -v sh 2> "/dev/null")"
+
+	echo "🔧 Re-running install.sh with context '${SHELL_CONTEXT:-desktop}' using ${_cur_shell}..."
+	"${_cur_bin}" "${SHELL_REPO_DIR}/install.sh" ${_args} "$@"
 
 	echo "♻️ Reloading shell environment..."
-	. "${HOME}/.$(_detect_shell)rc" 2> "/dev/null" || true
+	. "${HOME}/.${_cur_shell}rc" 2> "/dev/null" || true
 
 	echo "✅ Shell fully reinstalled and reloaded!"
 }
@@ -177,7 +206,9 @@ reinstall-shell() {
 ### --------------------------------
 bench-shell() {
 	if [ -n "${SHELL_REPO_DIR}" ] && [ -f "${SHELL_REPO_DIR}/scripts/benchmark.sh" ]; then
-		sh "${SHELL_REPO_DIR}/scripts/benchmark.sh" "$@"
+		local _cur_bin
+		_cur_bin="$(command -v "$(_detect_shell)" 2> "/dev/null" || command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || command -v sh 2> "/dev/null")"
+		"${_cur_bin}" "${SHELL_REPO_DIR}/scripts/benchmark.sh" "$@"
 	else
 		echo "❌ ERROR: Benchmark script not found in ${SHELL_REPO_DIR}/scripts/benchmark.sh."
 		return 1

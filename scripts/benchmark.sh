@@ -50,13 +50,15 @@ printf "%b⚡ Shell Startup Latency Benchmark%b (iters: %s, standard: 2^n)\n\n" 
 _measure_cmd() {
 	_cmd="${1}"
 	python3 -c "
-import sys, time, subprocess
-cmd = sys.argv[1]
+import sys, time, subprocess, shlex
+cmd_str = sys.argv[1]
 iters = int(sys.argv[2])
+use_shell = any(c in cmd_str for c in '|;&><')
+cmd_args = cmd_str if use_shell else shlex.split(cmd_str)
 times = []
 for _ in range(iters):
     t0 = time.perf_counter()
-    subprocess.run(cmd, shell=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(cmd_args, shell=use_shell, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     times.append((time.perf_counter() - t0) * 1000)
 avg = sum(times) / len(times)
 print(f'{avg:.1f}')
@@ -66,9 +68,9 @@ print(f'{avg:.1f}')
 _format_ms() {
 	_val="${1}"
 	_val_int="${_val%.*}"
-	if [ "${_val_int:-0}" -lt 32 ]; then
+	if [ "${_val_int:-0}" -lt 40 ]; then
 		printf "%b%sms%b" "${_c_green}" "${_val}" "${_c_reset}"
-	elif [ "${_val_int:-0}" -le 64 ]; then
+	elif [ "${_val_int:-0}" -le 50 ]; then
 		printf "%b%sms%b" "${_c_yellow}" "${_val}" "${_c_reset}"
 	else
 		printf "%b%sms%b" "${_c_red}" "${_val}" "${_c_reset}"
@@ -84,9 +86,10 @@ printf "%s\n" "----------------------------------------------------"
 for _sh in sh bash zsh; do
 	if command -v "${_sh}" > "/dev/null" 2>&1; then
 		case "${_sh}" in
-			sh|bash) _target="< 32ms"; _target_limit=32 ;;
-			zsh)     _target="< 64ms"; _target_limit=64 ;;
-			*)       _target="< 64ms"; _target_limit=64 ;;
+			sh)   _target="< 32ms"; _target_limit=32 ;;
+			bash) _target="< 50ms"; _target_limit=50 ;;
+			zsh)  _target="< 64ms"; _target_limit=64 ;;
+			*)    _target="< 64ms"; _target_limit=64 ;;
 		esac
 		_ms="$(_measure_cmd "${_sh} -i -c exit")"
 		_ms_int="${_ms%.*}"

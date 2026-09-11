@@ -76,6 +76,9 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
 8. **Guarda de Interatividade e Auto-Correção de `$SHELL`:**
     - Todo RC gerado deve iniciar com `case "$-" in *i*) ;; *) return ;; esac`.
     - Auto-correção de `$SHELL` deve usar casamento de padrão em memória (`case "${SHELL:-}" in *"/${_current_sh}") ;; ...`).
+9. **Execução pelo Shell Ativo (Active Shell Invocation):**
+    - Ao disparar sub-scripts a partir de funções do shell (`install.sh`, `benchmark.sh`), execute sempre através da cascata canônica: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`.
+    - NUNCA use `sh <script>` hardcoded: em Linux, `/bin/sh` pode ser `dash`, que rejeita a taxonomia canônica `kebab-case`. Em scripts utilitários, garanta guard de auto-elevação para `zsh`/`bash` no topo.
 
 ---
 
