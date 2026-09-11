@@ -67,10 +67,10 @@ flowchart LR
 
 O instalador é **multi-shell automático**: ao ser executado, ele detecta os shells suportados instalados na máquina e configura todos eles em lote:
 
-- **Linux:** configura automaticamente `bash` e `zsh` (caso instalados).
-- **FreeBSD:** configura automaticamente `sh`, `bash` e `zsh` (caso instalados).
+- **Linux:** configura automaticamente `zsh` e `bash` (caso instalados).
+- **FreeBSD:** configura automaticamente `zsh`, `bash` e `sh` (caso instalados).
 - **macOS:** configura automaticamente `zsh` e `bash` (caso instalados).
-- **Windows (MSYS2):** configura `bash` e `zsh` (caso instalados).
+- **Windows (MSYS2):** configura `zsh` e `bash` (caso instalados).
 
 > 💡 **Novo shell instalado depois?** Se você instalar um novo shell posteriormente (ex: `sudo pacman -S zsh` ou `pkg install zsh`), basta executar `reinstall-shell` (ou reexecutar o `install.sh`) e ele configurará o novo shell automaticamente!
 
@@ -93,7 +93,7 @@ sh "${HOME}/.shell/install.sh" --context desktop
 | Opção         |      Atalho      | Valores                                 |   Padrão   | Descrição                                                                    |
 | :------------ | :--------------: | :-------------------------------------- | :--------: | :--------------------------------------------------------------------------- |
 | `--context`   |       `-c`       | `desktop`, `server`, `container`, `wsl` | `desktop`  | Perfil de contexto do ambiente.                                              |
-| `--shell`     |       `-s`       | `all`, `bash`, `zsh`, `sh`              |   `all`    | Instala em todos os shells instalados ou em um alvo específico.              |
+| `--shell`     |       `-s`       | `all`, `zsh`, `bash`, `sh`              |   `all`    | Instala em todos os shells instalados ou em um alvo específico.              |
 | `--framework` | `--oh-my-shell`  | Flag booleana                           | Desativado | Habilita frameworks externos de terceiros (Oh-My-Bash / Oh-My-Zsh).          |
 | `--pure`      | `--no-framework` | Flag booleana                           |  Ativado   | Modo padrão: templates standalone nativos, zero overhead e boot instantâneo. |
 

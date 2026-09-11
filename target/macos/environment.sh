@@ -17,4 +17,3 @@ path-dedup
 ### Variables
 ### --------------------------------
 export HOMEBREW_NO_ANALYTICS=1
-export EMACS_SOCKET_NAME="${HOME}/.emacs.d/var/server/auth/server"

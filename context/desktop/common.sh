@@ -126,6 +126,8 @@ alias oz="open-zed"
 ### --------------------------------
 ### Emacs Daemon & Client
 ### --------------------------------
+export EMACS_SOCKET_NAME="${HOME}/.emacs.d/var/server/auth/server"
+
 emacs-kill() {
 	command -v emacs > "/dev/null" 2>&1 || command -v emacsclient > "/dev/null" 2>&1 || { echo "❌ emacs not found." >&2; return 127; }
 	command pkill emacs

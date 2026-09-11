@@ -18,6 +18,7 @@ Esta pasta contém as configurações de comportamento, histórico, navegação,
     - Expansão e globbing (`EXTENDED_GLOB`, `GLOB_DOTS`).
     - Engine de completamento compilado (`compinit -C` com compilação em background `.zcompdump.zwc`).
 - **`sh.sh`**:
-    - Configurações mínimas e ultra-leves para shells estritamente POSIX (FreeBSD `/bin/sh`).
-    - Limite de histórico (`HISTSIZE=5000`).
-    - Opção de segurança e rigor de escrita (`set -C`).
+    - Configurações universais para shells estritamente POSIX (FreeBSD `/bin/sh`, NetBSD `/bin/sh`, Dash).
+    - Gerenciamento de histórico unificado (`HISTFILE="${HOME}/.sh_history"`, `HISTSIZE=10000`).
+    - Opção de segurança e rigor de escrita (`set -C`) e line editing (`set -o emacs`).
+    - Aliases padrão POSIX (`h`, `j`, `m`, `history`).

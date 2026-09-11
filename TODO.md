@@ -9,10 +9,10 @@
 | Área                         |   Status   | Cobertura                                                                                |
 | :--------------------------- | :--------: | :--------------------------------------------------------------------------------------- |
 | **🖥️ Plataformas Base**      | 🟢 Estável | Linux, FreeBSD, Windows (MSYS2), macOS (base)                                            |
-| **🐚 Shells Nativos**        | 🟢 Estável | Bash, Zsh, POSIX sh (Linux & FreeBSD) com detecção e paridade universal                  |
+| **🐚 Shells Nativos**        | 🟢 Estável | Zsh, Bash, POSIX sh (Linux & FreeBSD) com detecção e paridade universal                  |
 | **🎯 Contextos**             | 🟢 Estável | Desktop, Server, Container, WSL com carregamento modular sob demanda                     |
 | **🎨 Temas Puros & TTY**     | 🟢 Estável | Motores em `theme/` dedicados à renderização visual e adaptação dinâmica PTY / Raw TTY   |
-| **⚙️ Shell Configs Comuns**  | 🟢 Estável | Centralização em `target/common/` (`bash.sh`, `zsh.sh`, `sh.sh`) para histórico e opções |
+| **⚙️ Shell Configs Comuns**  | 🟢 Estável | Centralização em `target/common/` (`zsh.sh`, `bash.sh`, `sh.sh`) para histórico e opções |
 | **🛡️ Segurança & Proteção**  | 🟢 Estável | Rigor `noclobber` padronizado (`set -o noclobber`, `setopt NO_CLOBBER`, `set -C`)        |
 | **⚡ Motor de Cache & Boot** | 🟢 Estável | Cache consolidado (`cache.env` + `tmpfs`) com boot < 22ms (Bash) e < 35ms (Zsh)          |
 

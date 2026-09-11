@@ -10,13 +10,19 @@ unset IFS
 ### --------------------------------
 ### Active Shell Elevation Guard
 ### --------------------------------
-if [ -z "${BASH_VERSION:-}" ] && [ -z "${ZSH_VERSION:-}" ] && [ "$(uname -s 2> "/dev/null")" = "Linux" ]; then
+_active_comm="$(command ps -p "$$" -o comm= 2> "/dev/null" | command sed 's/^-//')"
+if [ -z "${_active_comm}" ] && [ -r "/proc/$$/comm" ]; then
+	read -r _active_comm < "/proc/$$/comm" 2> "/dev/null"
+	_active_comm="${_active_comm#-}"
+fi
+if [ "${_active_comm}" = "dash" ]; then
 	if command -v zsh > "/dev/null" 2>&1; then
 		exec zsh "$0" "$@"
 	elif command -v bash > "/dev/null" 2>&1; then
 		exec bash "$0" "$@"
 	fi
 fi
+unset _active_comm
 
 ### --------------------------------
 ### Parse Arguments
@@ -27,6 +33,10 @@ SHELL_FRAMEWORK="${SHELL_FRAMEWORK:-0}"
 
 for arg in "$@"; do
 	case "${arg}" in
+		--help|-h)
+			echo "Usage: install.sh [--context desktop|server|container|wsl] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
+			exit 0
+			;;
 		--context=*) SHELL_CONTEXT="${arg#*=}" ;;
 		-c=*)        SHELL_CONTEXT="${arg#*=}" ;;
 		--shell=*)   SHELL_TARGET="${arg#*=}" ;;
@@ -59,16 +69,16 @@ case "${SHELL_CONTEXT}" in
 	desktop|server|container|wsl) ;;
 	*)
 		echo "ERROR: Invalid context '${SHELL_CONTEXT}'. Use 'desktop', 'server', 'container' or 'wsl'."
-		echo "Usage: install.sh [--context desktop|server|container|wsl] [-c ...] [--shell all|bash|zsh|sh] [-s ...] [--pure|--no-framework]"
+		echo "Usage: install.sh [--context desktop|server|container|wsl] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
 		exit 1
 		;;
 esac
 
 case "${SHELL_TARGET}" in
-	all|bash|zsh|sh) ;;
+	all|zsh|bash|sh) ;;
 	*)
-		echo "ERROR: Invalid shell '${SHELL_TARGET}'. Use 'all', 'bash', 'zsh' or 'sh'."
-		echo "Usage: install.sh [--context desktop|server|container|wsl] [-c ...] [--shell all|bash|zsh|sh] [-s ...] [--pure|--no-framework]"
+		echo "ERROR: Invalid shell '${SHELL_TARGET}'. Use 'all', 'zsh', 'bash' or 'sh'."
+		echo "Usage: install.sh [--context desktop|server|container|wsl] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
 		exit 1
 		;;
 esac
@@ -176,10 +186,9 @@ _install_shell_target() {
 	local _rc_file
 	local _root_rc_file
 	case "${_target_shell}" in
-		bash) _rc_file="${HOME}/.bashrc"; _root_rc_file="/root/.bashrc" ;;
 		zsh)  _rc_file="${HOME}/.zshrc";  _root_rc_file="/root/.zshrc" ;;
+		bash) _rc_file="${HOME}/.bashrc"; _root_rc_file="/root/.bashrc" ;;
 		sh)   _rc_file="${HOME}/.shrc";   _root_rc_file="/root/.shrc" ;;
-		dash) _rc_file="${HOME}/.dashrc"; _root_rc_file="/root/.dashrc" ;;
 		*)    _rc_file="${HOME}/.${_target_shell}rc"; _root_rc_file="/root/.${_target_shell}rc" ;;
 	esac
 

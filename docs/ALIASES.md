@@ -141,7 +141,7 @@ flowchart TD
 | `QT_STYLE_OVERRIDE`                | Motor de renderização de estilo para Qt.                                     | Auto-detectado (`Breeze-Dark`, `Breeze`)                                    |
 | `ELECTRON_OZONE_PLATFORM_HINT`     | Ativa renderização nativa em Wayland para apps Electron.                     | Exportado globalmente como `auto`                                           |
 | `_JAVA_AWT_WM_NONREPARENTING`      | Corrige janelas cinzas em apps Java/Swing em WMs tiling e Wayland.           | Exportado globalmente como `1`                                              |
-| `EMACS_SOCKET_NAME`                | Caminho do socket de autenticação do daemon Emacs.                           | `${HOME}/.emacs.d/var/server/auth/server`                                   |
+| `EMACS_SOCKET_NAME`                | Caminho do socket de autenticação do daemon Emacs (Contexto Desktop).        | `${HOME}/.emacs.d/var/server/auth/server`                                   |
 | `HISTSIZE` / `HISTFILE`            | Limite e arquivo de histórico persistente no POSIX `sh`.                     | `10000` comandos em `${HOME}/.sh_history`                                   |
 | `WIFI_SSID_*` / `WIFI_PASS_*`      | Credenciais Wi-Fi lidas e sincronizadas pelo `update-wifi`/`update-network`. | Injetadas pelo `Vault` ou variáveis de ambiente                             |
 | `FRIGO_SERVER_*` / `ORBS_SERVER_*` | Chaves SSH e endereços IP de servidores remotos.                             | Injetados pelo `Vault`                                                      |

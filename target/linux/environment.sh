@@ -10,10 +10,6 @@ path-back  "${HOME}/.cargo/bin"
 path-back  "${HOME}/.platformio/penv/bin"
 path-dedup
 
-### --------------------------------
-### Variables
-### --------------------------------
-export EMACS_SOCKET_NAME="${HOME}/.emacs.d/var/server/auth/server"
 
 ### --------------------------------
 ### Commands

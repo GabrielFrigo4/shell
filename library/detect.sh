@@ -83,22 +83,16 @@ _detect_os() {
 ### Detect Shell
 ### --------------------------------
 _detect_shell() {
-	[ -n "${_DETECTED_SHELL:-}" ] && echo "${_DETECTED_SHELL}" && return 0
-	if [ -n "${BASH_VERSION:-}" ]; then
-		_DETECTED_SHELL="bash"
-		echo "${_DETECTED_SHELL}"
-		return 0
-	elif [ -n "${ZSH_VERSION:-}" ]; then
-		_DETECTED_SHELL="zsh"
-		echo "${_DETECTED_SHELL}"
-		return 0
-	fi
-
 	local _pid="$$"
 	local _os="$(_detect_os)"
 	local _name
 
 	_name="$(command ps -p "${_pid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
+
+	if [ -z "${_name}" ] && [ -r "/proc/${_pid}/comm" ]; then
+		read -r _name < "/proc/${_pid}/comm" 2> "/dev/null"
+		_name="${_name#-}"
+	fi
 
 	if [ -z "${_name}" ]; then
 		if [ "${_os}" = "windows" ]; then
@@ -118,6 +112,10 @@ _detect_shell() {
 			fi
 		fi
 		_name="$(command ps -p "${_gpid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
+		if [ -z "${_name}" ] && [ -r "/proc/${_gpid}/comm" ]; then
+			read -r _name < "/proc/${_gpid}/comm" 2> "/dev/null"
+			_name="${_name#-}"
+		fi
 		if [ -z "${_name}" ]; then
 			if [ "${_os}" = "windows" ]; then
 				_name="$(command ps 2> "/dev/null" | command awk -v pid="${_gpid}" '$1 == pid {print $8}' | command awk -F'/' '{print $NF}' | command sed 's/^-//; s/\.exe$//')"
@@ -127,10 +125,29 @@ _detect_shell() {
 		fi
 	fi
 
-	[ -z "${_name}" ] && _name="$(command basename "${SHELL}")"
+	case "${_name}" in
+		zsh*|*zsh)   echo "zsh"; return 0 ;;
+		bash*|*bash) echo "bash"; return 0 ;;
+		dash*|*dash) echo "dash"; return 0 ;;
+		ksh*|*ksh)   echo "ksh"; return 0 ;;
+		fish*|*fish) echo "fish"; return 0 ;;
+		sh*|*sh)     echo "sh"; return 0 ;;
+	esac
 
-	_DETECTED_SHELL="${_name##*/}"
-	echo "${_DETECTED_SHELL}"
+	local _arg0="${0##*/}"
+	_arg0="${_arg0#-}"
+	case "${_arg0}" in
+		zsh*|*zsh)   echo "zsh"; return 0 ;;
+		bash*|*bash) echo "bash"; return 0 ;;
+		dash*|*dash) echo "dash"; return 0 ;;
+		ksh*|*ksh)   echo "ksh"; return 0 ;;
+		fish*|*fish) echo "fish"; return 0 ;;
+		sh*|*sh)     echo "sh"; return 0 ;;
+	esac
+
+	[ -z "${_name}" ] && _name="$(command basename "${SHELL:-sh}")"
+
+	echo "${_name##*/}"
 }
 
 ### --------------------------------
@@ -138,23 +155,29 @@ _detect_shell() {
 ### --------------------------------
 _detect_enabled_shell() {
 	local _target="${1:-path}"
-
-	if [ -z "${_DETECTED_ENABLED_SHELL:-}" ]; then
-		local _cur
-		_cur="$(_detect_shell)"
-		case "${_cur}" in
-			dash|fish) _cur="" ;;
-		esac
-
-		_DETECTED_ENABLED_SHELL="$( { [ -n "${_cur}" ] && command -v "${_cur}" 2> "/dev/null"; } || \
-			command -v zsh 2> "/dev/null" || \
-			command -v bash 2> "/dev/null" || \
-			command -v sh 2> "/dev/null")"
-	fi
+	local _cur=""
 
 	case "${_target}" in
-		--name|-n|name) echo "${_DETECTED_ENABLED_SHELL##*/}" ;;
-		*)              echo "${_DETECTED_ENABLED_SHELL}" ;;
+		--preferred|-p|preferred)
+			_cur=""
+			;;
+		*)
+			_cur="$(_detect_shell)"
+			case "${_cur}" in
+				dash|fish) _cur="" ;;
+			esac
+			;;
+	esac
+
+	local _bin
+	_bin="$( { [ -n "${_cur}" ] && command -v "${_cur}" 2> "/dev/null"; } || \
+		command -v zsh 2> "/dev/null" || \
+		command -v bash 2> "/dev/null" || \
+		command -v sh 2> "/dev/null")"
+
+	case "${_target}" in
+		--name|-n|name) echo "${_bin##*/}" ;;
+		*)              echo "${_bin}" ;;
 	esac
 }
 
