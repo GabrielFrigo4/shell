@@ -107,6 +107,40 @@ update-shell() {
 }
 
 ### --------------------------------
+### Update Editors
+### --------------------------------
+update-editors() {
+	_env_root="${ENVIRONMENT_DIR:-${HOME}/Documentos/Environment}"
+	_ed_list="Emacs Helix NeoVim Vim"
+	_found=0
+
+	for _ed in ${_ed_list}; do
+		_target=""
+		if [ -e "${_env_root}/Editor/${_ed}/.git" ]; then
+			_target="${_env_root}/Editor/${_ed}"
+		else
+			case "${_ed}" in
+				Emacs)   [ -e "${HOME}/.emacs.d/.git" ] && _target="${HOME}/.emacs.d" ;;
+				Helix)   [ -e "${HOME}/.config/helix/.git" ] && _target="${HOME}/.config/helix" ;;
+				NeoVim)  [ -e "${HOME}/.config/nvim/.git" ] && _target="${HOME}/.config/nvim" ;;
+				Vim)     [ -e "${HOME}/vimfiles/.git" ] && _target="${HOME}/vimfiles" ;;
+			esac
+		fi
+
+		if [ -n "${_target}" ]; then
+			echo "⬇️  Updating ${_ed} at ${_target}..."
+			command git -C "${_target}" pull --ff-only || echo "⚠️  ${_ed}: git pull failed."
+			_found=1
+		fi
+	done
+
+	if [ "${_found}" -eq 0 ]; then
+		echo "ℹ️  No editor repositories found in ${_env_root}/Editor or standard paths."
+	fi
+	unset _env_root _ed_list _found _ed _target
+}
+
+### --------------------------------
 ### Reinstall Shell
 ### --------------------------------
 reinstall-shell() {
