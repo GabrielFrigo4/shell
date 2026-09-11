@@ -33,7 +33,7 @@ update-vault() {
 		echo "🔄 Updating vault repository at ${VAULT_DIR}..."
 		command git -C "${VAULT_DIR}" pull
 		echo "♻️ Reloading shell environment..."
-		. "${HOME}/.$(_detect_shell)rc" 2> "/dev/null" || true
+		. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
 	else
 		echo "❌ ERROR: VAULT_DIR is not set or invalid."
 	fi

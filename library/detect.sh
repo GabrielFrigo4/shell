@@ -45,7 +45,7 @@ _cache_clean() {
 	if [ -d "${_SHELL_CACHE_DIR}" ]; then
 		command rm -rf "${_SHELL_CACHE_DIR}" 2> "/dev/null" || true
 	fi
-	unset _DETECTED_OS _DETECTED_SHELL _DETECTED_DISTRO _DETECTED_DISTRO_FAMILY \
+	unset _DETECTED_OS _DETECTED_SHELL _DETECTED_ENABLED_SHELL _DETECTED_DISTRO _DETECTED_DISTRO_FAMILY \
 		_DETECTED_DESKTOP_ENV _DETECTED_COLOR_SCHEME _DETECTED_GTK_THEME \
 		_DETECTED_QT_THEME _DETECTED_QT_PLATFORM_THEME _DETECTED_EZA \
 		_DETECTED_BAT _DETECTED_RG _DETECTED_FD _DETECTED_ESCALATOR \
@@ -131,6 +131,31 @@ _detect_shell() {
 
 	_DETECTED_SHELL="${_name##*/}"
 	echo "${_DETECTED_SHELL}"
+}
+
+### --------------------------------
+### Detect Enabled Shell
+### --------------------------------
+_detect_enabled_shell() {
+	local _target="${1:-path}"
+
+	if [ -z "${_DETECTED_ENABLED_SHELL:-}" ]; then
+		local _cur
+		_cur="$(_detect_shell)"
+		case "${_cur}" in
+			dash|fish) _cur="" ;;
+		esac
+
+		_DETECTED_ENABLED_SHELL="$( { [ -n "${_cur}" ] && command -v "${_cur}" 2> "/dev/null"; } || \
+			command -v zsh 2> "/dev/null" || \
+			command -v bash 2> "/dev/null" || \
+			command -v sh 2> "/dev/null")"
+	fi
+
+	case "${_target}" in
+		--name|-n|name) echo "${_DETECTED_ENABLED_SHELL##*/}" ;;
+		*)              echo "${_DETECTED_ENABLED_SHELL}" ;;
+	esac
 }
 
 ### --------------------------------

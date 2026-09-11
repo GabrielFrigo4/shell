@@ -10,6 +10,7 @@ O módulo `library/detect.sh` é o cérebro investigativo do **Universal Shell E
 
 - **`_detect_os`**: Identifica o sistema via `uname -s` e normaliza para: `Linux`, `FreeBSD`, `Darwin` ou `MSYS` (Windows).
 - **`_detect_shell`**: Identifica se a sessão interativa atual é executada por `bash`, `zsh` ou `sh` (POSIX).
+- **`_detect_enabled_shell`**: Retorna o primeiro binário de shell válido e instalado respeitando a cascata de preferência `$(_detect_shell) || zsh || bash || sh` (suporta flag `--name`).
 
 ### 2. Distribuição Linux & Família de Gerenciador de Pacotes
 

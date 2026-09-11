@@ -99,7 +99,7 @@ update-shell() {
 		fi
 		_cache_clean
 		echo "♻️ Reloading shell environment..."
-		. "${HOME}/.$(_detect_shell)rc" 2> "/dev/null" || true
+		. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
 	else
 		echo "❌ ERROR: SHELL_REPO_DIR is not set or invalid."
 		echo "Please re-run the install.sh script from your shell repository."
@@ -188,9 +188,8 @@ reinstall-shell() {
 		_args="${_args} --framework"
 	fi
 
-	local _cur_shell="$(_detect_shell)"
-	local _cur_bin
-	_cur_bin="$(command -v "${_cur_shell}" 2> "/dev/null" || command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || command -v sh 2> "/dev/null")"
+	local _cur_bin="$(_detect_enabled_shell)"
+	local _cur_shell="$(_detect_enabled_shell --name)"
 
 	echo "🔧 Re-running install.sh with context '${SHELL_CONTEXT:-desktop}' using ${_cur_shell}..."
 	"${_cur_bin}" "${SHELL_REPO_DIR}/install.sh" ${_args} "$@"
@@ -206,8 +205,7 @@ reinstall-shell() {
 ### --------------------------------
 bench-shell() {
 	if [ -n "${SHELL_REPO_DIR}" ] && [ -f "${SHELL_REPO_DIR}/scripts/benchmark.sh" ]; then
-		local _cur_bin
-		_cur_bin="$(command -v "$(_detect_shell)" 2> "/dev/null" || command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || command -v sh 2> "/dev/null")"
+		local _cur_bin="$(_detect_enabled_shell)"
 		"${_cur_bin}" "${SHELL_REPO_DIR}/scripts/benchmark.sh" "$@"
 	else
 		echo "❌ ERROR: Benchmark script not found in ${SHELL_REPO_DIR}/scripts/benchmark.sh."
