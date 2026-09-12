@@ -113,7 +113,9 @@ alias :="_update_prompt; command :"
 ### Separação TTY Bruto vs Terminal Gráfico:
 
 - **`_is_raw_tty` (Console `vt`/`syscons`):** Prompt ASCII atômico de 1 linha 100% negrito via persistência ANSI ECMA-48, operando com orçamento dinâmico entre 150 e 190 bytes (salvaguarda total contra overflow).
-- **Gráfico (`! _is_raw_tty`):** Mini prompt Nerd Fonts de 1 linha com consumo calibrado estritamente entre **177 e 191 bytes** (mesmo em repositórios Git modificados).
+- **Gráfico (`! _is_raw_tty`):** Mini prompt Nerd Fonts de 1 linha que opera em dois modos via `$PROMPT_STYLE`:
+  - **Layout `pill` (192 bytes — FreeBSD 14+):** Consumo calibrado estritamente entre 177 e 188 bytes com pílulas visuais (` ❮ ❯ `).
+  - **Layout `micro` (128 bytes — FreeBSD <= 13 ou fallback):** Consumo calibrado estritamente entre 96 e 126 bytes com ícones contínuos _streamlined_ sem delimitadores redundantes (` 13.2  dir  user 󰊢 branch `).
 - **Motor de Orçamento Dinâmico de Buffer (Proteção 360°):** Como o buffer estático `ps[192]` do FreeBSD não cresce dinamicamente, o motor calcula em tempo real o espaço exato disponível no buffer `ps[192]`. Aplica travas defensivas de entrada no usuário (`${#_user} <= 12`), hostname (`<= 12`) e versão do SO (`<= 6`), deduzindo seus custos exatos e alocando a sobra inteligentemente entre diretório e branch via expansão recursiva POSIX nativa `_trim_str` (zero subshells / zero forks). Permite caminhos longos quando há espaço e contrai proporcionalmente sob pressão extrema para travar no teto físico inegociável de 191 bytes, mesmo com entradas anômalas de centenas de caracteres.
 
 ---
