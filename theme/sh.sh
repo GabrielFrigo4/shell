@@ -159,7 +159,7 @@ _update_prompt() {
 		local _os_color _base_cost _git_frame _margin
 
 		if [ "${_style}" = "micro" ]; then
-			_trim_str "${_user}" 10 "…"
+			_trim_str "${_user}" 8 "…"
 			_user="${_trimmed}"
 			_trim_str "${_os_name}" 5 "…"
 			_os_name="${_trimmed}"
@@ -170,15 +170,15 @@ _update_prompt() {
 				*)    _os_color="${_c_b_blue}" ;;
 			esac
 
-			_base_cost=74
+			_base_cost=92
 			_git_frame=0
-			[ -n "${_branch}" ] && _git_frame=18
+			[ -n "${_branch}" ] && _git_frame=23
 			[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 1 ))
-			_margin=8
+			_margin=4
 		else
-			_trim_str "${_user}" 12 "…"
+			_trim_str "${_user}" 10 "…"
 			_user="${_trimmed}"
-			_trim_str "${_os_name}" 6 "…"
+			_trim_str "${_os_name}" 5 "…"
 			_os_name="${_trimmed}"
 
 			case "${PROMPT_OS_COLOR:-red}" in
@@ -187,11 +187,11 @@ _update_prompt() {
 				*)    _os_color="${_c_blue}" ;;
 			esac
 
-			_base_cost=117
+			_base_cost=127
 			_git_frame=0
-			[ -n "${_branch}" ] && _git_frame=33
-			[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 1 ))
-			_margin=12
+			[ -n "${_branch}" ] && _git_frame=23
+			[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 11 ))
+			_margin=4
 		fi
 
 		local _fixed_used=$(( _base_cost + ${#_os_name} + ${#_user} + _git_frame ))
@@ -227,18 +227,18 @@ _update_prompt() {
 		local _git_info=""
 		if [ -n "${_branch}" ]; then
 			local _ind=""
-			[ -n "${_is_dirty}" ] && _ind="*"
 			if [ "${_style}" = "micro" ]; then
-				_git_info=" ${_c_red}󰊢 ${_c_magenta}${_branch}${_ind}"
+				[ -n "${_is_dirty}" ] && _ind="*"
 			else
-				_git_info=" ❮${_c_red}󰊢 ${_c_magenta}${_branch}${_c_del}${_ind}❯"
+				[ -n "${_is_dirty}" ] && _ind="${_c_yellow}*"
 			fi
+			_git_info=" ${_c_red}󰊢 ${_c_magenta}${_branch}${_ind}"
 		fi
 
 		if [ "${_style}" = "micro" ]; then
 			export PS1="${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_yellow} ${_c_cyan}${_pwd} ${_c_blue} ${_u_color}${_user}${_git_info} ${_term_color}${_c_reset} "
 		else
-			export PS1="${_c_b_del}${_os_color}${_os_icon}${_c_magenta}${_os_name}${_c_del} ❮ ${_c_cyan}${_pwd}${_c_del}❯ ❮${_c_blue} ${_u_color}${_user}${_c_del}❯${_git_info} ${_term_color}${_c_reset} "
+			export PS1="${_c_del}${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_cyan} sh${_c_del} ${_c_yellow} ${_c_cyan}${_pwd} ${_c_blue} ${_u_color}${_user}${_git_info} ${_term_color}${_c_reset} "
 		fi
 	fi
 }
