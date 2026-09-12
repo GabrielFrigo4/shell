@@ -176,14 +176,14 @@ _generate_rc_pure() {
 			### ================================
 			### SHELL COMPATIBILITY GUARD
 			### ================================
-			[ -n "${BASH_VERSION:-}" ] && return 0
 			[ -n "${ZSH_VERSION:-}" ] && return 0
+			[ -n "${BASH_VERSION:-}" ] && return 0
 			[ -n "${KSH_VERSION:-}" ] && return 0
 			[ -n "${NETBSD_SHELL:-}" ] && return 0
 			[ -n "${YASH_VERSION:-}" ] && return 0
 
 			case "${0##*/}" in
-				*dash*|*busybox*|*ash*|*hush*|*ksh*|*mksh*|*pdksh*|*oksh*|*yash*|*posh*) return 0 ;;
+				*zsh*|*bash*|*dash*|*busybox*|*ash*|*hush*|*ksh*|*mksh*|*pdksh*|*oksh*|*yash*|*posh*) return 0 ;;
 			esac
 
 			builtin : 2> "/dev/null" || return 0

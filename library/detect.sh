@@ -96,6 +96,8 @@ _detect_shell() {
 	fi
 
 	case "${0##*/}" in
+		*zsh*)                       echo "zsh"; return 0 ;;
+		*bash*)                      echo "bash"; return 0 ;;
 		*dash*)                      echo "dash"; return 0 ;;
 		*busybox*|*ash*|*hush*)      echo "busybox"; return 0 ;;
 		*ksh*|*mksh*|*pdksh*|*oksh*) echo "ksh"; return 0 ;;
