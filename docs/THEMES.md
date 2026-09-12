@@ -49,8 +49,9 @@ user@hostname:~/projects/myapp (main ✗) $
 - **Teto Físico de Memória (`PROMPTLEN = 192`):** O parser em C do FreeBSD (`bin/sh/parser.c`) aloca um buffer estático de 192 bytes sem alocação dinâmica no heap (`malloc`). Qualquer prompt acima de 191 bytes é truncado pelo sistema.
 - **Peculiaridades da `libedit`:** Utiliza delimitador único (`\001`), descarta literais consecutivos sem caractere imprimível e desincroniza o cursor vertical em multilinhas (`\n`). Por isso, o tema adota rigorosamente **1 linha**.
 - **Decisão Arquitetural Upstream:** Os mantenedores do FreeBSD rejeitam intencionalmente parsers reentrantes e hooks arbitrários (`PROMPT_COMMAND`) para preservar a segurança contra injeção de comandos e manter a estabilidade no _single-user mode_.
-- **Mini Prompt Gráfico (`! _is_raw_tty`):** Em emuladores modernos, exibe pílula do sistema com versão (` 15.1`), pasta (``), usuário dinâmico (``) e Git (`󰊢`) calibrado em ~168-184 bytes.
-- **Fallback TTY (`_is_raw_tty`):** No console puro `vt`/`syscons`, comuta para prompt atômico de linha única ASCII seguro.
+- **Mini Prompt Gráfico (`! _is_raw_tty`):** Em emuladores modernos, exibe pílula do sistema com versão (` 15.1`), pasta (``), usuário dinâmico (``) e Git (`󰊢`), calibrado estritamente entre 177 e 188 bytes no pior caso.
+- **Motor de Orçamento Dinâmico de Buffer:** Em vez de limites fixos, calcula em tempo real via aritmética nativa POSIX o espaço exato disponível no buffer `ps[192]`. Deduz o tamanho do usuário (`${#_user}`) e presença do Git, alocando inteligentemente o orçamento restante entre pasta e branch. Permite nomes de pastas longos (até 40+ caracteres) quando fora do Git ou com branch curta, e encolhe proporcionalmente sob nomes extensos para travar no teto físico de 191 bytes.
+- **Fallback TTY 100% Bold (`_is_raw_tty`):** No console puro `vt`/`syscons`, comuta para prompt ASCII atômico de linha única 100% negrito via persistência ANSI ECMA-48, com orçamento dinâmico operando entre 150 e 190 bytes com salvaguarda absoluta contra overflow.
 - **Triggers de Precisão:** Atualização do Git através de wrappers de alto desempenho (`cd`, `git`, `got`, `:`) sem overhead de subshells a cada enter vazio.
 
 ---
