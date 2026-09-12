@@ -38,10 +38,10 @@ _git_branch() {
 _update_prompt() {
 	local _u_color _sym
 	if [ "$(command id -u)" -eq 0 ]; then
-		_u_color="${_c_red}"
+		_u_color="\[\e[1;91m\]"
 		_sym="#"
 	else
-		_u_color="${_c_green}"
+		_u_color="\[\e[1;92m\]"
 		_sym="\$"
 	fi
 
@@ -72,7 +72,7 @@ _update_prompt() {
 		_trim_str "${_host}" 12 "~"
 		_host="${_trimmed}"
 
-		local _base_cost=95
+		local _base_cost=91
 		local _git_frame=0
 		[ -n "${_branch}" ] && _git_frame=24
 		[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 8 ))
@@ -113,7 +113,7 @@ _update_prompt() {
 			_git_info=" ${_c_blue}(${_c_red}${_branch}${_ind}${_c_blue})"
 		fi
 
-		export PS1="\[\e[1m\]${_u_color}${_user}${_c_blue}@${_c_magenta}${_host} ${_c_blue}(${_c_cyan}sh${_c_blue})${_c_gray}:[${_c_yellow}${_pwd}${_c_gray}]${_git_info} ${_c_cyan}${_sym}${_c_reset} "
+		export PS1="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host} ${_c_blue}(${_c_cyan}sh${_c_blue})${_c_gray}:[${_c_yellow}${_pwd}${_c_gray}]${_git_info} ${_c_cyan}${_sym}${_c_reset} "
 	else
 		_trim_str "${_user}" 12 "…"
 		_user="${_trimmed}"
@@ -139,7 +139,7 @@ _update_prompt() {
 		[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 1 ))
 		local _fixed_used=$(( _base_cost + ${#_os_name} + ${#_user} + _git_frame ))
 		_budget=$(( 186 - _fixed_used ))
-		[ "${_budget}" -lt 6 ] && _budget=6
+		[ "${_budget}" -lt 4 ] && _budget=4
 
 		if [ -n "${_branch}" ]; then
 			if [ $(( _pwd_len + _branch_len )) -le "${_budget}" ]; then
