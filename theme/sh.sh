@@ -66,6 +66,14 @@ _update_prompt() {
 	local _pwd_len="${#_pwd}"
 	local _branch_len="${#_branch}"
 
+	local _prompt_limit="${PROMPT_BUFFER_LIMIT:-}"
+	if [ -z "${_prompt_limit}" ]; then
+		case "${PROMPT_OS_NAME:-}" in
+			[0-9].*|1[0-3].*) _prompt_limit=128 ;;
+			*)                _prompt_limit=192 ;;
+		esac
+	fi
+
 	if _is_raw_tty; then
 		local _u_color="${_c_b_green}" _sym="\$"
 		[ "$(command id -u)" -eq 0 ] && _u_color="${_c_b_red}" && _sym="#"
@@ -80,7 +88,7 @@ _update_prompt() {
 		[ -n "${_branch}" ] && _git_frame=24
 		[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 8 ))
 		local _fixed_used=$(( _base_cost + ${#_host} + ${#_user} + _git_frame ))
-		_budget=$(( 190 - _fixed_used ))
+		_budget=$(( _prompt_limit - 2 - _fixed_used ))
 		[ "${_budget}" -lt 6 ] && _budget=6
 
 		if [ -n "${_branch}" ]; then
@@ -144,7 +152,7 @@ _update_prompt() {
 		[ -n "${_branch}" ] && _git_frame=33
 		[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 1 ))
 		local _fixed_used=$(( _base_cost + ${#_os_name} + ${#_user} + _git_frame ))
-		_budget=$(( 180 - _fixed_used ))
+		_budget=$(( _prompt_limit - 12 - _fixed_used ))
 		[ "${_budget}" -lt 4 ] && _budget=4
 
 		if [ -n "${_branch}" ]; then

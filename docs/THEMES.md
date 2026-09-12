@@ -59,7 +59,7 @@ user@hostname:~/projects/myapp (main ✗) $
 Para garantir que o prompt utilize 100% do espaço útil do buffer físico sem risco de truncamento, o [`theme/sh.sh`](../theme/sh.sh) implementa uma alocação em 4 estágios:
 
 1. **Ingresso Protegido (Travas 360°):** Usuário (`<= 12`), hostname (`<= 12`) e versão do SO (`<= 6`) têm tetos defensivos para que nomes de usuário gigantes (ex: LDAP/SSO) não saturem o buffer antes da renderização de pastas.
-2. **Cálculo do Orçamento Livre (`_budget`):** Subtrai os custos fixos (molduras ANSI/UTF-8, usuário, versão e Git frame) do teto seguro (180 no PTY ou 190 no TTY).
+2. **Cálculo do Orçamento Livre (`_budget`):** Obtém o teto físico (`_prompt_limit`) dinamicamente via `$PROMPT_BUFFER_LIMIT` (ou por chaveamento nativo de versão do FreeBSD: 128 para <= 13, 192 para >= 14). Subtrai os custos fixos (molduras ANSI/UTF-8, usuário, versão e Git frame) do teto seguro (`_prompt_limit - 12` no PTY ou `_prompt_limit - 2` no TTY).
 3. **Árvore de Decisão de Partilha:**
    - **Fora do Git (`_branch=""`):** A pasta herda 100% do orçamento livre (podendo exibir 40+ caracteres intactos).
    - **Dentro do Git ($\text{Pasta} + \text{Branch} \le \text{Orçamento}$):** Nenhuma truncagem é aplicada; ambos são exibidos por extenso.

@@ -42,6 +42,7 @@ static char ps[PROMPTLEN];
   - Somando o texto visível (usuário, host, pasta, branch e delimitadores), o total atinge exatamente 184 a 192 bytes.
   - A 18ª sequência estourava o buffer, truncando o escape no meio e corrompendo a saída do terminal.
 - **Regra de Otimização Canônica:** Use sempre a notação de 8 bits `\[\e[9xm\]` em vez de `\[\e[1;9xm\]`. Isso economiza 2 bytes por código de cor (~20 a 28 bytes de folga no prompt total).
+- **Parametrização Dinâmica (`PROMPT_BUFFER_LIMIT`):** Como `PROMPTLEN` é uma macro estática em C sem reflexão em tempo de execução para scripts, o motor dinâmico adota chaveamento nativo por versão do FreeBSD (128 bytes para FreeBSD <= 13 e 192 bytes para FreeBSD >= 14) e permite override dinâmico via variável `$PROMPT_BUFFER_LIMIT` (ex: `PROMPT_BUFFER_LIMIT=256`), garantindo que compilações customizadas ou futuras ampliações upstream sejam aproveitadas sem alterar o código do tema.
 
 ---
 
