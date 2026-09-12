@@ -1,6 +1,10 @@
 ### ================================
-### SHELL INITIALIZATION
+### SHELL APPEARANCE
 ### ================================
+
+PROMPT_OS_ICON=" "
+PROMPT_OS_COLOR="blue"
+[ -z "${PROMPT_OS_NAME:-}" ] && export PROMPT_OS_NAME="$(_detect_kernel_release)"
 
 . "${SHELL_REPO_DIR}/theme/sh.sh"
 . "${SHELL_REPO_DIR}/target/linux/environment.sh"

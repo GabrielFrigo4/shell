@@ -109,7 +109,7 @@ setopt PROMPT_SUBST
 	else
 		export PROMPT="
 ${y}${_os_color}${_os_icon}${M}${_os_name}${y}─${B} ${M}${_sh_name}${y}
-${y}┌──❮ ${G} %*${y} ❯─❮ ${G} %D{%d/%m/%y}${y} ❯─❮ ${Y} ${C}%c${y} ❯─ ❮${B} ${u}%n${y}❯ \$(_git_branch)
+${y}┌──❮ ${G} %D{%H:%M:%S}${y} ❯─❮ ${G} %D{%d/%m/%y}${y} ❯─❮ ${Y} ${C}%c${y} ❯─ ❮${B} ${u}%n${y}❯ \$(_git_branch)
 ${y}└─${B}${z} "
 	fi
 }

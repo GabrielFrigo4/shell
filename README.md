@@ -53,13 +53,16 @@ flowchart LR
 
 #### 🐚 Matriz de Suporte a Shells
 
-| Shell             |    Status     | Detalhes & Decisão de Arquitetura                                                                         |
-| :---------------- | :-----------: | :-------------------------------------------------------------------------------------------------------- |
-| **Bash (`bash`)** |    🟢 100%    | Suporte universal nativo em Linux, macOS, BSD e Windows. Template Oh-My-Bash otimizado.                   |
-| **Zsh (`zsh`)**   |    🟢 100%    | Shell primário interativo moderno. Template Oh-My-Zsh com `zcompile` e `ZSH_DISABLE_COMPFIX`.             |
-| **Sh (`sh`)**     |    🟢 100%    | Shell POSIX leve e fundamental (FreeBSD `/bin/sh`). Prompt puro sem overhead de frameworks.               |
-| **Dash (`dash`)** | ❌ Descartado | **Incompatibilidade POSIX:** BNF estrita proíbe nomes `kebab-case` (`-`) em funções (`update-all`, etc.). |
-| **Fish (`fish`)** | ❌ Descartado | **Incompatibilidade POSIX:** Sintaxe própria incompatível com `source` em arquivos `.sh` e `export`.      |
+| Shell             |    Status     | Detalhes & Decisão de Arquitetura                                                                             |
+| :---------------- | :-----------: | :------------------------------------------------------------------------------------------------------------ |
+| **Bash (`bash`)** |    🟢 100%    | Suporte universal nativo em Linux, macOS, BSD e Windows. Template Oh-My-Bash otimizado.                       |
+| **Zsh (`zsh`)**   |    🟢 100%    | Shell primário interativo moderno. Template Oh-My-Zsh com `zcompile` e `ZSH_DISABLE_COMPFIX`.                 |
+| **Sh (`sh`)**     |    🟢 100%    | Shell POSIX fundamental (FreeBSD 15.1 `/bin/sh`). Mini prompt gráfico de 1 linha (~184B) e fallback TTY puro. |
+| **Dash (`dash`)** | ❌ Descartado | **Incompatibilidade POSIX:** BNF estrita proíbe nomes `kebab-case` (`-`) em funções (`update-all`, etc.).     |
+| **Fish (`fish`)** | ❌ Descartado | **Incompatibilidade POSIX:** Sintaxe própria incompatível com `source` em arquivos `.sh` e `export`.          |
+
+> 💡 **O Caso do FreeBSD `/bin/sh` & Engenharia de Prompt:**
+> O `/bin/sh` do FreeBSD opera sobre a biblioteca `libedit` e possui um buffer estático em C de 192 bytes (`#define PROMPTLEN 192` em `bin/sh/parser.c`), sem `malloc` dinâmico para garantir resiliência no modo de recuperação (_single-user mode_). Além disso, os mantenedores evitam intencionalmente parsers reentrantes e hooks arbitrários (`PROMPT_COMMAND`) por segurança contra injeção de comandos. Para respeitar essa restrição sem abrir mão da elegância, criamos um **mini prompt de 1 linha** de alta densidade visual (` 15.1 ❮ dir❯ ❮ user❯ ❮󰊢 branch*❯ `), com triggers atômicos (`cd`, `git`, `got`) e consumo rigorosamente calibrado abaixo de 192 bytes.
 
 ---
 

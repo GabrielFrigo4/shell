@@ -14,6 +14,15 @@ find "${HOME}" -maxdepth 1 -name ":*" -delete
 [ -f "${SHELL_REPO_DIR}/target/common/sh.sh" ] && \
 	. "${SHELL_REPO_DIR}/target/common/sh.sh"
 
+### ================================
+### SHELL APPEARANCE
+### ================================
+
+PROMPT_OS_ICON=" "
+PROMPT_OS_COLOR="red"
+PROMPT_OS_NAME="$(command freebsd-version 2> "/dev/null" | command cut -d- -f1)"
+[ -z "${PROMPT_OS_NAME}" ] && PROMPT_OS_NAME="15.1"
+
 . "${SHELL_REPO_DIR}/theme/sh.sh"
 . "${SHELL_REPO_DIR}/target/freebsd/sh/behavior.sh"
 . "${SHELL_REPO_DIR}/target/freebsd/environment.sh"

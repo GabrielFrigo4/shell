@@ -15,18 +15,18 @@ user@hostname:~/projects/myapp (main ✗) $
 ### Componentes Visuais:
 
 1. **Identificador de Usuário e Host:**
-    - Usuário comum: Exibido em tom suave (azul ou ciano).
-    - Usuário `root`: Destacado em vermelho para alertar sobre privilégios de superusuário.
+   - Usuário comum: Exibido em tom suave (azul ou ciano).
+   - Usuário `root`: Destacado em vermelho para alertar sobre privilégios de superusuário.
 2. **Diretório Atual (`PWD`):**
-    - Diretórios abreviados com base no `$HOME` (`~`).
-    - Cores de contraste para rápida localização do caminho.
+   - Diretórios abreviados com base no `$HOME` (`~`).
+   - Cores de contraste para rápida localização do caminho.
 3. **Status de Controle de Versão (Git / Got):**
-    - **Nome da Branch:** Exibido entre parênteses quando o diretório for um repositório versionado.
-    - **Símbolo de Estado Limpo (`✓`):** Verde quando não há arquivos modificados ou untracked.
-    - **Símbolo de Estado Modificado (`✗` / `*`):** Amarelo/Vermelho quando há alterações pendentes.
+   - **Nome da Branch:** Exibido entre parênteses quando o diretório for um repositório versionado.
+   - **Símbolo de Estado Limpo (`✓`):** Verde quando não há arquivos modificados ou untracked.
+   - **Símbolo de Estado Modificado (`✗` / `*`):** Amarelo/Vermelho quando há alterações pendentes.
 4. **Símbolo de Prompt Terminal:**
-    - `$` para usuários comuns.
-    - `#` para sessões com privilégios de `root`.
+   - `$` para usuários comuns.
+   - `#` para sessões com privilégios de `root`.
 
 ---
 
@@ -45,8 +45,13 @@ user@hostname:~/projects/myapp (main ✗) $
 
 ### 3. POSIX Sh (`theme/sh.sh`)
 
-- Implementação estrita para `/bin/sh` (FreeBSD / Dash / BusyBox).
-- Utiliza a variável `$PS1` padrão do POSIX com sequências de escape literais, sem extensões não-padronizadas.
+- **Linha de Base FreeBSD 15.1 (`/bin/sh`):** Suporta expansão de parâmetros no `$PS1`/`$PS2` (`$VAR`, `${VAR}`, `$?`, `$$`) e sequências ANSI canônicas.
+- **Teto Físico de Memória (`PROMPTLEN = 192`):** O parser em C do FreeBSD (`bin/sh/parser.c`) aloca um buffer estático de 192 bytes sem alocação dinâmica no heap (`malloc`). Qualquer prompt acima de 191 bytes é truncado pelo sistema.
+- **Peculiaridades da `libedit`:** Utiliza delimitador único (`\001`), descarta literais consecutivos sem caractere imprimível e desincroniza o cursor vertical em multilinhas (`\n`). Por isso, o tema adota rigorosamente **1 linha**.
+- **Decisão Arquitetural Upstream:** Os mantenedores do FreeBSD rejeitam intencionalmente parsers reentrantes e hooks arbitrários (`PROMPT_COMMAND`) para preservar a segurança contra injeção de comandos e manter a estabilidade no _single-user mode_.
+- **Mini Prompt Gráfico (`! _is_raw_tty`):** Em emuladores modernos, exibe pílula do sistema com versão (` 15.1`), pasta (``), usuário dinâmico (``) e Git (`󰊢`) calibrado em ~168-184 bytes.
+- **Fallback TTY (`_is_raw_tty`):** No console puro `vt`/`syscons`, comuta para prompt atômico de linha única ASCII seguro.
+- **Triggers de Precisão:** Atualização do Git através de wrappers de alto desempenho (`cd`, `git`, `got`, `:`) sem overhead de subshells a cada enter vazio.
 
 ---
 
