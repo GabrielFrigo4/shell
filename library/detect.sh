@@ -83,8 +83,24 @@ _detect_os() {
 ### Detect Shell
 ### --------------------------------
 _detect_shell() {
-	local _pid="$$"
+	[ -n "${ZSH_VERSION:-}" ] && echo "zsh" && return 0
+	[ -n "${BASH_VERSION:-}" ] && echo "bash" && return 0
+	[ -n "${KSH_VERSION:-}" ] && echo "ksh" && return 0
+	[ -n "${NETBSD_SHELL:-}" ] && echo "sh" && return 0
+	[ -n "${YASH_VERSION:-}" ] && echo "yash" && return 0
+
 	local _os="$(_detect_os)"
+	if [ "${_os}" = "freebsd" ] && builtin : 2> "/dev/null"; then
+		echo "sh"
+		return 0
+	fi
+
+	case "${0##*/}" in
+		busybox|*busybox*) echo "busybox"; return 0 ;;
+		dash|*dash*)       echo "dash"; return 0 ;;
+	esac
+
+	local _pid="$$"
 	local _name
 
 	_name="$(command ps -p "${_pid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"

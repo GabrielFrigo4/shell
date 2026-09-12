@@ -176,11 +176,11 @@ _generate_rc_pure() {
 			### ================================
 			### SHELL COMPATIBILITY GUARD
 			### ================================
+			[ -n "${NETBSD_SHELL:-}" ] && return 0
 			case "${0##*/}" in
 				dash|*dash*) return 0 ;;
 			esac
-
-			(eval "_test-fn() { :; }" 2> "/dev/null") || return 0
+			builtin : 2> "/dev/null" || return 0
 		EOF
 	fi
 }

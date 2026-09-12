@@ -235,7 +235,25 @@ No FreeBSD `/bin/sh` e derivados da Almquist shell:
 
 ---
 
-## 9. Checklist de Qualidade para Scripts POSIX
+## 9. Impressões Digitais Nativas de Shells (Zero-Fork Detection)
+
+Para inicialização com latência mínima (< 50ms), a identificação do interpretador em tempo de execução deve priorizar variáveis nativas e builtins em memória antes de recorrer a forks de processos externos (`ps`, `sed`, `awk`):
+
+| Interpretador              | Expressão Canônica (Zero Fork)                                | Mecanismo Interno                                                                                                              |
+| :------------------------- | :------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------- |
+| **Zsh**                    | `[ -n "${ZSH_VERSION:-}" ]`                                   | Variável de sistema gerada no startup                                                                                          |
+| **Bash**                   | `[ -n "${BASH_VERSION:-}" ]`                                  | Variável de sistema gerada no startup                                                                                          |
+| **NetBSD `/bin/sh`**       | `[ -n "${NETBSD_SHELL:-}" ]`                                  | Variável unexportable / read-only nativa do NetBSD                                                                             |
+| **PDKsh / OpenBSD / MKsh** | `[ -n "${KSH_VERSION:-}" ]`                                   | Variável de sistema nativa                                                                                                     |
+| **KornShell 93**           | `[ -n "${.sh.version:-}" ]`                                   | Árvore de parâmetros especiais do AT&T ksh93                                                                                   |
+| **Yash**                   | `[ -n "${YASH_VERSION:-}" ]`                                  | Variável de sistema nativa                                                                                                     |
+| **FreeBSD `/bin/sh`**      | `[ -z "${BASH_VERSION:-}" ] && builtin : 2> "/dev/null"`      | O comando `builtin` é exclusivo do `/bin/sh` do FreeBSD entre os shells POSIX mínimos (Dash e NetBSD retornam `127 not found`) |
+| **Dash**                   | `case "${0##*/}" in dash\|*dash*)` ou ausência de `builtin :` | Parser estrito POSIX (rejeita hífens e builtin)                                                                                |
+| **BusyBox `ash`**          | `case "${0##*/}" in busybox\|*busybox*)`                      | Builtin `help` nativo (`type help` retorna builtin) ou binário unificado                                                       |
+
+---
+
+## 10. Checklist de Qualidade para Scripts POSIX
 
 Antes de concluir qualquer alteração em arquivos `.sh` portáveis:
 
