@@ -36,12 +36,21 @@ static char ps[PROMPTLEN];
 ### Regras Inquebráveis de Memória:
 
 - **Teto Rígido de 191 Bytes:** O buffer `ps` é estático e nunca cresce dinamicamente. Qualquer prompt expandido que atinja 192 bytes é **truncado abruptamente** no byte 191 (`ps[i] = '\0'`).
-- **Por que quebrava com ~17 operações:**
-  - Cada código de cor ANSI delimitado por `\[\e[1;9xm\]` consome cerca de 10 a 11 bytes.
-  - $17 \text{ escapes} \times 10 \text{ bytes} = 170 \text{ bytes}$.
-  - Somando o texto visível (usuário, host, pasta, branch e delimitadores), o total atinge exatamente 184 a 192 bytes.
-  - A 18ª sequência estourava o buffer, truncando o escape no meio e corrompendo a saída do terminal.
-- **Regra de Otimização Canônica:** Use sempre a notação de 8 bits `\[\e[9xm\]` em vez de `\[\e[1;9xm\]`. Isso economiza 2 bytes por código de cor (~20 a 28 bytes de folga no prompt total).
+- **A Conversão do Parser C (`bin/sh/parser.c:getprompt()`):**
+  A contagem de caracteres na string do shell (`wc -c`) **NÃO REFLETE** os bytes ocupados no buffer C:
+  - `\[` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\001`).
+  - `\]` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\001`).
+  - `\e` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\033` ESC).
+  - _Consequência:_ Uma cor como `\[\e[95m\]` (9 caracteres) ocupa apenas **7 bytes reais em C**. Calcular custos via `wc -c` gera dezenas de "bytes fantasmas" que estrangulam o orçamento útil.
+- **Glifos Multi-byte UTF-8 (Nerd Fonts):**
+  - Glifos de ícones (``, ``, ``, ``) ocupam **3 bytes** cada em UTF-8.
+  - O ícone do Git (`󰊢`) ocupa **4 bytes**.
+  - O caractere de reticências (`…`) ocupa **3 bytes**, enquanto o til (`~`) ocupa apenas **1 byte**. Sob restrição severa (128B), o sufixo de poda deve ser estritamente `~` (1B) para manter a equivalência 1 caractere = 1 byte.
+- **Matriz Auditada de Custos Reais em C (`_base_cost` & `_git_frame`):**
+  - **TTY micro (128B):** Base C = **55B** | Git C = **24B** | Dirty = **+1B** (`*`)
+  - **TTY pill (192B):** Base C = **90B** | Git C = **24B** | Dirty = **+8B** (`\[\e[93m\]*`)
+  - **PTY micro (128B):** Base C = **76B** | Git C = **20B** | Dirty = **+1B** (`*`)
+  - **PTY pill (192B):** Base C = **118B** | Git C = **20B** | Dirty = **+8B** (`\[\e[93m\]*`)
 - **Parametrização Dinâmica (`PROMPT_BUFFER_LIMIT`):** Como `PROMPTLEN` é uma macro estática em C sem reflexão em tempo de execução para scripts, o motor dinâmico adota chaveamento nativo por versão do FreeBSD (128 bytes para FreeBSD <= 13 e 192 bytes para FreeBSD >= 14) e permite override dinâmico via variável `$PROMPT_BUFFER_LIMIT` (ex: `PROMPT_BUFFER_LIMIT=256`), garantindo que compilações customizadas ou futuras ampliações upstream sejam aproveitadas sem alterar o código do tema.
 
 ---

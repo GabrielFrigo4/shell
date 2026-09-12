@@ -89,7 +89,7 @@ _update_prompt() {
 			_user="${_trimmed}"
 			_trim_str "${_host}" 12 "~"
 			_host="${_trimmed}"
-			_base_cost=91
+			_base_cost=90
 			[ -n "${_branch}" ] && _git_frame=24
 			[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 8 ))
 		fi
@@ -152,9 +152,9 @@ _update_prompt() {
 		local _os_color _base_cost _git_frame _margin
 
 		if [ "${_style}" = "micro" ]; then
-			_trim_str "${_user}" 8 "…"
+			_trim_str "${_user}" 8 "~"
 			_user="${_trimmed}"
-			_trim_str "${_os_name}" 5 "…"
+			_trim_str "${_os_name}" 5 "~"
 			_os_name="${_trimmed}"
 
 			case "${PROMPT_OS_COLOR:-red}" in
@@ -163,15 +163,15 @@ _update_prompt() {
 				*)    _os_color="${_c_b_blue}" ;;
 			esac
 
-			_base_cost=92
+			_base_cost=76
 			_git_frame=0
-			[ -n "${_branch}" ] && _git_frame=23
+			[ -n "${_branch}" ] && _git_frame=20
 			[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 1 ))
-			_margin=4
+			_margin=2
 		else
-			_trim_str "${_user}" 10 "…"
+			_trim_str "${_user}" 10 "~"
 			_user="${_trimmed}"
-			_trim_str "${_os_name}" 5 "…"
+			_trim_str "${_os_name}" 5 "~"
 			_os_name="${_trimmed}"
 
 			case "${PROMPT_OS_COLOR:-red}" in
@@ -180,11 +180,11 @@ _update_prompt() {
 				*)    _os_color="${_c_b_blue}" ;;
 			esac
 
-			_base_cost=140
+			_base_cost=118
 			_git_frame=0
-			[ -n "${_branch}" ] && _git_frame=23
-			[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 11 ))
-			_margin=4
+			[ -n "${_branch}" ] && _git_frame=20
+			[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 8 ))
+			_margin=2
 		fi
 
 		local _fixed_used=$(( _base_cost + ${#_os_name} + ${#_user} + _git_frame ))
@@ -208,13 +208,13 @@ _update_prompt() {
 					_max_branch=$(( _budget - _half ))
 				fi
 			fi
-			_trim_str "${_branch}" "${_max_branch}" "…"
+			_trim_str "${_branch}" "${_max_branch}" "~"
 			_branch="${_trimmed}"
 		else
 			_max_pwd="${_budget}"
 		fi
 
-		_trim_str "${_pwd}" "${_max_pwd}" "…"
+		_trim_str "${_pwd}" "${_max_pwd}" "~"
 		_pwd="${_trimmed}"
 
 		local _git_info=""

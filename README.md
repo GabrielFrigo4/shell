@@ -61,8 +61,8 @@ flowchart LR
 | **Dash (`dash`)** | ❌ Descartado | **Incompatibilidade POSIX:** BNF estrita proíbe nomes `kebab-case` (`-`) em funções (`update-all`, etc.).     |
 | **Fish (`fish`)** | ❌ Descartado | **Incompatibilidade POSIX:** Sintaxe própria incompatível com `source` em arquivos `.sh` e `export`.          |
 
-> 💡 **O Caso do FreeBSD `/bin/sh` & Engenharia de Prompt:**
-> O `/bin/sh` do FreeBSD opera sobre a biblioteca `libedit` e possui um buffer estático em C de 192 bytes (`#define PROMPTLEN 192` em `bin/sh/parser.c`), sem `malloc` dinâmico para garantir resiliência no modo de recuperação (_single-user mode_). Além disso, os mantenedores evitam intencionalmente parsers reentrantes e hooks arbitrários (`PROMPT_COMMAND`) por segurança contra injeção de comandos. Para respeitar essa restrição sem abrir mão da elegância, criamos um **mini prompt de 1 linha** de alta densidade visual (` 15.1 ❮ dir❯ ❮ user❯ ❮󰊢 branch*❯ `), com triggers atômicos (`cd`, `git`, `got`) e consumo rigorosamente calibrado abaixo de 192 bytes.
+> 💡 **O Caso do FreeBSD `/bin/sh` & Engenharia Cirúrgica de Prompt:**
+> O `/bin/sh` do FreeBSD opera sobre a biblioteca `libedit` e possui um buffer estático em C (`#define PROMPTLEN 192` em FreeBSD 14+ e `128` em <= 13 em `bin/sh/parser.c`), sem `malloc` dinâmico para garantir estabilidade no modo monousuário. O parser em C converte `\[` e `\]` para `\001` (1B) e `\e` para `0x1b` (1B), tornando a ocupação real em C menor do que a contagem bruta de caracteres da string. O motor dinâmico em `theme/sh.sh` calibra com precisão cirúrgica de bytes dois layouts: **`pill`** (192B) e **`micro`** (128B com fallback automático), aproveitando até 98% do buffer físico com texto útil (pastas e branches completas) sem estouro de memória. Detalhes completos em [docs/THEMES.md](docs/THEMES.md).
 
 ---
 
