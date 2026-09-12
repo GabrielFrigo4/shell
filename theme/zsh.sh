@@ -86,11 +86,13 @@ setopt PROMPT_SUBST
 	zstyle -s ':prompt:colors' n_cyan    c; zstyle -s ':prompt:colors' b_cyan    C
 	zstyle -s ':prompt:colors' n_white   w; zstyle -s ':prompt:colors' b_white   W
 
-	local u
+	local u _term_color
 	if [ "$(id -u)" -eq 0 ]; then
 		zstyle -s ':prompt:colors' b_red u
+		_term_color="${R}"
 	else
 		zstyle -s ':prompt:colors' b_green u
+		_term_color="${B}"
 	fi
 
 	local _os_icon="${PROMPT_OS_ICON}"
@@ -110,6 +112,6 @@ setopt PROMPT_SUBST
 		export PROMPT="
 ${y}${_os_color}${_os_icon}${M}${_os_name}${y}─${B} ${M}${_sh_name}${y}
 ${y}┌──❮ ${G} %D{%H:%M:%S}${y} ❯─❮ ${G} %D{%d/%m/%y}${y} ❯─❮ ${Y} ${C}%c${y} ❯─ ❮${B} ${u}%n${y}❯ \$(_git_branch)
-${y}└─${B}${z} "
+${y}└─${_term_color}${z} "
 	fi
 }

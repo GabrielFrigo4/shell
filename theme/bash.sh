@@ -61,13 +61,15 @@ _update_prompt() {
 		*)    _os_color="${C_BRT_BLUE}" ;;
 	esac
 
-	local _usr_color _sym
+	local _usr_color _sym _term_color
 	if [ "$(id -u)" -eq 0 ]; then
 		_usr_color="${C_BRT_RED}"
 		_sym="#"
+		_term_color="${C_BRT_RED}"
 	else
 		_usr_color="${C_BRT_GREEN}"
 		_sym="\$"
+		_term_color="${C_BRT_BLUE}"
 	fi
 
 	if _is_raw_tty; then
@@ -76,7 +78,7 @@ _update_prompt() {
 	else
 		PS1="\n${C_NORM_YELLOW}${_os_color}${_os_icon}${C_BRT_MAGENTA}${_os_name}${C_NORM_YELLOW}─${C_BRT_BLUE} ${C_BRT_MAGENTA}${_sh_name}${C_NORM_YELLOW}"
 		PS1+="\n${C_NORM_YELLOW}┌──❮ ${C_BRT_GREEN} \t${C_NORM_YELLOW} ❯─❮ ${C_BRT_GREEN} \D{%d/%m/%y}${C_NORM_YELLOW} ❯─❮ ${C_BRT_YELLOW} ${C_BRT_CYAN}\W${C_NORM_YELLOW} ❯─ ❮${C_BRT_BLUE} ${_usr_color}\u${C_NORM_YELLOW}❯ $(_git_branch)"
-		PS1+="\n${C_NORM_YELLOW}└─${C_BRT_BLUE}${C_RESET} "
+		PS1+="\n${C_NORM_YELLOW}└─${_term_color}${C_RESET} "
 	fi
 }
 

@@ -148,8 +148,8 @@ _update_prompt() {
 			export PS1="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host} ${_c_blue}(${_c_cyan}sh${_c_blue})${_c_gray}:[${_c_yellow}${_pwd}${_c_gray}]${_git_info} ${_c_cyan}${_sym}${_c_reset} "
 		fi
 	else
-		local _u_color="${_c_green}"
-		[ "$(command id -u)" -eq 0 ] && _u_color="${_c_red}"
+		local _u_color="${_c_green}" _term_color="${_c_blue}"
+		[ "$(command id -u)" -eq 0 ] && _u_color="${_c_red}" && _term_color="${_c_red}"
 
 		local _os_icon="${PROMPT_OS_ICON:- }"
 		_trim_str "${_os_icon}" 4 ""
@@ -236,9 +236,9 @@ _update_prompt() {
 		fi
 
 		if [ "${_style}" = "micro" ]; then
-			export PS1="${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_yellow} ${_c_cyan}${_pwd} ${_c_blue} ${_u_color}${_user}${_git_info} ${_c_blue}${_c_reset} "
+			export PS1="${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_yellow} ${_c_cyan}${_pwd} ${_c_blue} ${_u_color}${_user}${_git_info} ${_term_color}${_c_reset} "
 		else
-			export PS1="${_c_b_del}${_os_color}${_os_icon}${_c_magenta}${_os_name}${_c_del} ❮ ${_c_cyan}${_pwd}${_c_del}❯ ❮${_c_blue} ${_u_color}${_user}${_c_del}❯${_git_info} ${_c_blue}${_c_reset} "
+			export PS1="${_c_b_del}${_os_color}${_os_icon}${_c_magenta}${_os_name}${_c_del} ❮ ${_c_cyan}${_pwd}${_c_del}❯ ❮${_c_blue} ${_u_color}${_user}${_c_del}❯${_git_info} ${_term_color}${_c_reset} "
 		fi
 	fi
 }
