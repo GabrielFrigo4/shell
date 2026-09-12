@@ -525,3 +525,48 @@ reboot() {
 			;;
 	esac
 }
+
+### ================================
+### Version Control: Got & Git
+### ================================
+vcs-status() {
+	if [ -d ".got" ] || [ -f ".got/base-commit" ]; then
+		got status "$@"
+	elif [ -d ".git" ] || git rev-parse --git-dir > "/dev/null" 2>&1; then
+		git status --short "$@"
+	else
+		echo "⚠️  Não é um repositório Git ou Work Tree Got." >&2
+		return 1
+	fi
+}
+
+vcs-diff() {
+	if [ -d ".got" ] || [ -f ".got/base-commit" ]; then
+		got diff "$@"
+	elif [ -d ".git" ] || git rev-parse --git-dir > "/dev/null" 2>&1; then
+		git diff "$@"
+	else
+		echo "⚠️  Não é um repositório Git ou Work Tree Got." >&2
+		return 1
+	fi
+}
+
+got-init() {
+	if [ "$#" -lt 2 ]; then
+		echo "Uso: got-init <url-do-repositorio> <diretorio-destino>" >&2
+		echo "Exemplo: got-init https://github.com/usuario/repo.git meu-projeto" >&2
+		return 1
+	fi
+	_got_url="$1"
+	_got_dir="$2"
+	_got_bare="${_got_dir}.git"
+
+	echo "📦 [Got]: Clonando repositório bare..."
+	got clone "${_got_url}" "${_got_bare}" || return 1
+
+	echo "🌳 [Got]: Criando work tree em ${_got_dir}..."
+	got checkout "${_got_bare}" "${_got_dir}" || return 1
+
+	echo "✅ [Got]: Inicializado com sucesso! Acesse: cd ${_got_dir}"
+	unset _got_url _got_dir _got_bare
+}

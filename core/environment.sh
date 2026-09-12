@@ -287,3 +287,17 @@ alias update-yay="update-aur"
 alias update-paru="update-aur"
 alias upflat="update-flatpak"
 alias upsnap="update-snap"
+
+### ================================
+### Version Control Aliases (Got & Git)
+### ================================
+alias gs="vcs-status"
+alias gd="vcs-diff"
+
+command -v tog > "/dev/null" 2>&1 && {
+	alias tg="tog"
+	alias tgl="tog log"
+	alias tgd="tog diff"
+	alias tgb="tog blame"
+	alias tgt="tog tree"
+}

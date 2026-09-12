@@ -125,7 +125,22 @@ flowchart TD
 
 ---
 
-## 8. 🌐 Variáveis de Ambiente & Configurações Globais
+## 8. 🌳 Controle de Versão: Git & Game of Trees (Got/tog)
+
+| Comando Canônico / Alias | Descrição                                                                          | Ferramenta Alvo / Comportamento              |
+| :----------------------- | :--------------------------------------------------------------------------------- | :------------------------------------------- |
+| `vcs-status` / `gs`      | Status inteligente e contextual: roda `got status` em Got ou `git status --short`. | Got (`.got/`) > Git (`.git/`)                |
+| `vcs-diff` / `gd`        | Diff inteligente e contextual: roda `got diff` em Got ou `git diff`.               | Got (`.got/`) > Git (`.git/`)                |
+| `got-init <url> <dir>`   | Helper de bootstrapping: clona repositório bare (`.git`) e extrai a work tree.     | Game of Trees (`got clone` + `got checkout`) |
+| `tg` / `tog`             | Inicia o navegador interativo TUI do Game of Trees.                                | `tog`                                        |
+| `tgl`                    | Abre o navegador de histórico e grafo de commits.                                  | `tog log`                                    |
+| `tgd`                    | Abre o navegador interativo de diferenças (diff).                                  | `tog diff`                                   |
+| `tgb <arquivo>`          | Abre a visualização interativa de anotações de autoria (_blame_).                  | `tog blame`                                  |
+| `tgt`                    | Abre o navegador interativo da árvore de arquivos do repositório.                  | `tog tree`                                   |
+
+---
+
+## 9. 🌐 Variáveis de Ambiente & Configurações Globais
 
 | Variável                           | Descrição / Propósito                                                        | Origem / Padrão                                                             |
 | :--------------------------------- | :--------------------------------------------------------------------------- | :-------------------------------------------------------------------------- |
