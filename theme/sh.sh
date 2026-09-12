@@ -67,6 +67,11 @@ _update_prompt() {
 	local _branch_len="${#_branch}"
 
 	if _is_raw_tty; then
+		_trim_str "${_user}" 14 "~"
+		_user="${_trimmed}"
+		_trim_str "${_host}" 12 "~"
+		_host="${_trimmed}"
+
 		local _base_cost=95
 		local _git_frame=0
 		[ -n "${_branch}" ] && _git_frame=24
@@ -110,8 +115,17 @@ _update_prompt() {
 
 		export PS1="\[\e[1m\]${_u_color}${_user}${_c_blue}@${_c_magenta}${_host} ${_c_blue}(${_c_cyan}sh${_c_blue})${_c_gray}:[${_c_yellow}${_pwd}${_c_gray}]${_git_info} ${_c_cyan}${_sym}${_c_reset} "
 	else
+		_trim_str "${_user}" 12 "…"
+		_user="${_trimmed}"
+
 		local _os_icon="${PROMPT_OS_ICON:- }"
+		_trim_str "${_os_icon}" 4 ""
+		_os_icon="${_trimmed}"
+
 		local _os_name="${PROMPT_OS_NAME:-15.1}"
+		_trim_str "${_os_name}" 6 "…"
+		_os_name="${_trimmed}"
+
 		local _os_color
 		case "${PROMPT_OS_COLOR:-red}" in
 			red)  _os_color="${_c_red}" ;;
