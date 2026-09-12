@@ -23,6 +23,12 @@ PROMPT_OS_COLOR="red"
 PROMPT_OS_NAME="$(command freebsd-version 2> "/dev/null" | command cut -d- -f1)"
 [ -z "${PROMPT_OS_NAME}" ] && PROMPT_OS_NAME="15.1"
 
+case "${PROMPT_OS_NAME}" in
+	[0-9].*|1[0-3].*) PROMPT_BUFFER_LIMIT=128 ;;
+	*)                PROMPT_BUFFER_LIMIT=192 ;;
+esac
+export PROMPT_BUFFER_LIMIT
+
 . "${SHELL_REPO_DIR}/theme/sh.sh"
 . "${SHELL_REPO_DIR}/target/freebsd/sh/behavior.sh"
 . "${SHELL_REPO_DIR}/target/freebsd/environment.sh"

@@ -64,14 +64,7 @@ _update_prompt() {
 	local _pwd_len="${#_pwd}"
 	local _branch_len="${#_branch}"
 
-	local _prompt_limit="${PROMPT_BUFFER_LIMIT:-}"
-	if [ -z "${_prompt_limit}" ]; then
-		case "${PROMPT_OS_NAME:-}" in
-			[0-9].*|1[0-3].*) _prompt_limit=128 ;;
-			*)                _prompt_limit=192 ;;
-		esac
-	fi
-
+	local _prompt_limit="${PROMPT_BUFFER_LIMIT:-192}"
 	local _style="${PROMPT_STYLE:-pill}"
 	[ "${_prompt_limit}" -lt 192 ] && _style="micro"
 
