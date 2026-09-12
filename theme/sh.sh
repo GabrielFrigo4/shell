@@ -175,12 +175,12 @@ _update_prompt() {
 			_os_name="${_trimmed}"
 
 			case "${PROMPT_OS_COLOR:-red}" in
-				red)  _os_color="${_c_red}" ;;
-				blue) _os_color="${_c_blue}" ;;
-				*)    _os_color="${_c_blue}" ;;
+				red)  _os_color="${_c_b_red}" ;;
+				blue) _os_color="${_c_b_blue}" ;;
+				*)    _os_color="${_c_b_blue}" ;;
 			esac
 
-			_base_cost=127
+			_base_cost=140
 			_git_frame=0
 			[ -n "${_branch}" ] && _git_frame=23
 			[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 11 ))
@@ -231,7 +231,7 @@ _update_prompt() {
 		if [ "${_style}" = "micro" ]; then
 			export PS1="${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_yellow} ${_c_cyan}${_pwd} ${_c_blue} ${_u_color}${_user}${_git_info} ${_term_color}${_c_reset} "
 		else
-			export PS1="${_c_del}${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_cyan} sh${_c_del} ${_c_yellow} ${_c_cyan}${_pwd} ${_c_blue} ${_u_color}${_user}${_git_info} ${_term_color}${_c_reset} "
+			export PS1="${_c_del}${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_blue} ${_c_magenta}sh\[\e[0;33m\] \[\e[1m\] ${_c_cyan}${_pwd} ${_c_blue} ${_u_color}${_user}${_git_info} ${_term_color}${_c_reset} "
 		fi
 	fi
 }
