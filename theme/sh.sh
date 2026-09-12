@@ -79,8 +79,8 @@ _update_prompt() {
 		local _host="${HOSTNAME%%.*}"
 		[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
 
-		local _u_color="${_c_b_green}" _sym="\$"
-		[ "$(command id -u)" -eq 0 ] && _u_color="${_c_b_red}" && _sym="#"
+		local _u_color="${_c_b_green}" _sym="\$" _sym_color="${_c_cyan}"
+		[ "$(command id -u)" -eq 0 ] && _u_color="${_c_b_red}" && _sym="#" && _sym_color="${_c_red}"
 
 		local _base_cost _git_frame=0
 		if [ "${_style}" = "micro" ]; then
@@ -143,9 +143,9 @@ _update_prompt() {
 		fi
 
 		if [ "${_style}" = "micro" ]; then
-			export PS1="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host}${_c_gray}:${_c_yellow}${_pwd}${_git_info} ${_c_cyan}${_sym}${_c_reset} "
+			export PS1="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host}${_c_gray}:${_c_yellow}${_pwd}${_git_info} ${_sym_color}${_sym}${_c_reset} "
 		else
-			export PS1="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host} ${_c_blue}(${_c_cyan}sh${_c_blue})${_c_gray}:[${_c_yellow}${_pwd}${_c_gray}]${_git_info} ${_c_cyan}${_sym}${_c_reset} "
+			export PS1="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host} ${_c_blue}(${_c_cyan}sh${_c_blue})${_c_gray}:[${_c_yellow}${_pwd}${_c_gray}]${_git_info} ${_sym_color}${_sym}${_c_reset} "
 		fi
 	else
 		local _u_color="${_c_green}" _term_color="${_c_blue}"
