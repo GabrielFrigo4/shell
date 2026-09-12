@@ -3,7 +3,7 @@
 ### ================================
 
 _c_reset="\[\e[0m\]"
-_c_del_start="\[\e[1;33m\]"
+
 _c_del="\[\e[33m\]"
 _c_red="\[\e[91m\]"
 _c_green="\[\e[92m\]"
@@ -12,6 +12,15 @@ _c_blue="\[\e[94m\]"
 _c_magenta="\[\e[95m\]"
 _c_cyan="\[\e[96m\]"
 _c_gray="\[\e[90m\]"
+
+_c_b_del="\[\e[1;33m\]"
+_c_b_red="\[\e[1;91m\]"
+_c_b_green="\[\e[1;92m\]"
+_c_b_yellow="\[\e[1;93m\]"
+_c_b_blue="\[\e[1;94m\]"
+_c_b_magenta="\[\e[1;95m\]"
+_c_b_cyan="\[\e[1;96m\]"
+_c_b_gray="\[\e[1;90m\]"
 
 _trim_str() {
 	_trimmed="$1"
@@ -36,15 +45,6 @@ _git_branch() {
 }
 
 _update_prompt() {
-	local _u_color _sym
-	if [ "$(command id -u)" -eq 0 ]; then
-		_u_color="\[\e[1;91m\]"
-		_sym="#"
-	else
-		_u_color="\[\e[1;92m\]"
-		_sym="\$"
-	fi
-
 	local _user="${USER:-$(command id -un)}"
 	local _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
 	[ -z "${_host}" ] && _host="${HOSTNAME%%.*}"
@@ -67,6 +67,9 @@ _update_prompt() {
 	local _branch_len="${#_branch}"
 
 	if _is_raw_tty; then
+		local _u_color="${_c_b_green}" _sym="\$"
+		[ "$(command id -u)" -eq 0 ] && _u_color="${_c_b_red}" && _sym="#"
+
 		_trim_str "${_user}" 14 "~"
 		_user="${_trimmed}"
 		_trim_str "${_host}" 12 "~"
@@ -115,6 +118,9 @@ _update_prompt() {
 
 		export PS1="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host} ${_c_blue}(${_c_cyan}sh${_c_blue})${_c_gray}:[${_c_yellow}${_pwd}${_c_gray}]${_git_info} ${_c_cyan}${_sym}${_c_reset} "
 	else
+		local _u_color="${_c_green}"
+		[ "$(command id -u)" -eq 0 ] && _u_color="${_c_red}"
+
 		_trim_str "${_user}" 12 "…"
 		_user="${_trimmed}"
 
@@ -138,7 +144,7 @@ _update_prompt() {
 		[ -n "${_branch}" ] && _git_frame=33
 		[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 1 ))
 		local _fixed_used=$(( _base_cost + ${#_os_name} + ${#_user} + _git_frame ))
-		_budget=$(( 186 - _fixed_used ))
+		_budget=$(( 180 - _fixed_used ))
 		[ "${_budget}" -lt 4 ] && _budget=4
 
 		if [ -n "${_branch}" ]; then
@@ -174,7 +180,7 @@ _update_prompt() {
 			_git_info=" ❮${_c_red}󰊢 ${_c_magenta}${_branch}${_c_del}${_ind}❯"
 		fi
 
-		export PS1="${_c_del_start}${_os_color}${_os_icon}${_c_magenta}${_os_name}${_c_del} ❮${_c_yellow} ${_c_cyan}${_pwd}${_c_del}❯ ❮${_c_blue} ${_u_color}${_user}${_c_del}❯${_git_info} ${_c_blue}${_c_reset} "
+		export PS1="${_c_b_del}${_os_color}${_os_icon}${_c_magenta}${_os_name}${_c_del} ❮${_c_yellow} ${_c_cyan}${_pwd}${_c_del}❯ ❮${_c_blue} ${_u_color}${_user}${_c_del}❯${_git_info} ${_c_blue}${_c_reset} "
 	fi
 }
 
