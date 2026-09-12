@@ -46,8 +46,6 @@ _git_branch() {
 
 _update_prompt() {
 	local _user="${USER:-$(command id -un)}"
-	local _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
-	[ -z "${_host}" ] && _host="${HOSTNAME%%.*}"
 
 	local _pwd="${PWD:-$(command pwd)}"
 	if [ "${_pwd}" = "${HOME}" ]; then
@@ -78,27 +76,31 @@ _update_prompt() {
 	[ "${_prompt_limit}" -lt 192 ] && _style="micro"
 
 	if _is_raw_tty; then
+		local _host="${HOSTNAME%%.*}"
+		[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
+
 		local _u_color="${_c_b_green}" _sym="\$"
 		[ "$(command id -u)" -eq 0 ] && _u_color="${_c_b_red}" && _sym="#"
 
-		local _base_cost
+		local _base_cost _git_frame=0
 		if [ "${_style}" = "micro" ]; then
 			_trim_str "${_user}" 10 "~"
 			_user="${_trimmed}"
 			_trim_str "${_host}" 10 "~"
 			_host="${_trimmed}"
-			_base_cost=64
+			_base_cost=55
+			[ -n "${_branch}" ] && _git_frame=24
+			[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 1 ))
 		else
 			_trim_str "${_user}" 14 "~"
 			_user="${_trimmed}"
 			_trim_str "${_host}" 12 "~"
 			_host="${_trimmed}"
 			_base_cost=91
+			[ -n "${_branch}" ] && _git_frame=24
+			[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 8 ))
 		fi
 
-		local _git_frame=0
-		[ -n "${_branch}" ] && _git_frame=24
-		[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 8 ))
 		local _fixed_used=$(( _base_cost + ${#_host} + ${#_user} + _git_frame ))
 		_budget=$(( _prompt_limit - 2 - _fixed_used ))
 		[ "${_budget}" -lt 6 ] && _budget=6
@@ -132,12 +134,16 @@ _update_prompt() {
 		local _git_info=""
 		if [ -n "${_branch}" ]; then
 			local _ind=""
-			[ -n "${_is_dirty}" ] && _ind="${_c_yellow}*"
+			if [ "${_style}" = "micro" ]; then
+				[ -n "${_is_dirty}" ] && _ind="*"
+			else
+				[ -n "${_is_dirty}" ] && _ind="${_c_yellow}*"
+			fi
 			_git_info=" ${_c_blue}(${_c_red}${_branch}${_ind}${_c_blue})"
 		fi
 
 		if [ "${_style}" = "micro" ]; then
-			export PS1="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host}${_c_gray}:[${_c_yellow}${_pwd}${_c_gray}]${_git_info} ${_c_cyan}${_sym}${_c_reset} "
+			export PS1="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host}${_c_gray}:${_c_yellow}${_pwd}${_git_info} ${_c_cyan}${_sym}${_c_reset} "
 		else
 			export PS1="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host} ${_c_blue}(${_c_cyan}sh${_c_blue})${_c_gray}:[${_c_yellow}${_pwd}${_c_gray}]${_git_info} ${_c_cyan}${_sym}${_c_reset} "
 		fi
@@ -166,7 +172,7 @@ _update_prompt() {
 
 			_base_cost=74
 			_git_frame=0
-			[ -n "${_branch}" ] && _git_frame=20
+			[ -n "${_branch}" ] && _git_frame=18
 			[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 1 ))
 			_margin=8
 		else
@@ -181,7 +187,7 @@ _update_prompt() {
 				*)    _os_color="${_c_blue}" ;;
 			esac
 
-			_base_cost=122
+			_base_cost=117
 			_git_frame=0
 			[ -n "${_branch}" ] && _git_frame=33
 			[ -n "${_is_dirty}" ] && [ -n "${_branch}" ] && _git_frame=$(( _git_frame + 1 ))
@@ -223,7 +229,7 @@ _update_prompt() {
 			local _ind=""
 			[ -n "${_is_dirty}" ] && _ind="*"
 			if [ "${_style}" = "micro" ]; then
-				_git_info=" ${_c_b_red}󰊢 ${_c_magenta}${_branch}${_ind}"
+				_git_info=" ${_c_red}󰊢 ${_c_magenta}${_branch}${_ind}"
 			else
 				_git_info=" ❮${_c_red}󰊢 ${_c_magenta}${_branch}${_c_del}${_ind}❯"
 			fi
@@ -232,7 +238,7 @@ _update_prompt() {
 		if [ "${_style}" = "micro" ]; then
 			export PS1="${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_yellow} ${_c_cyan}${_pwd} ${_c_blue} ${_u_color}${_user}${_git_info} ${_c_blue}${_c_reset} "
 		else
-			export PS1="${_c_b_del}${_os_color}${_os_icon}${_c_magenta}${_os_name}${_c_del} ❮${_c_yellow} ${_c_cyan}${_pwd}${_c_del}❯ ❮${_c_blue} ${_u_color}${_user}${_c_del}❯${_git_info} ${_c_blue}${_c_reset} "
+			export PS1="${_c_b_del}${_os_color}${_os_icon}${_c_magenta}${_os_name}${_c_del} ❮ ${_c_cyan}${_pwd}${_c_del}❯ ❮${_c_blue} ${_u_color}${_user}${_c_del}❯${_git_info} ${_c_blue}${_c_reset} "
 		fi
 	fi
 }
