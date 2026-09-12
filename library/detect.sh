@@ -96,8 +96,10 @@ _detect_shell() {
 	fi
 
 	case "${0##*/}" in
-		busybox|*busybox*) echo "busybox"; return 0 ;;
-		dash|*dash*)       echo "dash"; return 0 ;;
+		*dash*)                      echo "dash"; return 0 ;;
+		*busybox*|*ash*|*hush*)      echo "busybox"; return 0 ;;
+		*ksh*|*mksh*|*pdksh*|*oksh*) echo "ksh"; return 0 ;;
+		*yash*)                      echo "yash"; return 0 ;;
 	esac
 
 	local _pid="$$"
