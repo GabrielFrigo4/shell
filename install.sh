@@ -159,6 +159,7 @@ fi
 ### Standalone Base Template
 ### --------------------------------
 _generate_rc_pure() {
+	local _target="${1:-}"
 	cat <<- 'EOF'
 		### ================================
 		### INTERACTIVE GUARD
@@ -168,6 +169,20 @@ _generate_rc_pure() {
 			*) return ;;
 		esac
 	EOF
+
+	if [ "${_target}" = "sh" ]; then
+		cat <<- 'EOF'
+
+			### ================================
+			### SHELL COMPATIBILITY GUARD
+			### ================================
+			case "${0##*/}" in
+				dash|*dash*) return 0 ;;
+			esac
+
+			(eval "_test-fn() { :; }" 2> "/dev/null") || return 0
+		EOF
+	fi
 }
 
 ### --------------------------------
@@ -222,10 +237,10 @@ _install_shell_target() {
 
 
 
-	if [ "${SHELL_FRAMEWORK}" -eq 0 ]; then
-		_generate_rc_pure >| "${_rc_file}"
+	if [ "${SHELL_FRAMEWORK}" -eq 0 ] || [ "${_target_shell}" = "sh" ]; then
+		_generate_rc_pure "${_target_shell}" >| "${_rc_file}"
 		if [ "${OS_NAME}" != "windows" ]; then
-			_generate_rc_pure | _as_root tee "${_root_rc_file}" > "/dev/null"
+			_generate_rc_pure "${_target_shell}" | _as_root tee "${_root_rc_file}" > "/dev/null"
 		fi
 	else
 		case "${_target_shell}" in

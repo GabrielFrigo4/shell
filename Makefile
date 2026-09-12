@@ -32,7 +32,10 @@ help:
 ### ================================
 test:
 	echo "🧪 Validando sintaxe dos scripts do Shell..."
-	find . -name "*.sh" -not -path "*/.git/*" -exec sh -n {} +
+	find . -name "*.sh" -not -path "*/.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec sh -n {} +
+	if command -v zsh > "/dev/null" 2>&1; then \
+		find . -name "*.sh" -not -path "*/.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +; \
+	fi
 	echo "✅ Sintaxe de todos os módulos de shell validada com sucesso!"
 
 bench:

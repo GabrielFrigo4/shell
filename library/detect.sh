@@ -126,23 +126,25 @@ _detect_shell() {
 	fi
 
 	case "${_name}" in
-		zsh*|*zsh)   echo "zsh"; return 0 ;;
-		bash*|*bash) echo "bash"; return 0 ;;
-		dash*|*dash) echo "dash"; return 0 ;;
-		ksh*|*ksh)   echo "ksh"; return 0 ;;
-		fish*|*fish) echo "fish"; return 0 ;;
-		sh*|*sh)     echo "sh"; return 0 ;;
+		zsh*|*zsh)         echo "zsh"; return 0 ;;
+		bash*|*bash)       echo "bash"; return 0 ;;
+		dash*|*dash)       echo "dash"; return 0 ;;
+		busybox*|*busybox) echo "busybox"; return 0 ;;
+		ksh*|*ksh)         echo "ksh"; return 0 ;;
+		fish*|*fish)       echo "fish"; return 0 ;;
+		sh*|*sh)           echo "sh"; return 0 ;;
 	esac
 
 	local _arg0="${0##*/}"
 	_arg0="${_arg0#-}"
 	case "${_arg0}" in
-		zsh*|*zsh)   echo "zsh"; return 0 ;;
-		bash*|*bash) echo "bash"; return 0 ;;
-		dash*|*dash) echo "dash"; return 0 ;;
-		ksh*|*ksh)   echo "ksh"; return 0 ;;
-		fish*|*fish) echo "fish"; return 0 ;;
-		sh*|*sh)     echo "sh"; return 0 ;;
+		zsh*|*zsh)         echo "zsh"; return 0 ;;
+		bash*|*bash)       echo "bash"; return 0 ;;
+		dash*|*dash)       echo "dash"; return 0 ;;
+		busybox*|*busybox) echo "busybox"; return 0 ;;
+		ksh*|*ksh)         echo "ksh"; return 0 ;;
+		fish*|*fish)       echo "fish"; return 0 ;;
+		sh*|*sh)           echo "sh"; return 0 ;;
 	esac
 
 	[ -z "${_name}" ] && _name="$(command basename "${SHELL:-sh}")"
