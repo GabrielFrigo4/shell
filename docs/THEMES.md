@@ -71,6 +71,55 @@ Para garantir que o prompt utilize 100% do espaço útil do buffer físico sem r
      - Se ambos forem longos: o orçamento restante é dividido igualmente (meio a meio).
 4. **Truncagem Recursiva POSIX (`_trim_str`):** Se uma string precisar ser encurtada, o helper nativo retira caracteres do fim via `${var%?}` com zero subshell e insere o sufixo canônico (`…` no PTY, `~` no TTY).
 
+#### 📊 Matriz de Consumo e Headroom de Buffer no FreeBSD
+
+Medição auditada no buffer estático `char ps[PROMPTLEN]` do FreeBSD `/bin/sh` (`bin/sh/parser.c`) após processamento de `getprompt()` (`\[`/`\]` convertidos para `\001`, `\e` para `0x1b` e glifos UTF-8 com seus 3–4 bytes físicos).
+
+> **Perfil de Referência:** Usuário `gabrielf` (8B) | Host `freebsd` (7B) | SO `15.1` (4B) / `13.2` (4B).
+
+##### 1. Modo PTY (Terminal Gráfico com Nerd Fonts)
+
+| Layout      |       Teto Físico (`PROMPTLEN`)        | Cenário de Uso                   | Ocupação Real em C (`ps[]`) | Espaço Livre (Headroom) | Estado do Motor      |
+| :---------- | :------------------------------------: | :------------------------------- | :-------------------------: | :---------------------: | :------------------- |
+| **`pill`**  |     **192 bytes** _(FreeBSD 14+)_      | 🏠 Sem Git (`~`)                 |        **131 bytes**        |      **+61 bytes**      | 🟢 Sem podas         |
+| **`pill`**  |     **192 bytes** _(FreeBSD 14+)_      | 📁 Sem Git (`shell`)             |        **135 bytes**        |      **+57 bytes**      | 🟢 Sem podas         |
+| **`pill`**  |     **192 bytes** _(FreeBSD 14+)_      | 📁 Sem Git (pasta longa)         |        **157 bytes**        |      **+35 bytes**      | 🟢 Podada suave      |
+| **`pill`**  |     **192 bytes** _(FreeBSD 14+)_      | 🌿 Git Limpo (`main`)            |        **159 bytes**        |      **+33 bytes**      | 🟢 Sem podas         |
+| **`pill`**  |     **192 bytes** _(FreeBSD 14+)_      | ⚡ Git Modificado (`main*`)      |        **166 bytes**        |      **+26 bytes**      | 🟢 Sem podas         |
+| **`pill`**  |     **192 bytes** _(FreeBSD 14+)_      | 🚀 Branch Longa (`feature/...*`) |        **166 bytes**        |      **+26 bytes**      | 🟢 Podada preventiva |
+|             |                                        |                                  |                             |                         |                      |
+| **`micro`** |    **128 bytes** _(FreeBSD <= 13)_     | 🏠 Sem Git (`~`)                 |        **89 bytes**         |      **+39 bytes**      | 🟢 Sem podas         |
+| **`micro`** |    **128 bytes** _(FreeBSD <= 13)_     | 📁 Sem Git (`shell`)             |        **93 bytes**         |      **+35 bytes**      | 🟢 Sem podas         |
+| **`micro`** |    **128 bytes** _(FreeBSD <= 13)_     | 📁 Sem Git (pasta longa)         |        **110 bytes**        |      **+18 bytes**      | 🟡 Podada preventiva |
+| **`micro`** |    **128 bytes** _(FreeBSD <= 13)_     | 🌿 Git Limpo (`main`)            |        **116 bytes**        |      **+12 bytes**      | 🟡 Podada preventiva |
+| **`micro`** |    **128 bytes** _(FreeBSD <= 13)_     | ⚡ Git Modificado (`main*`)      |        **117 bytes**        |      **+11 bytes**      | 🟡 Podada no piso    |
+| **`micro`** |    **128 bytes** _(FreeBSD <= 13)_     | 🚀 Branch Longa (`feature/...*`) |        **117 bytes**        |      **+11 bytes**      | 🟡 Podada no piso    |
+|             |                                        |                                  |                             |                         |                      |
+| **`micro`** | **192 bytes** _(FreeBSD 14+ opcional)_ | 🏠 Sem Git (`~`)                 |        **89 bytes**         |     **+103 bytes**      | 🚀 Folga massiva     |
+| **`micro`** | **192 bytes** _(FreeBSD 14+ opcional)_ | 🌿 Git Limpo (`main`)            |        **117 bytes**        |      **+75 bytes**      | 🚀 Folga massiva     |
+| **`micro`** | **192 bytes** _(FreeBSD 14+ opcional)_ | ⚡ Git Modificado (`main*`)      |        **118 bytes**        |      **+74 bytes**      | 🚀 Folga massiva     |
+
+##### 2. Modo TTY (Console Puro ASCII)
+
+| Layout      |       Teto Físico (`PROMPTLEN`)        | Cenário de Uso                   | Ocupação Real em C (`ps[]`) | Espaço Livre (Headroom) | Estado do Motor     |
+| :---------- | :------------------------------------: | :------------------------------- | :-------------------------: | :---------------------: | :------------------ |
+| **`pill`**  |     **192 bytes** _(FreeBSD 14+)_      | 🏠 Sem Git (`~`)                 |        **106 bytes**        |      **+86 bytes**      | 🟢 Sem podas        |
+| **`pill`**  |     **192 bytes** _(FreeBSD 14+)_      | 📁 Sem Git (`shell`)             |        **110 bytes**        |      **+82 bytes**      | 🟢 Sem podas        |
+| **`pill`**  |     **192 bytes** _(FreeBSD 14+)_      | 📁 Sem Git (pasta longa)         |        **132 bytes**        |      **+60 bytes**      | 🟢 Sem podas        |
+| **`pill`**  |     **192 bytes** _(FreeBSD 14+)_      | 🌿 Git Limpo (`main`)            |        **138 bytes**        |      **+54 bytes**      | 🟢 Sem podas        |
+| **`pill`**  |     **192 bytes** _(FreeBSD 14+)_      | ⚡ Git Modificado (`main*`)      |        **146 bytes**        |      **+46 bytes**      | 🟢 Sem podas        |
+| **`pill`**  |     **192 bytes** _(FreeBSD 14+)_      | 🚀 Branch Longa (`feature/...*`) |        **162 bytes**        |      **+30 bytes**      | 🟢 Podada suave     |
+|             |                                        |                                  |                             |                         |                     |
+| **`micro`** |    **128 bytes** _(FreeBSD <= 13)_     | 🏠 Sem Git (`~`)                 |        **71 bytes**         |      **+57 bytes**      | 🟢 Sem podas        |
+| **`micro`** |    **128 bytes** _(FreeBSD <= 13)_     | 📁 Sem Git (`shell`)             |        **75 bytes**         |      **+53 bytes**      | 🟢 Sem podas        |
+| **`micro`** |    **128 bytes** _(FreeBSD <= 13)_     | 📁 Sem Git (pasta longa)         |        **97 bytes**         |      **+31 bytes**      | 🟢 Sem podas        |
+| **`micro`** |    **128 bytes** _(FreeBSD <= 13)_     | 🌿 Git Limpo (`main`)            |        **103 bytes**        |      **+25 bytes**      | 🟢 Sem podas        |
+| **`micro`** |    **128 bytes** _(FreeBSD <= 13)_     | ⚡ Git Modificado (`main*`)      |        **104 bytes**        |      **+24 bytes**      | 🟢 Sem podas        |
+| **`micro`** |    **128 bytes** _(FreeBSD <= 13)_     | 🚀 Branch Longa (`feature/...*`) |        **120 bytes**        |      **+8 bytes**       | 🟢 Podada com folga |
+|             |                                        |                                  |                             |                         |                     |
+| **`micro`** | **192 bytes** _(FreeBSD 14+ opcional)_ | 🏠 Sem Git (`~`)                 |        **71 bytes**         |     **+121 bytes**      | 🚀 Folga massiva    |
+| **`micro`** | **192 bytes** _(FreeBSD 14+ opcional)_ | ⚡ Git Modificado (`main*`)      |        **104 bytes**        |      **+88 bytes**      | 🚀 Folga massiva    |
+
 ---
 
 ## 📟 Fallback Resiliente em TTY Bruto
