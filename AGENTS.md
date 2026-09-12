@@ -49,4 +49,4 @@ Se durante a execução de qualquer tarefa (seja criação de novas features, co
 - **[ENVIRONMENT.md](ENVIRONMENT.md)**: Arquitetura do Quarteto de Produtividade
 - **[PRINCIPLES.md](PRINCIPLES.md)**: Princípios de Engenharia do Shell
 - **[.agents/rules/principles.md](.agents/rules/principles.md)**: Regras específicas do Shell
-- **[.agents/skills/](.agents/skills/)**: Runbooks operacionais (`universal-shell`, `proactive-guardian`, `deep-investigation`) e runbooks por SO (`freebsd-shell`, `linux-shell`, `macos-shell`, `windows-shell`, `openbsd-shell`, `netbsd-shell`, `illumos-shell`)
+- **[.agents/skills/](.agents/skills/)**: Runbooks operacionais (`universal-shell`, `posix-shell`, `proactive-guardian`, `deep-investigation`) e runbooks por SO (`freebsd-shell`, `linux-shell`, `macos-shell`, `windows-shell`, `openbsd-shell`, `netbsd-shell`, `illumos-shell`)
