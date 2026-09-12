@@ -54,6 +54,21 @@ user@hostname:~/projects/myapp (main ✗) $
 - **Fallback TTY 100% Bold (`_is_raw_tty`):** No console puro `vt`/`syscons`, comuta para prompt ASCII atômico de linha única 100% negrito via persistência ANSI ECMA-48, com orçamento dinâmico operando entre 150 e 190 bytes com salvaguarda absoluta contra overflow.
 - **Triggers de Precisão:** Atualização do Git através de wrappers de alto desempenho (`cd`, `git`, `got`, `:`) sem overhead de subshells a cada enter vazio.
 
+#### 🧠 Algoritmo de Partilha Dinâmica (Pasta vs Branch)
+
+Para garantir que o prompt utilize 100% do espaço útil do buffer físico sem risco de truncamento, o [`theme/sh.sh`](../theme/sh.sh) implementa uma alocação em 4 estágios:
+
+1. **Ingresso Protegido (Travas 360°):** Usuário (`<= 12`), hostname (`<= 12`) e versão do SO (`<= 6`) têm tetos defensivos para que nomes de usuário gigantes (ex: LDAP/SSO) não saturem o buffer antes da renderização de pastas.
+2. **Cálculo do Orçamento Livre (`_budget`):** Subtrai os custos fixos (molduras ANSI/UTF-8, usuário, versão e Git frame) do teto seguro (186 no PTY ou 190 no TTY).
+3. **Árvore de Decisão de Partilha:**
+   - **Fora do Git (`_branch=""`):** A pasta herda 100% do orçamento livre (podendo exibir 40+ caracteres intactos).
+   - **Dentro do Git ($\text{Pasta} + \text{Branch} \le \text{Orçamento}$):** Nenhuma truncagem é aplicada; ambos são exibidos por extenso.
+   - **Dentro do Git ($\text{Pasta} + \text{Branch} > \text{Orçamento}$):**
+     - Se a pasta for menor que a metade do orçamento: a pasta é preservada inteira e a branch recebe toda a folga restante.
+     - Se a branch for menor que a metade do orçamento (ex: `main`): a branch é preservada inteira e a pasta recebe toda a folga restante.
+     - Se ambos forem longos: o orçamento restante é dividido igualmente (meio a meio).
+4. **Truncagem Recursiva POSIX (`_trim_str`):** Se uma string precisar ser encurtada, o helper nativo retira caracteres do fim via `${var%?}` com zero subshell e insere o sufixo canônico (`…` no PTY, `~` no TTY).
+
 ---
 
 ## 📟 Fallback Resiliente em TTY Bruto
