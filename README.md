@@ -53,13 +53,13 @@ flowchart LR
 
 #### 🐚 Matriz de Suporte a Shells
 
-| Shell             |    Status     | Detalhes & Decisão de Arquitetura                                                                             |
-| :---------------- | :-----------: | :------------------------------------------------------------------------------------------------------------ |
-| **Bash (`bash`)** |    🟢 100%    | Suporte universal nativo em Linux, macOS, BSD e Windows. Template Oh-My-Bash otimizado.                       |
-| **Zsh (`zsh`)**   |    🟢 100%    | Shell primário interativo moderno. Template Oh-My-Zsh com `zcompile` e `ZSH_DISABLE_COMPFIX`.                 |
-| **Sh (`sh`)**     |    🟢 100%    | Shell POSIX fundamental (FreeBSD 15.1 `/bin/sh`). Mini prompt gráfico de 1 linha (~184B) e fallback TTY puro. |
-| **Dash (`dash`)** | ❌ Descartado | **Incompatibilidade POSIX:** BNF estrita proíbe nomes `kebab-case` (`-`) em funções (`update-all`, etc.).     |
-| **Fish (`fish`)** | ❌ Descartado | **Incompatibilidade POSIX:** Sintaxe própria incompatível com `source` em arquivos `.sh` e `export`.          |
+| Shell             |    Status     | Detalhes & Decisão de Arquitetura                                                                                                            |
+| :---------------- | :-----------: | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Bash (`bash`)** |    🟢 100%    | Suporte universal nativo em Linux, macOS, BSD e Windows. Readline completion interativo, histórico atômico sincronizado e busca por prefixo. |
+| **Zsh (`zsh`)**   |    🟢 100%    | Shell primário interativo moderno. Autocompletion interativo com Tab e setas (`menu select`), case-insensitive e histórico estendido.        |
+| **Sh (`sh`)**     |    🟢 100%    | Shell POSIX fundamental (FreeBSD `/bin/sh`). Mini prompt gráfico calibrado (128B/192B), histórico `libedit` completo e fallback TTY puro.    |
+| **Dash (`dash`)** | ❌ Descartado | **Incompatibilidade POSIX:** BNF estrita proíbe nomes `kebab-case` (`-`) em funções (`update-all`, etc.).                                    |
+| **Fish (`fish`)** | ❌ Descartado | **Incompatibilidade POSIX:** Sintaxe própria incompatível com `source` em arquivos `.sh` e `export`.                                         |
 
 > 💡 **O Caso do FreeBSD `/bin/sh` & Engenharia Cirúrgica de Prompt:**
 > O `/bin/sh` do FreeBSD opera sobre a biblioteca `libedit` e possui um buffer estático em C (`#define PROMPTLEN 192` em FreeBSD 14+ e `128` em <= 13 em `bin/sh/parser.c`), sem `malloc` dinâmico para garantir estabilidade no modo monousuário. O parser em C converte `\[` e `\]` para `\001` (1B) e `\e` para `0x1b` (1B), tornando a ocupação real em C menor do que a contagem bruta de caracteres da string. O motor dinâmico em `theme/sh.sh` calibra com precisão cirúrgica de bytes dois layouts: **`pill`** (192B) e **`micro`** (128B com fallback automático), aproveitando até 98% do buffer físico com texto útil (pastas e branches completas) sem estouro de memória. Detalhes completos em [docs/THEMES.md](docs/THEMES.md).

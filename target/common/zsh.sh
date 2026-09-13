@@ -11,17 +11,20 @@ unset IFS
 ### --------------------------------
 ### History
 ### --------------------------------
-HISTSIZE=10000
-SAVEHIST=20000
+HISTSIZE=50000
+SAVEHIST=50000
 HISTFILE="${HOME}/.zsh_history"
 
 setopt APPEND_HISTORY
 setopt SHARE_HISTORY
+setopt EXTENDED_HISTORY
 setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_ALL_DUPS
 setopt HIST_IGNORE_SPACE
 setopt HIST_REDUCE_BLANKS
 setopt HIST_EXPIRE_DUPS_FIRST
 setopt HIST_FIND_NO_DUPS
+setopt HIST_SAVE_NO_DUPS
 setopt HIST_VERIFY
 
 ### --------------------------------
@@ -53,8 +56,13 @@ bindkey '^[[A' up-line-or-beginning-search 2> "/dev/null" || true
 bindkey '^[OA' up-line-or-beginning-search 2> "/dev/null" || true
 bindkey '^[[B' down-line-or-beginning-search 2> "/dev/null" || true
 bindkey '^[OB' down-line-or-beginning-search 2> "/dev/null" || true
+bindkey '^[[5~' up-line-or-beginning-search 2> "/dev/null" || true
+bindkey '^[[6~' down-line-or-beginning-search 2> "/dev/null" || true
 [ -n "${terminfo[kcuu1]:-}" ] && bindkey "${terminfo[kcuu1]}" up-line-or-beginning-search 2> "/dev/null" || true
 [ -n "${terminfo[kcud1]:-}" ] && bindkey "${terminfo[kcud1]}" down-line-or-beginning-search 2> "/dev/null" || true
+
+bindkey '^R' history-incremental-pattern-search-backward 2> "/dev/null" || true
+bindkey '^S' history-incremental-pattern-search-forward 2> "/dev/null" || true
 
 bindkey '^[[H' beginning-of-line 2> "/dev/null" || true
 bindkey '^[OH' beginning-of-line 2> "/dev/null" || true
@@ -73,9 +81,15 @@ bindkey '^[[3~' delete-char 2> "/dev/null" || true
 
 bindkey '^?' backward-delete-char 2> "/dev/null" || true
 bindkey '^H' backward-delete-char 2> "/dev/null" || true
+bindkey '^W' backward-kill-word 2> "/dev/null" || true
+bindkey '^U' backward-kill-line 2> "/dev/null" || true
+bindkey '^[^?' backward-kill-word 2> "/dev/null" || true
+bindkey '^[^H' backward-kill-word 2> "/dev/null" || true
 
 bindkey '^[[1;5C' forward-word 2> "/dev/null" || true
 bindkey '^[[1;5D' backward-word 2> "/dev/null" || true
+bindkey '^[[1;3C' forward-word 2> "/dev/null" || true
+bindkey '^[[1;3D' backward-word 2> "/dev/null" || true
 bindkey '^[[5C' forward-word 2> "/dev/null" || true
 bindkey '^[[5D' backward-word 2> "/dev/null" || true
 bindkey '^[^[[C' forward-word 2> "/dev/null" || true
@@ -103,6 +117,8 @@ setopt KSH_GLOB
 ### --------------------------------
 ### Completion Engine
 ### --------------------------------
+zmodload -i zsh/complist 2> "/dev/null" || true
+
 autoload -Uz compinit
 if [ -f "${HOME}/.zcompdump" ]; then
     compinit -C -d "${HOME}/.zcompdump"
@@ -110,3 +126,19 @@ else
     compinit -d "${HOME}/.zcompdump"
 fi
 [ -f "${HOME}/.zcompdump.zwc" ] || (zcompile "${HOME}/.zcompdump" 2> "/dev/null" &)
+
+zstyle ':completion:*' menu select
+zstyle ':completion:*' select-prompt '%S[ %p | %l ]%s'
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
+zstyle ':completion:*:descriptions' format '%F{yellow}-- %d --%f'
+zstyle ':completion:*:messages' format '%F{purple}-- %d --%f'
+zstyle ':completion:*:warnings' format '%F{red}-- sem correspondências --%f'
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*' verbose yes
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-${HOME}/.cache}/zsh"
+
+bindkey -M menuselect '^[[Z' reverse-menu-complete 2> "/dev/null" || true
+bindkey -M menuselect '^?' undo 2> "/dev/null" || true

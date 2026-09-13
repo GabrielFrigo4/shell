@@ -147,8 +147,8 @@ _update_prompt() {
 		local _os_icon="${PROMPT_OS_ICON:- }"
 		_trim_str "${_os_icon}" 4 ""
 		_os_icon="${_trimmed}"
-
-		local _os_name="${PROMPT_OS_NAME:-15.1}"
+		local _os_name="${PROMPT_OS_NAME:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "BSD")}"
+		_os_name="${_os_name%%-*}"
 		local _os_color _base_cost _git_frame _margin
 
 		if [ "${_style}" = "micro" ]; then

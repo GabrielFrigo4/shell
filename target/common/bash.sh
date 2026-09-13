@@ -10,12 +10,15 @@ unset IFS
 ### --------------------------------
 ### Shell Options & History
 ### --------------------------------
-HISTCONTROL=ignoreboth
-HISTSIZE=10000
-HISTFILESIZE=20000
+HISTCONTROL=ignoreboth:erasedups
+HISTSIZE=50000
+HISTFILESIZE=100000
 
 shopt -s histappend
 shopt -s checkwinsize
+shopt -s cmdhist
+
+PROMPT_COMMAND="history -a${PROMPT_COMMAND:+; }${PROMPT_COMMAND:-}"
 
 ### --------------------------------
 ### Interaction & Safety
@@ -26,10 +29,20 @@ set -o noclobber
 ### Keybindings & Line Editing
 ### --------------------------------
 if case "$-" in *i*) true;; *) false;; esac; then
+	bind 'set show-all-if-ambiguous on' 2> "/dev/null" || true
+	bind 'set completion-ignore-case on' 2> "/dev/null" || true
+	bind 'set completion-prefix-display-length 2' 2> "/dev/null" || true
+	bind 'set colored-stats on' 2> "/dev/null" || true
+	bind 'set colored-completion-prefix on' 2> "/dev/null" || true
+	bind 'set mark-symlinked-directories on' 2> "/dev/null" || true
+	bind '"\e[Z": menu-complete-backward' 2> "/dev/null" || true
+
 	bind '"\e[A": history-search-backward' 2> "/dev/null" || true
 	bind '"\e[B": history-search-forward' 2> "/dev/null" || true
 	bind '"\eOA": history-search-backward' 2> "/dev/null" || true
 	bind '"\eOB": history-search-forward' 2> "/dev/null" || true
+	bind '"\e[5~": history-search-backward' 2> "/dev/null" || true
+	bind '"\e[6~": history-search-forward' 2> "/dev/null" || true
 
 	bind '"\e[H": beginning-of-line' 2> "/dev/null" || true
 	bind '"\eOH": beginning-of-line' 2> "/dev/null" || true
@@ -45,12 +58,16 @@ if case "$-" in *i*) true;; *) false;; esac; then
 
 	bind '"\e[1;5C": forward-word' 2> "/dev/null" || true
 	bind '"\e[1;5D": backward-word' 2> "/dev/null" || true
+	bind '"\e[1;3C": forward-word' 2> "/dev/null" || true
+	bind '"\e[1;3D": backward-word' 2> "/dev/null" || true
 	bind '"\e[5C": forward-word' 2> "/dev/null" || true
 	bind '"\e[5D": backward-word' 2> "/dev/null" || true
 	bind '"\e\e[C": forward-word' 2> "/dev/null" || true
 	bind '"\e\e[D": backward-word' 2> "/dev/null" || true
 
 	bind '"\e[3;5~": kill-word' 2> "/dev/null" || true
+	bind '"\e\C-?": backward-kill-word' 2> "/dev/null" || true
+	bind '"\e\C-h": backward-kill-word' 2> "/dev/null" || true
 fi
 
 ### --------------------------------

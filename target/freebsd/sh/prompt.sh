@@ -20,8 +20,9 @@ find "${HOME}" -maxdepth 1 -name ":*" -delete
 
 PROMPT_OS_ICON=" "
 PROMPT_OS_COLOR="red"
-PROMPT_OS_NAME="$(command freebsd-version 2> "/dev/null" | command cut -d- -f1)"
-[ -z "${PROMPT_OS_NAME}" ] && PROMPT_OS_NAME="15.1"
+_ver="$(command freebsd-version 2> "/dev/null" || command uname -r 2> "/dev/null" || echo "BSD")"
+PROMPT_OS_NAME="${_ver%%-*}"
+unset _ver
 
 case "${PROMPT_OS_NAME}" in
 	[0-9].*|1[0-3].*) PROMPT_BUFFER_LIMIT=128 ;;

@@ -112,16 +112,20 @@ flowchart TD
 
 ## 7. ⚡ Utilitários Modernos, Atalhos & Navegação
 
-| Comando / Alias                       | Descrição                                                  | Ferramenta Alvo & Fallback                                 |
-| :------------------------------------ | :--------------------------------------------------------- | :--------------------------------------------------------- |
-| `l`                                   | Listagem enxuta com ícones e agrupamento de diretórios.    | `eza` > `exa` > `ls` (usa `ls` nativo em TTY bruto)        |
-| `ll`                                  | Listagem detalhada com metadados, permissões e status Git. | `eza -la --git` > `exa -la --git` > `ls -laF`              |
-| `la`                                  | Listagem incluindo arquivos ocultos.                       | `eza -a` > `exa -a` > `ls -a`                              |
-| `lt`                                  | Exibição da árvore de diretórios (_tree view_).            | `eza --tree` > `exa --tree` > `tree`                       |
-| `g <termo>`                           | Busca rápida de texto em arquivos.                         | `rg --smart-case` > `grep -Ei`                             |
-| `c <arquivo>` / `b`                   | Visualização formatada com destaque de sintaxe.            | `bat --paging=never` > `cat` (usa `cat` em TTY bruto)      |
-| `f <nome>` / `ff`                     | Busca rápida de arquivos e diretórios.                     | `fd` / `fd --hidden --no-ignore` > `find`                  |
-| `~`, `/`, `..`, `...`, `....`, `-- -` | Atalhos rápidos de navegação no sistema de arquivos.       | `cd ~`, `cd /`, `cd ..`, `cd ../..`, `cd ../../..`, `cd -` |
+| Comando / Alias                       | Descrição                                                  | Ferramenta Alvo & Fallback                                  |
+| :------------------------------------ | :--------------------------------------------------------- | :---------------------------------------------------------- |
+| `l`                                   | Listagem enxuta com ícones e agrupamento de diretórios.    | `eza` > `exa` > `ls` (usa `ls` nativo em TTY bruto)         |
+| `ll`                                  | Listagem detalhada com metadados, permissões e status Git. | `eza -la --git` > `exa -la --git` > `ls -laF`               |
+| `la`                                  | Listagem incluindo arquivos ocultos.                       | `eza -a` > `exa -a` > `ls -a`                               |
+| `lt`                                  | Exibição da árvore de diretórios (_tree view_).            | `eza --tree` > `exa --tree` > `tree`                        |
+| `g <termo>`                           | Busca rápida de texto em arquivos.                         | `rg --smart-case` > `grep -Ei`                              |
+| `c <arquivo>` / `b`                   | Visualização formatada com destaque de sintaxe.            | `bat --paging=never` > `cat` (usa `cat` em TTY bruto)       |
+| `f <nome>` / `ff`                     | Busca rápida de arquivos e diretórios.                     | `fd` / `fd --hidden --no-ignore` > `find`                   |
+| `take <dir>` / `mkcd`                 | Cria o diretório (incluindo intermediários) e entra nele.  | `take-dir` (`mkdir -p && cd`)                               |
+| `cdb`                                 | Retorna para o diretório raiz do repositório Git atual.    | `cd-git-root` (`git rev-parse --show-toplevel`)             |
+| `hist [termo]` / `hg`                 | Busca interativa no histórico por palavra-chave.           | `hist-search` (com suporte unificado a `sh`, `bash`, `zsh`) |
+| `extract <arquivo>` / `x`             | Descompacta automaticamente qualquer arquivo comprimido.   | `extract-archive` (`tar`, `zip`, `7z`, `gz`, `xz`, etc.)    |
+| `~`, `/`, `..`, `...`, `....`, `-- -` | Atalhos rápidos de navegação no sistema de arquivos.       | `cd ~`, `cd /`, `cd ..`, `cd ../..`, `cd ../../..`, `cd -`  |
 
 ---
 
@@ -131,6 +135,16 @@ flowchart TD
 | :----------------------- | :--------------------------------------------------------------------------------- | :------------------------------------------- |
 | `vcs-status` / `gs`      | Status inteligente e contextual: roda `got status` em Got ou `git status --short`. | Got (`.got/`) > Git (`.git/`)                |
 | `vcs-diff` / `gd`        | Diff inteligente e contextual: roda `got diff` em Got ou `git diff`.               | Got (`.got/`) > Git (`.git/`)                |
+| `gst`                    | Status completo do repositório Git.                                                | `git status`                                 |
+| `gco <branch/ref>`       | Alterna para branch ou checkout de arquivos.                                       | `git checkout`                               |
+| `gcb <nova-branch>`      | Cria e alterna imediatamente para uma nova branch.                                 | `git checkout -b`                            |
+| `gsw <branch>`           | Alterna entre branches locais.                                                     | `git switch`                                 |
+| `gswc <nova-branch>`     | Cria e alterna para nova branch via `switch`.                                      | `git switch -c`                              |
+| `gcm <mensagem>`         | Grava commit com mensagem informada.                                               | `git commit -m`                              |
+| `gaa`                    | Estagia todas as alterações no índice Git.                                         | `git add --all`                              |
+| `gl`                     | Puxa alterações remotas integrando com o upstream.                                 | `git pull`                                   |
+| `gp`                     | Envia commits locais para o repositório remoto.                                    | `git push`                                   |
+| `glog`                   | Visualiza histórico conciso e decorado em grafo (últimos 20).                      | `git log --oneline --decorate --graph -n 20` |
 | `got-init <url> <dir>`   | Helper de bootstrapping: clona repositório bare (`.git`) e extrai a work tree.     | Game of Trees (`got clone` + `got checkout`) |
 | `tg` / `tog`             | Inicia o navegador interativo TUI do Game of Trees.                                | `tog`                                        |
 | `tgl`                    | Abre o navegador de histórico e grafo de commits.                                  | `tog log`                                    |
@@ -157,6 +171,6 @@ flowchart TD
 | `ELECTRON_OZONE_PLATFORM_HINT`     | Ativa renderização nativa em Wayland para apps Electron.                     | Exportado globalmente como `auto`                                           |
 | `_JAVA_AWT_WM_NONREPARENTING`      | Corrige janelas cinzas em apps Java/Swing em WMs tiling e Wayland.           | Exportado globalmente como `1`                                              |
 | `EMACS_SOCKET_NAME`                | Caminho do socket de autenticação do daemon Emacs (Contexto Desktop).        | `${HOME}/.emacs.d/var/server/auth/server`                                   |
-| `HISTSIZE` / `HISTFILE`            | Limite e arquivo de histórico persistente no POSIX `sh`.                     | `10000` comandos em `${HOME}/.sh_history`                                   |
+| `HISTSIZE` / `HISTFILE`            | Limite e arquivo de histórico persistente no POSIX `sh`.                     | `50000` comandos em `${HOME}/.sh_history`                                   |
 | `WIFI_SSID_*` / `WIFI_PASS_*`      | Credenciais Wi-Fi lidas e sincronizadas pelo `update-wifi`/`update-network`. | Injetadas pelo `Vault` ou variáveis de ambiente                             |
 | `FRIGO_SERVER_*` / `ORBS_SERVER_*` | Chaves SSH e endereços IP de servidores remotos.                             | Injetados pelo `Vault`                                                      |

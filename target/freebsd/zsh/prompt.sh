@@ -11,7 +11,7 @@ find "${HOME}" -maxdepth 1 -name ":*" -delete
 
 PROMPT_OS_ICON=" "
 PROMPT_OS_COLOR="red"
-PROMPT_OS_NAME="$(freebsd-version)"
+PROMPT_OS_NAME="$(command freebsd-version 2> "/dev/null" || command uname -r 2> "/dev/null" || echo "FreeBSD")"
 
 . "${SHELL_REPO_DIR}/theme/zsh.sh"
 . "${SHELL_REPO_DIR}/target/freebsd/environment.sh"

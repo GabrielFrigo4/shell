@@ -247,7 +247,18 @@ alias ..="cd .."
 alias ...="cd ../.."
 alias ....="cd ../../.."
 alias -- -="cd -"
+alias take="take-dir"
+alias mkcd="take-dir"
+alias cdb="cd-git-root"
 alias clear="echo -n $'\e[2J\e[3J\e[H'"
+
+### --------------------------------
+### Utility & History Aliases
+### --------------------------------
+alias hist="hist-search"
+alias hg="hist-search"
+alias extract="extract-archive"
+alias x="extract-archive"
 
 ### --------------------------------
 ### Universal Benchmark Aliases
@@ -293,6 +304,16 @@ alias upsnap="update-snap"
 ### ================================
 alias gs="vcs-status"
 alias gd="vcs-diff"
+alias gst="git status"
+alias gco="git checkout"
+alias gcb="git checkout -b"
+alias gsw="git switch"
+alias gswc="git switch -c"
+alias gcm="git commit -m"
+alias gaa="git add --all"
+alias gl="git pull"
+alias gp="git push"
+alias glog="git log --oneline --decorate --graph -n 20"
 
 command -v tog > "/dev/null" 2>&1 && {
 	alias tg="tog"

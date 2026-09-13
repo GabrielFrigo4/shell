@@ -73,6 +73,14 @@ O `/bin/sh` do FreeBSD utiliza a `libedit` (`contrib/libedit/`) para edição de
 4. **Multilinhas (`\n`) no Redraw:**
    - Em `contrib/libedit/refresh.c`, a função `re_putc` insere quebras de linha virtuais, mas não incrementa a coordenada vertical `r_cursor.v`.
    - Prompts multilinhas longos no `sh` desincronizam a posição do cursor ao navegar pelo histórico (Up/Down). Por isso, **prompts de 1 linha são canonicamente recomendados no `sh`**.
+5. **Keybindings Canônicos e Busca de Histórico por Prefixo:**
+   - A invocação do builtin `bind` em subshells ou scripts não interativos falha com `bind: line editing is disabled`. Deve ser estritamente guardada com `if case "$-" in *i*) true;; *) false;; esac; then ... fi`.
+   - Para restaurar a ergonomia de frameworks modernos (Oh-My-Zsh / Oh-My-Bash) sem peso externo, remapeamos as setas para busca por prefixo digitado:
+     - `^[[A` e `^[OA`: `ed-search-prev-history` (sobe no histórico filtrando pelo comando digitado).
+     - `^[[B` e `^[OB`: `ed-search-next-history` (desce no histórico filtrando pelo comando digitado).
+     - `^R`: `em-inc-search-prev` (busca incremental reversa no histórico).
+     - `^W` e `\e^?`: `ed-delete-prev-word` (deleta a palavra anterior).
+     - `\e[1;5C` / `\e[1;5D`: `em-next-word` / `ed-prev-word` (navegação por palavras com Ctrl+Setas).
 
 ---
 

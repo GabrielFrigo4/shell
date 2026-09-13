@@ -12,11 +12,9 @@ unset IFS
 ### --------------------------------
 set -o emacs 2> "/dev/null" || true
 
-### --------------------------------
-### Shell History
-### --------------------------------
 export HISTFILE="${HOME}/.sh_history"
-export HISTSIZE=10000
+export HISTSIZE=50000
+[ -f "${HISTFILE}" ] || { : > "${HISTFILE}" && chmod 0600 "${HISTFILE}"; } 2> "/dev/null"
 
 ### --------------------------------
 ### Interaction & Safety
