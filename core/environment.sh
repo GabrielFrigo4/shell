@@ -300,7 +300,7 @@ alias upflat="update-flatpak"
 alias upsnap="update-snap"
 
 ### ================================
-### Version Control Aliases (Got & Git)
+### Version Control Aliases
 ### ================================
 alias gs="vcs-status"
 alias gd="vcs-diff"
