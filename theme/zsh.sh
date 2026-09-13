@@ -1,5 +1,5 @@
 ### ================================
-### SHELL APPEARANCE
+### Z SHELL APPEARANCE
 ### ================================
 
 setopt PROMPT_SUBST

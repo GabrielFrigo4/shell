@@ -21,23 +21,23 @@
 [![CI](https://github.com/GabrielFrigo4/shell/actions/workflows/ci.yml/badge.svg)](https://github.com/GabrielFrigo4/shell/actions/workflows/ci.yml)
 
 **Plataformas Homologadas:**<br>
-![FreeBSD](https://img.shields.io/badge/😈_FreeBSD-Supported-red)
-![Linux](https://img.shields.io/badge/🐧_Linux-Supported-blue)
-![macOS](https://img.shields.io/badge/🍎_macOS-Supported-black)
-![Windows](https://img.shields.io/badge/🪟_Windows_%28MSYS2%29-Supported-purple)
-![OpenBSD](https://img.shields.io/badge/🐡_OpenBSD-Supported-yellow)
-![NetBSD](https://img.shields.io/badge/🚩_NetBSD-Supported-orange)
-![illumos](https://img.shields.io/badge/☀️_illumos-Supported-orange)
+![FreeBSD](https://img.shields.io/badge/FreeBSD-Supported-red?logo=freebsd&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-Supported-blue?logo=linux&logoColor=white)
+![macOS](https://img.shields.io/badge/macOS-Supported-black?logo=apple&logoColor=white)
+![Windows](<https://img.shields.io/badge/Windows_(MSYS2)-Supported-purple?logo=gitforwindows&logoColor=white>)
+![OpenBSD](https://img.shields.io/badge/OpenBSD-Supported-yellow?logo=openbsd&logoColor=white)
+![NetBSD](https://img.shields.io/badge/NetBSD-Supported-orange?logo=netbsd&logoColor=white)
+![illumos](https://img.shields.io/badge/illumos-Supported-orange?logo=openzfs&logoColor=white)
 
 **Shells Suportados (`zsh` ≫ `bash` ≫ `sh` / `ksh`):**<br>
-![Zsh](https://img.shields.io/badge/⚡_zsh-100%25-blue)
-![Bash](https://img.shields.io/badge/📜_bash-100%25-green)
-![Sh](https://img.shields.io/badge/⚙️_sh-FreeBSD_Exclusivo-red)
-![Ksh](https://img.shields.io/badge/🐡_ksh-OpenBSD_Exclusivo-yellow)
+![Zsh](https://img.shields.io/badge/zsh-100%25-blue?logo=zsh&logoColor=white)
+![Bash](https://img.shields.io/badge/bash-100%25-green?logo=gnubash&logoColor=white)
+![Sh](https://img.shields.io/badge/sh-FreeBSD_Exclusivo-red?logo=freebsd&logoColor=white)
+![Ksh](https://img.shields.io/badge/ksh-OpenBSD_Exclusivo-yellow?logo=openbsd&logoColor=white)
 
 **Shells Incompatíveis (Descartados):**<br>
-![Dash](https://img.shields.io/badge/💨_dash-Incompatível_POSIX-lightgrey)
-![Fish](https://img.shields.io/badge/🐟_fish-Incompatível_POSIX-lightgrey)
+![Dash](https://img.shields.io/badge/dash-Incompat%C3%ADvel_POSIX-lightgrey?logo=dash&logoColor=white)
+![Fish](https://img.shields.io/badge/fish-Incompat%C3%ADvel_POSIX-lightgrey?logo=fishshell&logoColor=white)
 
 ```mermaid
 flowchart LR

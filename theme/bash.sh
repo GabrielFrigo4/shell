@@ -1,5 +1,5 @@
 ### ================================
-### SHELL APPEARANCE
+### BOURNE AGAIN SHELL APPEARANCE
 ### ================================
 
 _git_branch() {
