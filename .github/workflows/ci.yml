@@ -126,6 +126,7 @@ jobs:
               with:
                   release: "15"
                   usesh: true
+                  envs: "CI GITHUB_ACTIONS"
                   run: |
                       ### ================================
                       ### FREEBSD ENVIRONMENT
@@ -166,14 +167,34 @@ jobs:
                       zsh -i -c 'echo "FreeBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
-                      ### FreeBSD Bash (Interactive with installed dotfiles)
+                      ### FreeBSD Bash (with installed dotfiles)
                       ### --------------------------------
-                      bash -i +m -c 'echo "FreeBSD Bash prompt: ${PS1}"' < /dev/null
+                      test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
+                      bash -c '
+                        export SHELL_REPO_DIR="${PWD}"
+                        export SHELL_CONTEXT="desktop"
+                        . ./library/detect.sh
+                        . ./library/functions.sh
+                        . ./core/environment.sh
+                        . ./target/freebsd/bash/prompt.sh
+                        _update_prompt
+                        echo "FreeBSD Bash prompt: ${PS1}"
+                      '
 
                       ### --------------------------------
-                      ### FreeBSD /bin/sh (Interactive with installed dotfiles)
+                      ### FreeBSD /bin/sh (with installed dotfiles)
                       ### --------------------------------
-                      ENV="${HOME}/.shrc" SHELL_INIT=1 sh -i -c 'echo "FreeBSD /bin/sh prompt: ${PS1}"' < /dev/null
+                      test -f "${HOME}/.shrc" || { echo "Missing .shrc"; exit 1; }
+                      sh -c '
+                        export SHELL_REPO_DIR="${PWD}"
+                        export SHELL_CONTEXT="desktop"
+                        export SHELL_INIT=1
+                        . ./library/detect.sh
+                        . ./library/functions.sh
+                        . ./core/environment.sh
+                        . ./target/freebsd/sh/prompt.sh
+                        echo "FreeBSD /bin/sh prompt: ${PS1}"
+                      '
 
                       ### --------------------------------
                       ### Startup Latency Benchmark (bsh)
@@ -292,6 +313,7 @@ jobs:
               uses: vmactions/openbsd-vm@v1
               with:
                   usesh: true
+                  envs: "CI GITHUB_ACTIONS"
                   run: |
                       ### ================================
                       ### OPENBSD ENVIRONMENT
@@ -355,6 +377,7 @@ jobs:
               uses: vmactions/netbsd-vm@v1
               with:
                   usesh: true
+                  envs: "CI GITHUB_ACTIONS"
                   run: |
                       ### ================================
                       ### NETBSD ENVIRONMENT
@@ -370,18 +393,36 @@ jobs:
                       ### Dependencies
                       ### --------------------------------
                       if command -v pkgin > "/dev/null" 2>&1; then
-                        pkgin -y update 2> "/dev/null" || true
-                        pkgin -y install zsh bash python312 2> "/dev/null" || pkgin -y install zsh bash python311 2> "/dev/null" || pkgin -y install zsh bash python3 2> "/dev/null" || pkgin -y install zsh bash
+                        echo "=== NetBSD pkgin update ==="
+                        pkgin -y update || true
+                        echo "=== Searching for Python in pkgin ==="
+                        pkgin search python || true
+                        echo "=== Installing Shell Interpreters ==="
+                        pkgin -y install zsh bash
+                        echo "=== Probing Python Candidates ==="
+                        for _pkg in python313 python312 python311 python310 python3; do
+                          echo "Attempting pkgin install ${_pkg}..."
+                          if pkgin -y install "${_pkg}"; then
+                            echo "Successfully installed ${_pkg}!"
+                            break
+                          fi
+                        done
                       elif command -v pkg_add > "/dev/null" 2>&1; then
                         pkg_add -I zsh bash
-                      elif [ -x "/usr/pkg/bin/pkgin" ]; then
-                        /usr/pkg/bin/pkgin -y update 2> "/dev/null" || true
-                        /usr/pkg/bin/pkgin -y install zsh bash python312 2> "/dev/null" || /usr/pkg/bin/pkgin -y install zsh bash
-                      elif [ -x "/usr/pkg/sbin/pkg_add" ]; then
-                        /usr/pkg/sbin/pkg_add -I zsh bash
-                      elif [ -x "/usr/sbin/pkg_add" ]; then
-                        /usr/sbin/pkg_add -I zsh bash
                       fi
+
+                      echo "=== NetBSD Python Binaries ==="
+                      ls -la /usr/pkg/bin/python* 2> "/dev/null" || true
+
+                      for _py in /usr/pkg/bin/python3* /usr/local/bin/python3*; do
+                        if [ -x "${_py}" ] && [ ! -x "/usr/pkg/bin/python3" ]; then
+                          echo "Linking ${_py} -> /usr/pkg/bin/python3"
+                          ln -sf "${_py}" /usr/pkg/bin/python3
+                          break
+                        fi
+                      done
+
+                      command -v python3 && python3 --version || echo "python3 not in PATH"
 
                       ### --------------------------------
                       ### Run Universal Shell Installer
@@ -409,9 +450,7 @@ jobs:
                       ### --------------------------------
                       ### Startup Latency Benchmark (bsh)
                       ### --------------------------------
-                      if command -v python3 > "/dev/null" 2>&1 || command -v python > "/dev/null" 2>&1; then
-                        ./scripts/benchmark.sh -i 2 || true
-                      fi
+                      ./scripts/benchmark.sh -i 2
 
     illumos:
         name: ☀️ illumos (Syntax & Simulation) Matrix

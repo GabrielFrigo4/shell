@@ -155,6 +155,7 @@ Ao analisar novas versões do FreeBSD (ex: FreeBSD 16-CURRENT):
     - `sh(1)`: <https://man.freebsd.org/sh.1>
     - `editline(3)`: <https://man.freebsd.org/editline.3>
     - `freebsd-version(1)`: <https://man.freebsd.org/freebsd-version.1>
+- **FreeBSD Ports & Packages Search:** <https://ports.freebsd.org/cgi/ports.cgi> | FreshPorts: <https://www.freshports.org/>
 - **Repositório Upstream (FreeBSD Src):** <https://github.com/freebsd/freebsd-src>
 - **Literatura Técnica:**
     - _The Design and Implementation of the FreeBSD Operating System_ (Marshall Kirk McKusick, George V. Neville-Neil & Robert N.M. Watson, 2ª ed., 2014, Addison-Wesley).

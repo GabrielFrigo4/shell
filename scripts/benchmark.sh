@@ -12,12 +12,23 @@ case ":${PATH}:" in
 	*":/usr/local/bin:"*) ;;
 	*) PATH="/usr/local/bin:${PATH}"; export PATH ;;
 esac
+case ":${PATH}:" in
+	*":/usr/pkg/bin:"*) ;;
+	*) PATH="/usr/pkg/bin:${PATH}"; export PATH ;;
+esac
 
 _py_bin=""
 if command -v python3 > "/dev/null" 2>&1; then
 	_py_bin="python3"
 elif command -v python > "/dev/null" 2>&1 && python -c "import sys; sys.exit(0 if sys.version_info[0] >= 3 else 1)" > "/dev/null" 2>&1; then
 	_py_bin="python"
+else
+	for _c in python3.13 python3.12 python3.11 python3.10 python3.9; do
+		if command -v "${_c}" > "/dev/null" 2>&1; then
+			_py_bin="${_c}"
+			break
+		fi
+	done
 fi
 
 if [ -z "${_py_bin}" ]; then
@@ -81,7 +92,10 @@ except Exception:
 times = []
 for _ in range(iters):
     t0 = time.perf_counter()
-    subprocess.run(cmd_args, shell=use_shell, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        subprocess.run(cmd_args, shell=use_shell, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+    except Exception:
+        pass
     times.append((time.perf_counter() - t0) * 1000)
 avg = sum(times) / len(times)
 print(f'{avg:.1f}')
@@ -154,9 +168,9 @@ for _sh in "$@"; do
 		_target="< ${_target_limit}ms (U < ${_ultra_limit}ms, W < ${_max_tolerance}ms)"
 		_cmd_bench="${_sh} -i -c exit"
 		if [ "${_sh}" = "sh" ] && [ -f "${HOME}/.shrc" ]; then
-			_cmd_bench="ENV=\"${HOME}/.shrc\" ${_sh} -i -c exit"
+			_cmd_bench="ENV=\"${HOME}/.shrc\" SHELL_INIT=1 ${_sh} -i -c exit"
 		elif [ "${_sh}" = "ksh" ] && [ -f "${HOME}/.kshrc" ]; then
-			_cmd_bench="ENV=\"${HOME}/.kshrc\" ${_sh} -i -c exit"
+			_cmd_bench="ENV=\"${HOME}/.kshrc\" SHELL_INIT=1 ${_sh} -i -c exit"
 		fi
 		_ms="$(_measure_cmd "${_cmd_bench}")"
 		_ms_int="${_ms%.*}"
@@ -211,7 +225,7 @@ fi
 if [ "${_os}" = "freebsd" ] && _is_shell_selected sh && command -v sh > "/dev/null" 2>&1; then
 	_prompt_sh="${_repo_dir}/target/freebsd/sh/prompt.sh"
 	if [ -f "${_prompt_sh}" ]; then
-		_shell_sh_ms="$(_measure_cmd "sh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_sh}\"'")"
+		_shell_sh_ms="$(_measure_cmd "sh -c 'export SHELL_REPO_DIR=${_repo_dir}; export SHELL_INIT=1; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_sh}\"'")"
 		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" "${_target_limit}")"
 	fi
 fi

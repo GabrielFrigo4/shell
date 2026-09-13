@@ -65,6 +65,7 @@ O ecossistema de software de terceiros no NetBSD gira em torno do **`pkgsrc`**:
     - `sh(1)`: <https://man.netbsd.org/sh.1>
     - `editline(3)`: <https://man.netbsd.org/editline.3>
 - **The NetBSD Packages Collection (pkgsrc):** <https://www.pkgsrc.org/> | Pkgin: <https://pkgin.net/>
+- **NetBSD pkgsrc Package Search:** <https://pkgsrc.se/> | pkgsrc Current: <https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc/>
 - **Literatura Técnica:**
     - _The Design and Implementation of the 4.4BSD Operating System_ (Marshall Kirk McKusick, Keith Bostic, Michael J. Karels & John S. Quarterman, 1996, Addison-Wesley).
     - _The Art of UNIX Programming_ (Eric S. Raymond, 2003, Addison-Wesley).
