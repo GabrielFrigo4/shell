@@ -34,7 +34,7 @@ SHELL_FRAMEWORK="${SHELL_FRAMEWORK:-0}"
 for arg in "$@"; do
 	case "${arg}" in
 		--help|-h)
-			echo "Usage: install.sh [--context desktop|server|container|wsl] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
+			echo "Usage: install.sh [--context desktop|server|container] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
 			exit 0
 			;;
 		--context=*) SHELL_CONTEXT="${arg#*=}" ;;
@@ -66,10 +66,14 @@ done
 unset _skip_next
 
 case "${SHELL_CONTEXT}" in
-	desktop|server|container|wsl) ;;
+	desktop|server|container) ;;
+	wsl)
+		echo "ℹ️  Context 'wsl' foi unificado em 'desktop' (com auto-detecção WSL)."
+		SHELL_CONTEXT="desktop"
+		;;
 	*)
-		echo "ERROR: Invalid context '${SHELL_CONTEXT}'. Use 'desktop', 'server', 'container' or 'wsl'."
-		echo "Usage: install.sh [--context desktop|server|container|wsl] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
+		echo "ERROR: Invalid context '${SHELL_CONTEXT}'. Use 'desktop', 'server' or 'container'."
+		echo "Usage: install.sh [--context desktop|server|container] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
 		exit 1
 		;;
 esac
@@ -78,7 +82,7 @@ case "${SHELL_TARGET}" in
 	all|zsh|bash|sh) ;;
 	*)
 		echo "ERROR: Invalid shell '${SHELL_TARGET}'. Use 'all', 'zsh', 'bash' or 'sh'."
-		echo "Usage: install.sh [--context desktop|server|container|wsl] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
+		echo "Usage: install.sh [--context desktop|server|container] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
 		exit 1
 		;;
 esac

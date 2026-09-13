@@ -83,6 +83,21 @@ _detect_os() {
 }
 
 ### --------------------------------
+### Detect WSL
+### --------------------------------
+_is_wsl() {
+	[ -n "${WSL_DISTRO_NAME:-}" ] || [ -n "${WSL_INTEROP:-}" ] && return 0
+	if [ -r "/proc/version" ]; then
+		local _proc_ver
+		read -r _proc_ver < "/proc/version" 2> "/dev/null"
+		case "${_proc_ver}" in
+			*[Mm]icrosoft*|*WSL*) return 0 ;;
+		esac
+	fi
+	return 1
+}
+
+### --------------------------------
 ### Detect Shell
 ### --------------------------------
 _detect_shell() {

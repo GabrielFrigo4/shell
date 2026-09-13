@@ -9,7 +9,7 @@
 O **Shell** é o **motor interativo de terminal** do ecossistema. Fornece prompts ultra-rápidos (< 50ms), aliases universais, funções POSIX e cascatas de ferramentas. Suporta:
 
 - **Shells:** Bash, Zsh e POSIX `sh` (FreeBSD `/bin/sh` como baseline)
-- **Contextos:** `desktop`, `server`, `container`, `wsl`
+- **Contextos:** `desktop`, `server`, `container` (com extensões WSL automáticas)
 - **Plataformas:** Linux, FreeBSD, OpenBSD, NetBSD, illumos, macOS, Windows (MSYS2)
 
 ---

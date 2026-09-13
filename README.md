@@ -93,12 +93,12 @@ sh "${HOME}/.shell/install.sh" --context desktop
 
 ### ⚙️ Opções do Instalador
 
-| Opção         |      Atalho      | Valores                                 |   Padrão   | Descrição                                                                    |
-| :------------ | :--------------: | :-------------------------------------- | :--------: | :--------------------------------------------------------------------------- |
-| `--context`   |       `-c`       | `desktop`, `server`, `container`, `wsl` | `desktop`  | Perfil de contexto do ambiente.                                              |
-| `--shell`     |       `-s`       | `all`, `zsh`, `bash`, `sh`              |   `all`    | Instala em todos os shells instalados ou em um alvo específico.              |
-| `--framework` | `--oh-my-shell`  | Flag booleana                           | Desativado | Habilita frameworks externos de terceiros (Oh-My-Bash / Oh-My-Zsh).          |
-| `--pure`      | `--no-framework` | Flag booleana                           |  Ativado   | Modo padrão: templates standalone nativos, zero overhead e boot instantâneo. |
+| Opção         |      Atalho      | Valores                          |   Padrão   | Descrição                                                                    |
+| :------------ | :--------------: | :------------------------------- | :--------: | :--------------------------------------------------------------------------- |
+| `--context`   |       `-c`       | `desktop`, `server`, `container` | `desktop`  | Perfil de contexto do ambiente.                                              |
+| `--shell`     |       `-s`       | `all`, `zsh`, `bash`, `sh`       |   `all`    | Instala em todos os shells instalados ou em um alvo específico.              |
+| `--framework` | `--oh-my-shell`  | Flag booleana                    | Desativado | Habilita frameworks externos de terceiros (Oh-My-Bash / Oh-My-Zsh).          |
+| `--pure`      | `--no-framework` | Flag booleana                    |  Ativado   | Modo padrão: templates standalone nativos, zero overhead e boot instantâneo. |
 
 ---
 
@@ -137,7 +137,7 @@ sh "${HOME}/.shell/install.sh" --context desktop
 Para aprofundar na arquitetura, comportamentos por contexto e motores de detecção:
 
 - 🏛️ **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Ciclo de vida da sessão interativa, cascata de sourcing e orçamento de latência (&lt;50ms).
-- 🎯 **[docs/CONTEXTS.md](docs/CONTEXTS.md)**: Especificação dos perfis `desktop`, `server`, `container` e `wsl`.
+- 🎯 **[docs/CONTEXTS.md](docs/CONTEXTS.md)**: Especificação dos perfis `desktop`, `server` e `container` (com auto-detecção WSL).
 - 🧠 **[docs/DETECTION.md](docs/DETECTION.md)**: Reconhecimento de SOs, famílias de distros Linux, dark mode (D-Bus/XDG Portal) e integração GTK/Qt/Electron.
 - 🖌️ **[docs/THEMES.md](docs/THEMES.md)**: Contratos visuais dos prompts (Bash, Zsh, Sh), paleta ANSI e fallback para TTYs puros.
 - 🗺️ **[docs/ALIASES.md](docs/ALIASES.md)**: Dicionário exaustivo de comandos públicos, atalhos e variáveis de ambiente.
@@ -162,7 +162,7 @@ flowchart TD
 
 - 📚 **[library/](library/README.md)**: Biblioteca padrão com utilitários POSIX (`functions.sh`) e módulos analíticos (`detect.sh`).
 - ⚙️ **[core/](core/README.md)**: Fundações do ambiente (`environment.sh`) e integração com segredos (`vault.sh`).
-- 🎯 **[context/](context/README.md)**: Orquestrador de perfis operacionais (`desktop`, `server`, `container`, `wsl`).
+- 🎯 **[context/](context/README.md)**: Orquestrador de perfis operacionais (`desktop`, `server`, `container`).
 - 🖌️ **[theme/](theme/README.md)**: Motores de renderização de prompts (Bash, Zsh, Sh).
 - 🎨 **`target/`**: Configurações específicas por sistema operacional (`Linux`, `FreeBSD`, `OpenBSD`, `NetBSD`, `illumos`, `macOS`, `Windows`).
 

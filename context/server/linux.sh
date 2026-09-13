@@ -37,3 +37,11 @@ logsearch() {
 		echo "❌ No searchable log source found or pattern not matched." >&2
 	fi
 }
+
+### --------------------------------
+### WSL Subsystem Extensions
+### --------------------------------
+if _is_wsl; then
+	[ -f "${SHELL_REPO_DIR}/context/server/wsl.sh" ] && \
+		. "${SHELL_REPO_DIR}/context/server/wsl.sh"
+fi

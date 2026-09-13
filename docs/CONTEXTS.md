@@ -4,14 +4,13 @@ O **Universal Shell** introduz o conceito de **Contextos de Ambiente** (`SHELL_C
 
 ---
 
-## 🧭 Os 4 Contextos Suportados
+## 🧭 Os 3 Contextos Canônicos
 
-| Contexto               | Foco Operacional                                | Consumo / Latência   | Recursos Chave                                                                                                  |
-| :--------------------- | :---------------------------------------------- | :------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| **`desktop`** (Padrão) | Estação gráfica (Workstation / Laptop)          | Rico (&lt;45ms)      | Editores GUI/CLI, gestão de dispositivos móveis (`mount-device`), atalhos de janelas Wayland/X11, temas GTK/Qt. |
-| **`server`**           | Servidores dedicados / VMs headless             | Mínimo (&lt;20ms)    | Ferramentas de rede, logs, aliases enxutos de administração e resiliência via SSH.                              |
-| **`container`**        | Contêineres (Incus, LXC, Podman, Docker, Jails) | Ultraleve (&lt;10ms) | Aliases estritamente necessários, sem sobrecarga de daemons ou ferramentas de desktop.                          |
-| **`wsl`**              | Windows Subsystem for Linux (WSL2)              | Híbrido (&lt;35ms)   | Interoperabilidade transparente com executáveis do Windows (`cmd`, `powershell`, `clip`, `explorer`).           |
+| Contexto               | Foco Operacional                                         | Consumo / Latência   | Recursos Chave                                                                                             |
+| :--------------------- | :------------------------------------------------------- | :------------------- | :--------------------------------------------------------------------------------------------------------- |
+| **`desktop`** (Padrão) | Estação gráfica (Workstation / Laptop / WSL Dev)         | Rico (&lt;45ms)      | Editores GUI/CLI, gestão de dispositivos móveis (`mount-device`), Wayland/X11, temas GTK/Qt e bridges WSL. |
+| **`server`**           | Servidores dedicados / VMs headless / WSL Headless       | Mínimo (&lt;20ms)    | Ferramentas de rede, logs, aliases enxutos de administração, resiliência via SSH e tuning de VM WSL.       |
+| **`container`**        | Contêineres isolados (Docker, Podman, LXC, Jails, Zones) | Ultraleve (&lt;10ms) | Aliases estritamente necessários, sem sobrecarga de daemons, agnóstico ao hospedeiro.                      |
 
 ---
 
@@ -31,6 +30,7 @@ Projetado para estações de trabalho de desenvolvimento:
 - **Editores e IDEs:** Suporte completo à cascata de editores gráficos e de terminal (`code`, `codium`, `antigravity-ide`, `zed`, `kate`, `nvim`, `hx`, `micro`).
 - **Dispositivos Móveis:** Comandos `mount-device` (`mntdev`) e `umount-device` (`umdev`) para montagem FUSE automática de smartphones Android via MTP (GNOME GVfs, KDE KIO-FUSE, GSConnect ou ADB).
 - **Gerenciadores de Janelas:** Funções `start-session`, `start-way` e `start-xorg` para inicialização direta de ambientes gráficos (GNOME, Plasma, Hyprland, Sway) a partir de TTYs.
+- **Extensão WSL (`wsl.sh`):** Se executado sob WSL (`_is_wsl`), incorpora automaticamente atalhos do Windows (`explorer`, `pwsh`, `powershell`, `cmd`), sincronização de clipboard (`clip`, `paste`), navegação rápida (`cd-win`), tradução de caminhos (`win-path`, `wsl-path`) e inicialização de arquivos (`open-win`).
 
 ---
 
@@ -41,6 +41,7 @@ Projetado para máquinas de produção e servidores residenciais:
 - Foco em ferramentas CLI puras (`tmux`, `htop`/`btop`, `journalctl`, `systemctl`, `service`).
 - Aliases simplificados para visualização rápida de conexões de rede ativas e uso de disco.
 - Desativação de verificações de ambiente gráfico e temas de GUI.
+- **Extensão WSL (`wsl.sh`):** Se executado sob WSL (`_is_wsl`), incorpora resolução de rede do host Windows (`WSL_HOST_IP`), liberação de memória RAM da VM para o host (`wsl-drop-caches`) e consulta de IP (`wsl-ip`).
 
 ---
 
@@ -50,19 +51,4 @@ Projetado para instâncias efêmeras e contêineres de compilação:
 
 - Elimina qualquer dependência de utilitários ausentes em imagens mínimas (como `sudo`, `ip`, `systemd`).
 - Shell imediato com suporte a `l`, `ll` e detecção de pacotes base (`apk`, `apt`, `dnf`, `pkg`).
-
----
-
-## 🧩 4. Contexto WSL
-
-Projetado para o Linux rodando dentro do Windows (WSL2):
-
-- **Camada Comum (`common.sh`):**
-  - Mapeia atalhos diretos para executáveis do Windows (`explorer`, `pwsh`, `powershell`, `cmd`).
-  - Sincronização de área de transferência bidirecional (`clip`, `paste`) com suporte a `win32yank.exe`, `clip.exe` e PowerShell.
-- **Camada Linux Especializada (`linux.sh`):**
-  - **Tradução de Caminhos:** `win-path` (converte Linux para Windows) e `wsl-path` (converte Windows para Linux) via `wslpath`.
-  - **Navegação:** `cd-win` para saltar diretamente ao perfil de usuário do Windows (`/mnt/c/Users/<user>`).
-  - **Abertura de Arquivos:** `open-win` para abrir arquivos Linux com aplicações padrão do Windows.
-  - **Resolução de Rede:** Exporta `WSL_HOST_IP` resolvendo o IP do host Windows sem subshells ou forks.
-  - **Gestão de Recursos:** `wsl-drop-caches` para liberar cache de memória da VM para o Windows e `wsl-ip` para consultar o IP da VM.
+- Isolamento estrito e portabilidade absoluta: agnóstico ao sistema hospedeiro (não acoplado ao Windows, macOS ou nuvem).

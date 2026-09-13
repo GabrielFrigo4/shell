@@ -20,7 +20,7 @@ O **Shell** é o motor interativo de terminal do **Quarteto de Produtividade** (
   - `library/`: Funções puras e utilitários compartilhados em POSIX shell.
   - `core/`: Orquestração de inicialização, cache e variáveis globais.
   - `target/`: Especializações declarativas por sistema operacional (`linux/`, `freebsd/`, `openbsd/`, `netbsd/`, `illumos/`, `macos/`, `windows/`).
-  - `context/`: Especializações por ambiente operacional (`desktop/`, `server/`, `container/`, `wsl/`).
+  - `context/`: Especializações por ambiente operacional (`desktop/`, `server/`, `container/`).
   - `theme/`: Renderização de prompts ultra-rápidos para cada shell (`sh`, `bash`, `zsh`).
 
 ### 2. Regra da Clareza (_Rule of Clarity_)

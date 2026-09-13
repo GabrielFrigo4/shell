@@ -38,3 +38,11 @@ o() {
 	command -v xdg-open > "/dev/null" 2>&1 || { echo "❌ xdg-open not found." >&2; return 127; }
 	command nohup xdg-open "$@" > "/dev/null" 2>&1 &
 }
+
+### --------------------------------
+### WSL Subsystem Extensions
+### --------------------------------
+if _is_wsl; then
+	[ -f "${SHELL_REPO_DIR}/context/desktop/wsl.sh" ] && \
+		. "${SHELL_REPO_DIR}/context/desktop/wsl.sh"
+fi
