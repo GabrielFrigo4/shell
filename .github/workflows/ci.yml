@@ -393,22 +393,22 @@ jobs:
                       ### Dependencies
                       ### --------------------------------
                       if command -v pkgin > "/dev/null" 2>&1; then
-                        echo "=== NetBSD pkgin update ==="
                         pkgin -y update || true
-                        echo "=== Searching for Python in pkgin ==="
-                        pkgin search python || true
-                        echo "=== Installing Shell Interpreters ==="
                         pkgin -y install zsh bash
-                        echo "=== Probing Python Candidates ==="
-                        for _pkg in python313 python312 python311 python310 python3; do
-                          echo "Attempting pkgin install ${_pkg}..."
-                          if pkgin -y install "${_pkg}"; then
-                            echo "Successfully installed ${_pkg}!"
+                        for _pkg in python312 python311 python310 python3; do
+                          pkgin -y install "${_pkg}" && break
+                        done
+                      elif command -v pkg_add > "/dev/null" 2>&1; then
+                        echo "=== Installing dependencies via pkg_add ==="
+                        pkg_add -I zsh bash || true
+                        echo "=== Probing Python installation via pkg_add ==="
+                        for _pkg in python312 python311 python310 python3; do
+                          echo "Attempting pkg_add -I ${_pkg}..."
+                          if pkg_add -I "${_pkg}"; then
+                            echo "Successfully installed ${_pkg} via pkg_add!"
                             break
                           fi
                         done
-                      elif command -v pkg_add > "/dev/null" 2>&1; then
-                        pkg_add -I zsh bash
                       fi
 
                       echo "=== NetBSD Python Binaries ==="
