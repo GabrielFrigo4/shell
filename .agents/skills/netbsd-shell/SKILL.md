@@ -35,19 +35,32 @@ O NetBSD possui uma das implementações de `/bin/sh` mais maduras e puras do mu
 
 ---
 
-## 3. Gestão de Pacotes com `pkgsrc` e `pkgin`
+## 3. Gestão de Pacotes com `pkgsrc`, `pkgin` e `pkg_add`
 
 O ecossistema de software de terceiros no NetBSD gira em torno do **`pkgsrc`**:
 
-1. **`pkgsrc`:** O sistema de compilação a partir dos fontes mais portável do mundo UNIX (roda em NetBSD, Linux, macOS, Solaris, Illumos e BSDs).
-2. **`pkgin`:** O gerenciador binário de pacotes (equivalente ao `apt` ou `pkg`):
+1. **`pkgsrc`:** O sistema de compilação a partir dos fontes mais portável do mundo UNIX (roda em NetBSD, Linux, macOS, Solaris, illumos e BSDs).
+2. **`pkg_add` vs. `pkgin` em Ambientes Base & CI:**
+    - O utilitário nativo embutido no sistema base para manipulação direta de pacotes binários compactados (`.tgz`) é o **`pkg_add`** (`/usr/sbin/pkg_add`).
+    - Em imagens mínimas de VMs e instâncias de CI, o `pkgin` frequentemente não vem instalado por padrão. Portanto, a automação canônica deve checar e priorizar `pkg_add -I` com fallback para `pkgin`:
     ```sh
-    pkgin update
-    pkgin install <pacote>
-    pkgin upgrade
+    if command -v pkg_add > "/dev/null" 2>&1; then
+        pkg_add -I zsh bash python312
+    elif command -v pkgin > "/dev/null" 2>&1; then
+        pkgin -y install zsh bash python312
+    fi
     ```
-3. **Caminho Canônico de Binários:** Pacotes instalados via `pkgsrc` residem tradicionalmente em `/usr/pkg/bin` e `/usr/pkg/sbin`.
-    - **Regra:** Em ambientes NetBSD, `/usr/pkg/bin` deve ser inserido no topo do `$PATH` usando `path-front`.
+3. **Nomenclatura de Pacotes no pkgsrc (O Caso do Python):**
+    - No `pkgsrc`, interpretadores Python não usam nomes genéricos como `python3`. Eles são versionados estritamente na forma `python312`, `python311`, `python313`, etc.
+    - Nos repositórios binários oficiais pré-compilados do NetBSD (`cdn.netbsd.org/pub/pkgsrc/packages/NetBSD/x86_64/10.0/All/`), o pacote estável padrão é o **`python312-3.12.x.tgz`**. Versões experimentais como 3.14 existem no código-fonte do pkgsrc (`lang/python314`), mas pacotes binários prontos seguem o ciclo de releases estáveis.
+4. **Caminho Canônico de Binários & Symlinks:**
+    - Binários do `pkgsrc` residem estritamente em `/usr/pkg/bin` e `/usr/pkg/sbin`.
+    - Ao instalar `python312`, o binário gerado é `/usr/pkg/bin/python3.12`. Para compatibilidade com scripts agnósticos que buscam `python3`, deve-se criar o symlink:
+    ```sh
+    [ -x "/usr/pkg/bin/python3.12" ] && [ ! -x "/usr/pkg/bin/python3" ] && \
+        ln -sf /usr/pkg/bin/python3.12 /usr/pkg/bin/python3
+    ```
+    - **Regra:** `/usr/pkg/bin` deve ser sempre inserido no topo do `$PATH` usando `path-front`.
 
 ---
 

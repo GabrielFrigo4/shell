@@ -137,7 +137,39 @@ alias :="_update_prompt; command :"
 
 ---
 
-## 6. Procedimento para Atualizar Este Conhecimento
+## 6. Comportamento de Kernel TTY, CI Headless & O Padrão PTY (`script -q /dev/null`)
+
+Ao orquestrar testes automatizados ou tarefas em segundo plano no FreeBSD (ex: GitHub Actions, scripts de provisionamento, Jails headless):
+
+1. **A Armadilha do `SIGTTIN` no Kernel BSD (`sys/kern/kern_tty.c`):**
+    - Quando um shell inicia em modo interativo com a flag `-i` (ex: `bash -i -c '...'`), ele tenta gerenciar o terminal chamando a syscall POSIX `tcsetpgrp()`.
+    - No Linux e macOS, a syscall falha de forma não-bloqueante (`ENOTTY` ou `EPERM`) e o shell prossegue com um aviso inofensivo (`no job control in background`).
+    - No FreeBSD, o kernel aplica à risca a especificação clássica BSD: qualquer processo em background que tenta chamar `tcsetpgrp()` sem PTY controlador recebe **imediatamente o sinal `SIGTTIN` (sinal 21)**.
+    - O efeito padrão de `SIGTTIN` é **suspender o processo (`SIGSTOP`)**. Em ambientes sem operador humano, a execução congela indefinidamente.
+2. **O Padrão Ouro Canônico: Alocação de PTY sob Demanda com `script(1)`:**
+    - Para executar shells interativos de forma 100% autêntica em ambientes headless sem acionar o `SIGTTIN`, deve-se encapsular o comando no utilitário nativo do sistema base `/usr/bin/script`:
+    ```sh
+    script -q /dev/null bash -i -c 'echo "Prompt: ${PS1}"'
+    ENV="${HOME}/.shrc" script -q /dev/null sh -i -c 'echo "Prompt: ${PS1}"'
+    ```
+    - O `script(1)` aloca um par de pseudo-terminais reais (`/dev/pts`), registra o comando como líder de sessão do terminal e atende perfeitamente à chamada `tcsetpgrp()`, evitando a suspensão do processo.
+3. **Alternativa em GNU Bash (`+m`):**
+    - Desativar explicitamente o monitor de job control preservando o modo interativo:
+    ```sh
+    bash +m -i -c 'echo "Prompt: ${PS1}"'
+    ```
+    - A flag `+m` desativa a tentativa de assumir controle de tarefas, enquanto `-i` garante o carregamento completo do `.bashrc`.
+4. **Proteção Contra Recursão no `/bin/sh` (`target/freebsd/sh/terminal.sh`):**
+    - Em pipelines de CI ou subshells sem terminal alocado, o script terminal deve conter guardas defensivas explícitas para não tentar invocar `exec zsh`:
+    ```sh
+    if [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ] || [ ! -t 0 ] || [ ! -t 1 ]; then
+        return 0 2> "/dev/null" || exit 0
+    fi
+    ```
+
+---
+
+## 7. Procedimento para Atualizar Este Conhecimento
 
 Ao analisar novas versões do FreeBSD (ex: FreeBSD 16-CURRENT):
 
@@ -153,6 +185,7 @@ Ao analisar novas versões do FreeBSD (ex: FreeBSD 16-CURRENT):
 - **The FreeBSD Project:** <https://www.freebsd.org/> | Releases: <https://www.freebsd.org/releases/>
 - **FreeBSD Manual Pages:**
     - `sh(1)`: <https://man.freebsd.org/sh.1>
+    - `script(1)`: <https://man.freebsd.org/script.1>
     - `editline(3)`: <https://man.freebsd.org/editline.3>
     - `freebsd-version(1)`: <https://man.freebsd.org/freebsd-version.1>
 - **FreeBSD Ports & Packages Search:** <https://ports.freebsd.org/cgi/ports.cgi> | FreshPorts: <https://www.freshports.org/>

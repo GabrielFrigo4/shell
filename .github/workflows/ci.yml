@@ -170,34 +170,16 @@ jobs:
                       zsh -i -c 'echo "FreeBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
-                      ### FreeBSD Bash (with installed dotfiles)
+                      ### FreeBSD Bash (Interactive with installed dotfiles via PTY)
                       ### --------------------------------
                       test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
-                      bash -c '
-                        export SHELL_REPO_DIR="${PWD}"
-                        export SHELL_CONTEXT="desktop"
-                        . ./library/detect.sh
-                        . ./library/functions.sh
-                        . ./core/environment.sh
-                        . ./target/freebsd/bash/prompt.sh
-                        _update_prompt
-                        echo "FreeBSD Bash prompt: ${PS1}"
-                      '
+                      script -q /dev/null bash -i -c 'echo "FreeBSD Bash prompt: ${PS1}"'
 
                       ### --------------------------------
-                      ### FreeBSD /bin/sh (with installed dotfiles)
+                      ### FreeBSD /bin/sh (Interactive with installed dotfiles via PTY)
                       ### --------------------------------
                       test -f "${HOME}/.shrc" || { echo "Missing .shrc"; exit 1; }
-                      sh -c '
-                        export SHELL_REPO_DIR="${PWD}"
-                        export SHELL_CONTEXT="desktop"
-                        export SHELL_INIT=1
-                        . ./library/detect.sh
-                        . ./library/functions.sh
-                        . ./core/environment.sh
-                        . ./target/freebsd/sh/prompt.sh
-                        echo "FreeBSD /bin/sh prompt: ${PS1}"
-                      '
+                      ENV="${HOME}/.shrc" script -q /dev/null sh -i -c 'echo "FreeBSD /bin/sh prompt: ${PS1}"'
 
                       ### --------------------------------
                       ### Startup Latency Benchmark (bsh)
