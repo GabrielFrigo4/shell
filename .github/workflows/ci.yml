@@ -101,11 +101,13 @@ jobs:
                   ### --------------------------------
                   ### Linux Zsh (Interactive boot with installed dotfiles)
                   ### --------------------------------
+                  test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                   zsh -i -c 'echo "Linux Zsh boot with dotfiles OK: ${PROMPT}"'
 
                   ### --------------------------------
                   ### Linux Bash (Interactive boot with installed dotfiles)
                   ### --------------------------------
+                  test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                   bash -i -c 'echo "Linux Bash boot with dotfiles OK: ${PS1}"'
 
                   ### --------------------------------
@@ -164,6 +166,7 @@ jobs:
                       ### --------------------------------
                       ### FreeBSD Zsh (Interactive with installed dotfiles)
                       ### --------------------------------
+                      test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                       zsh -i -c 'echo "FreeBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
@@ -241,11 +244,13 @@ jobs:
                   ### --------------------------------
                   ### MSYS2 Zsh (Interactive with installed dotfiles)
                   ### --------------------------------
+                  test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                   zsh -i -c 'echo "Windows MSYS2 Zsh OK: ${PROMPT}"'
 
                   ### --------------------------------
                   ### MSYS2 Bash (Interactive with installed dotfiles)
                   ### --------------------------------
+                  test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                   bash -i -c 'echo "Windows MSYS2 Bash OK: ${PS1}"'
 
                   ### --------------------------------
@@ -289,11 +294,13 @@ jobs:
                   ### --------------------------------
                   ### macOS Zsh (Interactive with installed dotfiles)
                   ### --------------------------------
+                  test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                   zsh -i -c 'echo "macOS Zsh prompt OK: ${PROMPT}"'
 
                   ### --------------------------------
                   ### macOS Bash (Interactive with installed dotfiles)
                   ### --------------------------------
+                  test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                   bash -i -c 'echo "macOS Bash prompt OK: ${PS1}"'
 
                   ### --------------------------------
@@ -348,16 +355,19 @@ jobs:
                       ### --------------------------------
                       ### OpenBSD Zsh (Interactive with installed dotfiles)
                       ### --------------------------------
+                      test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                       zsh -i -c 'echo "OpenBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
                       ### OpenBSD Bash (Interactive with installed dotfiles)
                       ### --------------------------------
+                      test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                       bash -i -c 'echo "OpenBSD Bash prompt: ${PS1}"'
 
                       ### --------------------------------
                       ### OpenBSD Native Ksh (Interactive with installed dotfiles)
                       ### --------------------------------
+                      test -f "${HOME}/.kshrc" || { echo "Missing .kshrc"; exit 1; }
                       ENV="${HOME}/.kshrc" ksh -i -c 'echo "OpenBSD ksh prompt: ${PS1}"'
 
                       ### --------------------------------
@@ -419,11 +429,13 @@ jobs:
                       ### --------------------------------
                       ### NetBSD Zsh (Interactive with installed dotfiles)
                       ### --------------------------------
+                      test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                       zsh -i -c 'echo "NetBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
                       ### NetBSD Bash (Interactive with installed dotfiles)
                       ### --------------------------------
+                      test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                       bash -i -c 'echo "NetBSD Bash prompt: ${PS1}"'
 
                       ### --------------------------------

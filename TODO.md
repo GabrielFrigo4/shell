@@ -19,7 +19,8 @@
 | **⚡ Modern CLI**              | 🟢 Estável | Cascata inteligente (`eza`, `bat`, `rg`, `fd` > nativos)                                   |
 | **🌳 VCS & Prompts**           | 🟢 Estável | Git e Got (Game of Trees) com status de modificação em tempo real                          |
 | **💎 Clean Code & Princípios** |  🟢 100%   | 18 Princípios UNIX, comentários simétricos de 36 colunas e Zero Warnings                   |
-| **🧪 Automação & CI/CD**       | 🟢 Estável | Git Hooks locais (`.githooks/pre-commit`) + GitHub Actions multi-OS (7 plataformas)        |
+| **🧪 Automação & CI/CD**       | 🟢 Estável | Git Hooks locais (`.githooks/pre-commit`) + GitHub Actions multi-OS (8 matrizes completas) |
+| **⚡ Latência & Benchmarking** | 🟢 Estável | Medição contínua no CI (< 64ms) com metas ULTRA (< 32ms) em FreeBSD, OpenBSD, NetBSD e +   |
 
 ---
 
@@ -35,8 +36,10 @@ Novas frentes e refinamentos mapeados para futuras iterações do ecossistema:
 
 ### 🧪 Testes & Integração Contínua
 
-- [x] **Matriz Expandida de CI:** Execução automatizada de testes de paridade no GitHub Actions rodando runners nativos e VMs de Linux, FreeBSD, OpenBSD, NetBSD, illumos, macOS e Windows.
-- [ ] **Métricas Contínuas de Latência:** Adicionar asserções estritas de tempo de boot (< 35ms) em rotinas de CI em pull requests.
+- [x] **Matriz Expandida de CI:** Execução automatizada de testes de paridade no GitHub Actions rodando runners nativos e VMs de Linux, FreeBSD, OpenBSD, NetBSD, illumos, macOS e Windows (8 matrizes ativas).
+- [x] **Métricas Contínuas de Latência:** Execução nativa do harness de benchmark (`scripts/benchmark.sh`) no CI em Linux, FreeBSD, OpenBSD, NetBSD, macOS e Windows com metas rígidas (< 64ms) e categorização ULTRA (< 32ms).
+- [x] **Robustez em Ambientes Headless e VMs:** Tratamento defensivo contra `SIGTTIN` de kernel no FreeBSD, proteção contra forks recursivos (`SHELL_INIT=1`), timeout global defensivo de 10s no harness de testes e resolução automatizada de dependências no NetBSD pkgsrc (`python312`).
+- [x] **Documentação de Ports BSD:** Inclusão de motores de busca oficiais de pacotes e ports (FreeBSD, OpenBSD e NetBSD) nas skills do ecossistema.
 
 ### 🌐 Conectividade & Ferramentas
 
