@@ -4,24 +4,38 @@ Essas diretrizes são de aplicação obrigatória para qualquer modificação ou
 
 > 🏛️ **Hub Orquestrador:** Este repositório faz parte do [Quarteto de Produtividade](https://github.com/GabrielFrigo4/environment), orquestrado pelo repositório **Environment**. Consulte o `ENVIRONMENT.md` e `PRINCIPLES.md` canônicos na raiz do Environment para a arquitetura completa.
 
-## 1. Linha de Base de Portabilidade (FreeBSD `/bin/sh`) & Sequências de Escape
+## 0. O Triângulo Dourado: Estabilidade, Eficiência e Conveniência
+
+Toda alteração de código, adição de alias, refatoração ou otimização no repositório DEVE preservar rigorosamente o equilíbrio entre os três pilares do projeto:
+
+1. **🛡️ Estabilidade:** Imunidade a regressões e corner cases. Proibido persistir tipo ou estado de shell em disco compartilhado (`cache.env`) que possa quebrar processos aninhados (`zsh -> bash -> ksh -> sh`). Resiliência em Raw TTYs, rigor `noclobber` e total ausência de efeitos colaterais.
+2. **⚡ Eficiência:** Boot sub-20ms. Proibido invocar processos ou subshells desnecessários no caminho crítico (`id -un`, `which`, `expr`). Otimização agressiva de buffers e renderizações.
+3. **✨ Conveniência:** Experiência moderna, fluida e ergonômica (autocompletion visual por menu com seleção Tab/setas, busca reversa por histórico, dark mode e orquestrador unificado `update-all`). Nenhuma otimização deve degradar a usabilidade interativa.
+
+---
+
+## 1. Linha de Base de Portabilidade & Alvos Exclusivos (`sh` e `ksh`)
 
 - O shell nativo do FreeBSD (`/bin/sh`) é a régua máxima e baseline de portabilidade para scripts compartilhados em `library/`, `core/` e `install.sh`.
-- **Target `/bin/sh` Exclusivo do FreeBSD:** No ecossistema de targets interativos (`target/`), o alvo `sh` existe EXCLUSIVAMENTE para o FreeBSD (`target/freebsd/sh`). Todos os demais sistemas operacionais (Linux, macOS, Windows/MSYS2, NetBSD, OpenBSD, illumos) suportam estritamente `bash` e `zsh`. Shells `/bin/sh` não-FreeBSD (Dash no Linux, Bash 3.2 em modo POSIX no macOS, Almquist sh no NetBSD, pdksh no OpenBSD) são shells de sistema estritos que rejeitam `kebab-case` e não são alvos de ambiente interativo do ecossistema. O benchmark (`scripts/benchmark.sh`) só avalia `sh` quando o SO for FreeBSD.
-- **Adoção Universal de `$'\e...'` e `echo -n`:** O formato `echo -n $'\e...'` é suportado em todos os shells do ecossistema (FreeBSD `/bin/sh`, Zsh, Bash e até no Dash moderno, além de formalizado no POSIX Issue 8). É o padrão canônico preferido para sequências de controle de terminal (`alias clear="echo -n $'\e[2J\e[3J\e[H'"`), eliminando a necessidade de notação críptica em octal (`\033`) do `printf`.
-- **Delimitadores de Largura Zero em Prompts (`\[...\]`):** No FreeBSD `/bin/sh` (`libedit`) e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar entre `\[` e `\]` (ex: `_c_red="\[\e[1;91m\]"`). Sem isso, o editor conta bytes ANSI como colunas visíveis, quebrando o cálculo de linhas e o cursor.
+- **Exclusividade e Não-Coexistência:** No ecossistema de targets interativos (`target/`):
+    - O alvo `sh` existe **EXCLUSIVAMENTE para o FreeBSD** (`target/freebsd/sh`).
+    - O alvo `ksh` existe **EXCLUSIVAMENTE para o OpenBSD** (`target/openbsd/ksh`).
+    - `ksh` e `sh` NUNCA coexistem no mesmo sistema operacional.
+    - Todos os demais sistemas operacionais (Linux, macOS, Windows/MSYS2, NetBSD, illumos) suportam estritamente `zsh` e `bash`.
+- **Adoção Universal de `$'\e...'` e `echo -n`:** O formato `echo -n $'\e...'` é suportado em todos os shells do ecossistema (FreeBSD `/bin/sh`, Zsh, Bash, OpenBSD ksh moderno e Dash moderno, além de formalizado no POSIX Issue 8). É o padrão canônico preferido para sequências de controle de terminal (`alias clear="echo -n $'\e[2J\e[3J\e[H'"`), eliminando a necessidade de notação críptica em octal (`\033`) do `printf`.
+- **Delimitadores de Largura Zero em Prompts (`\[...\]`):** No FreeBSD `/bin/sh` (`libedit`), OpenBSD `ksh` e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar entre `\[` e `\]` (ex: `_c_red="\[\e[1;91m\]"`). Sem isso, o editor conta bytes ANSI como colunas visíveis, quebrando o cálculo de linhas e o cursor.
 - Recursos do Zsh e Bash permanecem estritamente em `zsh/` e `bash/`.
 
 ## 2. Programação Defensiva Obrigatória
 
 - NUNCA defina um alias ou wrapper de ferramenta externa sem antes verificar se o executável existe:
-  ```sh
-  command -v <bin> > "/dev/null" 2>&1 && alias <nome>="<bin>"
-  ```
+    ```sh
+    command -v <bin> > "/dev/null" 2>&1 && alias <nome>="<bin>"
+    ```
 - Sempre proteja chamadas de manipulação do terminal ou cursor (`echo -n $'\e[0 q'`) verificando se o descritor 1 é um TTY:
-  ```sh
-  [ -t 1 ] && echo -n $'\e[0 q'
-  ```
+    ```sh
+    [ -t 1 ] && echo -n $'\e[0 q'
+    ```
 
 ## 3. Convenção Estrita de Nomenclatura
 
@@ -34,19 +48,19 @@ Essas diretrizes são de aplicação obrigatória para qualquer modificação ou
 - **Zero Comentários Narrativos:** O código deve ser autoexplicativo (Princípio do Silêncio). Comentários explicativos inline são expressamente proibidos em scripts, templates e documentações. Separe blocos lógicos exclusivamente por linhas em branco.
 - **Camada 1 (Header Banner):** Exclusivo para linhas 2 a 4 de scripts utilitários (`install.sh`, etc.), delimitado por 64 hífens (`# ----------------------------------------------------------------`).
 - **Camada 2 (Delimitadores Estruturais de Corpo):**
-  - **Módulo / Seção Principal (32 `=`):**
-    ```sh
-    ### ================================
-    ### NOME DO MODULO OU CONTEXTO
-    ### ================================
-    ```
-    Arquivos de contexto usam a terminação da plataforma sem parênteses: `COMMON`, `LINUX`, `FREEBSD`, `WINDOWS`.
-  - **Subseções Internas (32 `-`):**
-    ```sh
-    ### --------------------------------
-    ### Nome da Secao
-    ### --------------------------------
-    ```
+    - **Módulo / Seção Principal (32 `=`):**
+        ```sh
+        ### ================================
+        ### NOME DO MODULO OU CONTEXTO
+        ### ================================
+        ```
+        Arquivos de contexto usam a terminação da plataforma sem parênteses: `COMMON`, `LINUX`, `FREEBSD`, `WINDOWS`.
+    - **Subseções Internas (32 `-`):**
+        ```sh
+        ### --------------------------------
+        ### Nome da Secao
+        ### --------------------------------
+        ```
 - **Regra Estrita do Não-Vazamento:** A régua divisora tem exatamente 32 caracteres separadores (total de 36 colunas com `### `). O texto do título DEVE ser conciso e **JAMAIS vazar além da régua** (máximo de 32 caracteres).
 - **Sem Parênteses ou Anotações Redundantes:** O título deve ser limpo e sem anotações secundárias entre parênteses (ex: prefira `### Default Editor` a `### Default Editor (Cascade)` e `### Update Vault` a `### Update Vault (update-vault)`).
 - **Não-Enumeração de Títulos:** Evite numerar títulos de seções. Use títulos puramente semânticos.
@@ -68,29 +82,29 @@ Essas diretrizes são de aplicação obrigatória para qualquer modificação ou
 
 - **Heredocs Indentados (`cat <<- 'EOF'`):** Em blocos multilinhas e geradores de templates, use SEMPRE `cat <<- 'EOF'`. O hífen `<<-` descarta TABs iniciais (`\t`) das linhas de texto e do próprio delimitador `EOF`, permitindo que o heredoc permaneça perfeitamente alinhado com a indentação da função/condicional circundante sem vazar para a coluna zero. Se não houver interpolação intencional de variáveis, envolva o delimitador entre aspas simples (`'EOF'`).
 - **Taxonomia de Emissão:**
-  - `echo`: Para linhas simples de texto e escrita atômica em arquivos (`echo "${val}" >| "${file}"`).
-  - `echo -n $'\e...'`: Padrão canônico e preferido para sequências ANSI em terminais interativos (`[ -t 1 ]`).
-  - `printf`: Exclusivo para relatórios com tabelas e colunas alinhadas com padding (`%-12s %-24s`).
+    - `echo`: Para linhas simples de texto e escrita atômica em arquivos (`echo "${val}" >| "${file}"`).
+    - `echo -n $'\e...'`: Padrão canônico e preferido para sequências ANSI em terminais interativos (`[ -t 1 ]`).
+    - `printf`: Exclusivo para relatórios com tabelas e colunas alinhadas com padding (`%-12s %-24s`).
 - **Guarda de Interatividade (`INTERACTIVE GUARD`):** Todo arquivo gerado (`.bashrc`, `.zshrc`, `.shrc`) DEVE iniciar com:
-  ```sh
-  ### ================================
-  ### INTERACTIVE GUARD
-  ### ================================
-  case "$-" in
-      *i*) ;;
-      *) return ;;
-  esac
-  ```
-  Isso impede que conexões não-interativas (`scp`, `sftp`, `rsync`, Git) quebrem ao receber sequências ANSI ou saídas de terminal.
+    ```sh
+    ### ================================
+    ### INTERACTIVE GUARD
+    ### ================================
+    case "$-" in
+        *i*) ;;
+        *) return ;;
+    esac
+    ```
+    Isso impede que conexões não-interativas (`scp`, `sftp`, `rsync`, Git) quebrem ao receber sequências ANSI ou saídas de terminal.
 - **Auto-Correção Eficiente de `$SHELL`:** Em shells aninhados (ex: abrir `bash` a partir do `zsh`), auto-corrija `$SHELL` usando checagem por casamento de padrão em memória:
-  ```sh
-  _current_sh="${_DETECTED_SHELL:-$(_detect_shell)}"
-  case "${SHELL:-}" in
-      *"/${_current_sh}") ;;
-      *) export SHELL="$(command -v "${_current_sh}" 2> "/dev/null")" ;;
-  esac
-  unset _current_sh
-  ```
+    ```sh
+    _current_sh="${_DETECTED_SHELL:-$(_detect_shell)}"
+    case "${SHELL:-}" in
+        *"/${_current_sh}") ;;
+        *) export SHELL="$(command -v "${_current_sh}" 2> "/dev/null")" ;;
+    esac
+    unset _current_sh
+    ```
 - **Invocação pelo Shell Ativo (Active Shell Invocation):** Ao invocar sub-rotinas e instaladores (`install.sh`, `benchmark.sh`) dentro de funções do shell, utilize sempre o executável do shell ativo seguindo a cascata de preferência: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`, NUNCA `sh` cego. No topo de scripts utilitários em Linux, mantenha guard de auto-elevação para `zsh`/`bash` se iniciado sob `/bin/sh` (`dash`).
 
 ## 8. Checklist de Validação
@@ -100,7 +114,7 @@ Antes de finalizar qualquer alteração:
 1. `git diff --check` (deve retornar 0 erros).
 2. `./.githooks/pre-commit` (deve passar 100%).
 3. Matriz Multi-Shell:
-   - Linux: `bash -n` e `zsh -n`.
-   - FreeBSD: `sh -n`, `bash -n` e `zsh -n`.
-   - macOS: `bash -n` e `zsh -n`.
-   - Windows (MSYS2): `bash -n` e `zsh -n`.
+    - Linux: `bash -n` e `zsh -n`.
+    - FreeBSD: `sh -n`, `bash -n` e `zsh -n`.
+    - macOS: `bash -n` e `zsh -n`.
+    - Windows (MSYS2): `bash -n` e `zsh -n`.
