@@ -86,9 +86,34 @@ alias ccache="clean-cache"
 ### Update Shell
 ### --------------------------------
 update-shell() {
-	if [ -n "${SHELL_REPO_DIR}" ] && [ -d "${SHELL_REPO_DIR}" ]; then
-		echo "🔄 Updating shell repository at ${SHELL_REPO_DIR}..."
-		command git -C "${SHELL_REPO_DIR}" pull
+	_target=""
+	if [ -n "${SHELL_REPO_DIR:-}" ] && [ -e "${SHELL_REPO_DIR}/.git" ]; then
+		_target="${SHELL_REPO_DIR}"
+	elif [ -e "${HOME}/.local/share/shell/.git" ]; then
+		_target="${HOME}/.local/share/shell"
+	elif [ -e "${HOME}/.shell/.git" ]; then
+		_target="${HOME}/.shell"
+	elif [ -e "/usr/local/share/shell/.git" ]; then
+		_target="/usr/local/share/shell"
+	elif [ -n "${SHELL_REPO_DIR:-}" ] && [ -d "${SHELL_REPO_DIR}" ]; then
+		_target="${SHELL_REPO_DIR}"
+	fi
+
+	if [ -n "${_target}" ] && [ -d "${_target}" ]; then
+		echo "🔄 Updating shell repository at ${_target}..."
+		if [ -w "${_target}" ]; then
+			command git -C "${_target}" pull --ff-only
+		else
+			echo "🔒 ${_target} requires administrative privileges:"
+			if command -v sudo > "/dev/null" 2>&1; then
+				sudo git -C "${_target}" pull --ff-only
+			elif command -v doas > "/dev/null" 2>&1; then
+				doas git -C "${_target}" pull --ff-only
+			else
+				command git -C "${_target}" pull --ff-only
+			fi
+		fi
+
 		if [ -d "${OSH:-${HOME}/.oh-my-bash}" ]; then
 			echo "🔄 Updating Oh-My-Bash..."
 			command git -C "${OSH:-${HOME}/.oh-my-bash}" pull --ff-only 2> "/dev/null" || true
@@ -97,35 +122,62 @@ update-shell() {
 			echo "🔄 Updating Oh-My-Zsh..."
 			command git -C "${ZSH:-${HOME}/.oh-my-zsh}" pull --ff-only 2> "/dev/null" || true
 		fi
-		_cache_clean
+		command -v _cache_clean > "/dev/null" 2>&1 && _cache_clean || true
 		echo "♻️ Reloading shell environment..."
-		. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
+		if [ -n "${ZSH_VERSION:-}" ] && [ -f "${HOME}/.zshrc" ]; then
+			. "${HOME}/.zshrc" 2> "/dev/null" || true
+		elif [ -n "${BASH_VERSION:-}" ] && [ -f "${HOME}/.bashrc" ]; then
+			. "${HOME}/.bashrc" 2> "/dev/null" || true
+		elif [ -f "${HOME}/.$(_detect_enabled_shell --name 2> "/dev/null")rc" ]; then
+			. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
+		fi
 	else
-		echo "❌ ERROR: SHELL_REPO_DIR is not set or invalid."
-		echo "Please re-run the install.sh script from your shell repository."
+		echo "❌ ERROR: No active shell repository found."
+		echo "Expected /usr/local/share/shell, ~/.local/share/shell, or valid SHELL_REPO_DIR."
+		return 1
 	fi
+	unset _target
 }
 
 ### --------------------------------
 ### Update Editors
 ### --------------------------------
 update-editors() {
-	_env_root="${ENVIRONMENT_DIR:-${HOME}/Documentos/Environment}"
 	_ed_list="Emacs Helix NeoVim Vim"
 	_found=0
 
 	for _ed in ${_ed_list}; do
 		_target=""
-		if [ -e "${_env_root}/Editor/${_ed}/.git" ]; then
-			_target="${_env_root}/Editor/${_ed}"
-		else
-			case "${_ed}" in
-				Emacs)   [ -e "${HOME}/.emacs.d/.git" ] && _target="${HOME}/.emacs.d" ;;
-				Helix)   [ -e "${HOME}/.config/helix/.git" ] && _target="${HOME}/.config/helix" ;;
-				NeoVim)  [ -e "${HOME}/.config/nvim/.git" ] && _target="${HOME}/.config/nvim" ;;
-				Vim)     [ -e "${HOME}/vimfiles/.git" ] && _target="${HOME}/vimfiles" ;;
-			esac
-		fi
+		case "${_ed}" in
+			Emacs)
+				if [ -d "${HOME}/.emacs.d/.git" ]; then
+					_target="${HOME}/.emacs.d"
+				elif [ -d "${XDG_CONFIG_HOME:-${HOME}/.config}/emacs/.git" ]; then
+					_target="${XDG_CONFIG_HOME:-${HOME}/.config}/emacs"
+				fi
+				;;
+			Helix)
+				if [ -d "${XDG_CONFIG_HOME:-${HOME}/.config}/helix/.git" ]; then
+					_target="${XDG_CONFIG_HOME:-${HOME}/.config}/helix"
+				elif [ -d "${APPDATA:-${HOME}/AppData/Roaming}/helix/.git" ]; then
+					_target="${APPDATA:-${HOME}/AppData/Roaming}/helix"
+				fi
+				;;
+			NeoVim)
+				if [ -d "${XDG_CONFIG_HOME:-${HOME}/.config}/nvim/.git" ]; then
+					_target="${XDG_CONFIG_HOME:-${HOME}/.config}/nvim"
+				elif [ -d "${LOCALAPPDATA:-${HOME}/AppData/Local}/nvim/.git" ]; then
+					_target="${LOCALAPPDATA:-${HOME}/AppData/Local}/nvim"
+				fi
+				;;
+			Vim)
+				if [ -d "${HOME}/.vim/.git" ]; then
+					_target="${HOME}/.vim"
+				elif [ -d "${HOME}/vimfiles/.git" ]; then
+					_target="${HOME}/vimfiles"
+				fi
+				;;
+		esac
 
 		if [ -n "${_target}" ]; then
 			echo "⬇️  Updating ${_ed} at ${_target}..."
@@ -135,9 +187,48 @@ update-editors() {
 	done
 
 	if [ "${_found}" -eq 0 ]; then
-		echo "ℹ️  No editor repositories found in ${_env_root}/Editor or standard paths."
+		echo "ℹ️  No active editor repositories found in standard user paths (~/.emacs.d, ~/.config/nvim, ~/.config/helix, ~/.vim, ~/vimfiles)."
 	fi
-	unset _env_root _ed_list _found _ed _target
+	unset _ed_list _found _ed _target
+}
+
+### --------------------------------
+### Update Profile
+### --------------------------------
+update-profile() {
+	_target=""
+	if [ -n "${PROFILE_DIR:-}" ] && [ -e "${PROFILE_DIR}/.git" ]; then
+		_target="${PROFILE_DIR}"
+	elif [ -e "${HOME}/.config/profile/.git" ]; then
+		_target="${HOME}/.config/profile"
+	elif [ -e "${HOME}/.profile-repo/.git" ]; then
+		_target="${HOME}/.profile-repo"
+	elif [ -e "${ENVIRONMENT_DIR:-${HOME}/Documentos/Environment}/Profile/.git" ]; then
+		_target="${ENVIRONMENT_DIR:-${HOME}/Documentos/Environment}/Profile"
+	fi
+
+	if [ -n "${_target}" ]; then
+		echo "🎨 Updating Profile repository at ${_target}..."
+		command git -C "${_target}" pull --ff-only || echo "⚠️  Profile: git pull failed."
+
+		if [ -f "${_target}/scripts/sync/sync-dotfiles.sh" ]; then
+			echo "🔗 Synchronizing declarative dotfiles..."
+			sh "${_target}/scripts/sync/sync-dotfiles.sh" 2> "/dev/null" || true
+		fi
+		if [ -f "${_target}/scripts/sync/sync-skills.sh" ]; then
+			echo "🧠 Synchronizing portable AI skills..."
+			sh "${_target}/scripts/sync/sync-skills.sh" 2> "/dev/null" || true
+		fi
+	else
+		echo "ℹ️  No Profile repository found at ~/.config/profile, ~/.profile-repo or \$PROFILE_DIR."
+	fi
+
+	if [ -f "${HOME}/.profile" ]; then
+		echo "♻️ Reloading ${HOME}/.profile..."
+		. "${HOME}/.profile" 2> "/dev/null" || true
+	fi
+	echo "✅ Universal Profile updated!"
+	unset _target
 }
 
 ### --------------------------------
