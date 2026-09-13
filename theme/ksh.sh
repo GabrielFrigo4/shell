@@ -5,13 +5,15 @@
 _esc="$(printf '\033')"
 _c_reset="\[${_esc}[0m\]"
 _c_bold="\[${_esc}[1m\]"
-_c_red="\[${_esc}[1;31m\]"
-_c_green="\[${_esc}[1;32m\]"
-_c_yellow="\[${_esc}[1;33m\]"
-_c_blue="\[${_esc}[1;34m\]"
-_c_magenta="\[${_esc}[1;35m\]"
-_c_cyan="\[${_esc}[1;36m\]"
-_c_white="\[${_esc}[1;37m\]"
+_c_del="\[${_esc}[0;33m\]"
+
+_c_red="\[${_esc}[1;91m\]"
+_c_green="\[${_esc}[1;92m\]"
+_c_yellow="\[${_esc}[1;93m\]"
+_c_blue="\[${_esc}[1;94m\]"
+_c_magenta="\[${_esc}[1;95m\]"
+_c_cyan="\[${_esc}[1;96m\]"
+_c_gray="\[${_esc}[1;90m\]"
 
 _git_branch() {
 	_branch=""
@@ -38,29 +40,44 @@ _ksh_prompt() {
 	local _branch _is_dirty
 	_git_branch
 
-	local _git_str=""
-	if [ -n "${_branch}" ]; then
-		local _indicator=""
-		[ -n "${_is_dirty}" ] && _indicator="${_c_yellow}*"
-		if _is_raw_tty; then
-			_git_str=" ${_c_blue}(${_c_red}${_branch}${_indicator}${_c_blue})${_c_reset}"
-		else
-			_git_str=" ❮${_c_red}󰊢 ${_c_magenta}${_branch}${_indicator}${_c_yellow}❯${_c_reset}"
-		fi
-	fi
-
 	local _user="${USER:-${LOGNAME:-$(command id -un 2> "/dev/null" || echo "user")}}"
 	local _u_color="${_c_green}"
+	local _term_color="${_c_blue}"
 	local _sym="\$"
 	if [ "${EUID:-$(id -u 2> "/dev/null")}" -eq 0 ]; then
 		_u_color="${_c_red}"
+		_term_color="${_c_red}"
 		_sym="#"
 	fi
 
+	local _os_icon="${PROMPT_OS_ICON:-🐡 }"
+	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(uname -r 2> "/dev/null" || echo "OpenBSD")}}"
+	_os_name="${_os_name%%-*}"
+
+	local _os_color="${_c_yellow}"
+	case "${PROMPT_OS_COLOR:-yellow}" in
+		red)    _os_color="${_c_red}" ;;
+		blue)   _os_color="${_c_blue}" ;;
+		yellow) _os_color="${_c_yellow}" ;;
+		*)      _os_color="${_c_yellow}" ;;
+	esac
+
 	if _is_raw_tty; then
-		printf "%s" "${_u_color}${_user}${_c_blue}@\h ${_c_blue}(${_c_cyan}ksh${_c_blue}):[${_c_yellow}${_pwd}${_c_reset}]${_git_str} ${_c_cyan}${_sym}${_c_reset} "
+		local _git_info=""
+		if [ -n "${_branch}" ]; then
+			local _ind=""
+			[ -n "${_is_dirty}" ] && _ind="${_c_yellow}*"
+			_git_info=" ${_c_blue}(${_c_red}${_branch}${_ind}${_c_blue})"
+		fi
+		printf "%s" "${_u_color}${_user}${_c_blue}@\h ${_c_blue}(${_c_cyan}ksh${_c_blue})${_c_gray}:[${_c_yellow}${_pwd}${_c_gray}]${_git_info} ${_term_color}${_sym}${_c_reset} "
 	else
-		printf "%s" "${_c_yellow}🐡 ${_u_color}${_user}${_c_reset}:${_c_blue}${_pwd}${_c_reset}${_git_str} ${_c_cyan}${_sym}${_c_reset} "
+		local _git_info=""
+		if [ -n "${_branch}" ]; then
+			local _ind=""
+			[ -n "${_is_dirty}" ] && _ind="${_c_yellow}*"
+			_git_info=" ${_c_red}󰊢 ${_c_magenta}${_branch}${_ind}"
+		fi
+		printf "%s" "${_c_del}${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_blue} ${_c_magenta}ksh${_c_del} ${_c_bold} ${_c_cyan}${_pwd} ${_c_blue} ${_u_color}${_user}${_git_info} ${_term_color}${_c_reset} "
 	fi
 }
 
