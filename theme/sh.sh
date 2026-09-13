@@ -35,9 +35,7 @@ _trim_str() {
 
 _calc_c_len() {
 	local _s="$1"
-	local _raw
-	_raw="$(printf "%s" "${_s}" | wc -c)"
-	_raw=$(( _raw + 0 ))
+	local _raw="${#_s}"
 
 	local _tmp="${_s}" _n_open=0
 	while :; do

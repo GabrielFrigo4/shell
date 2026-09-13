@@ -9,7 +9,9 @@
 ### ================================
 
 export SHELL_INIT=1
-find "${HOME}" -maxdepth 1 -name ":*" -delete
+for _trash in "${HOME}"/:\*; do
+	[ -e "${_trash}" ] && rm -f "${_trash}"
+done
 
 [ -f "${SHELL_REPO_DIR}/target/common/sh.sh" ] && \
 	. "${SHELL_REPO_DIR}/target/common/sh.sh"
@@ -20,7 +22,7 @@ find "${HOME}" -maxdepth 1 -name ":*" -delete
 
 PROMPT_OS_ICON=" "
 PROMPT_OS_COLOR="red"
-_ver="$(command freebsd-version 2> "/dev/null" || command uname -r 2> "/dev/null" || echo "BSD")"
+_ver="${_DETECTED_KERNEL_RELEASE:-$(command freebsd-version 2> "/dev/null" || command uname -r 2> "/dev/null" || echo "BSD")}"
 PROMPT_OS_NAME="${_ver%%-*}"
 unset _ver
 

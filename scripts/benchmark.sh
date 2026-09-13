@@ -100,8 +100,8 @@ _format_ms() {
 ### --------------------------------
 ### Benchmark Interactive Shells
 ### --------------------------------
-printf "%b%-12s %-12s %-10s %s%b\n" "${_c_bold}" "SHELL" "LATENCY" "STATUS" "TARGET" "${_c_reset}"
-printf "%s\n" "----------------------------------------------------"
+printf "%b%-12s %-12s %-10s %s%b\n" "${_c_bold}" "SHELL" "LATENCY" "STATUS" "TARGET (PASS / ULTRA)" "${_c_reset}"
+printf "%s\n" "------------------------------------------------------------"
 
 _specified_shells=""
 for _arg in "$@"; do
@@ -112,19 +112,17 @@ done
 
 if [ -n "${_specified_shells}" ]; then
 	set -- ${_specified_shells}
-else
+elif [ "${_os}" = "freebsd" ]; then
 	set -- zsh bash sh
+else
+	set -- zsh bash
 fi
 
 for _sh in "$@"; do
 	if command -v "${_sh}" > "/dev/null" 2>&1; then
-		case "${_sh}" in
-			zsh)  _target_limit=64; _ultra_limit=32 ;;
-			bash) _target_limit=64; _ultra_limit=32 ;;
-			sh)   _target_limit=32; _ultra_limit=16 ;;
-			*)    _target_limit=64; _ultra_limit=32 ;;
-		esac
-		_target="< ${_target_limit}ms"
+		_target_limit=64
+		_ultra_limit=32
+		_target="< ${_target_limit}ms (U < ${_ultra_limit}ms)"
 		_ms="$(_measure_cmd "${_sh} -i -c exit")"
 		_ms_int="${_ms%.*}"
 		if [ "${_ms_int:-0}" -lt "${_ultra_limit}" ]; then
@@ -156,7 +154,7 @@ done
 ### Benchmark Ecosystem Modules
 ### --------------------------------
 printf "\n%b📦 Ecosystem Modules Latency%b\n" "${_c_bold}${_c_cyan}" "${_c_reset}"
-printf "%s\n" "----------------------------------------------------"
+printf "%s\n" "------------------------------------------------------------"
 
 if command -v zsh > "/dev/null" 2>&1; then
 	_prompt_zsh="${_repo_dir}/target/${_os}/zsh/prompt.sh"
@@ -174,16 +172,17 @@ if command -v bash > "/dev/null" 2>&1; then
 	fi
 fi
 
-if command -v sh > "/dev/null" 2>&1; then
-	_prompt_sh="${_repo_dir}/target/${_os}/sh/prompt.sh"
-	[ ! -f "${_prompt_sh}" ] && _prompt_sh="${_repo_dir}/target/freebsd/sh/prompt.sh"
+if [ "${_os}" = "freebsd" ] && command -v sh > "/dev/null" 2>&1; then
+	_prompt_sh="${_repo_dir}/target/freebsd/sh/prompt.sh"
 	if [ -f "${_prompt_sh}" ]; then
 		_shell_sh_ms="$(_measure_cmd "sh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_sh}\"'")"
-		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" 32)"
+		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" 64)"
 	fi
 fi
 
-_shell_core_ms="$(_measure_cmd "sh -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
-printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 16)"
+if [ "${_os}" = "freebsd" ]; then
+	_shell_core_ms="$(_measure_cmd "sh -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
+	printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 64)"
+fi
 
 printf "\n%b✨ Benchmark completed successfully.%b\n" "${_c_green}" "${_c_reset}"

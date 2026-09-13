@@ -3,7 +3,9 @@
 ### ================================
 
 export SHELL_INIT=1
-find "${HOME}" -maxdepth 1 -name ":*" -delete
+for _trash in "${HOME}"/:\*; do
+	[ -e "${_trash}" ] && rm -f "${_trash}"
+done
 
 ### ================================
 ### SHELL APPEARANCE
@@ -11,7 +13,7 @@ find "${HOME}" -maxdepth 1 -name ":*" -delete
 
 PROMPT_OS_ICON=" "
 PROMPT_OS_COLOR="red"
-PROMPT_OS_NAME="$(command freebsd-version 2> "/dev/null" || command uname -r 2> "/dev/null" || echo "FreeBSD")"
+PROMPT_OS_NAME="${_DETECTED_KERNEL_RELEASE:-$(command freebsd-version 2> "/dev/null" || command uname -r 2> "/dev/null" || echo "FreeBSD")}"
 
 . "${SHELL_REPO_DIR}/theme/zsh.sh"
 . "${SHELL_REPO_DIR}/target/freebsd/environment.sh"
