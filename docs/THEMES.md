@@ -1,6 +1,6 @@
 # 🖌️ Design do Prompt & Sistema Visual (`theme/`)
 
-O subsistema de temas do **Universal Shell Environment** entrega um prompt informativo, compacto e de carregamento instantâneo, unificando a identidade visual entre Bash, Zsh e POSIX Sh.
+O subsistema de temas do **Universal Shell Environment** entrega um prompt informativo, compacto e de carregamento instantâneo, unificando a identidade visual entre Zsh, Bash, POSIX Sh e KornShell (ksh).
 
 ---
 

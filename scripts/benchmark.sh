@@ -107,8 +107,8 @@ _format_ms() {
 ### --------------------------------
 ### Benchmark Interactive Shells
 ### --------------------------------
-printf "%b%-12s %-12s %-10s %s%b\n" "${_c_bold}" "SHELL" "LATENCY" "STATUS" "TARGET (PASS / ULTRA)" "${_c_reset}"
-printf "%s\n" "------------------------------------------------------------"
+printf "%b%-12s %-12s %-10s %s%b\n" "${_c_bold}" "SHELL" "LATENCY" "STATUS" "TARGET (PASS / ULTRA / WARN)" "${_c_reset}"
+printf "%s\n" "----------------------------------------------------------------"
 
 _specified_shells=""
 for _arg in "$@"; do
@@ -135,11 +135,14 @@ else
 	set -- zsh bash
 fi
 
+_has_failure=0
+
 for _sh in "$@"; do
 	if command -v "${_sh}" > "/dev/null" 2>&1; then
 		_target_limit=64
 		_ultra_limit=32
-		_target="< ${_target_limit}ms (U < ${_ultra_limit}ms)"
+		_max_tolerance=128
+		_target="< ${_target_limit}ms (U < ${_ultra_limit}ms, W < ${_max_tolerance}ms)"
 		_ms="$(_measure_cmd "${_sh} -i -c exit")"
 		_ms_int="${_ms%.*}"
 		if [ "${_ms_int:-0}" -lt "${_ultra_limit}" ]; then
@@ -150,14 +153,15 @@ for _sh in "$@"; do
 			_status_text="PASS"
 			_status_color="${_c_green}"
 			_lat_color="${_c_green}"
-		elif [ "${_ms_int:-0}" -le "$(( _target_limit * 2 ))" ]; then
+		elif [ "${_ms_int:-0}" -le "${_max_tolerance}" ]; then
 			_status_text="WARN"
 			_status_color="${_c_yellow}"
 			_lat_color="${_c_yellow}"
 		else
-			_status_text="SLOW"
-			_status_color="${_c_red}"
-			_lat_color="${_c_red}"
+			_status_text="FAIL"
+			_status_color="${_c_bold}${_c_red}"
+			_lat_color="${_c_bold}${_c_red}"
+			_has_failure=1
 		fi
 		printf "%-12s %b%-12s%b %b%-10s%b %s\n" \
 			"${_sh}" \
@@ -171,7 +175,7 @@ done
 ### Benchmark Ecosystem Modules
 ### --------------------------------
 printf "\n%b📦 Ecosystem Modules Latency%b\n" "${_c_bold}${_c_cyan}" "${_c_reset}"
-printf "%s\n" "------------------------------------------------------------"
+printf "%s\n" "----------------------------------------------------------------"
 
 if _is_shell_selected zsh && command -v zsh > "/dev/null" 2>&1; then
 	_prompt_zsh="${_repo_dir}/target/${_os}/zsh/prompt.sh"
@@ -213,6 +217,11 @@ if [ "${_os}" = "openbsd" ]; then
 			printf "%-24s %b\n" "Shell Stack (${_ksh_bin})" "$(_format_ms "${_shell_ksh_ms}" 64)"
 		fi
 	fi
+fi
+
+if [ "${_has_failure}" -ne 0 ]; then
+	printf "\n%b❌ ERRO: Latência de inicialização excedeu o teto de tolerância de 128ms (2^7).%b\n" "${_c_bold}${_c_red}" "${_c_reset}" >&2
+	exit 1
 fi
 
 printf "\n%b✨ Benchmark completed successfully.%b\n" "${_c_green}" "${_c_reset}"

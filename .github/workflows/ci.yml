@@ -229,9 +229,9 @@ jobs:
               with:
                   msystem: UCRT64
                   update: true
-                  install: bash zsh python
+                  install: zsh bash python
 
-            - name: Test in MSYS2 Shell (Bash & Zsh)
+            - name: Test in MSYS2 Shell (Zsh & Bash)
               shell: msys2 {0}
               run: |
                   ### ================================
@@ -245,8 +245,21 @@ jobs:
                   ### --------------------------------
                   ### Windows Target Prompts
                   ### --------------------------------
-                  bash -n target/windows/bash/prompt.sh
                   zsh -n target/windows/zsh/prompt.sh
+                  bash -n target/windows/bash/prompt.sh
+
+                  ### --------------------------------
+                  ### MSYS2 Zsh
+                  ### --------------------------------
+                  zsh -c '
+                    export SHELL_REPO_DIR="${PWD}"
+                    . ./library/detect.sh
+                    . ./library/functions.sh
+                    . ./core/environment.sh
+                    . ./target/windows/environment.sh
+                    . ./theme/zsh.sh
+                    echo "Windows MSYS2 Zsh OK"
+                  '
 
                   ### --------------------------------
                   ### MSYS2 Bash
@@ -260,19 +273,6 @@ jobs:
                     . ./theme/bash.sh
                     _update_prompt
                     echo "Windows MSYS2 Bash OK"
-                  '
-
-                  ### --------------------------------
-                  ### MSYS2 Zsh
-                  ### --------------------------------
-                  zsh -c '
-                    export SHELL_REPO_DIR="${PWD}"
-                    . ./library/detect.sh
-                    . ./library/functions.sh
-                    . ./core/environment.sh
-                    . ./target/windows/environment.sh
-                    . ./theme/zsh.sh
-                    echo "Windows MSYS2 Zsh OK"
                   '
 
                   ### --------------------------------
@@ -301,8 +301,8 @@ jobs:
                   ### --------------------------------
                   ### macOS Target Prompts
                   ### --------------------------------
-                  bash -n target/macos/bash/prompt.sh
                   zsh -n target/macos/zsh/prompt.sh
+                  bash -n target/macos/bash/prompt.sh
 
                   ### --------------------------------
                   ### macOS Zsh
@@ -346,7 +346,7 @@ jobs:
             - name: Checkout Code
               uses: actions/checkout@v4
 
-            - name: Test in OpenBSD Shell (ksh, bash, zsh)
+            - name: Test in OpenBSD Shell (zsh, bash, ksh)
               uses: vmactions/openbsd-vm@v1
               with:
                   usesh: true
@@ -363,18 +363,32 @@ jobs:
                       ### --------------------------------
                       ### Dependencies
                       ### --------------------------------
-                      pkg_add -I bash zsh python3
+                      pkg_add -I zsh bash python3
 
                       ### --------------------------------
                       ### OpenBSD Target Prompts
                       ### --------------------------------
-                      sh -n target/openbsd/environment.sh
-                      bash -n target/openbsd/bash/prompt.sh
                       zsh -n target/openbsd/zsh/prompt.sh
                       zsh -n theme/zsh.sh
+                      bash -n target/openbsd/bash/prompt.sh
                       ksh -n target/openbsd/ksh/prompt.sh
                       ksh -n theme/ksh.sh
                       ksh -n target/common/ksh.sh
+                      sh -n target/openbsd/environment.sh
+
+                      ### --------------------------------
+                      ### OpenBSD Zsh
+                      ### --------------------------------
+                      zsh -c '
+                        export SHELL_REPO_DIR="${PWD}"
+                        export SHELL_CONTEXT="desktop"
+                        . ./library/detect.sh
+                        . ./library/functions.sh
+                        . ./core/environment.sh
+                        . ./target/openbsd/environment.sh
+                        . ./theme/zsh.sh
+                        echo "OpenBSD Zsh prompt: ${PROMPT}"
+                      '
 
                       ### --------------------------------
                       ### OpenBSD Bash
@@ -389,20 +403,6 @@ jobs:
                         . ./theme/bash.sh
                         _update_prompt
                         echo "OpenBSD Bash prompt: ${PS1}"
-                      '
-
-                      ### --------------------------------
-                      ### OpenBSD Zsh
-                      ### --------------------------------
-                      zsh -c '
-                        export SHELL_REPO_DIR="${PWD}"
-                        export SHELL_CONTEXT="desktop"
-                        . ./library/detect.sh
-                        . ./library/functions.sh
-                        . ./core/environment.sh
-                        . ./target/openbsd/environment.sh
-                        . ./theme/zsh.sh
-                        echo "OpenBSD Zsh prompt: ${PROMPT}"
                       '
 
                       ### --------------------------------
@@ -432,7 +432,7 @@ jobs:
             - name: Checkout Code
               uses: actions/checkout@v4
 
-            - name: Test in NetBSD Shell (bash, zsh)
+            - name: Test in NetBSD Shell (zsh, bash)
               uses: vmactions/netbsd-vm@v1
               with:
                   usesh: true
@@ -452,25 +452,39 @@ jobs:
                       ### --------------------------------
                       if command -v pkgin > "/dev/null" 2>&1; then
                         pkgin -y update 2> "/dev/null" || true
-                        pkgin -y install bash zsh
+                        pkgin -y install zsh bash
                       elif command -v pkg_add > "/dev/null" 2>&1; then
-                        pkg_add -I bash zsh
+                        pkg_add -I zsh bash
                       elif [ -x "/usr/pkg/bin/pkgin" ]; then
                         /usr/pkg/bin/pkgin -y update 2> "/dev/null" || true
-                        /usr/pkg/bin/pkgin -y install bash zsh
+                        /usr/pkg/bin/pkgin -y install zsh bash
                       elif [ -x "/usr/pkg/sbin/pkg_add" ]; then
-                        /usr/pkg/sbin/pkg_add -I bash zsh
+                        /usr/pkg/sbin/pkg_add -I zsh bash
                       elif [ -x "/usr/sbin/pkg_add" ]; then
-                        /usr/sbin/pkg_add -I bash zsh
+                        /usr/sbin/pkg_add -I zsh bash
                       fi
 
                       ### --------------------------------
                       ### NetBSD Target Prompts
                       ### --------------------------------
-                      sh -n target/netbsd/environment.sh
-                      bash -n target/netbsd/bash/prompt.sh
                       zsh -n target/netbsd/zsh/prompt.sh
                       zsh -n theme/zsh.sh
+                      bash -n target/netbsd/bash/prompt.sh
+                      sh -n target/netbsd/environment.sh
+
+                      ### --------------------------------
+                      ### NetBSD Zsh
+                      ### --------------------------------
+                      zsh -c '
+                        export SHELL_REPO_DIR="${PWD}"
+                        export SHELL_CONTEXT="desktop"
+                        . ./library/detect.sh
+                        . ./library/functions.sh
+                        . ./core/environment.sh
+                        . ./target/netbsd/environment.sh
+                        . ./theme/zsh.sh
+                        echo "NetBSD Zsh prompt: ${PROMPT}"
+                      '
 
                       ### --------------------------------
                       ### NetBSD Bash
@@ -485,20 +499,6 @@ jobs:
                         . ./theme/bash.sh
                         _update_prompt
                         echo "NetBSD Bash prompt: ${PS1}"
-                      '
-
-                      ### --------------------------------
-                      ### NetBSD Zsh
-                      ### --------------------------------
-                      zsh -c '
-                        export SHELL_REPO_DIR="${PWD}"
-                        export SHELL_CONTEXT="desktop"
-                        . ./library/detect.sh
-                        . ./library/functions.sh
-                        . ./core/environment.sh
-                        . ./target/netbsd/environment.sh
-                        . ./theme/zsh.sh
-                        echo "NetBSD Zsh prompt: ${PROMPT}"
                       '
 
     illumos:
@@ -516,15 +516,31 @@ jobs:
 
             - name: Validate illumos Target Syntax
               run: |
-                  ### ================================
-                  ### ILLUMOS ENVIRONMENT SYNTAX
-                  ### ================================
-                  bash -n target/illumos/environment.sh
-                  bash -n target/illumos/bash/prompt.sh
+                  ### --------------------------------
+                  ### illumos Target Prompts
+                  ### --------------------------------
                   zsh -n target/illumos/zsh/prompt.sh
+                  zsh -n theme/zsh.sh
+                  bash -n target/illumos/bash/prompt.sh
+                  bash -n target/illumos/environment.sh
 
                   ### --------------------------------
-                  ### illumos Mock Boot Simulation
+                  ### illumos Mock Boot Simulation (Zsh)
+                  ### --------------------------------
+                  zsh -c '
+                    export SHELL_REPO_DIR="${PWD}"
+                    export SHELL_CONTEXT="desktop"
+                    export PROMPT_OS_NAME="illumos"
+                    . ./library/detect.sh
+                    . ./library/functions.sh
+                    . ./core/environment.sh
+                    . ./target/illumos/environment.sh
+                    . ./theme/zsh.sh
+                    echo "illumos simulated zsh prompt: ${PROMPT}"
+                  '
+
+                  ### --------------------------------
+                  ### illumos Mock Boot Simulation (Bash)
                   ### --------------------------------
                   bash -c '
                     export SHELL_REPO_DIR="${PWD}"

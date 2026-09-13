@@ -39,7 +39,7 @@ Toda alteração de código, adição de alias, refatoração ou otimização no
 
 ## 3. Convenção Estrita de Nomenclatura
 
-- **`kebab-case` (público):** Comandos destinados ao uso interativo (`mount-device`, `update-all`, `open-helix`, `path-front`). Suportados pelo FreeBSD `/bin/sh`, Bash e Zsh. Definidos diretamente, sem wrappers redundantes. Interpretadores que rejeitam hífen em funções por rigidez POSIX (como `dash`) não são alvo de execução deste repositório.
+- **`kebab-case` (público):** Comandos destinados ao uso interativo (`mount-device`, `update-all`, `open-helix`, `path-front`). Suportados por Zsh, Bash e FreeBSD `/bin/sh`. Definidos diretamente, sem wrappers redundantes. Interpretadores que rejeitam hífen em funções por rigidez POSIX (como `dash`) não são alvo de execução deste repositório.
 - **`_snake_case` (privado):** Funções internas de bootstrapping e variáveis locais temporárias (`_as_root`, `_detect_os`, `_pwd`). Mantém o autocompletion limpo.
 - **`SNAKE_CASE` (maiúsculo):** Constantes e variáveis de ambiente globais (`PATH`, `SHELL_REPO_DIR`, `SHELL_CONTEXT`).
 
@@ -107,14 +107,25 @@ Toda alteração de código, adição de alias, refatoração ou otimização no
     ```
 - **Invocação pelo Shell Ativo (Active Shell Invocation):** Ao invocar sub-rotinas e instaladores (`install.sh`, `benchmark.sh`) dentro de funções do shell, utilize sempre o executável do shell ativo seguindo a cascata de preferência: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`, NUNCA `sh` cego. No topo de scripts utilitários em Linux, mantenha guard de auto-elevação para `zsh`/`bash` se iniciado sob `/bin/sh` (`dash`).
 
-## 8. Checklist de Validação
+## 8. Ordem Canônica de Prevalência e Enumeração de Shells
+
+Em qualquer enumeração, pipeline de CI/CD, script de benchmark, Makefile ou documentação, a ordem DEVE SEMPRE respeitar a hierarquia canônica de ergonomia e arquitetura:
+
+1. **`zsh`** (topo da cadeia de ergonomia, autocompletion por menu e produtividade interativa)
+2. **`bash`** (padrão corporativo universal e compatibilidade retroativa)
+3. **`sh`** (FreeBSD `/bin/sh` como base system exclusivo) ou **`ksh`** (OpenBSD `/bin/ksh` como base system exclusivo)
+
+## 9. Checklist de Validação
 
 Antes de finalizar qualquer alteração:
 
 1. `git diff --check` (deve retornar 0 erros).
 2. `./.githooks/pre-commit` (deve passar 100%).
-3. Matriz Multi-Shell:
-    - Linux: `bash -n` e `zsh -n`.
-    - FreeBSD: `sh -n`, `bash -n` e `zsh -n`.
-    - macOS: `bash -n` e `zsh -n`.
-    - Windows (MSYS2): `bash -n` e `zsh -n`.
+3. Matriz Multi-Shell (sempre na ordem `zsh` -> `bash` -> `sh`/`ksh`):
+    - Linux: `zsh -n` e `bash -n`.
+    - FreeBSD: `zsh -n`, `bash -n` e `sh -n`.
+    - OpenBSD: `zsh -n`, `bash -n` e `ksh -n`.
+    - NetBSD: `zsh -n` e `bash -n`.
+    - macOS: `zsh -n` e `bash -n`.
+    - Windows (MSYS2): `zsh -n` e `bash -n`.
+    - illumos: `zsh -n` e `bash -n`.
