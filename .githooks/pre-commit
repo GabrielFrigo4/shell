@@ -74,7 +74,7 @@ if command -v prettier > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### Startup Latency Benchmark (<64ms)
+### Startup Latency Benchmark
 ### --------------------------------
 echo "  ↳ Benchmarking startup latency (target <64ms, max 128ms)..."
 _boot_ms=$(bash -c '
