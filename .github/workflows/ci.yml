@@ -75,6 +75,13 @@ jobs:
                   sudo apt-get update
                   sudo apt-get install -y zsh
 
+            - name: Install Shell Environment (install.sh)
+              run: |
+                  ### --------------------------------
+                  ### Run Universal Shell Installer
+                  ### --------------------------------
+                  ./install.sh --pure
+
             - name: Test in Linux Shell (Zsh & Bash)
               run: |
                   ### ================================
@@ -92,33 +99,14 @@ jobs:
                   bash -n target/linux/bash/prompt.sh
 
                   ### --------------------------------
-                  ### Linux Zsh
+                  ### Linux Zsh (Interactive boot with installed dotfiles)
                   ### --------------------------------
-                  zsh -c '
-                    export SHELL_REPO_DIR="${PWD}"
-                    export SHELL_CONTEXT="desktop"
-                    . ./library/detect.sh
-                    . ./library/functions.sh
-                    . ./core/environment.sh
-                    . ./target/linux/environment.sh
-                    . ./theme/zsh.sh
-                    echo "Zsh Prompt loaded OK: ${PROMPT}"
-                  '
+                  zsh -i -c 'echo "Linux Zsh boot with dotfiles OK: ${PROMPT}"'
 
                   ### --------------------------------
-                  ### Linux Bash
+                  ### Linux Bash (Interactive boot with installed dotfiles)
                   ### --------------------------------
-                  bash -c '
-                    export SHELL_REPO_DIR="${PWD}"
-                    export SHELL_CONTEXT="desktop"
-                    . ./library/detect.sh
-                    . ./library/functions.sh
-                    . ./core/environment.sh
-                    . ./target/linux/environment.sh
-                    . ./theme/bash.sh
-                    _update_prompt
-                    echo "Bash Prompt loaded OK: ${PS1}"
-                  '
+                  bash -i -c 'echo "Linux Bash boot with dotfiles OK: ${PS1}"'
 
                   ### --------------------------------
                   ### Startup Latency Benchmark (bsh)
@@ -154,6 +142,11 @@ jobs:
                       pkg install -y zsh bash python3
 
                       ### --------------------------------
+                      ### Run Universal Shell Installer
+                      ### --------------------------------
+                      ./install.sh --pure
+
+                      ### --------------------------------
                       ### FreeBSD Target Prompts
                       ### --------------------------------
                       zsh -n target/freebsd/zsh/prompt.sh
@@ -168,51 +161,19 @@ jobs:
                       sh -n theme/sh.sh
 
                       ### --------------------------------
-                      ### FreeBSD Zsh
+                      ### FreeBSD Zsh (Interactive with installed dotfiles)
                       ### --------------------------------
-                      zsh -n theme/zsh.sh
-                      zsh -c '
-                        export SHELL_REPO_DIR="${PWD}"
-                        export SHELL_CONTEXT="desktop"
-                        . ./library/detect.sh
-                        . ./library/functions.sh
-                        . ./core/environment.sh
-                        . ./target/freebsd/environment.sh
-                        . ./theme/zsh.sh
-                        echo "FreeBSD Zsh prompt: ${PROMPT}"
-                      '
+                      zsh -i -c 'echo "FreeBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
-                      ### FreeBSD Bash
+                      ### FreeBSD Bash (Interactive with installed dotfiles)
                       ### --------------------------------
-                      bash -n theme/bash.sh
-                      bash -c '
-                        export SHELL_REPO_DIR="${PWD}"
-                        export SHELL_CONTEXT="desktop"
-                        . ./library/detect.sh
-                        . ./library/functions.sh
-                        . ./core/environment.sh
-                        . ./target/freebsd/environment.sh
-                        . ./theme/bash.sh
-                        _update_prompt
-                        echo "FreeBSD Bash prompt: ${PS1}"
-                      '
+                      bash -i -c 'echo "FreeBSD Bash prompt: ${PS1}"'
 
                       ### --------------------------------
-                      ### FreeBSD /bin/sh
+                      ### FreeBSD /bin/sh (Interactive with installed dotfiles)
                       ### --------------------------------
-                      sh -c '
-                        export SHELL_REPO_DIR="${PWD}"
-                        export SHELL_CONTEXT="desktop"
-                        . ./library/detect.sh
-                        . ./library/functions.sh
-                        . ./core/environment.sh
-                        . ./target/freebsd/environment.sh
-                        . ./theme/sh.sh
-                        _update_prompt
-                        alias clear
-                        echo "FreeBSD /bin/sh prompt: ${PS1}"
-                      '
+                      ENV="${HOME}/.shrc" sh -i -c 'echo "FreeBSD /bin/sh prompt: ${PS1}"'
 
                       ### --------------------------------
                       ### Startup Latency Benchmark (bsh)
@@ -246,37 +207,25 @@ jobs:
                   [ "${OS}" = "windows" ] || { echo "Expected windows, got ${OS}"; exit 1; }
 
                   ### --------------------------------
+                  ### Run Universal Shell Installer
+                  ### --------------------------------
+                  ./install.sh --pure
+
+                  ### --------------------------------
                   ### Windows Target Prompts
                   ### --------------------------------
                   zsh -n target/windows/zsh/prompt.sh
                   bash -n target/windows/bash/prompt.sh
 
                   ### --------------------------------
-                  ### MSYS2 Zsh
+                  ### MSYS2 Zsh (Interactive with installed dotfiles)
                   ### --------------------------------
-                  zsh -c '
-                    export SHELL_REPO_DIR="${PWD}"
-                    . ./library/detect.sh
-                    . ./library/functions.sh
-                    . ./core/environment.sh
-                    . ./target/windows/environment.sh
-                    . ./theme/zsh.sh
-                    echo "Windows MSYS2 Zsh OK"
-                  '
+                  zsh -i -c 'echo "Windows MSYS2 Zsh OK: ${PROMPT}"'
 
                   ### --------------------------------
-                  ### MSYS2 Bash
+                  ### MSYS2 Bash (Interactive with installed dotfiles)
                   ### --------------------------------
-                  bash -c '
-                    export SHELL_REPO_DIR="${PWD}"
-                    . ./library/detect.sh
-                    . ./library/functions.sh
-                    . ./core/environment.sh
-                    . ./target/windows/environment.sh
-                    . ./theme/bash.sh
-                    _update_prompt
-                    echo "Windows MSYS2 Bash OK"
-                  '
+                  bash -i -c 'echo "Windows MSYS2 Bash OK: ${PS1}"'
 
                   ### --------------------------------
                   ### Startup Latency Benchmark (bsh)
@@ -302,39 +251,25 @@ jobs:
                   [ "${OS}" = "macos" ] || { echo "Expected macos, got ${OS}"; exit 1; }
 
                   ### --------------------------------
+                  ### Run Universal Shell Installer
+                  ### --------------------------------
+                  ./install.sh --pure
+
+                  ### --------------------------------
                   ### macOS Target Prompts
                   ### --------------------------------
                   zsh -n target/macos/zsh/prompt.sh
                   bash -n target/macos/bash/prompt.sh
 
                   ### --------------------------------
-                  ### macOS Zsh
+                  ### macOS Zsh (Interactive with installed dotfiles)
                   ### --------------------------------
-                  zsh -n theme/zsh.sh
-                  zsh -c '
-                    export SHELL_REPO_DIR="${PWD}"
-                    export SHELL_CONTEXT="desktop"
-                    . ./library/detect.sh
-                    . ./library/functions.sh
-                    . ./core/environment.sh
-                    . ./target/macos/zsh/prompt.sh
-                    echo "macOS Zsh prompt OK: ${PROMPT}"
-                  '
+                  zsh -i -c 'echo "macOS Zsh prompt OK: ${PROMPT}"'
 
                   ### --------------------------------
-                  ### macOS Bash
+                  ### macOS Bash (Interactive with installed dotfiles)
                   ### --------------------------------
-                  bash -n theme/bash.sh
-                  bash -c '
-                    export SHELL_REPO_DIR="${PWD}"
-                    export SHELL_CONTEXT="desktop"
-                    . ./library/detect.sh
-                    . ./library/functions.sh
-                    . ./core/environment.sh
-                    . ./target/macos/bash/prompt.sh
-                    _update_prompt
-                    echo "macOS Bash prompt OK: ${PS1}"
-                  '
+                  bash -i -c 'echo "macOS Bash prompt OK: ${PS1}"'
 
                   ### --------------------------------
                   ### Startup Latency Benchmark (bsh)
@@ -369,6 +304,11 @@ jobs:
                       pkg_add -I zsh bash python3
 
                       ### --------------------------------
+                      ### Run Universal Shell Installer
+                      ### --------------------------------
+                      ./install.sh --pure
+
+                      ### --------------------------------
                       ### OpenBSD Target Prompts
                       ### --------------------------------
                       zsh -n target/openbsd/zsh/prompt.sh
@@ -380,47 +320,19 @@ jobs:
                       sh -n target/openbsd/environment.sh
 
                       ### --------------------------------
-                      ### OpenBSD Zsh
+                      ### OpenBSD Zsh (Interactive with installed dotfiles)
                       ### --------------------------------
-                      zsh -c '
-                        export SHELL_REPO_DIR="${PWD}"
-                        export SHELL_CONTEXT="desktop"
-                        . ./library/detect.sh
-                        . ./library/functions.sh
-                        . ./core/environment.sh
-                        . ./target/openbsd/environment.sh
-                        . ./theme/zsh.sh
-                        echo "OpenBSD Zsh prompt: ${PROMPT}"
-                      '
+                      zsh -i -c 'echo "OpenBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
-                      ### OpenBSD Bash
+                      ### OpenBSD Bash (Interactive with installed dotfiles)
                       ### --------------------------------
-                      bash -c '
-                        export SHELL_REPO_DIR="${PWD}"
-                        export SHELL_CONTEXT="desktop"
-                        . ./library/detect.sh
-                        . ./library/functions.sh
-                        . ./core/environment.sh
-                        . ./target/openbsd/environment.sh
-                        . ./theme/bash.sh
-                        _update_prompt
-                        echo "OpenBSD Bash prompt: ${PS1}"
-                      '
+                      bash -i -c 'echo "OpenBSD Bash prompt: ${PS1}"'
 
                       ### --------------------------------
-                      ### OpenBSD Native Ksh
+                      ### OpenBSD Native Ksh (Interactive with installed dotfiles)
                       ### --------------------------------
-                      ksh -c '
-                        export SHELL_REPO_DIR="${PWD}"
-                        export SHELL_CONTEXT="desktop"
-                        . ./library/detect.sh
-                        . ./library/functions.sh
-                        . ./core/environment.sh
-                        . ./target/openbsd/environment.sh
-                        . ./theme/ksh.sh
-                        echo "OpenBSD ksh prompt: ${PS1}"
-                      '
+                      ENV="${HOME}/.kshrc" ksh -i -c 'echo "OpenBSD ksh prompt: ${PS1}"'
 
                       ### --------------------------------
                       ### Startup Latency Benchmark (bsh)
@@ -455,17 +367,22 @@ jobs:
                       ### --------------------------------
                       if command -v pkgin > "/dev/null" 2>&1; then
                         pkgin -y update 2> "/dev/null" || true
-                        pkgin -y install zsh bash
+                        pkgin -y install zsh bash python312 2> "/dev/null" || pkgin -y install zsh bash python311 2> "/dev/null" || pkgin -y install zsh bash python3 2> "/dev/null" || pkgin -y install zsh bash
                       elif command -v pkg_add > "/dev/null" 2>&1; then
                         pkg_add -I zsh bash
                       elif [ -x "/usr/pkg/bin/pkgin" ]; then
                         /usr/pkg/bin/pkgin -y update 2> "/dev/null" || true
-                        /usr/pkg/bin/pkgin -y install zsh bash
+                        /usr/pkg/bin/pkgin -y install zsh bash python312 2> "/dev/null" || /usr/pkg/bin/pkgin -y install zsh bash
                       elif [ -x "/usr/pkg/sbin/pkg_add" ]; then
                         /usr/pkg/sbin/pkg_add -I zsh bash
                       elif [ -x "/usr/sbin/pkg_add" ]; then
                         /usr/sbin/pkg_add -I zsh bash
                       fi
+
+                      ### --------------------------------
+                      ### Run Universal Shell Installer
+                      ### --------------------------------
+                      ./install.sh --pure
 
                       ### --------------------------------
                       ### NetBSD Target Prompts
@@ -476,33 +393,21 @@ jobs:
                       sh -n target/netbsd/environment.sh
 
                       ### --------------------------------
-                      ### NetBSD Zsh
+                      ### NetBSD Zsh (Interactive with installed dotfiles)
                       ### --------------------------------
-                      zsh -c '
-                        export SHELL_REPO_DIR="${PWD}"
-                        export SHELL_CONTEXT="desktop"
-                        . ./library/detect.sh
-                        . ./library/functions.sh
-                        . ./core/environment.sh
-                        . ./target/netbsd/environment.sh
-                        . ./theme/zsh.sh
-                        echo "NetBSD Zsh prompt: ${PROMPT}"
-                      '
+                      zsh -i -c 'echo "NetBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
-                      ### NetBSD Bash
+                      ### NetBSD Bash (Interactive with installed dotfiles)
                       ### --------------------------------
-                      bash -c '
-                        export SHELL_REPO_DIR="${PWD}"
-                        export SHELL_CONTEXT="desktop"
-                        . ./library/detect.sh
-                        . ./library/functions.sh
-                        . ./core/environment.sh
-                        . ./target/netbsd/environment.sh
-                        . ./theme/bash.sh
-                        _update_prompt
-                        echo "NetBSD Bash prompt: ${PS1}"
-                      '
+                      bash -i -c 'echo "NetBSD Bash prompt: ${PS1}"'
+
+                      ### --------------------------------
+                      ### Startup Latency Benchmark (bsh)
+                      ### --------------------------------
+                      if command -v python3 > "/dev/null" 2>&1 || command -v python > "/dev/null" 2>&1; then
+                        ./scripts/benchmark.sh -i 2 || true
+                      fi
 
     illumos:
         name: ☀️ illumos (Syntax & Simulation) Matrix

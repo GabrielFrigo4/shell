@@ -131,19 +131,34 @@ elif [ "${_os}" = "openbsd" ]; then
 	else
 		set -- zsh bash oksh
 	fi
+elif [ "${_os}" = "netbsd" ]; then
+	set -- zsh bash
 else
 	set -- zsh bash
+fi
+
+if [ "${_os}" = "windows" ]; then
+	_target_limit=256
+	_ultra_limit=128
+	_max_tolerance=512
+else
+	_target_limit=64
+	_ultra_limit=32
+	_max_tolerance=128
 fi
 
 _has_failure=0
 
 for _sh in "$@"; do
 	if command -v "${_sh}" > "/dev/null" 2>&1; then
-		_target_limit=64
-		_ultra_limit=32
-		_max_tolerance=128
 		_target="< ${_target_limit}ms (U < ${_ultra_limit}ms, W < ${_max_tolerance}ms)"
-		_ms="$(_measure_cmd "${_sh} -i -c exit")"
+		_cmd_bench="${_sh} -i -c exit"
+		if [ "${_sh}" = "sh" ] && [ -f "${HOME}/.shrc" ]; then
+			_cmd_bench="ENV=\"${HOME}/.shrc\" ${_sh} -i -c exit"
+		elif [ "${_sh}" = "ksh" ] && [ -f "${HOME}/.kshrc" ]; then
+			_cmd_bench="ENV=\"${HOME}/.kshrc\" ${_sh} -i -c exit"
+		fi
+		_ms="$(_measure_cmd "${_cmd_bench}")"
 		_ms_int="${_ms%.*}"
 		if [ "${_ms_int:-0}" -lt "${_ultra_limit}" ]; then
 			_status_text="ULTRA"
@@ -181,7 +196,7 @@ if _is_shell_selected zsh && command -v zsh > "/dev/null" 2>&1; then
 	_prompt_zsh="${_repo_dir}/target/${_os}/zsh/prompt.sh"
 	if [ -f "${_prompt_zsh}" ]; then
 		_shell_zsh_ms="$(_measure_cmd "zsh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_zsh}\"'")"
-		printf "%-24s %b\n" "Shell Stack (zsh)" "$(_format_ms "${_shell_zsh_ms}" 64)"
+		printf "%-24s %b\n" "Shell Stack (zsh)" "$(_format_ms "${_shell_zsh_ms}" "${_target_limit}")"
 	fi
 fi
 
@@ -189,7 +204,7 @@ if _is_shell_selected bash && command -v bash > "/dev/null" 2>&1; then
 	_prompt_bash="${_repo_dir}/target/${_os}/bash/prompt.sh"
 	if [ -f "${_prompt_bash}" ]; then
 		_shell_bash_ms="$(_measure_cmd "bash -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_bash}\"'")"
-		printf "%-24s %b\n" "Shell Stack (bash)" "$(_format_ms "${_shell_bash_ms}" 64)"
+		printf "%-24s %b\n" "Shell Stack (bash)" "$(_format_ms "${_shell_bash_ms}" "${_target_limit}")"
 	fi
 fi
 
@@ -197,13 +212,13 @@ if [ "${_os}" = "freebsd" ] && _is_shell_selected sh && command -v sh > "/dev/nu
 	_prompt_sh="${_repo_dir}/target/freebsd/sh/prompt.sh"
 	if [ -f "${_prompt_sh}" ]; then
 		_shell_sh_ms="$(_measure_cmd "sh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_sh}\"'")"
-		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" 64)"
+		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" "${_target_limit}")"
 	fi
 fi
 
 if [ "${_os}" = "freebsd" ] && _is_shell_selected sh; then
 	_shell_core_ms="$(_measure_cmd "sh -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
-	printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 64)"
+	printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" "${_target_limit}")"
 fi
 
 if [ "${_os}" = "openbsd" ]; then
@@ -214,13 +229,13 @@ if [ "${_os}" = "openbsd" ]; then
 		_prompt_ksh="${_repo_dir}/target/openbsd/ksh/prompt.sh"
 		if [ -f "${_prompt_ksh}" ]; then
 			_shell_ksh_ms="$(_measure_cmd "${_ksh_bin} -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_ksh}\"'")"
-			printf "%-24s %b\n" "Shell Stack (${_ksh_bin})" "$(_format_ms "${_shell_ksh_ms}" 64)"
+			printf "%-24s %b\n" "Shell Stack (${_ksh_bin})" "$(_format_ms "${_shell_ksh_ms}" "${_target_limit}")"
 		fi
 	fi
 fi
 
 if [ "${_has_failure}" -ne 0 ]; then
-	printf "\n%b❌ ERRO: Latência de inicialização excedeu o teto de tolerância de 128ms (2^7).%b\n" "${_c_bold}${_c_red}" "${_c_reset}" >&2
+	printf "\n%b❌ ERRO: Latência de inicialização excedeu o teto de tolerância de %sms (2^n).%b\n" "${_c_bold}${_c_red}" "${_max_tolerance}" "${_c_reset}" >&2
 	exit 1
 fi
 

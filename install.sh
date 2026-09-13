@@ -25,6 +25,39 @@ fi
 unset _active_comm
 
 ### --------------------------------
+### Help Documentation
+### --------------------------------
+_show_help() {
+	cat <<- EOF
+		Universal Shell Installer
+
+		Usage:
+		  install.sh [OPTIONS]
+
+		Options:
+		  -c, --context <CTX>      Context profile: desktop, server, container (default: desktop)
+		  -s, --shell <SHELL>      Target shell: all, zsh, bash, sh, ksh (default: all)
+		      --pure               Native standalone templates, zero overhead (default)
+		      --no-framework       Alias for --pure
+		      --framework          Enable external frameworks (Oh-My-Zsh, Oh-My-Bash)
+		      --with-framework     Alias for --framework
+		      --oh-my-shell        Alias for --framework
+		  -h, --help               Show this help message and exit
+
+		Defaults:
+		  By default, install.sh runs in pure mode (--pure) with desktop context (-c desktop)
+		  and configures all supported shells found on the system (-s all).
+
+		Examples:
+		  install.sh                         # Default pure install for all detected shells
+		  install.sh -c server               # Pure install configured for server environment
+		  install.sh -s zsh                  # Configure only Zsh
+		  install.sh --framework             # Install with Oh-My-Zsh and Oh-My-Bash enabled
+		  install.sh -c container -s bash    # Minimal container setup for Bash
+	EOF
+}
+
+### --------------------------------
 ### Parse Arguments
 ### --------------------------------
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
@@ -34,7 +67,7 @@ SHELL_FRAMEWORK="${SHELL_FRAMEWORK:-0}"
 for arg in "$@"; do
 	case "${arg}" in
 		--help|-h)
-			echo "Usage: install.sh [--context desktop|server|container] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
+			_show_help
 			exit 0
 			;;
 		--context=*) SHELL_CONTEXT="${arg#*=}" ;;
@@ -68,8 +101,8 @@ unset _skip_next
 case "${SHELL_CONTEXT}" in
 	desktop|server|container) ;;
 	*)
-		echo "ERROR: Invalid context '${SHELL_CONTEXT}'. Use 'desktop', 'server' or 'container'."
-		echo "Usage: install.sh [--context desktop|server|container] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
+		echo "❌ ERROR: Invalid context '${SHELL_CONTEXT}'. Use 'desktop', 'server' or 'container'." >&2
+		echo "   Run '$0 --help' for usage instructions." >&2
 		exit 1
 		;;
 esac
@@ -77,8 +110,8 @@ esac
 case "${SHELL_TARGET}" in
 	all|zsh|bash|sh|ksh) ;;
 	*)
-		echo "ERROR: Invalid shell '${SHELL_TARGET}'. Use 'all', 'zsh', 'bash', 'sh' or 'ksh'."
-		echo "Usage: install.sh [--context desktop|server|container] [-c ...] [--shell all|zsh|bash|sh|ksh] [-s ...] [--pure|--no-framework]"
+		echo "❌ ERROR: Invalid shell '${SHELL_TARGET}'. Use 'all', 'zsh', 'bash', 'sh' or 'ksh'." >&2
+		echo "   Run '$0 --help' for usage instructions." >&2
 		exit 1
 		;;
 esac
@@ -141,12 +174,12 @@ fi
 ### Repository Permissions
 ### --------------------------------
 if [ "${OS_NAME}" != "windows" ]; then
-	_as_root chown -R "$(id -un):$(id -gn)" "${SHELL_REPO_DIR}"
-	_as_root find "${SHELL_REPO_DIR}" -type d -exec chmod 0755 {} +
-	_as_root find "${SHELL_REPO_DIR}" -type f -exec chmod 0644 {} +
-	[ -f "${SHELL_REPO_DIR}/install.sh" ] && _as_root chmod 0755 "${SHELL_REPO_DIR}/install.sh"
-	[ -f "${SHELL_REPO_DIR}/scripts/benchmark.sh" ] && _as_root chmod 0755 "${SHELL_REPO_DIR}/scripts/benchmark.sh"
-	[ -f "${SHELL_REPO_DIR}/.githooks/pre-commit" ] && _as_root chmod 0755 "${SHELL_REPO_DIR}/.githooks/pre-commit"
+	_as_root chown -R "$(id -un):$(id -gn)" "${SHELL_REPO_DIR}" 2> "/dev/null" || true
+	_as_root find "${SHELL_REPO_DIR}" -type d -exec chmod 0755 {} + 2> "/dev/null" || true
+	_as_root find "${SHELL_REPO_DIR}" -type f -exec chmod 0644 {} + 2> "/dev/null" || true
+	[ -f "${SHELL_REPO_DIR}/install.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/install.sh" 2> "/dev/null" || true
+	[ -f "${SHELL_REPO_DIR}/scripts/benchmark.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/scripts/benchmark.sh" 2> "/dev/null" || true
+	[ -f "${SHELL_REPO_DIR}/.githooks/pre-commit" ] && chmod 0755 "${SHELL_REPO_DIR}/.githooks/pre-commit" 2> "/dev/null" || true
 fi
 
 if [ -d "${SHELL_REPO_DIR}/.git" ] && command -v git > "/dev/null" 2>&1; then
@@ -229,7 +262,7 @@ _install_shell_target() {
 
 	rm -f "${_rc_file}"
 	if [ "${OS_NAME}" != "windows" ]; then
-		_as_root rm -f "${_root_rc_file}"
+		_as_root rm -f "${_root_rc_file}" 2> "/dev/null" || true
 	fi
 
 	if [ "${_target_shell}" = "zsh" ]; then
@@ -244,8 +277,8 @@ _install_shell_target() {
 			EOF
 		fi
 		if [ "${OS_NAME}" != "windows" ]; then
-			if ! _as_root test -f "${_root_zshenv}" || ! _as_root grep -qF "unsetopt GLOBAL_RCS" "${_root_zshenv}" 2> "/dev/null"; then
-				cat <<- 'EOF' | _as_root tee "${_root_zshenv}" > "/dev/null"
+			if ! _as_root test -f "${_root_zshenv}" 2> "/dev/null" || ! _as_root grep -qF "unsetopt GLOBAL_RCS" "${_root_zshenv}" 2> "/dev/null"; then
+				cat <<- 'EOF' | _as_root tee "${_root_zshenv}" > "/dev/null" 2>&1 || true
 					### ================================
 					### ZSH ENVIRONMENT
 					### ================================
@@ -255,24 +288,25 @@ _install_shell_target() {
 		fi
 	fi
 
-	if [ "${_target_shell}" = "ksh" ]; then
+	if [ "${_target_shell}" = "ksh" ] || [ "${_target_shell}" = "sh" ]; then
 		local _profile="${HOME}/.profile"
 		local _root_profile="/root/.profile"
-		local _env_line='export ENV="${HOME}/.kshrc"'
+		local _rc_name=".${_target_shell}rc"
+		local _env_line="export ENV=\"\${HOME}/${_rc_name}\""
 		if [ -f "${_profile}" ]; then
-			if ! grep -qF 'ENV=' "${_profile}" 2> "/dev/null"; then
+			if ! grep -qF "export ENV=" "${_profile}" 2> "/dev/null"; then
 				echo "${_env_line}" >> "${_profile}"
 			fi
 		else
 			echo "${_env_line}" >| "${_profile}"
 		fi
 		if [ "${OS_NAME}" != "windows" ]; then
-			if _as_root test -f "${_root_profile}"; then
-				if ! _as_root grep -qF 'ENV=' "${_root_profile}" 2> "/dev/null"; then
-					echo 'export ENV="/root/.kshrc"' | _as_root tee -a "${_root_profile}" > "/dev/null"
+			if _as_root test -f "${_root_profile}" 2> "/dev/null"; then
+				if ! _as_root grep -qF "export ENV=" "${_root_profile}" 2> "/dev/null"; then
+					echo "export ENV=\"/root/${_rc_name}\"" | _as_root tee -a "${_root_profile}" > "/dev/null" 2>&1 || true
 				fi
 			else
-				echo 'export ENV="/root/.kshrc"' | _as_root tee "${_root_profile}" > "/dev/null"
+				echo "export ENV=\"/root/${_rc_name}\"" | _as_root tee "${_root_profile}" > "/dev/null" 2>&1 || true
 			fi
 		fi
 	fi
@@ -280,7 +314,7 @@ _install_shell_target() {
 	if [ "${SHELL_FRAMEWORK}" -eq 0 ] || [ "${_target_shell}" = "sh" ] || [ "${_target_shell}" = "ksh" ]; then
 		_generate_rc_pure "${_target_shell}" >| "${_rc_file}"
 		if [ "${OS_NAME}" != "windows" ]; then
-			_generate_rc_pure "${_target_shell}" | _as_root tee "${_root_rc_file}" > "/dev/null"
+			_generate_rc_pure "${_target_shell}" | _as_root tee "${_root_rc_file}" > "/dev/null" 2>&1 || true
 		fi
 	else
 		case "${_target_shell}" in
@@ -392,7 +426,7 @@ _install_shell_target() {
 			echo "Shell config already installed in ${_root_rc_file}"
 			echo "Skipping."
 		else
-			echo "${_setup_block}" | _as_root tee -a "${_root_rc_file}" > "/dev/null"
+			echo "${_setup_block}" | _as_root tee -a "${_root_rc_file}" > "/dev/null" 2>&1 || true
 			echo "Done! Added source lines to ${_root_rc_file}"
 		fi
 	fi
