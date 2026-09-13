@@ -56,14 +56,14 @@ flowchart LR
         CNT["📦 Container (Kernel Compartilhado)"]
     end
 
-    subgraph SH ["🐚 Shells Interativos (zsh ≫ bash ≫ sh)"]
+    subgraph SHELLS ["🐚 Shells Interativos (zsh ≫ bash ≫ sh)"]
         ZSH["⚡ Zsh (Todos os SOs)"]
         BASH["📜 Bash (Todos os SOs)"]
-        SH["⚙️ Sh (Exclusivo FreeBSD)"]
+        SH_BSD["⚙️ Sh (Exclusivo FreeBSD)"]
     end
 
     OS --> CTX
-    CTX --> SH
+    CTX --> SHELLS
 ```
 
 #### 🐚 Matriz de Suporte a Shells
