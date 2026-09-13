@@ -6,11 +6,11 @@ O **Universal Shell Environment** é o motor de execução interativo do [Quarte
 
 ## ⚡ Cascata de Inicialização (Boot Pipeline)
 
-Ao abrir qualquer novo emulador de terminal, painel de multiplexador (`tmux`) ou conexão SSH, o arquivo de inicialização do shell (`.bashrc`, `.zshrc` ou `.shrc`) invoca o entrypoint modular do ecossistema:
+Ao abrir qualquer novo emulador de terminal, painel de multiplexador (`tmux`) ou conexão SSH, o arquivo de inicialização do shell (`.zshrc`, `.bashrc` ou `.shrc`) invoca o entrypoint modular do ecossistema:
 
 ```mermaid
 flowchart TD
-    RC["🐚 Arquivo RC (~/.bashrc / ~/.zshrc / ~/.shrc)"] --> L_DETECT["📚 1. library/detect.sh<br/>(OS, Shell, Distro, DE, Cores)"]
+    RC["🐚 Arquivo RC (~/.zshrc / ~/.bashrc / ~/.shrc)"] --> L_DETECT["📚 1. library/detect.sh<br/>(OS, Shell, Distro, DE, Cores)"]
     L_DETECT --> L_FUNC["📚 2. library/functions.sh<br/>(path-front, _as_root, _is_command)"]
     L_FUNC --> C_ENV["⚙️ 3. core/environment.sh<br/>(PATH, COLORTERM, HISTSIZE, EDITOR)"]
     C_ENV --> C_VAULT["🔐 4. core/vault.sh<br/>(Detecção silenciosa de ~/.vault)"]
@@ -31,7 +31,7 @@ flowchart TD
 3. **`core/environment.sh`**: Define variáveis canônicas, sanitiza o `$PATH`, ativa suporte a TrueColor (24-bit RGB) e configura históricos persistentes.
 4. **`core/vault.sh`**: Se o diretório `~/.vault` existir, injeta silenciosamente variáveis de ambiente privadas e chaves SSH.
 5. **`target/{OS}/{SHELL}/prompt.sh`**: Carrega as customizações específicas da plataforma e compõe o tema visual.
-6. **`context/{CONTEXT}/`**: Aplica atalhos e comportamentos específicos da carga de trabalho (`desktop`, `server`, `container`, `wsl`).
+6. **`context/{CONTEXT}/`**: Aplica atalhos e comportamentos específicos da carga de trabalho (`desktop`, `server`, `container` — com extensões WSL automáticas).
 
 ---
 
@@ -60,6 +60,6 @@ Em conformidade com a filosofia UNIX:
 
 - **Camadas Base (`library/`, `core/`):** Escritas em estrita conformidade com o padrão **POSIX sh**. Devem rodar no `/bin/sh` nativo do FreeBSD sem nenhuma dependência de extensões do GNU Bash.
 - **Prompts Especializados (`theme/`):**
+  - **Zsh (`theme/zsh.sh`):** Utiliza o subsistema `zstyle`, `vcs_info` e autocompletion com menu interativo.
   - **Bash (`theme/bash.sh`):** Utiliza escape sequences nativas do Bash com suporte a cores 256/TrueColor e status Git.
-  - **Zsh (`theme/zsh.sh`):** Utiliza o subsistema `zstyle`, `vcs_info` e manipulação assíncrona para prompts instantâneos.
-  - **POSIX Sh (`theme/sh.sh`):** Prompt atômico, leve e sem dependências, com total elegância em TTYs puros.
+  - **POSIX Sh (`theme/sh.sh`):** Prompt atômico, leve e sem dependências, exclusivo para o FreeBSD `/bin/sh`.

@@ -18,48 +18,63 @@
 
 ### 🖥️ Sistemas, Contextos & Shells
 
-![Linux](https://img.shields.io/badge/🐧_Linux-Supported-blue)
+[![CI](https://github.com/GabrielFrigo4/shell/actions/workflows/ci.yml/badge.svg)](https://github.com/GabrielFrigo4/shell/actions/workflows/ci.yml)
+
+**Plataformas Homologadas:**<br>
 ![FreeBSD](https://img.shields.io/badge/😈_FreeBSD-Supported-red)
-![macOS](https://img.shields.io/badge/🍎_macOS-Supported-blue)
+![Linux](https://img.shields.io/badge/🐧_Linux-Supported-blue)
+![macOS](https://img.shields.io/badge/🍎_macOS-Supported-black)
 ![Windows](https://img.shields.io/badge/🪟_Windows_%28MSYS2%29-Supported-purple)
-![Bash](https://img.shields.io/badge/📜_bash-100%25-green)
+![OpenBSD](https://img.shields.io/badge/🐡_OpenBSD-Supported-yellow)
+![NetBSD](https://img.shields.io/badge/🚩_NetBSD-Supported-orange)
+![illumos](https://img.shields.io/badge/☀️_illumos-Supported-orange)
+
+**Shells Suportados (`zsh` ≫ `bash` ≫ `sh`):**<br>
 ![Zsh](https://img.shields.io/badge/⚡_zsh-100%25-blue)
-![Sh](https://img.shields.io/badge/⚙️_sh-100%25-red)
+![Bash](https://img.shields.io/badge/📜_bash-100%25-green)
+![Sh](https://img.shields.io/badge/⚙️_sh-FreeBSD_Exclusivo-red)
+
+**Shells Incompatíveis (Descartados):**<br>
 ![Dash](https://img.shields.io/badge/💨_dash-Incompatível_POSIX-lightgrey)
 ![Fish](https://img.shields.io/badge/🐟_fish-Incompatível_POSIX-lightgrey)
-[![CI](https://github.com/GabrielFrigo4/shell/actions/workflows/ci.yml/badge.svg)](https://github.com/GabrielFrigo4/shell/actions/workflows/ci.yml)
 
 ```mermaid
 flowchart LR
     subgraph OS ["🖥️ Plataformas"]
-        LNX["🐧 Linux"]
         BSD["😈 FreeBSD"]
-        WIN["🪟 Windows (MSYS2)"]
+        LNX["🐧 Linux"]
         MAC["🍎 macOS"]
+        WIN["🪟 Windows (MSYS2)"]
+        OBSD["🐡 OpenBSD"]
+        NBSD["🚩 NetBSD"]
+        ILM["☀️ illumos"]
     end
 
-    subgraph CTX ["🎯 Contextos"]
-        DSK["💻 Desktop"]
-        SRV["🌐 Server"]
-        CNT["📦 Container"]
-        WSL["🧩 WSL"]
+    subgraph CTX ["🎯 Contextos Canônicos"]
+        DSK["💻 Desktop (GUI + WSL)"]
+        SRV["🌐 Server (Headless + WSL)"]
+        CNT["📦 Container (Kernel Compartilhado)"]
     end
 
-    LNX --> DSK & SRV & CNT & WSL
-    BSD --> DSK & SRV & CNT
-    WIN --> DSK
-    MAC --> DSK
+    subgraph SH ["🐚 Shells Interativos (zsh ≫ bash ≫ sh)"]
+        ZSH["⚡ Zsh (Todos os SOs)"]
+        BASH["📜 Bash (Todos os SOs)"]
+        SH["⚙️ Sh (Exclusivo FreeBSD)"]
+    end
+
+    OS --> CTX
+    CTX --> SH
 ```
 
 #### 🐚 Matriz de Suporte a Shells
 
-| Shell             |    Status     | Detalhes & Decisão de Arquitetura                                                                                                            |
-| :---------------- | :-----------: | :------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Bash (`bash`)** |    🟢 100%    | Suporte universal nativo em Linux, macOS, BSD e Windows. Readline completion interativo, histórico atômico sincronizado e busca por prefixo. |
-| **Zsh (`zsh`)**   |    🟢 100%    | Shell primário interativo moderno. Autocompletion interativo com Tab e setas (`menu select`), case-insensitive e histórico estendido.        |
-| **Sh (`sh`)**     |    🟢 100%    | Shell POSIX fundamental (FreeBSD `/bin/sh`). Mini prompt gráfico calibrado (128B/192B), histórico `libedit` completo e fallback TTY puro.    |
-| **Dash (`dash`)** | ❌ Descartado | **Incompatibilidade POSIX:** BNF estrita proíbe nomes `kebab-case` (`-`) em funções (`update-all`, etc.).                                    |
-| **Fish (`fish`)** | ❌ Descartado | **Incompatibilidade POSIX:** Sintaxe própria incompatível com `source` em arquivos `.sh` e `export`.                                         |
+| Shell             |    Status     | Detalhes & Decisão de Arquitetura                                                                                                                                        |
+| :---------------- | :-----------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Zsh (`zsh`)**   |    🟢 100%    | Shell primário interativo moderno. Autocompletion interativo com Tab e setas (`menu select`), case-insensitive e histórico estendido. Suportado em todas as plataformas. |
+| **Bash (`bash`)** |    🟢 100%    | Suporte universal nativo em Linux, macOS, BSDs, illumos e Windows. Readline completion interativo, histórico atômico sincronizado e busca por prefixo.                   |
+| **Sh (`sh`)**     |    🟢 100%    | Shell POSIX fundamental (**exclusivo do FreeBSD `/bin/sh`**). Mini prompt gráfico calibrado (128B/192B), histórico `libedit` completo e fallback TTY puro.               |
+| **Dash (`dash`)** | ❌ Descartado | **Incompatibilidade POSIX:** BNF estrita proíbe nomes `kebab-case` (`-`) em funções (`update-all`, etc.). Auto-elevação para `zsh`/`bash` no instalador.                 |
+| **Fish (`fish`)** | ❌ Descartado | **Incompatibilidade POSIX:** Sintaxe própria incompatível com `source` em arquivos `.sh` e `export`.                                                                     |
 
 > 💡 **O Caso do FreeBSD `/bin/sh` & Engenharia Cirúrgica de Prompt:**
 > O `/bin/sh` do FreeBSD opera sobre a biblioteca `libedit` e possui um buffer estático em C (`#define PROMPTLEN 192` em FreeBSD 14+ e `128` em <= 13 em `bin/sh/parser.c`), sem `malloc` dinâmico para garantir estabilidade no modo monousuário. O parser em C converte `\[` e `\]` para `\001` (1B) e `\e` para `0x1b` (1B), tornando a ocupação real em C menor do que a contagem bruta de caracteres da string. O motor dinâmico em `theme/sh.sh` calibra com precisão cirúrgica de bytes dois layouts: **`pill`** (192B) e **`micro`** (128B com fallback automático), aproveitando até 98% do buffer físico com texto útil (pastas e branches completas) sem estouro de memória. Detalhes completos em [docs/THEMES.md](docs/THEMES.md).
@@ -70,10 +85,13 @@ flowchart LR
 
 O instalador é **multi-shell automático**: ao ser executado, ele detecta os shells suportados instalados na máquina e configura todos eles em lote:
 
-- **Linux:** configura automaticamente `zsh` e `bash` (caso instalados).
 - **FreeBSD:** configura automaticamente `zsh`, `bash` e `sh` (caso instalados).
+- **Linux:** configura automaticamente `zsh` e `bash` (caso instalados).
 - **macOS:** configura automaticamente `zsh` e `bash` (caso instalados).
 - **Windows (MSYS2):** configura `zsh` e `bash` (caso instalados).
+- **OpenBSD:** configura automaticamente `zsh` e `bash` (caso instalados).
+- **NetBSD:** configura automaticamente `zsh` e `bash` (caso instalados).
+- **illumos:** configura automaticamente `zsh` e `bash` (caso instalados).
 
 > 💡 **Novo shell instalado depois?** Se você instalar um novo shell posteriormente (ex: `sudo pacman -S zsh` ou `pkg install zsh`), basta executar `reinstall-shell` (ou reexecutar o `install.sh`) e ele configurará o novo shell automaticamente!
 
@@ -97,7 +115,7 @@ sh "${HOME}/.shell/install.sh" --context desktop
 | :------------ | :--------------: | :------------------------------- | :--------: | :--------------------------------------------------------------------------- |
 | `--context`   |       `-c`       | `desktop`, `server`, `container` | `desktop`  | Perfil de contexto do ambiente.                                              |
 | `--shell`     |       `-s`       | `all`, `zsh`, `bash`, `sh`       |   `all`    | Instala em todos os shells instalados ou em um alvo específico.              |
-| `--framework` | `--oh-my-shell`  | Flag booleana                    | Desativado | Habilita frameworks externos de terceiros (Oh-My-Bash / Oh-My-Zsh).          |
+| `--framework` | `--oh-my-shell`  | Flag booleana                    | Desativado | Habilita frameworks externos de terceiros (Oh-My-Zsh / Oh-My-Bash).          |
 | `--pure`      | `--no-framework` | Flag booleana                    |  Ativado   | Modo padrão: templates standalone nativos, zero overhead e boot instantâneo. |
 
 ---
@@ -139,7 +157,7 @@ Para aprofundar na arquitetura, comportamentos por contexto e motores de detecç
 - 🏛️ **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Ciclo de vida da sessão interativa, cascata de sourcing e orçamento de latência (&lt;50ms).
 - 🎯 **[docs/CONTEXTS.md](docs/CONTEXTS.md)**: Especificação dos perfis `desktop`, `server` e `container` (com auto-detecção WSL).
 - 🧠 **[docs/DETECTION.md](docs/DETECTION.md)**: Reconhecimento de SOs, famílias de distros Linux, dark mode (D-Bus/XDG Portal) e integração GTK/Qt/Electron.
-- 🖌️ **[docs/THEMES.md](docs/THEMES.md)**: Contratos visuais dos prompts (Bash, Zsh, Sh), paleta ANSI e fallback para TTYs puros.
+- 🖌️ **[docs/THEMES.md](docs/THEMES.md)**: Contratos visuais dos prompts (Zsh, Bash, Sh), paleta ANSI e fallback para TTYs puros.
 - 🗺️ **[docs/ALIASES.md](docs/ALIASES.md)**: Dicionário exaustivo de comandos públicos, atalhos e variáveis de ambiente.
 
 ---
@@ -148,7 +166,7 @@ Para aprofundar na arquitetura, comportamentos por contexto e motores de detecç
 
 ```mermaid
 flowchart TD
-    RC["🐚 Arquivo RC (~/.bashrc / ~/.zshrc / ~/.shrc)"] --> LIB["📚 1. library/*.sh"]
+    RC["🐚 Arquivo RC (~/.zshrc / ~/.bashrc / ~/.shrc)"] --> LIB["📚 1. library/*.sh"]
     LIB --> CORE["⚙️ 2. core/*.sh"]
     CORE --> TGT["🎨 3. target/{OS}/{SHELL}/prompt.sh"]
 
@@ -163,7 +181,7 @@ flowchart TD
 - 📚 **[library/](library/README.md)**: Biblioteca padrão com utilitários POSIX (`functions.sh`) e módulos analíticos (`detect.sh`).
 - ⚙️ **[core/](core/README.md)**: Fundações do ambiente (`environment.sh`) e integração com segredos (`vault.sh`).
 - 🎯 **[context/](context/README.md)**: Orquestrador de perfis operacionais (`desktop`, `server`, `container`).
-- 🖌️ **[theme/](theme/README.md)**: Motores de renderização de prompts (Bash, Zsh, Sh).
+- 🖌️ **[theme/](theme/README.md)**: Motores de renderização de prompts (Zsh, Bash, Sh).
 - 🎨 **`target/`**: Configurações específicas por sistema operacional (`Linux`, `FreeBSD`, `OpenBSD`, `NetBSD`, `illumos`, `macOS`, `Windows`).
 
 ---

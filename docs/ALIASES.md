@@ -15,7 +15,7 @@ O **Universal Shell Environment** adota uma convenção estrita de nomenclatura 
 | `update-shell` / `upsh`               | Sincroniza o repositório local do shell (`git pull`) e recarrega a sessão.                    | Universal             |
 | `reinstall-shell` / `resh`            | Reexecuta o instalador `install.sh` preservando o contexto ativo (`desktop`, `server`, etc.). | Universal             |
 | `update-vault` / `upvt`               | Sincroniza o repositório do cofre (`~/.vault`) e recarrega chaves e variáveis.                | Linux, FreeBSD, macOS |
-| `bench-shell` / `bsh` / `shell-bench` | Mede a latência de inicialização dos shells (`sh`, `bash`, `zsh`) e módulos isolados.         | Universal             |
+| `bench-shell` / `bsh` / `shell-bench` | Mede a latência de inicialização dos shells (`zsh`, `bash`, `sh`) e módulos isolados.         | Universal             |
 | `path-front <dir>`                    | Insere um diretório no início do `$PATH` (prioridade máxima).                                 | Universal             |
 | `path-back <dir>`                     | Insere um diretório no fim do `$PATH` (prioridade mínima).                                    | Universal             |
 | `path-dedup`                          | Remove diretórios duplicados do `$PATH` preservando a ordem original.                         | Universal             |
@@ -123,7 +123,7 @@ flowchart TD
 | `f <nome>` / `ff`                     | Busca rápida de arquivos e diretórios.                     | `fd` / `fd --hidden --no-ignore` > `find`                   |
 | `take <dir>` / `mkcd`                 | Cria o diretório (incluindo intermediários) e entra nele.  | `take-dir` (`mkdir -p && cd`)                               |
 | `cdb`                                 | Retorna para o diretório raiz do repositório Git atual.    | `cd-git-root` (`git rev-parse --show-toplevel`)             |
-| `hist [termo]` / `hg`                 | Busca interativa no histórico por palavra-chave.           | `hist-search` (com suporte unificado a `sh`, `bash`, `zsh`) |
+| `hist [termo]` / `hg`                 | Busca interativa no histórico por palavra-chave.           | `hist-search` (com suporte unificado a `zsh`, `bash`, `sh`) |
 | `extract <arquivo>` / `x`             | Descompacta automaticamente qualquer arquivo comprimido.   | `extract-archive` (`tar`, `zip`, `7z`, `gz`, `xz`, etc.)    |
 | `~`, `/`, `..`, `...`, `....`, `-- -` | Atalhos rápidos de navegação no sistema de arquivos.       | `cd ~`, `cd /`, `cd ..`, `cd ../..`, `cd ../../..`, `cd -`  |
 
@@ -159,8 +159,8 @@ flowchart TD
 | Variável                           | Descrição / Propósito                                                        | Origem / Padrão                                                             |
 | :--------------------------------- | :--------------------------------------------------------------------------- | :-------------------------------------------------------------------------- |
 | `SHELL_REPO_DIR`                   | Caminho raiz do repositório clonado do Universal Shell.                      | `/usr/local/share/shell` (Linux/BSD) ou `~/.shell` (Windows)                |
-| `SHELL_CONTEXT`                    | Contexto ativo carregado na sessão interativa.                               | `desktop` (padrão), `server`, `container`, `wsl`                            |
-| `SHELL`                            | Caminho do executável do shell ativo.                                        | Auto-detectado dinamicamente (`bash`, `zsh`, `sh`)                          |
+| `SHELL_CONTEXT`                    | Contexto ativo carregado na sessão interativa.                               | `desktop` (padrão), `server`, `container` (com auto-detecção WSL)           |
+| `SHELL`                            | Caminho do executável do shell ativo.                                        | Auto-detectado dinamicamente (`zsh`, `bash`, `sh`)                          |
 | `EDITOR` / `VISUAL`                | Editor de texto padrão do sistema.                                           | Preserva o do usuário ou define via cascata (`nvim > hx > micro > ...`)     |
 | `FILEMANAGER`                      | Gerenciador de arquivos preferido para abrir pastas no desktop.              | Lido pelo `mount-device` (fallback para `dolphin`, `nautilus`, etc.)        |
 | `COLORTERM`                        | Sinaliza suporte universal a 24-bit TrueColor RGB no terminal.               | Exportado globalmente como `truecolor`                                      |
