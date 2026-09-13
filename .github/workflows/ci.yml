@@ -392,37 +392,16 @@ jobs:
                       ### --------------------------------
                       ### Dependencies
                       ### --------------------------------
-                      if command -v pkgin > "/dev/null" 2>&1; then
+                      if command -v pkg_add > "/dev/null" 2>&1; then
+                        pkg_add -I zsh bash python312
+                      elif command -v pkgin > "/dev/null" 2>&1; then
                         pkgin -y update || true
-                        pkgin -y install zsh bash
-                        for _pkg in python312 python311 python310 python3; do
-                          pkgin -y install "${_pkg}" && break
-                        done
-                      elif command -v pkg_add > "/dev/null" 2>&1; then
-                        echo "=== Installing dependencies via pkg_add ==="
-                        pkg_add -I zsh bash || true
-                        echo "=== Probing Python installation via pkg_add ==="
-                        for _pkg in python312 python311 python310 python3; do
-                          echo "Attempting pkg_add -I ${_pkg}..."
-                          if pkg_add -I "${_pkg}"; then
-                            echo "Successfully installed ${_pkg} via pkg_add!"
-                            break
-                          fi
-                        done
+                        pkgin -y install zsh bash python312
                       fi
 
-                      echo "=== NetBSD Python Binaries ==="
-                      ls -la /usr/pkg/bin/python* 2> "/dev/null" || true
-
-                      for _py in /usr/pkg/bin/python3* /usr/local/bin/python3*; do
-                        if [ -x "${_py}" ] && [ ! -x "/usr/pkg/bin/python3" ]; then
-                          echo "Linking ${_py} -> /usr/pkg/bin/python3"
-                          ln -sf "${_py}" /usr/pkg/bin/python3
-                          break
-                        fi
-                      done
-
-                      command -v python3 && python3 --version || echo "python3 not in PATH"
+                      if [ -x "/usr/pkg/bin/python3.12" ] && [ ! -x "/usr/pkg/bin/python3" ]; then
+                        ln -sf /usr/pkg/bin/python3.12 /usr/pkg/bin/python3
+                      fi
 
                       ### --------------------------------
                       ### Run Universal Shell Installer
