@@ -148,6 +148,7 @@ if [ "${OS_NAME}" != "windows" ]; then
 	_as_root find "${SHELL_REPO_DIR}" -type d -exec chmod 0755 {} +
 	_as_root find "${SHELL_REPO_DIR}" -type f -exec chmod 0644 {} +
 	[ -f "${SHELL_REPO_DIR}/install.sh" ] && _as_root chmod 0755 "${SHELL_REPO_DIR}/install.sh"
+	[ -f "${SHELL_REPO_DIR}/scripts/benchmark.sh" ] && _as_root chmod 0755 "${SHELL_REPO_DIR}/scripts/benchmark.sh"
 	[ -f "${SHELL_REPO_DIR}/.githooks/pre-commit" ] && _as_root chmod 0755 "${SHELL_REPO_DIR}/.githooks/pre-commit"
 fi
 
@@ -326,41 +327,22 @@ _install_shell_target() {
 	local _source_line="${_source_cmd} \"\${SHELL_REPO_DIR}/target/${OS_NAME}/${_target_shell}/prompt.sh\""
 	local _setup_block
 
-	if [ "${SHELL_FRAMEWORK}" -eq 1 ]; then
-		_setup_block="$(cat <<- EOF
+	_setup_block="$(cat <<- EOF
 
-			### ================================
-			### Shell Environment Setup
-			### ================================
-			${_repo_dir_line}
-			${_context_line}
-			export SHELL_FRAMEWORK=1
+		### ================================
+		### Shell Environment Setup
+		### ================================
+		${_repo_dir_line}
+		${_context_line}
+		export SHELL_FRAMEWORK=${SHELL_FRAMEWORK}
 
-			for _f in "\${SHELL_REPO_DIR}/library/"*.sh; do [ -f "\${_f}" ] && ${_source_cmd} "\${_f}"; done
-			for _f in "\${SHELL_REPO_DIR}/core/"*.sh; do [ -f "\${_f}" ] && ${_source_cmd} "\${_f}"; done
-			unset _f
+		for _f in "\${SHELL_REPO_DIR}/library/"*.sh; do [ -f "\${_f}" ] && ${_source_cmd} "\${_f}"; done
+		for _f in "\${SHELL_REPO_DIR}/core/"*.sh; do [ -f "\${_f}" ] && ${_source_cmd} "\${_f}"; done
+		unset _f
 
-			${_source_line}
-		EOF
-		)"
-	else
-		_setup_block="$(cat <<- EOF
-
-			### ================================
-			### Shell Environment Setup
-			### ================================
-			${_repo_dir_line}
-			${_context_line}
-			export SHELL_FRAMEWORK=0
-
-			for _f in "\${SHELL_REPO_DIR}/library/"*.sh; do [ -f "\${_f}" ] && ${_source_cmd} "\${_f}"; done
-			for _f in "\${SHELL_REPO_DIR}/core/"*.sh; do [ -f "\${_f}" ] && ${_source_cmd} "\${_f}"; done
-			unset _f
-
-			${_source_line}
-		EOF
-		)"
-	fi
+		${_source_line}
+	EOF
+	)"
 
 	echo "Target RC file: ${_rc_file}"
 	if grep -qF "${_source_line}" "${_rc_file}" 2> "/dev/null"; then

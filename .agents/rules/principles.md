@@ -14,13 +14,13 @@ Essas diretrizes são de aplicação obrigatória para qualquer modificação ou
 ## 2. Programação Defensiva Obrigatória
 
 - NUNCA defina um alias ou wrapper de ferramenta externa sem antes verificar se o executável existe:
-    ```sh
-    command -v <bin> > "/dev/null" 2>&1 && alias <nome>="<bin>"
-    ```
+  ```sh
+  command -v <bin> > "/dev/null" 2>&1 && alias <nome>="<bin>"
+  ```
 - Sempre proteja chamadas de manipulação do terminal ou cursor (`echo -n $'\e[0 q'`) verificando se o descritor 1 é um TTY:
-    ```sh
-    [ -t 1 ] && echo -n $'\e[0 q'
-    ```
+  ```sh
+  [ -t 1 ] && echo -n $'\e[0 q'
+  ```
 
 ## 3. Convenção Estrita de Nomenclatura
 
@@ -33,19 +33,19 @@ Essas diretrizes são de aplicação obrigatória para qualquer modificação ou
 - **Zero Comentários Narrativos:** O código deve ser autoexplicativo (Princípio do Silêncio). Comentários explicativos inline são expressamente proibidos em scripts, templates e documentações. Separe blocos lógicos exclusivamente por linhas em branco.
 - **Camada 1 (Header Banner):** Exclusivo para linhas 2 a 4 de scripts utilitários (`install.sh`, etc.), delimitado por 64 hífens (`# ----------------------------------------------------------------`).
 - **Camada 2 (Delimitadores Estruturais de Corpo):**
-    - **Módulo / Seção Principal (32 `=`):**
-        ```sh
-        ### ================================
-        ### NOME DO MODULO OU CONTEXTO
-        ### ================================
-        ```
-        Arquivos de contexto usam a terminação da plataforma sem parênteses: `COMMON`, `LINUX`, `FREEBSD`, `WINDOWS`.
-    - **Subseções Internas (32 `-`):**
-        ```sh
-        ### --------------------------------
-        ### Nome da Secao
-        ### --------------------------------
-        ```
+  - **Módulo / Seção Principal (32 `=`):**
+    ```sh
+    ### ================================
+    ### NOME DO MODULO OU CONTEXTO
+    ### ================================
+    ```
+    Arquivos de contexto usam a terminação da plataforma sem parênteses: `COMMON`, `LINUX`, `FREEBSD`, `WINDOWS`.
+  - **Subseções Internas (32 `-`):**
+    ```sh
+    ### --------------------------------
+    ### Nome da Secao
+    ### --------------------------------
+    ```
 - **Regra Estrita do Não-Vazamento:** A régua divisora tem exatamente 32 caracteres separadores (total de 36 colunas com `### `). O texto do título DEVE ser conciso e **JAMAIS vazar além da régua** (máximo de 32 caracteres).
 - **Sem Parênteses ou Anotações Redundantes:** O título deve ser limpo e sem anotações secundárias entre parênteses (ex: prefira `### Default Editor` a `### Default Editor (Cascade)` e `### Update Vault` a `### Update Vault (update-vault)`).
 - **Não-Enumeração de Títulos:** Evite numerar títulos de seções. Use títulos puramente semânticos.
@@ -67,29 +67,29 @@ Essas diretrizes são de aplicação obrigatória para qualquer modificação ou
 
 - **Heredocs Indentados (`cat <<- 'EOF'`):** Em blocos multilinhas e geradores de templates, use SEMPRE `cat <<- 'EOF'`. O hífen `<<-` descarta TABs iniciais (`\t`) das linhas de texto e do próprio delimitador `EOF`, permitindo que o heredoc permaneça perfeitamente alinhado com a indentação da função/condicional circundante sem vazar para a coluna zero. Se não houver interpolação intencional de variáveis, envolva o delimitador entre aspas simples (`'EOF'`).
 - **Taxonomia de Emissão:**
-    - `echo`: Para linhas simples de texto e escrita atômica em arquivos (`echo "${val}" >| "${file}"`).
-    - `echo -n $'\e...'`: Padrão canônico e preferido para sequências ANSI em terminais interativos (`[ -t 1 ]`).
-    - `printf`: Exclusivo para relatórios com tabelas e colunas alinhadas com padding (`%-12s %-24s`).
+  - `echo`: Para linhas simples de texto e escrita atômica em arquivos (`echo "${val}" >| "${file}"`).
+  - `echo -n $'\e...'`: Padrão canônico e preferido para sequências ANSI em terminais interativos (`[ -t 1 ]`).
+  - `printf`: Exclusivo para relatórios com tabelas e colunas alinhadas com padding (`%-12s %-24s`).
 - **Guarda de Interatividade (`INTERACTIVE GUARD`):** Todo arquivo gerado (`.bashrc`, `.zshrc`, `.shrc`) DEVE iniciar com:
-    ```sh
-    ### ================================
-    ### INTERACTIVE GUARD
-    ### ================================
-    case "$-" in
-        *i*) ;;
-        *) return ;;
-    esac
-    ```
-    Isso impede que conexões não-interativas (`scp`, `sftp`, `rsync`, Git) quebrem ao receber sequências ANSI ou saídas de terminal.
+  ```sh
+  ### ================================
+  ### INTERACTIVE GUARD
+  ### ================================
+  case "$-" in
+      *i*) ;;
+      *) return ;;
+  esac
+  ```
+  Isso impede que conexões não-interativas (`scp`, `sftp`, `rsync`, Git) quebrem ao receber sequências ANSI ou saídas de terminal.
 - **Auto-Correção Eficiente de `$SHELL`:** Em shells aninhados (ex: abrir `bash` a partir do `zsh`), auto-corrija `$SHELL` usando checagem por casamento de padrão em memória:
-    ```sh
-    _current_sh="${_DETECTED_SHELL:-$(_detect_shell)}"
-    case "${SHELL:-}" in
-        *"/${_current_sh}") ;;
-        *) export SHELL="$(command -v "${_current_sh}" 2> "/dev/null")" ;;
-    esac
-    unset _current_sh
-    ```
+  ```sh
+  _current_sh="${_DETECTED_SHELL:-$(_detect_shell)}"
+  case "${SHELL:-}" in
+      *"/${_current_sh}") ;;
+      *) export SHELL="$(command -v "${_current_sh}" 2> "/dev/null")" ;;
+  esac
+  unset _current_sh
+  ```
 - **Invocação pelo Shell Ativo (Active Shell Invocation):** Ao invocar sub-rotinas e instaladores (`install.sh`, `benchmark.sh`) dentro de funções do shell, utilize sempre o executável do shell ativo seguindo a cascata de preferência: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`, NUNCA `sh` cego. No topo de scripts utilitários em Linux, mantenha guard de auto-elevação para `zsh`/`bash` se iniciado sob `/bin/sh` (`dash`).
 
 ## 8. Checklist de Validação
@@ -99,7 +99,7 @@ Antes de finalizar qualquer alteração:
 1. `git diff --check` (deve retornar 0 erros).
 2. `./.githooks/pre-commit` (deve passar 100%).
 3. Matriz Multi-Shell:
-    - Linux: `bash -n` e `zsh -n`.
-    - FreeBSD: `sh -n`, `bash -n` e `zsh -n`.
-    - macOS: `bash -n` e `zsh -n`.
-    - Windows (MSYS2): `bash -n` e `zsh -n`.
+   - Linux: `bash -n` e `zsh -n`.
+   - FreeBSD: `sh -n`, `bash -n` e `zsh -n`.
+   - macOS: `bash -n` e `zsh -n`.
+   - Windows (MSYS2): `bash -n` e `zsh -n`.

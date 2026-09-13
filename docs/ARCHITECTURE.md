@@ -60,6 +60,6 @@ Em conformidade com a filosofia UNIX:
 
 - **Camadas Base (`library/`, `core/`):** Escritas em estrita conformidade com o padrão **POSIX sh**. Devem rodar no `/bin/sh` nativo do FreeBSD sem nenhuma dependência de extensões do GNU Bash.
 - **Prompts Especializados (`theme/`):**
-    - **Bash (`theme/bash.sh`):** Utiliza escape sequences nativas do Bash com suporte a cores 256/TrueColor e status Git.
-    - **Zsh (`theme/zsh.sh`):** Utiliza o subsistema `zstyle`, `vcs_info` e manipulação assíncrona para prompts instantâneos.
-    - **POSIX Sh (`theme/sh.sh`):** Prompt atômico, leve e sem dependências, com total elegância em TTYs puros.
+  - **Bash (`theme/bash.sh`):** Utiliza escape sequences nativas do Bash com suporte a cores 256/TrueColor e status Git.
+  - **Zsh (`theme/zsh.sh`):** Utiliza o subsistema `zstyle`, `vcs_info` e manipulação assíncrona para prompts instantâneos.
+  - **POSIX Sh (`theme/sh.sh`):** Prompt atômico, leve e sem dependências, com total elegância em TTYs puros.

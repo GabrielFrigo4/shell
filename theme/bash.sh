@@ -84,4 +84,7 @@ _update_prompt() {
 	fi
 }
 
-PROMPT_COMMAND=_update_prompt
+case "${PROMPT_COMMAND:-}" in
+	*_update_prompt*) ;;
+	*) PROMPT_COMMAND="_update_prompt${PROMPT_COMMAND:+; }${PROMPT_COMMAND:-}" ;;
+esac

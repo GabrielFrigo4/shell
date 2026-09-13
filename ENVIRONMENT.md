@@ -111,25 +111,25 @@ Baseados nos 17 Princípios UNIX (_The Art of UNIX Programming_, Eric S. Raymond
 
 - **Zero Comentários Narrativos:** Comentários explicativos inline ("faz isso", "verifica aquilo") são expressamente proibidos em código, scripts, templates e exemplos de documentação. O código expressa sua intenção por meio de nomes semânticos e separação por linhas em branco.
 - **Camada 1 — Header Banner (64 `-`):** Exclusivo para o topo do arquivo (linhas 2 a 4), delimitando a identidade do script:
-    ```sh
-    # ----------------------------------------------------------------
-    # Recipe: [Nome do Software / Funcionalidade]
-    # ----------------------------------------------------------------
-    ```
+  ```sh
+  # ----------------------------------------------------------------
+  # Recipe: [Nome do Software / Funcionalidade]
+  # ----------------------------------------------------------------
+  ```
 - **Camada 2 — Delimitadores de Corpo (32 caracteres):**
-    - **Seções Principais (32 `=`):**
-        ```sh
-        ### ================================
-        ### NOME DA SECAO PRINCIPAL
-        ### ================================
-        ```
-    - **Subseções (32 `-`):**
-        ```sh
-        ### --------------------------------
-        ### Nome da Subsecao
-        ### --------------------------------
-        ```
-    - **Regra do Não-Vazamento:** O texto do título DEVE ter no máximo 32 caracteres (total de 36 colunas com `### `) e JAMAIS vazar além da régua divisora. Títulos concisos, sem parênteses e sem numerações redundantes.
+  - **Seções Principais (32 `=`):**
+    ```sh
+    ### ================================
+    ### NOME DA SECAO PRINCIPAL
+    ### ================================
+    ```
+  - **Subseções (32 `-`):**
+    ```sh
+    ### --------------------------------
+    ### Nome da Subsecao
+    ### --------------------------------
+    ```
+  - **Regra do Não-Vazamento:** O texto do título DEVE ter no máximo 32 caracteres (total de 36 colunas com `### `) e JAMAIS vazar além da régua divisora. Títulos concisos, sem parênteses e sem numerações redundantes.
 
 ### 3. Padrão Universal de Documentação (README Templates)
 
@@ -153,9 +153,9 @@ Baseados nos 17 Princípios UNIX (_The Art of UNIX Programming_, Eric S. Raymond
 ### 6. Governança Autônoma com IA e Quality Gates
 
 - Todo repositório do ecossistema possui:
-    - `.githooks/pre-commit` executável e atômico para validar integridade, sintaxe e formatação antes do commit.
-    - `.agents/rules/principles.md` com diretrizes de engenharia específicas do seu domínio.
-    - `.agents/skills/` com runbooks cognitivos padronizados (`universal-*`, `proactive-guardian`, `deep-investigation`).
+  - `.githooks/pre-commit` executável e atômico para validar integridade, sintaxe e formatação antes do commit.
+  - `.agents/rules/principles.md` com diretrizes de engenharia específicas do seu domínio.
+  - `.agents/skills/` com runbooks cognitivos padronizados (`universal-*`, `proactive-guardian`, `deep-investigation`).
 
 ---
 

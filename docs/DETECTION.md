@@ -16,19 +16,19 @@ O módulo `library/detect.sh` é o cérebro investigativo do **Universal Shell E
 
 - **`_detect_distro`**: Lê `/etc/os-release` para identificar a distribuição específica (`fedora`, `arch`, `debian`, `ubuntu`, `opensuse`, `void`, `alpine`).
 - **`_detect_distro_family`**: Agrupa as distros pela sua raiz arquitetural:
-    - `fedora` ➔ Gerenciador `dnf`
-    - `arch` ➔ Gerenciador `pacman` (com detecção de helpers AUR `paru`/`yay`)
-    - `debian` ➔ Gerenciador `apt`
-    - `suse` ➔ Gerenciador `zypper`
-    - `freebsd` ➔ Gerenciador `pkg`
-      Esta classificação alimenta dinamicamente comandos universais como `update-system` e `update-all`.
+  - `fedora` ➔ Gerenciador `dnf`
+  - `arch` ➔ Gerenciador `pacman` (com detecção de helpers AUR `paru`/`yay`)
+  - `debian` ➔ Gerenciador `apt`
+  - `suse` ➔ Gerenciador `zypper`
+  - `freebsd` ➔ Gerenciador `pkg`
+    Esta classificação alimenta dinamicamente comandos universais como `update-system` e `update-all`.
 
 ### 3. Ambiente Gráfico & Sessão de Janelas
 
 - **`_detect_desktop_environment`**: Analisa variáveis `$XDG_CURRENT_DESKTOP`, `$DESKTOP_SESSION` e processos em execução para identificar:
-    - `kde` (Plasma 5/6)
-    - `gnome` (GNOME Shell)
-    - `xfce`, `sway`, `hyprland`, `cosmic`
+  - `kde` (Plasma 5/6)
+  - `gnome` (GNOME Shell)
+  - `xfce`, `sway`, `hyprland`, `cosmic`
 - **Sessão Wayland vs. X11**: Avalia `$XDG_SESSION_TYPE` e `$WAYLAND_DISPLAY` para determinar a rota gráfica correta.
 
 ---
@@ -40,9 +40,9 @@ O Universal Shell detecta a intenção estética do sistema operacional e alinha
 ### 1. Detecção Universal de Dark Mode (`_detect_color_scheme`)
 
 - Consulta em sequência:
-    1. **XDG Desktop Portal via D-Bus**: `org.freedesktop.appearance.color-scheme` (Padrão moderno em GNOME 42+, KDE Plasma 6 e compositores Wayland).
-    2. **GSettings**: `org.gnome.desktop.interface color-scheme` ('prefer-dark').
-    3. **KDE Globals**: Leitura direta de `kdeglobals` em busca de esquemas escuros (`BreezeDark`).
+  1. **XDG Desktop Portal via D-Bus**: `org.freedesktop.appearance.color-scheme` (Padrão moderno em GNOME 42+, KDE Plasma 6 e compositores Wayland).
+  2. **GSettings**: `org.gnome.desktop.interface color-scheme` ('prefer-dark').
+  3. **KDE Globals**: Leitura direta de `kdeglobals` em busca de esquemas escuros (`BreezeDark`).
 
 ### 2. GTK Toolkit (`GTK_THEME`)
 
@@ -53,9 +53,9 @@ O Universal Shell detecta a intenção estética do sistema operacional e alinha
 ### 3. Qt Toolkit (`QT_QPA_PLATFORMTHEME` & `QT_STYLE_OVERRIDE`)
 
 - Garante diálogo nativo de arquivos e renderização coerente em aplicativos Qt:
-    - No GNOME/KDE: Utiliza `xdgdesktopportal`.
-    - Em ambientes com Qt6 configuration tool: Integra com `qt6ct` ou `qt5ct`.
-    - Define `QT_STYLE_OVERRIDE="Breeze-Dark"` quando apropriado.
+  - No GNOME/KDE: Utiliza `xdgdesktopportal`.
+  - Em ambientes com Qt6 configuration tool: Integra com `qt6ct` ou `qt5ct`.
+  - Define `QT_STYLE_OVERRIDE="Breeze-Dark"` quando apropriado.
 
 ### 4. Electron Wayland Nativo
 

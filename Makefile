@@ -7,7 +7,7 @@ MAKEFLAGS += --no-print-directory -s
 # Makefile: Shell Runtime Engine
 # ----------------------------------------------------------------
 
-.PHONY: help bench test install ci
+.PHONY: help bench test format install ci
 
 ### ================================
 ### HELP & DOCUMENTATION
@@ -24,6 +24,7 @@ help:
 	cmd "bench"          "Mede latência de boot e módulos (alvo rigoroso <50ms)"; \
 	sec "Qualidade & Testes:"; \
 	cmd "test"           "Valida sintaxe POSIX e Zsh em todos os módulos"; \
+	cmd "format"         "Formata arquivos Markdown com Prettier"; \
 	cmd "ci"             "Executa suíte completa de testes e quality gate local"; \
 	echo ""
 
@@ -37,6 +38,15 @@ test:
 		find . -name "*.sh" -not -path "*/.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +; \
 	fi
 	echo "✅ Sintaxe de todos os módulos de shell validada com sucesso!"
+
+format:
+	if command -v prettier > "/dev/null" 2>&1; then \
+		prettier --write "**/*.md"; \
+	elif command -v npx > "/dev/null" 2>&1; then \
+		npx prettier --write "**/*.md"; \
+	else \
+		echo "⚠️ Prettier não encontrado para formatação de Markdown."; \
+	fi
 
 bench:
 	sh scripts/benchmark.sh

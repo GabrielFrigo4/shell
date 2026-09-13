@@ -17,11 +17,11 @@ O **Shell** é o motor interativo de terminal do **Quarteto de Produtividade** (
 > _Escreva partes simples conectadas por interfaces limpas._
 
 - A arquitetura do Shell é estritamente decomposta em camadas ortogonais:
-    - `library/`: Funções puras e utilitários compartilhados em POSIX shell.
-    - `core/`: Orquestração de inicialização, cache e variáveis globais.
-    - `target/`: Especializações declarativas por sistema operacional (`linux/`, `freebsd/`, `windows/`, `macos/`).
-    - `context/`: Especializações por ambiente operacional (`desktop/`, `server/`, `container/`, `wsl/`).
-    - `theme/`: Renderização de prompts ultra-rápidos para cada shell (`sh`, `bash`, `zsh`).
+  - `library/`: Funções puras e utilitários compartilhados em POSIX shell.
+  - `core/`: Orquestração de inicialização, cache e variáveis globais.
+  - `target/`: Especializações declarativas por sistema operacional (`linux/`, `freebsd/`, `windows/`, `macos/`).
+  - `context/`: Especializações por ambiente operacional (`desktop/`, `server/`, `container/`, `wsl/`).
+  - `theme/`: Renderização de prompts ultra-rápidos para cada shell (`sh`, `bash`, `zsh`).
 
 ### 2. Regra da Clareza (_Rule of Clarity_)
 
@@ -113,8 +113,8 @@ O **Shell** é o motor interativo de terminal do **Quarteto de Produtividade** (
 > _Desconfie de todas as afirmações de "uma única maneira verdadeira"._
 
 - Suporte nativo e intencional a:
-    - **Sistemas:** FreeBSD, Linux (Fedora, Debian, Arch), macOS e Windows (MSYS2).
-    - **Shells:** FreeBSD `/bin/sh`, Zsh e Bash.
+  - **Sistemas:** FreeBSD, Linux (Fedora, Debian, Arch), macOS e Windows (MSYS2).
+  - **Shells:** FreeBSD `/bin/sh`, Zsh e Bash.
 
 ### 17. Regra da Extensibilidade (_Rule of Extensibility_)
 
@@ -135,15 +135,15 @@ O **Shell** é o motor interativo de terminal do **Quarteto de Produtividade** (
 
 1. **Shebang Universal:** `#!/usr/bin/env sh` no topo de scripts executáveis.
 2. **Quoting Defensivo & Variáveis:**
-    - Sempre utilize `${var}` e `"${var}"` com chaves.
-    - Redirecionamentos protegidos: `> "/dev/null"` e `2> "/dev/null"`.
+   - Sempre utilize `${var}` e `"${var}"` com chaves.
+   - Redirecionamentos protegidos: `> "/dev/null"` e `2> "/dev/null"`.
 3. **Taxonomia de Emissão:**
-    - `echo "${msg}"`: Texto simples e escrita atômica em arquivos.
-    - `echo -n $'\e...'`: Padrão canônico para sequências ANSI interativas com proteção `[ -t 1 ]`.
-    - `printf`: Exclusivo para relatórios tabulares, colunas formatadas e padding (`%-16s %s\n`).
+   - `echo "${msg}"`: Texto simples e escrita atômica em arquivos.
+   - `echo -n $'\e...'`: Padrão canônico para sequências ANSI interativas com proteção `[ -t 1 ]`.
+   - `printf`: Exclusivo para relatórios tabulares, colunas formatadas e padding (`%-16s %s\n`).
 4. **Delimitadores de Largura Zero em Prompts:** Códigos ANSI em `PS1` DEVEM usar `\[...\]` para evitar quebra de cursor.
 5. **Permissões Canônicas:** 4 dígitos octais (`chmod 0755` para executáveis, `chmod 0644` para módulos e configs).
 6. **Arquitetura de Comentários (A Tríade Sem Vazamento):**
-    - **Camada 1 (Header Banner):** Linhas 2-4 com exatamente 64 hífens (`# ----------------------------------------------------------------`).
-    - **Camada 2 (Seções Estruturais):** Réguas de 32 caracteres (`### ================================` e `### --------------------------------`). Título $\le$ 32 caracteres.
-    - **Camada 3 (Zero Comentários Narrativos):** Código autoexplicativo, blocos separados por linhas em branco.
+   - **Camada 1 (Header Banner):** Linhas 2-4 com exatamente 64 hífens (`# ----------------------------------------------------------------`).
+   - **Camada 2 (Seções Estruturais):** Réguas de 32 caracteres (`### ================================` e `### --------------------------------`). Título $\le$ 32 caracteres.
+   - **Camada 3 (Zero Comentários Narrativos):** Código autoexplicativo, blocos separados por linhas em branco.

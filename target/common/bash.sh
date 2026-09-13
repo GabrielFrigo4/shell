@@ -18,7 +18,10 @@ shopt -s histappend
 shopt -s checkwinsize
 shopt -s cmdhist
 
-PROMPT_COMMAND="history -a${PROMPT_COMMAND:+; }${PROMPT_COMMAND:-}"
+case "${PROMPT_COMMAND:-}" in
+	*"history -a"*) ;;
+	*) PROMPT_COMMAND="history -a${PROMPT_COMMAND:+; }${PROMPT_COMMAND:-}" ;;
+esac
 
 ### --------------------------------
 ### Interaction & Safety

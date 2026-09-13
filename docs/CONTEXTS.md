@@ -58,7 +58,7 @@ Projetado para instâncias efêmeras e contêineres de compilação:
 Projetado para o Linux rodando dentro do Windows:
 
 - Mapeia atalhos diretos para executáveis do Windows:
-    - `clip`: Envia a saída do terminal diretamente para a área de transferência do Windows (`/mnt/c/Windows/System32/clip.exe`).
-    - `explorer`: Abre a pasta atual no Windows Explorer (`explorer.exe .`).
-    - `pwsh` / `powershell` / `cmd`: Invocação direta dos interpretadores nativos da máquina hospedeira.
+  - `clip`: Envia a saída do terminal diretamente para a área de transferência do Windows (`/mnt/c/Windows/System32/clip.exe`).
+  - `explorer`: Abre a pasta atual no Windows Explorer (`explorer.exe .`).
+  - `pwsh` / `powershell` / `cmd`: Invocação direta dos interpretadores nativos da máquina hospedeira.
 - Sincronização e detecção do `win32yank` para área de transferência compartilhada no Neovim.
