@@ -46,12 +46,12 @@ jobs:
           ### --------------------------------
           find . -name "*.sh" -not -path "./.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +
 
-      - name: POSIX Sh Syntax Check (sh -n)
+      - name: POSIX Sh Syntax Check (bash --posix -n)
         run: |
           ### --------------------------------
           ### POSIX Sh Syntax
           ### --------------------------------
-          find . -name "*.sh" -not -path "./.git/*" -not -path "*/bash/*" -not -name "bash.sh" -not -path "*/zsh/*" -not -name "zsh.sh" -exec sh -n {} +
+          find . -name "*.sh" -not -path "./.git/*" -not -path "*/bash/*" -not -name "bash.sh" -not -path "*/zsh/*" -not -name "zsh.sh" -exec bash --posix -n {} +
 
       - name: Quoted Redirects Rule (> "/dev/null")
         run: |
@@ -92,14 +92,14 @@ jobs:
           ### --------------------------------
           ### Linux Target Prompts
           ### --------------------------------
-          sh -n target/linux/sh/prompt.sh
+          bash --posix -n target/linux/sh/prompt.sh
           bash -n target/linux/bash/prompt.sh
           zsh -n target/linux/zsh/prompt.sh
 
           ### --------------------------------
           ### Linux POSIX Sh
           ### --------------------------------
-          sh -c '
+          bash --posix -c '
             export SHELL_REPO_DIR="${PWD}"
             export SHELL_CONTEXT="desktop"
             . ./library/detect.sh
@@ -495,15 +495,15 @@ jobs:
           ### ================================
           ### ILLUMOS ENVIRONMENT SYNTAX
           ### ================================
-          sh -n target/illumos/environment.sh
-          sh -n target/illumos/sh/prompt.sh
+          ksh -n target/illumos/environment.sh
+          ksh -n target/illumos/sh/prompt.sh
           bash -n target/illumos/bash/prompt.sh
           zsh -n target/illumos/zsh/prompt.sh
 
           ### --------------------------------
           ### illumos Mock Boot Simulation
           ### --------------------------------
-          sh -c '
+          ksh -c '
             export SHELL_REPO_DIR="${PWD}"
             export SHELL_CONTEXT="desktop"
             export PROMPT_OS_NAME="illumos"

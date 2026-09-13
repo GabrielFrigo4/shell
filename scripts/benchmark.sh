@@ -136,7 +136,13 @@ done
 printf "\n%b📦 Ecosystem Modules Latency%b\n" "${_c_bold}${_c_cyan}" "${_c_reset}"
 printf "%s\n" "----------------------------------------------------"
 
-_shell_core_ms="$(_measure_cmd "sh -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
+if sh -c 'f-f() { :; }' 2> "/dev/null"; then
+	_posix_sh="sh"
+else
+	_posix_sh="bash --posix"
+fi
+
+_shell_core_ms="$(_measure_cmd "${_posix_sh} -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
 printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 32)"
 
 if command -v zsh > "/dev/null" 2>&1; then
@@ -158,7 +164,7 @@ fi
 if command -v sh > "/dev/null" 2>&1; then
 	_prompt_sh="${_repo_dir}/target/${_os}/sh/prompt.sh"
 	if [ -f "${_prompt_sh}" ]; then
-		_shell_sh_ms="$(_measure_cmd "sh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_sh}\"'")"
+		_shell_sh_ms="$(_measure_cmd "${_posix_sh} -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_sh}\"'")"
 		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" 64)"
 	fi
 fi
