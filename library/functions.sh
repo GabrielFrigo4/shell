@@ -89,12 +89,12 @@ update-shell() {
 	_target=""
 	if [ -n "${SHELL_REPO_DIR:-}" ] && [ -e "${SHELL_REPO_DIR}/.git" ]; then
 		_target="${SHELL_REPO_DIR}"
-	elif [ -e "/usr/local/share/shell/.git" ]; then
-		_target="/usr/local/share/shell"
 	elif [ -e "${HOME}/.shell/.git" ]; then
 		_target="${HOME}/.shell"
 	elif [ -e "${HOME}/.local/share/shell/.git" ]; then
 		_target="${HOME}/.local/share/shell"
+	elif [ -e "/usr/local/share/shell/.git" ]; then
+		_target="/usr/local/share/shell"
 	elif [ -n "${SHELL_REPO_DIR:-}" ] && [ -d "${SHELL_REPO_DIR}" ]; then
 		_target="${SHELL_REPO_DIR}"
 	fi
@@ -132,7 +132,7 @@ update-shell() {
 			. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
 		fi
 	else
-		echo "ℹ️  No active shell repository found at /usr/local/share/shell, ~/.shell, or \$SHELL_REPO_DIR."
+		echo "ℹ️  No active shell repository found at ~/.shell, ~/.local/share/shell, /usr/local/share/shell, or \$SHELL_REPO_DIR."
 	fi
 	unset _target
 }
@@ -624,7 +624,7 @@ update-all() {
 		update-mas "$@" && echo "✅ Mac App Store packages updated!"
 	fi
 
-	if [ -e "/usr/local/share/shell/.git" ] || [ -e "${HOME}/.shell/.git" ]; then
+	if [ -e "${HOME}/.shell/.git" ] || [ -e "${HOME}/.local/share/shell/.git" ] || [ -e "/usr/local/share/shell/.git" ]; then
 		echo ""
 		update-shell "$@"
 	fi
