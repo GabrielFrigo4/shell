@@ -98,6 +98,13 @@ _is_wsl() {
 }
 
 ### --------------------------------
+### Detect SSH / Remote Session
+### --------------------------------
+_is_ssh() {
+	[ -n "${SSH_CLIENT:-}" ] || [ -n "${SSH_TTY:-}" ] || [ -n "${SSH_CONNECTION:-}" ]
+}
+
+### --------------------------------
 ### Detect Shell
 ### --------------------------------
 _detect_shell() {
@@ -604,6 +611,74 @@ _detect_fd() {
 	fi
 	_cache_write "fd" "${_DETECTED_FD}"
 	echo "${_DETECTED_FD}"
+}
+
+### --------------------------------
+### Detect Dust Binary (du-dust)
+### --------------------------------
+_detect_dust() {
+	[ -n "${_DETECTED_DUST+x}" ] && echo "${_DETECTED_DUST}" && return 0
+	if [ -f "${_SHELL_CACHE_DIR}/dust" ]; then
+		_DETECTED_DUST="$(_cache_read "dust")"
+		echo "${_DETECTED_DUST}"
+		return 0
+	fi
+
+	if command -v dust > "/dev/null" 2>&1; then
+		_DETECTED_DUST="dust"
+	elif [ -x "${HOME}/.cargo/bin/dust" ]; then
+		_DETECTED_DUST="${HOME}/.cargo/bin/dust"
+	else
+		_DETECTED_DUST=""
+	fi
+	_cache_write "dust" "${_DETECTED_DUST}"
+	echo "${_DETECTED_DUST}"
+}
+
+### --------------------------------
+### Detect Procs Binary (Rust ps)
+### --------------------------------
+_detect_procs() {
+	[ -n "${_DETECTED_PROCS+x}" ] && echo "${_DETECTED_PROCS}" && return 0
+	if [ -f "${_SHELL_CACHE_DIR}/procs" ]; then
+		_DETECTED_PROCS="$(_cache_read "procs")"
+		echo "${_DETECTED_PROCS}"
+		return 0
+	fi
+
+	if command -v procs > "/dev/null" 2>&1; then
+		_DETECTED_PROCS="procs"
+	elif [ -x "${HOME}/.cargo/bin/procs" ]; then
+		_DETECTED_PROCS="${HOME}/.cargo/bin/procs"
+	else
+		_DETECTED_PROCS=""
+	fi
+	_cache_write "procs" "${_DETECTED_PROCS}"
+	echo "${_DETECTED_PROCS}"
+}
+
+### --------------------------------
+### Detect Bottom Binary (btm)
+### --------------------------------
+_detect_bottom() {
+	[ -n "${_DETECTED_BOTTOM+x}" ] && echo "${_DETECTED_BOTTOM}" && return 0
+	if [ -f "${_SHELL_CACHE_DIR}/bottom" ]; then
+		_DETECTED_BOTTOM="$(_cache_read "bottom")"
+		echo "${_DETECTED_BOTTOM}"
+		return 0
+	fi
+
+	if command -v btm > "/dev/null" 2>&1; then
+		_DETECTED_BOTTOM="btm"
+	elif command -v bottom > "/dev/null" 2>&1; then
+		_DETECTED_BOTTOM="bottom"
+	elif [ -x "${HOME}/.cargo/bin/btm" ]; then
+		_DETECTED_BOTTOM="${HOME}/.cargo/bin/btm"
+	else
+		_DETECTED_BOTTOM=""
+	fi
+	_cache_write "bottom" "${_DETECTED_BOTTOM}"
+	echo "${_DETECTED_BOTTOM}"
 }
 
 ### --------------------------------

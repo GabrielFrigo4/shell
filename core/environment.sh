@@ -235,6 +235,40 @@ fi
 unset _fd_bin _env_os
 
 ### --------------------------------
+### Disk Usage (Dust Fallback)
+### --------------------------------
+_dust_bin="${_DETECTED_DUST:-$(_detect_dust)}"
+if [ -n "${_dust_bin}" ]; then
+	alias du="${_dust_bin}"
+	alias dust="${_dust_bin}"
+fi
+unset _dust_bin
+
+### --------------------------------
+### Process Inspection (Procs Fallback)
+### --------------------------------
+_procs_bin="${_DETECTED_PROCS:-$(_detect_procs)}"
+if [ -n "${_procs_bin}" ]; then
+	alias procs="${_procs_bin}"
+	alias pst="${_procs_bin} --tree"
+fi
+unset _procs_bin
+
+### --------------------------------
+### System Monitor (Bottom Fallback)
+### --------------------------------
+_btm_bin="${_DETECTED_BOTTOM:-$(_detect_bottom)}"
+if [ -n "${_btm_bin}" ]; then
+	alias btm="${_btm_bin}"
+	alias top="${_btm_bin}"
+elif command -v btop > "/dev/null" 2>&1; then
+	alias top="btop"
+elif command -v htop > "/dev/null" 2>&1; then
+	alias top="htop"
+fi
+unset _btm_bin
+
+### --------------------------------
 ### Navigation Aliases
 ### --------------------------------
 if command -v shopt > "/dev/null" 2>&1; then
@@ -291,6 +325,13 @@ alias upzyp="update-zypper"
 alias upxbps="update-xbps"
 alias upapk="update-apk"
 alias uppkg="update-pkg"
+alias upadd="update-pkg-add"
+alias uppkgadd="update-pkg-add"
+alias upin="update-pkgin"
+alias uppkgin="update-pkgin"
+alias upips="update-ips"
+alias upbrew="update-brew"
+alias upmas="update-mas"
 alias upaur="update-aur"
 alias upyay="update-aur"
 alias upparu="update-aur"

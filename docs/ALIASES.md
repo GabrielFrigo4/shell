@@ -56,30 +56,41 @@ flowchart TD
     UPALL -.->|se instalado| AUR["📦 update-aur<br/><i>(paru / yay)</i>"]
     UPALL -.->|se instalado| FLAT["📦 update-flatpak<br/><i>(Flatpak)</i>"]
     UPALL -.->|se instalado| SNAP["📦 update-snap<br/><i>(Snap)</i>"]
+    UPALL -.->|se macOS| MAS["📦 update-mas<br/><i>(Mac App Store)</i>"]
+    UPALL -.->|se Linux| LBR["📦 update-brew<br/><i>(Linuxbrew)</i>"]
 
     UPSYS --> DNF["update-dnf<br/><i>(Fedora / RHEL)</i>"]
     UPSYS --> APT["update-apt<br/><i>(Debian / Ubuntu)</i>"]
     UPSYS --> MAN["update-pacman<br/><i>(Arch / MSYS2)</i>"]
     UPSYS --> PKG["update-pkg<br/><i>(FreeBSD)</i>"]
+    UPSYS --> ADD["update-pkg-add<br/><i>(OpenBSD)</i>"]
+    UPSYS --> IN["update-pkgin<br/><i>(NetBSD / SmartOS)</i>"]
+    UPSYS --> IPS["update-ips<br/><i>(illumos IPS)</i>"]
+    UPSYS --> BREW["update-brew<br/><i>(macOS)</i>"]
     UPSYS --> ZYP["update-zypper<br/><i>(OpenSUSE)</i>"]
     UPSYS --> XBPS["update-xbps<br/><i>(Void)</i>"]
     UPSYS --> APK["update-apk<br/><i>(Alpine)</i>"]
 ```
 
-| Comando Canônico / Alias                    | Descrição                                                                | Escopo / Gerenciador          |
-| :------------------------------------------ | :----------------------------------------------------------------------- | :---------------------------- |
-| `update-all` / `upall` / `u`                | **Orquestrador Global:** Atualiza o sistema base + AUR + Flatpak + Snap. | Universal                     |
-| `update-system` / `upsys`                   | Atualiza os pacotes do sistema base detectando a distribuição nativa.    | Universal                     |
-| `update-aur` / `upaur` / `upyay` / `upparu` | Atualiza pacotes do Arch User Repository (prioriza `paru > yay`).        | Arch Linux                    |
-| `update-pacman` / `upman`                   | Atualiza pacotes via Pacman.                                             | Arch Linux / Windows (MSYS2)  |
-| `update-apt` / `upapt`                      | Atualiza repositórios e pacotes via APT.                                 | Debian, Ubuntu, Mint, Pop!_OS |
-| `update-dnf` / `updnf`                      | Atualiza pacotes via DNF.                                                | Fedora, RHEL, Rocky, Alma     |
-| `update-zypper` / `upzyp`                   | Atualiza pacotes via Zypper.                                             | openSUSE, SLES                |
-| `update-xbps` / `upxbps`                    | Atualiza pacotes via XBPS.                                               | Void Linux                    |
-| `update-apk` / `upapk`                      | Atualiza pacotes via APK.                                                | Alpine Linux                  |
-| `update-pkg` / `uppkg`                      | Atualiza pacotes via PKG.                                                | FreeBSD                       |
-| `update-flatpak` / `upflat`                 | Atualiza todos os Flatpaks instalados.                                   | Linux                         |
-| `update-snap` / `upsnap`                    | Atualiza todos os Snaps instalados.                                      | Linux                         |
+| Comando Canônico / Alias                    | Descrição                                                                      | Escopo / Gerenciador          |
+| :------------------------------------------ | :----------------------------------------------------------------------------- | :---------------------------- |
+| `update-all` / `upall` / `u`                | **Orquestrador Global:** Atualiza o sistema base + AUR + Flatpak + Snap + MAS. | Universal                     |
+| `update-system` / `upsys`                   | Atualiza os pacotes do sistema base detectando a distribuição nativa.          | Universal                     |
+| `update-aur` / `upaur` / `upyay` / `upparu` | Atualiza pacotes do Arch User Repository (prioriza `paru > yay`).              | Arch Linux                    |
+| `update-pacman` / `upman`                   | Atualiza pacotes via Pacman.                                                   | Arch Linux / Windows (MSYS2)  |
+| `update-apt` / `upapt`                      | Atualiza repositórios e pacotes via APT.                                       | Debian, Ubuntu, Mint, Pop!_OS |
+| `update-dnf` / `updnf`                      | Atualiza pacotes via DNF.                                                      | Fedora, RHEL, Rocky, Alma     |
+| `update-zypper` / `upzyp`                   | Atualiza pacotes via Zypper.                                                   | openSUSE, SLES                |
+| `update-xbps` / `upxbps`                    | Atualiza pacotes via XBPS.                                                     | Void Linux                    |
+| `update-apk` / `upapk`                      | Atualiza pacotes via APK.                                                      | Alpine Linux                  |
+| `update-pkg` / `uppkg`                      | Atualiza pacotes via PKG (`pkg update && pkg upgrade`).                        | FreeBSD                       |
+| `update-pkg-add` / `upadd` / `uppkgadd`     | Aplica errata do kernel (`syspatch`) e atualiza pacotes (`pkg_add -u`).        | OpenBSD                       |
+| `update-pkgin` / `upin` / `uppkgin`         | Atualiza repositórios e pacotes via pkgin (`pkgin update && pkgin upgrade`).   | NetBSD / illumos (SmartOS)    |
+| `update-ips` / `upips`                      | Atualiza imagem e catálogo do sistema IPS (`pkg refresh && pkg update`).       | illumos (OmniOS, OpenIndiana) |
+| `update-brew` / `upbrew`                    | Atualiza fórmulas e Casks via Homebrew (`brew update && brew upgrade`).        | macOS / Linux (Linuxbrew)     |
+| `update-mas` / `upmas`                      | Atualiza aplicativos instalados via Mac App Store (`mas upgrade`).             | macOS                         |
+| `update-flatpak` / `upflat`                 | Atualiza todos os Flatpaks instalados.                                         | Linux                         |
+| `update-snap` / `upsnap`                    | Atualiza todos os Snaps instalados.                                            | Linux                         |
 
 ---
 
@@ -121,6 +132,9 @@ flowchart TD
 | `g <termo>`                           | Busca rápida de texto em arquivos.                         | `rg --smart-case` > `grep -Ei`                              |
 | `c <arquivo>` / `b`                   | Visualização formatada com destaque de sintaxe.            | `bat --paging=never` > `cat` (usa `cat` em TTY bruto)       |
 | `f <nome>` / `ff`                     | Busca rápida de arquivos e diretórios.                     | `fd` / `fd --hidden --no-ignore` > `find`                   |
+| `du` / `dust`                         | Análise moderna e interativa de consumo de disco.          | `dust` > `ncdu` > `du`                                      |
+| `procs` / `pst`                       | Inspeção avançada de processos com visão em árvore.        | `procs` / `procs --tree` > `ps aux`                         |
+| `top` / `btm`                         | Monitoramento moderno de sistema em TUI Rust.              | `btm` > `btop` > `htop` > `top`                             |
 | `take <dir>` / `mkcd`                 | Cria o diretório (incluindo intermediários) e entra nele.  | `take-dir` (`mkdir -p && cd`)                               |
 | `cdb`                                 | Retorna para o diretório raiz do repositório Git atual.    | `cd-git-root` (`git rev-parse --show-toplevel`)             |
 | `hist [termo]` / `hg`                 | Busca interativa no histórico por palavra-chave.           | `hist-search` (com suporte unificado a `zsh`, `bash`, `sh`) |

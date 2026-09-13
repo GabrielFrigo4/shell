@@ -77,3 +77,16 @@ services() {
 ### --------------------------------
 alias p="ports"
 alias svc="services"
+
+### --------------------------------
+### SSH & Remote Session
+### --------------------------------
+if _is_ssh; then
+	export REMOTE_SESSION=1
+	who-remote() {
+		local _ip="${SSH_CLIENT%% *}"
+		[ -z "${_ip}" ] && _ip="${SSH_CONNECTION%% *}"
+		printf "🌐 Connected via SSH from: %s\n" "${_ip:-unknown}"
+	}
+	alias myip="who-remote"
+fi

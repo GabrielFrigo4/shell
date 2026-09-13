@@ -127,7 +127,7 @@ sh "${HOME}/.shell/install.sh" --context desktop
 
 | Comando / Alias                       | Ação                                                                   | Destino               |
 | :------------------------------------ | :--------------------------------------------------------------------- | :-------------------- |
-| `update-all` / `upall` / `u`          | **Orquestrador Global:** Atualiza SO + AUR + Flatpak + Snap.           | Universal             |
+| `update-all` / `upall` / `u`          | **Orquestrador Global:** Atualiza SO + AUR + Flatpak + Snap + MAS.     | Universal             |
 | `update-system` / `upsys`             | Atualiza pacotes do sistema operacional nativo.                        | Universal             |
 | `update-shell` / `upsh`               | Atualiza o repositório do shell (`git pull`), limpa cache e recarrega. | Universal             |
 | `reinstall-shell` / `resh`            | Reexecuta o instalador em todos os shells instalados no SO.            | Universal             |

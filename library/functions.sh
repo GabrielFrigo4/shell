@@ -448,9 +448,19 @@ update-pkgin() {
 	_as_root pkgin -y update && _as_root pkgin -y upgrade "$@"
 }
 
+update-ips() {
+	command -v pkg > "/dev/null" 2>&1 || { echo "❌ pkg (IPS) not found." >&2; return 127; }
+	_as_root pkg refresh && _as_root pkg update "$@"
+}
+
 update-brew() {
 	command -v brew > "/dev/null" 2>&1 || { echo "❌ brew not found." >&2; return 127; }
 	brew update && brew upgrade "$@"
+}
+
+update-mas() {
+	command -v mas > "/dev/null" 2>&1 || { echo "❌ mas not found." >&2; return 127; }
+	mas upgrade "$@"
 }
 
 ### --------------------------------
@@ -471,10 +481,12 @@ update-system() {
 				openbsd) command -v pkg_add > "/dev/null" 2>&1 && update-pkg-add "$@" ;;
 				netbsd)  command -v pkgin > "/dev/null" 2>&1 && update-pkgin "$@" ;;
 				illumos)
-					if command -v pkg > "/dev/null" 2>&1; then
-						update-pkg "$@"
+					if [ -f "/etc/release" ] && grep -qiE "omnios|openindiana|solaris" "/etc/release" 2> "/dev/null"; then
+						update-ips "$@"
 					elif command -v pkgin > "/dev/null" 2>&1; then
 						update-pkgin "$@"
+					elif command -v pkg > "/dev/null" 2>&1; then
+						update-ips "$@"
 					fi
 					;;
 				macos)   command -v brew > "/dev/null" 2>&1 && update-brew "$@" ;;
@@ -499,6 +511,12 @@ update-all() {
 		update-aur "$@" && echo "✅ AUR packages updated!"
 	fi
 
+	if [ "$(_detect_os)" != "macos" ] && command -v brew > "/dev/null" 2>&1; then
+		echo ""
+		echo "📦 Updating Linuxbrew packages..."
+		update-brew "$@" && echo "✅ Linuxbrew packages updated!"
+	fi
+
 	if command -v flatpak > "/dev/null" 2>&1; then
 		echo ""
 		echo "📦 Updating Flatpak packages..."
@@ -509,6 +527,12 @@ update-all() {
 		echo ""
 		echo "📦 Updating Snap packages..."
 		update-snap "$@" && echo "✅ Snap packages updated!"
+	fi
+
+	if command -v mas > "/dev/null" 2>&1; then
+		echo ""
+		echo "📦 Updating Mac App Store packages..."
+		update-mas "$@" && echo "✅ Mac App Store packages updated!"
 	fi
 
 	echo ""
