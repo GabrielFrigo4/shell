@@ -8,8 +8,8 @@
 
 | Área                         |   Status   | Cobertura                                                                                |
 | :--------------------------- | :--------: | :--------------------------------------------------------------------------------------- |
-| **🖥️ Plataformas Base**      | 🟢 Estável | Linux, FreeBSD, Windows (MSYS2), macOS (base)                                            |
-| **🐚 Shells Nativos**        | 🟢 Estável | Zsh, Bash, POSIX sh (Linux & FreeBSD) com detecção e paridade universal                  |
+| **🖥️ Plataformas Base**      | 🟢 Estável | Linux, FreeBSD, OpenBSD, NetBSD, illumos, macOS, Windows (MSYS2)                         |
+| **🐚 Shells Nativos**        | 🟢 Estável | Zsh, Bash, POSIX sh com paridade e simetria universal em todas as plataformas            |
 | **🎯 Contextos**             | 🟢 Estável | Desktop, Server, Container, WSL com carregamento modular sob demanda                     |
 | **🎨 Temas Puros & TTY**     | 🟢 Estável | Motores em `theme/` dedicados à renderização visual e adaptação dinâmica PTY / Raw TTY   |
 | **⚙️ Shell Configs Comuns**  | 🟢 Estável | Centralização em `target/common/` (`zsh.sh`, `bash.sh`, `sh.sh`) para histórico e opções |
@@ -20,7 +20,7 @@
 | **⚡ Modern CLI** | 🟢 Estável | Cascata inteligente (`eza`, `bat`, `rg`, `fd` > nativos) |
 | **🌳 VCS & Prompts** | 🟢 Estável | Git e Got (Game of Trees) com status de modificação em tempo real |
 | **💎 Clean Code & Princípios** | 🟢 100% | 18 Princípios UNIX, comentários simétricos de 36 colunas e Zero Warnings |
-| **🧪 Automação & CI/CD** | 🟢 Estável | Git Hooks locais (`.githooks/pre-commit`) + GitHub Actions multi-OS |
+| **🧪 Automação & CI/CD** | 🟢 Estável | Git Hooks locais (`.githooks/pre-commit`) + GitHub Actions multi-OS (7 plataformas) |
 
 ---
 
@@ -30,7 +30,7 @@ Novas frentes e refinamentos mapeados para futuras iterações do ecossistema:
 
 ### 🧪 Testes & Integração Contínua
 
-- [ ] **Matriz Expandida de CI:** Execução automatizada de testes de paridade no GitHub Actions rodando runners nativos de Linux, FreeBSD (via VM/Jail Action) e macOS.
+- [x] **Matriz Expandida de CI:** Execução automatizada de testes de paridade no GitHub Actions rodando runners nativos e VMs de Linux, FreeBSD, OpenBSD, NetBSD, illumos, macOS e Windows.
 - [ ] **Métricas Contínuas de Latência:** Adicionar asserções estritas de tempo de boot (< 35ms) em rotinas de CI em pull requests.
 
 ### 🌐 Conectividade & Ferramentas
