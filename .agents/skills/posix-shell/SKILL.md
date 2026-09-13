@@ -1,10 +1,10 @@
 ---
 name: posix-shell
 description: >-
-  Deep technical reference and runbook for pure POSIX Shell (/bin/sh) portability,
-  Almquist shell (ash/dash/FreeBSD sh), strict standards (POSIX.1-2008/2017/2024),
-  bashism elimination, buffer constraint handling, and zero-fork in-memory paradigms.
-  Use when developing, refactoring, or auditing scripts for universal POSIX compatibility.
+    Deep technical reference and runbook for pure POSIX Shell (/bin/sh) portability,
+    Almquist shell (ash/dash/FreeBSD sh), strict standards (POSIX.1-2008/2017/2024),
+    bashism elimination, buffer constraint handling, and zero-fork in-memory paradigms.
+    Use when developing, refactoring, or auditing scripts for universal POSIX compatibility.
 ---
 
 # POSIX Shell — Portability, Runtime & Engineering Runbook
@@ -18,14 +18,14 @@ Este runbook consolida os padrões canônicos, limitações de baixo nível, arm
 No ecossistema do **Quarteto de Produtividade**, o `/bin/sh` possui papéis distintos e bem delimitados:
 
 1. **Scripts e Bootstrapping (`library/`, `core/`, `install.sh`):**
-   - É o **mínimo denominador comum (LCD)** de execução.
-   - Onipresente em qualquer ambiente UNIX, FreeBSD base, contêiner Alpine mínimo e instaladores.
-   - Inicialização instantânea (< 5ms) com overhead residual mínimo de memória e CPU.
+    - É o **mínimo denominador comum (LCD)** de execução.
+    - Onipresente em qualquer ambiente UNIX, FreeBSD base, contêiner Alpine mínimo e instaladores.
+    - Inicialização instantânea (< 5ms) com overhead residual mínimo de memória e CPU.
 2. **Sessão Interativa (`target/`): EXCLUSIVAMENTE FreeBSD `/bin/sh`:**
-   - No diretório `target/`, o alvo `sh` existe **única e exclusivamente para o FreeBSD** (`target/freebsd/sh`).
-   - Nos demais sistemas operacionais (Linux, macOS, Windows/MSYS2, NetBSD, OpenBSD, illumos), as sessões interativas suportam estritamente `bash` e `zsh`.
-   - Interpretadores `/bin/sh` não-FreeBSD (Dash, macOS Bash 3.2 em modo POSIX, NetBSD Almquist sh, OpenBSD pdksh) são shells de sistema não-interativos e deliberadamente não são alvos interativos deste repositório.
-   - O benchmark (`scripts/benchmark.sh`) só avalia `sh` quando executado nativamente no FreeBSD.
+    - No diretório `target/`, o alvo `sh` existe **única e exclusivamente para o FreeBSD** (`target/freebsd/sh`).
+    - Nos demais sistemas operacionais (Linux, macOS, Windows/MSYS2, NetBSD, OpenBSD, illumos), as sessões interativas suportam estritamente `bash` e `zsh`.
+    - Interpretadores `/bin/sh` não-FreeBSD (Dash, macOS Bash 3.2 em modo POSIX, NetBSD Almquist sh, OpenBSD pdksh) são shells de sistema não-interativos e deliberadamente não são alvos interativos deste repositório.
+    - O benchmark (`scripts/benchmark.sh`) só avalia `sh` quando executado nativamente no FreeBSD.
 
 ---
 
@@ -225,23 +225,23 @@ Embora `local` não faça parte do padrão formal POSIX Issue 7 (sendo adicionad
 ### Regras de Ouro para `local`:
 
 1. **Declare no topo da função:**
-   ```sh
-   _minha_funcao() {
-       local _var1 _var2 _ret=0
-       # ...
-   }
-   ```
+    ```sh
+    _minha_funcao() {
+        local _var1 _var2 _ret=0
+        # ...
+    }
+    ```
 2. **Nunca atribua comandos no mesmo comando `local` se precisar checar o status de saída:**
-   ```sh
-   # Perigoso: o status de saída capturado é do builtin local, não do subshell!
-   local _res="$(comando_falho)"
-   echo "$?" # Imprime 0!
+    ```sh
+    # Perigoso: o status de saída capturado é do builtin local, não do subshell!
+    local _res="$(comando_falho)"
+    echo "$?" # Imprime 0!
 
-   # Canônico e seguro:
-   local _res
-   _res="$(comando_falho)"
-   _status=$?
-   ```
+    # Canônico e seguro:
+    local _res
+    _res="$(comando_falho)"
+    _status=$?
+    ```
 
 ---
 
@@ -258,14 +258,14 @@ No FreeBSD `/bin/sh` e derivados da Almquist shell:
 A contagem de caracteres na string do shell (`wc -c`) **NÃO REFLETE** os bytes ocupados no buffer C:
 
 1. **Conversão de Escapes ANSI:**
-   - `\[` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\001`).
-   - `\]` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\001`).
-   - `\e` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\033` ESC).
-   - _Consequência:_ Uma cor como `\[\e[95m\]` (9 caracteres) ocupa apenas **7 bytes reais em C**. Calcular custos via `wc -c` gera dezenas de "bytes fantasmas" que estrangulam o orçamento útil.
+    - `\[` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\001`).
+    - `\]` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\001`).
+    - `\e` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\033` ESC).
+    - _Consequência:_ Uma cor como `\[\e[95m\]` (9 caracteres) ocupa apenas **7 bytes reais em C**. Calcular custos via `wc -c` gera dezenas de "bytes fantasmas" que estrangulam o orçamento útil.
 2. **Glifos Multi-byte UTF-8 (Nerd Fonts):**
-   - Glifos de ícones (``, ``, ``, ``) ocupam **3 bytes** cada em UTF-8.
-   - O ícone do Git (`󰊢`) ocupa **4 bytes**.
-   - O caractere de reticências (`…`) ocupa **3 bytes**, enquanto o til (`~`) ocupa apenas **1 byte**. Sob restrição severa (128B), o sufixo de poda deve ser estritamente `~` (1B) para manter a equivalência 1 caractere = 1 byte.
+    - Glifos de ícones (``, ``, ``, ``) ocupam **3 bytes** cada em UTF-8.
+    - O ícone do Git (`󰊢`) ocupa **4 bytes**.
+    - O caractere de reticências (`…`) ocupa **3 bytes**, enquanto o til (`~`) ocupa apenas **1 byte**. Sob restrição severa (128B), o sufixo de poda deve ser estritamente `~` (1B) para manter a equivalência 1 caractere = 1 byte.
 
 ### 8.2. Matriz Auditada de Custos Reais em C (`_base_cost` & `_git_frame`)
 
@@ -284,7 +284,7 @@ Para inicialização com latência mínima (< 50ms), a identificação do interp
 
 | Interpretador              | Expressão Canônica (Zero Fork)                                | Mecanismo Interno                                                                                                              |
 | :------------------------- | :------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------- |
-| **Linux (Qualquer Shell)** | `[ -r "/proc/$$/comm" ] && read -r _name < "/proc/$$/comm"`   | Leitura atômica via builtin `read` do nome exato do executável ou symlink no kernel Linux (0.01ms, zero subprocessos)         |
+| **Linux (Qualquer Shell)** | `[ -r "/proc/$$/comm" ] && read -r _name < "/proc/$$/comm"`   | Leitura atômica via builtin `read` do nome exato do executável ou symlink no kernel Linux (0.01ms, zero subprocessos)          |
 | **Zsh**                    | `[ -n "${ZSH_VERSION:-}" ]`                                   | Variável de sistema gerada no startup                                                                                          |
 | **Bash**                   | `[ -n "${BASH_VERSION:-}" ]`                                  | Variável de sistema gerada no startup                                                                                          |
 | **NetBSD `/bin/sh`**       | `[ -n "${NETBSD_SHELL:-}" ]`                                  | Variável unexportable / read-only nativa do NetBSD                                                                             |
@@ -298,6 +298,7 @@ Para inicialização com latência mínima (< 50ms), a identificação do interp
 ### 9.1. Imunidade a Cascatas e Proibição de Cache em Disco Compartilhado
 
 Ao operar em ambientes onde múltiplos interpretadores podem ser abertos de forma aninhada (`zsh -> bash -> zsh -> sh`):
+
 1. **Nunca grave a identidade do shell em cache no disco (`cache.env`):** Arquivos compartilhados causam contaminação cruzada imediata quando um shell filho é aberto a partir de outro shell pai diferente.
 2. **Isolamento de Memória do Processo:** A variável de cache `_DETECTED_SHELL` deve ser mantida como variável interna não-exportada do shell corrente. Ao criar um processo filho, este executará sua própria detecção nativa ultrarrápida (< 0.05ms) sem herdar o estado do pai.
 

@@ -85,7 +85,10 @@ _format_ms() {
 	_val="${1}"
 	_limit="${2:-64}"
 	_val_int="${_val%.*}"
-	if [ "${_val_int:-0}" -lt "${_limit}" ]; then
+	_ultra_limit="$(( _limit / 2 ))"
+	if [ "${_val_int:-0}" -lt "${_ultra_limit}" ]; then
+		printf "%b%sms%b" "${_c_bold}${_c_cyan}" "${_val}" "${_c_reset}"
+	elif [ "${_val_int:-0}" -lt "${_limit}" ]; then
 		printf "%b%sms%b" "${_c_green}" "${_val}" "${_c_reset}"
 	elif [ "${_val_int:-0}" -le "$(( _limit * 2 ))" ]; then
 		printf "%b%sms%b" "${_c_yellow}" "${_val}" "${_c_reset}"
@@ -100,23 +103,35 @@ _format_ms() {
 printf "%b%-12s %-12s %-10s %s%b\n" "${_c_bold}" "SHELL" "LATENCY" "STATUS" "TARGET" "${_c_reset}"
 printf "%s\n" "----------------------------------------------------"
 
-if [ "${_os}" = "freebsd" ]; then
-	set -- zsh bash sh
+_specified_shells=""
+for _arg in "$@"; do
+	case "${_arg}" in
+		zsh|bash|sh|dash|ksh|fish) _specified_shells="${_specified_shells} ${_arg}" ;;
+	esac
+done
+
+if [ -n "${_specified_shells}" ]; then
+	set -- ${_specified_shells}
 else
-	set -- zsh bash
+	set -- zsh bash sh
 fi
 
 for _sh in "$@"; do
 	if command -v "${_sh}" > "/dev/null" 2>&1; then
 		case "${_sh}" in
-			zsh)  _target="< 64ms"; _target_limit=64 ;;
-			bash) _target="< 64ms"; _target_limit=64 ;;
-			sh)   _target="< 32ms"; _target_limit=32 ;;
-			*)    _target="< 64ms"; _target_limit=64 ;;
+			zsh)  _target_limit=64; _ultra_limit=32 ;;
+			bash) _target_limit=64; _ultra_limit=32 ;;
+			sh)   _target_limit=32; _ultra_limit=16 ;;
+			*)    _target_limit=64; _ultra_limit=32 ;;
 		esac
+		_target="< ${_target_limit}ms"
 		_ms="$(_measure_cmd "${_sh} -i -c exit")"
 		_ms_int="${_ms%.*}"
-		if [ "${_ms_int:-0}" -lt "${_target_limit}" ]; then
+		if [ "${_ms_int:-0}" -lt "${_ultra_limit}" ]; then
+			_status_text="ULTRA"
+			_status_color="${_c_bold}${_c_cyan}"
+			_lat_color="${_c_bold}${_c_cyan}"
+		elif [ "${_ms_int:-0}" -lt "${_target_limit}" ]; then
 			_status_text="PASS"
 			_status_color="${_c_green}"
 			_lat_color="${_c_green}"
@@ -159,17 +174,16 @@ if command -v bash > "/dev/null" 2>&1; then
 	fi
 fi
 
-if [ "${_os}" = "freebsd" ] && command -v sh > "/dev/null" 2>&1; then
-	_prompt_sh="${_repo_dir}/target/freebsd/sh/prompt.sh"
+if command -v sh > "/dev/null" 2>&1; then
+	_prompt_sh="${_repo_dir}/target/${_os}/sh/prompt.sh"
+	[ ! -f "${_prompt_sh}" ] && _prompt_sh="${_repo_dir}/target/freebsd/sh/prompt.sh"
 	if [ -f "${_prompt_sh}" ]; then
 		_shell_sh_ms="$(_measure_cmd "sh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_sh}\"'")"
-		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" 64)"
+		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" 32)"
 	fi
 fi
 
-if [ "${_os}" = "freebsd" ]; then
-	_shell_core_ms="$(_measure_cmd "sh -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
-	printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 32)"
-fi
+_shell_core_ms="$(_measure_cmd "sh -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
+printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 16)"
 
 printf "\n%b✨ Benchmark completed successfully.%b\n" "${_c_green}" "${_c_reset}"
