@@ -76,7 +76,10 @@ No OpenBSD, o `sudo` foi completamente removido do sistema base em favor do **`d
     - `unveil(2)`: <https://man.openbsd.org/unveil.2>
     - `doas(1)`: <https://man.openbsd.org/doas.1>
     - `pkg_add(1)`: <https://man.openbsd.org/pkg_add.1>
-- **OpenBSD Ports & Packages Search:** <https://openports.se/> | <https://ports.openbsd.org/>
+- **OpenBSD Ports & Packages Search:**
+    - Web Search (OpenPorts Indexer): <https://openports.pl/>
+    - CVSweb Oficial da Ports Tree: <https://cvsweb.openbsd.org/ports/>
+    - Guia Oficial & Busca CLI (`pkg_info -aQ`): <https://www.openbsd.org/faq/faq15.html#PkgFind>
 - **Literatura Técnica:**
     - _The KornShell Command and Programming Language_ (Morris I. Bolsky & David G. Korn, 2ª ed., 1995, Prentice Hall PTR).
     - _The Art of UNIX Programming_ (Eric S. Raymond, 2003, Addison-Wesley).
