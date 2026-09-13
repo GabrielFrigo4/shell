@@ -72,7 +72,7 @@ jobs:
                   sudo apt-get update
                   sudo apt-get install -y zsh
 
-            - name: Test in Linux Shell (Bash & Zsh)
+            - name: Test in Linux Shell (Zsh & Bash)
               run: |
                   ### ================================
                   ### LINUX ENVIRONMENT
@@ -85,8 +85,22 @@ jobs:
                   ### --------------------------------
                   ### Linux Target Prompts
                   ### --------------------------------
-                  bash -n target/linux/bash/prompt.sh
                   zsh -n target/linux/zsh/prompt.sh
+                  bash -n target/linux/bash/prompt.sh
+
+                  ### --------------------------------
+                  ### Linux Zsh
+                  ### --------------------------------
+                  zsh -c '
+                    export SHELL_REPO_DIR="${PWD}"
+                    export SHELL_CONTEXT="desktop"
+                    . ./library/detect.sh
+                    . ./library/functions.sh
+                    . ./core/environment.sh
+                    . ./target/linux/environment.sh
+                    . ./theme/zsh.sh
+                    echo "Zsh Prompt loaded OK: ${PROMPT}"
+                  '
 
                   ### --------------------------------
                   ### Linux Bash
@@ -104,20 +118,6 @@ jobs:
                   '
 
                   ### --------------------------------
-                  ### Linux Zsh
-                  ### --------------------------------
-                  zsh -c '
-                    export SHELL_REPO_DIR="${PWD}"
-                    export SHELL_CONTEXT="desktop"
-                    . ./library/detect.sh
-                    . ./library/functions.sh
-                    . ./core/environment.sh
-                    . ./target/linux/environment.sh
-                    . ./theme/zsh.sh
-                    echo "Zsh Prompt loaded OK: ${PROMPT}"
-                  '
-
-                  ### --------------------------------
                   ### Startup Latency Benchmark (bsh)
                   ### --------------------------------
                   ./scripts/benchmark.sh
@@ -130,7 +130,7 @@ jobs:
             - name: Checkout Code
               uses: actions/checkout@v4
 
-            - name: Test in FreeBSD Shell (sh, bash, zsh)
+            - name: Test in FreeBSD Shell (zsh, bash, sh)
               uses: vmactions/freebsd-vm@v1
               with:
                   release: "15"
@@ -148,11 +148,15 @@ jobs:
                       ### --------------------------------
                       ### Dependencies
                       ### --------------------------------
-                      pkg install -y bash zsh python3
+                      pkg install -y zsh bash python3
 
                       ### --------------------------------
-                      ### FreeBSD /bin/sh
+                      ### FreeBSD Target Prompts
                       ### --------------------------------
+                      zsh -n target/freebsd/zsh/prompt.sh
+                      zsh -n theme/zsh.sh
+                      bash -n target/freebsd/bash/prompt.sh
+                      bash -n theme/bash.sh
                       sh -n library/functions.sh
                       sh -n core/environment.sh
                       sh -n target/freebsd/environment.sh
@@ -160,17 +164,19 @@ jobs:
                       sh -n target/freebsd/sh/prompt.sh
                       sh -n theme/sh.sh
 
-                      sh -c '
+                      ### --------------------------------
+                      ### FreeBSD Zsh
+                      ### --------------------------------
+                      zsh -n theme/zsh.sh
+                      zsh -c '
                         export SHELL_REPO_DIR="${PWD}"
                         export SHELL_CONTEXT="desktop"
                         . ./library/detect.sh
                         . ./library/functions.sh
                         . ./core/environment.sh
                         . ./target/freebsd/environment.sh
-                        . ./theme/sh.sh
-                        _update_prompt
-                        alias clear
-                        echo "FreeBSD /bin/sh prompt: ${PS1}"
+                        . ./theme/zsh.sh
+                        echo "FreeBSD Zsh prompt: ${PROMPT}"
                       '
 
                       ### --------------------------------
@@ -190,18 +196,19 @@ jobs:
                       '
 
                       ### --------------------------------
-                      ### FreeBSD Zsh
+                      ### FreeBSD /bin/sh
                       ### --------------------------------
-                      zsh -n theme/zsh.sh
-                      zsh -c '
+                      sh -c '
                         export SHELL_REPO_DIR="${PWD}"
                         export SHELL_CONTEXT="desktop"
                         . ./library/detect.sh
                         . ./library/functions.sh
                         . ./core/environment.sh
                         . ./target/freebsd/environment.sh
-                        . ./theme/zsh.sh
-                        echo "FreeBSD Zsh prompt: ${PROMPT}"
+                        . ./theme/sh.sh
+                        _update_prompt
+                        alias clear
+                        echo "FreeBSD /bin/sh prompt: ${PS1}"
                       '
 
                       ### --------------------------------
