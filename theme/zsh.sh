@@ -7,15 +7,15 @@ setopt PROMPT_SUBST
 () {
 	_git_branch() {
 		if command git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
-			local _branch="$(command git branch --show-current 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
+			local _branch="$(command git symbolic-ref --quiet --short HEAD 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
 			if [[ -n "${_branch}" ]]; then
 				if _is_raw_tty; then
 					local _indicator=""
-					[[ -n "$(command git status --short -uno 2> "/dev/null" | command tail -n1)" ]] && _indicator="%B%F{yellow}*"
+					[[ -n "$(command git status --porcelain=v1 --untracked-files=no 2> "/dev/null" | command head -n 1)" ]] && _indicator="%B%F{yellow}*"
 					echo " %B%F{blue}(%B%F{red}${_branch}${_indicator}%B%F{blue})%f%b"
 				else
 					local _indicator=""
-					[[ -n "$(command git status --short -uno 2> "/dev/null" | command tail -n1)" ]] && _indicator="%B%F{11}*"
+					[[ -n "$(command git status --porcelain=v1 --untracked-files=no 2> "/dev/null" | command head -n 1)" ]] && _indicator="%B%F{11}*"
 					echo "❮%B%F{9}󰊢 %B%F{13}${_branch}${_indicator}%b%F{3}❯"
 				fi
 			fi

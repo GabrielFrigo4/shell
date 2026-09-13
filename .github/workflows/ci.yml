@@ -365,6 +365,9 @@ jobs:
             ### --------------------------------
             sh -n target/openbsd/environment.sh
             bash -n target/openbsd/bash/prompt.sh
+            ksh -n target/openbsd/ksh/prompt.sh
+            ksh -n theme/ksh.sh
+            ksh -n target/common/ksh.sh
 
             ### --------------------------------
             ### OpenBSD Bash
@@ -379,6 +382,20 @@ jobs:
               . ./theme/bash.sh
               _update_prompt
               echo "OpenBSD Bash prompt: ${PS1}"
+            '
+
+            ### --------------------------------
+            ### OpenBSD Native Ksh
+            ### --------------------------------
+            ksh -c '
+              export SHELL_REPO_DIR="${PWD}"
+              export SHELL_CONTEXT="desktop"
+              . ./library/detect.sh
+              . ./library/functions.sh
+              . ./core/environment.sh
+              . ./target/openbsd/environment.sh
+              . ./theme/ksh.sh
+              echo "OpenBSD ksh prompt: ${PS1}"
             '
 
   netbsd:

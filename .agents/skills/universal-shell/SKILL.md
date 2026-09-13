@@ -22,16 +22,16 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
 | **Núcleo**     | `core/`    | Variáveis essenciais de ambiente, cascatas de editores/ferramentas e integração com o Vault (`vault.sh`).                                           | `editor()`, aliases universais (`u`, `l`, `g`, `c`, `f`)             |
 | **Contextos**  | `context/` | Especializações por propósito da máquina (`desktop`, `server`, `container` — WSL unificado com auto-detecção). Dividido em `common.sh` e `<os>.sh`. | Editores gráficos (`open-*`), montagem móvel (`mount-device`), emacs |
 | **Targets**    | `target/`  | Especializações por SO (`linux`, `freebsd`, `windows`, `openbsd`, `netbsd`, `illumos`, `macos`). Injeta variáveis e caminhos.                       | `PROMPT_OS_*`, `clear` no FreeBSD, `incus` no Linux                  |
-| **Temas**      | `theme/`   | Renderização visual de prompts específicos por shell (`bash.sh`, `zsh.sh`, `sh.sh`).                                                                | Prompt de 2 linhas com Nerd Fonts, fallback TTY bruto, Git/Got       |
+| **Temas**      | `theme/`   | Renderização visual de prompts específicos por shell (`bash.sh`, `zsh.sh`, `sh.sh`, `ksh.sh`).                                                      | Prompt de 2 linhas com Nerd Fonts, fallback TTY bruto, Git/Got       |
 
 ---
 
 ## 2. Invariantes Arquiteturais Inegociáveis
 
-1. **Linha de Base FreeBSD `/bin/sh` & Target Exclusivo:**
+1. **Linha de Base FreeBSD `/bin/sh` & Alvos Nativos de Sistema Exclusivos:**
     - O `/bin/sh` do FreeBSD é a referência canônica para scripts compartilhados em `library/`, `core/` e `install.sh`.
-    - **Target `/bin/sh` Exclusivo:** O alvo interativo `sh` existe unicamente no FreeBSD (`target/freebsd/sh`). Todos os demais SOs possuem exclusivamente `bash` e `zsh` como alvos interativos.
-    - O formato `echo -n $'\e...'` é universalmente suportado em todo o ecossistema (FreeBSD `/bin/sh`, Zsh, Bash e Dash moderno, além do padrão POSIX Issue 8).
+    - **Alvos Nativos de Sistema Exclusivos:** O alvo interativo `sh` existe unicamente no FreeBSD (`target/freebsd/sh`), e o alvo interativo `ksh` existe unicamente no OpenBSD (`target/openbsd/ksh`). Todos os demais SOs possuem exclusivamente `bash` e `zsh` como alvos interativos.
+    - O formato `echo -n $'\e...'` é universalmente suportado em todo o ecossistema (FreeBSD `/bin/sh`, Zsh, Bash e Dash moderno, além do padrão POSIX Issue 8). No OpenBSD `ksh`, sequências de controle adotam bytes octais `\033` (via `printf '\033'`).
     - Use expressamente `echo -n $'\e...'` para sequências de controle de terminal (ex: `alias clear="echo -n $'\e[2J\e[3J\e[H'"`), priorizando a clareza e legibilidade do `$'\e'` sobre o octal arcaico.
 
 2. **Programação Defensiva em Duas Zonas (`command -v`):**
@@ -157,3 +157,18 @@ find . -type d -exec chmod 0755 {} +
 find . -type f -exec chmod 0644 {} +
 chmod 0755 install.sh
 ```
+
+---
+
+## 🔗 Links Oficiais de Referência & Obras Recomendadas
+
+- **The FreeBSD Project:** <https://www.freebsd.org/> | Manual `sh(1)`: <https://man.freebsd.org/sh.1>
+- **The OpenBSD Project:** <https://www.openbsd.org/> | Manual `ksh(1)`: <https://man.openbsd.org/ksh.1>
+- **KornShell Portals:** <http://www.kornshell.com/> | <http://www.kornshell.org/>
+- **Zsh Official:** <https://www.zsh.org/>
+- **The Open Group (POSIX):** <https://www.opengroup.org/> | Especificações Base: <https://pubs.opengroup.org/onlinepubs/9699919799/>
+- **Game of Trees (Got):** <https://gameoftrees.org/> | Manual: <https://gameoftrees.org/manual.html>
+- **Literatura Técnica:**
+    - _The Art of UNIX Programming_ (Eric S. Raymond, 2003, Addison-Wesley).
+    - _Clean Code: A Handbook of Agile Software Craftsmanship_ (Robert C. Martin, 2008, Prentice Hall).
+    - _The UNIX Programming Environment_ (Brian W. Kernighan & Rob Pike, 1984, Prentice Hall).

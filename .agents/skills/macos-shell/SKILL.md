@@ -1,9 +1,9 @@
 ---
 name: macos-shell
 description: >-
-  Deep technical reference and runbook for macOS (Darwin) shell environments, Homebrew prefix management
-  (Apple Silicon vs Intel), GPL license freeze quirks (Bash 3.2), BSD coreutils differences, and macOS dark mode.
-  Use when maintaining, developing, or auditing macOS-specific shell behaviors and path cascades.
+    Deep technical reference and runbook for macOS (Darwin) shell environments, Homebrew prefix management
+    (Apple Silicon vs Intel), GPL license freeze quirks (Bash 3.2), BSD coreutils differences, and macOS dark mode.
+    Use when maintaining, developing, or auditing macOS-specific shell behaviors and path cascades.
 ---
 
 # macOS (Darwin) Shell — Architecture, Homebrew & Runtime Runbook
@@ -15,17 +15,17 @@ Este documento consolida o conhecimento canônico, particularidades do subsistem
 ## 1. O Congelamento do Bash 3.2 e a Transição para o Zsh
 
 1. **GPLv3 Embargo:**
-   - A Apple interrompeu a atualização do GNU Bash no macOS na versão **3.2.57 (lançada em 2007)** para evitar a licença GPLv3.
-   - O `/bin/bash` nativo do macOS não possui suporte a arrays associativos (`declare -A`), `globstar` (`**`), `read -t` moderno nem regex matches aprimorados.
+    - A Apple interrompeu a atualização do GNU Bash no macOS na versão **3.2.57 (lançada em 2007)** para evitar a licença GPLv3.
+    - O `/bin/bash` nativo do macOS não possui suporte a arrays associativos (`declare -A`), `globstar` (`**`), `read -t` moderno nem regex matches aprimorados.
 2. **Zsh como Shell Padrão:**
-   - A partir do macOS Catalina (10.15), o `/bin/zsh` (licenciado sob MIT/BSD-like) tornou-se o shell padrão oficial do sistema.
-   - O Zsh no macOS é moderno e compatível com as convenções de alto desempenho do ecossistema.
+    - A partir do macOS Catalina (10.15), o `/bin/zsh` (licenciado sob MIT/BSD-like) tornou-se o shell padrão oficial do sistema.
+    - O Zsh no macOS é moderno e compatível com as convenções de alto desempenho do ecossistema.
 3. **Bash Moderno via Homebrew:**
-   - Caso o usuário utilize Bash no macOS, o executável deve vir do Homebrew (`/opt/homebrew/bin/bash` ou `/usr/local/bin/bash`).
+    - Caso o usuário utilize Bash no macOS, o executável deve vir do Homebrew (`/opt/homebrew/bin/bash` ou `/usr/local/bin/bash`).
 4. **Descarte do `/bin/sh` como Shell Interativo:**
-   - No macOS, `/bin/sh` é o próprio Bash 3.2 invocado sob o nome `sh`.
-   - Essa invocação ativa internamente `posixly_correct = 1`, forçando o parser a rejeitar qualquer hífen em nomes de funções (`legal_identifier: 'path-front': not a valid identifier`, código de saída 2).
-   - Portanto, os alvos no macOS são **estritamente `zsh` e `bash`** (`target/macos/zsh` e `target/macos/bash`). Não existe diretório `target/macos/sh` e `sh` não é executado no benchmark.
+    - No macOS, `/bin/sh` é o próprio Bash 3.2 invocado sob o nome `sh`.
+    - Essa invocação ativa internamente `posixly_correct = 1`, forçando o parser a rejeitar qualquer hífen em nomes de funções (`legal_identifier: 'path-front': not a valid identifier`, código de saída 2).
+    - Portanto, os alvos no macOS são **estritamente `zsh` e `bash`** (`target/macos/zsh` e `target/macos/bash`). Não existe diretório `target/macos/sh` e `sh` não é executado no benchmark.
 
 ---
 
@@ -56,14 +56,14 @@ Isso garante que ferramentas modernas do Homebrew tenham precedência sobre os b
 O macOS utiliza ferramentas derivadas do BSD 4.4, com incompatibilidades sintáticas notórias com o Linux GNU:
 
 1. **`sed -i` (Edição in-place):**
-   - **macOS / BSD:** Exige um argumento de extensão de backup. Para editar sem backup: `sed -i '' 's/foo/bar/g' file`.
-   - **Linux / GNU:** Não aceita aspas vazias como extensão: `sed -i 's/foo/bar/g' file`.
-   - **Padrão Portável do Repositório:** Use reescrita atômica via redirecionamento temporário (`cat >|` ou `perl`/`python3`) em vez de `sed -i` em scripts compartilhados.
+    - **macOS / BSD:** Exige um argumento de extensão de backup. Para editar sem backup: `sed -i '' 's/foo/bar/g' file`.
+    - **Linux / GNU:** Não aceita aspas vazias como extensão: `sed -i 's/foo/bar/g' file`.
+    - **Padrão Portável do Repositório:** Use reescrita atômica via redirecionamento temporário (`cat >|` ou `perl`/`python3`) em vez de `sed -i` em scripts compartilhados.
 2. **`stat` (Metadados de arquivos):**
-   - **macOS:** `stat -f %z file` (tamanho) ou `stat -f %m file` (mtime).
-   - **Linux:** `stat -c %s file` ou `stat -c %Y file`.
+    - **macOS:** `stat -f %z file` (tamanho) ou `stat -f %m file` (mtime).
+    - **Linux:** `stat -c %s file` ou `stat -c %Y file`.
 3. **`readlink -f`:**
-   - Inexistente ou sem suporte a `-f` no `readlink` padrão do macOS. Use `realpath` ou resolução canônica POSIX via `cd -P`.
+    - Inexistente ou sem suporte a `-f` no `readlink` padrão do macOS. Use `realpath` ou resolução canônica POSIX via `cd -P`.
 
 ---
 
@@ -76,3 +76,14 @@ _is_dark_mode() {
     [ "$(command defaults read -g AppleInterfaceStyle 2> "/dev/null")" = "Dark" ]
 }
 ```
+
+---
+
+## 🔗 Links Oficiais de Referência & Obras Recomendadas
+
+- **Apple Developer Portal:** <https://developer.apple.com/> | Terminal User Guide: <https://support.apple.com/guide/terminal/welcome/mac>
+- **Homebrew Package Manager:** <https://brew.sh/> | Documentação: <https://docs.brew.sh/>
+- **Zsh Official Site:** <https://www.zsh.org/>
+- **Literatura Técnica:**
+    - _Mac OS X and iOS Internals: To the Apple's Core_ (Jonathan Levin, 2012, Wrox).
+    - _The Art of UNIX Programming_ (Eric S. Raymond, 2003, Addison-Wesley).

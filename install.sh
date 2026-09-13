@@ -75,10 +75,10 @@ case "${SHELL_CONTEXT}" in
 esac
 
 case "${SHELL_TARGET}" in
-	all|zsh|bash|sh) ;;
+	all|zsh|bash|sh|ksh) ;;
 	*)
-		echo "ERROR: Invalid shell '${SHELL_TARGET}'. Use 'all', 'zsh', 'bash' or 'sh'."
-		echo "Usage: install.sh [--context desktop|server|container] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
+		echo "ERROR: Invalid shell '${SHELL_TARGET}'. Use 'all', 'zsh', 'bash', 'sh' or 'ksh'."
+		echo "Usage: install.sh [--context desktop|server|container] [-c ...] [--shell all|zsh|bash|sh|ksh] [-s ...] [--pure|--no-framework]"
 		exit 1
 		;;
 esac
@@ -105,7 +105,12 @@ else
 			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
 			TARGET_SHELLS="${TARGET_SHELLS} sh"
 			;;
-		linux|macos|windows|openbsd|netbsd|illumos)
+		openbsd)
+			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
+			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
+			command -v ksh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} ksh"
+			;;
+		linux|macos|windows|netbsd|illumos)
 			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
 			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
 			;;
@@ -181,6 +186,21 @@ _generate_rc_pure() {
 
 			builtin : 2> "/dev/null" || return 0
 		EOF
+	elif [ "${_target}" = "ksh" ]; then
+		cat <<- 'EOF'
+
+			### ================================
+			### SHELL COMPATIBILITY GUARD
+			### ================================
+			[ -n "${ZSH_VERSION:-}" ] && return 0
+			[ -n "${BASH_VERSION:-}" ] && return 0
+			[ -n "${NETBSD_SHELL:-}" ] && return 0
+			[ -n "${YASH_VERSION:-}" ] && return 0
+
+			case "${0##*/}" in
+				*zsh*|*bash*|*dash*|*busybox*|*ash*|*hush*|*yash*|*posh*) return 0 ;;
+			esac
+		EOF
 	fi
 }
 
@@ -203,6 +223,7 @@ _install_shell_target() {
 		zsh)  _rc_file="${HOME}/.zshrc";  _root_rc_file="/root/.zshrc" ;;
 		bash) _rc_file="${HOME}/.bashrc"; _root_rc_file="/root/.bashrc" ;;
 		sh)   _rc_file="${HOME}/.shrc";   _root_rc_file="/root/.shrc" ;;
+		ksh)  _rc_file="${HOME}/.kshrc";  _root_rc_file="/root/.kshrc" ;;
 		*)    _rc_file="${HOME}/.${_target_shell}rc"; _root_rc_file="/root/.${_target_shell}rc" ;;
 	esac
 
@@ -234,9 +255,29 @@ _install_shell_target() {
 		fi
 	fi
 
+	if [ "${_target_shell}" = "ksh" ]; then
+		local _profile="${HOME}/.profile"
+		local _root_profile="/root/.profile"
+		local _env_line='export ENV="${HOME}/.kshrc"'
+		if [ -f "${_profile}" ]; then
+			if ! grep -qF 'ENV=' "${_profile}" 2> "/dev/null"; then
+				echo "${_env_line}" >> "${_profile}"
+			fi
+		else
+			echo "${_env_line}" >| "${_profile}"
+		fi
+		if [ "${OS_NAME}" != "windows" ]; then
+			if _as_root test -f "${_root_profile}"; then
+				if ! _as_root grep -qF 'ENV=' "${_root_profile}" 2> "/dev/null"; then
+					echo 'export ENV="/root/.kshrc"' | _as_root tee -a "${_root_profile}" > "/dev/null"
+				fi
+			else
+				echo 'export ENV="/root/.kshrc"' | _as_root tee "${_root_profile}" > "/dev/null"
+			fi
+		fi
+	fi
 
-
-	if [ "${SHELL_FRAMEWORK}" -eq 0 ] || [ "${_target_shell}" = "sh" ]; then
+	if [ "${SHELL_FRAMEWORK}" -eq 0 ] || [ "${_target_shell}" = "sh" ] || [ "${_target_shell}" = "ksh" ]; then
 		_generate_rc_pure "${_target_shell}" >| "${_rc_file}"
 		if [ "${OS_NAME}" != "windows" ]; then
 			_generate_rc_pure "${_target_shell}" | _as_root tee "${_root_rc_file}" > "/dev/null"

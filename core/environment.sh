@@ -315,10 +315,10 @@ alias gl="git pull"
 alias gp="git push"
 alias glog="git log --oneline --decorate --graph -n 20"
 
-command -v tog > "/dev/null" 2>&1 && {
+if command -v tog > "/dev/null" 2>&1; then
 	alias tg="tog"
 	alias tgl="tog log"
 	alias tgd="tog diff"
 	alias tgb="tog blame"
 	alias tgt="tog tree"
-}
+fi

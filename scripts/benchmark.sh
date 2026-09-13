@@ -114,6 +114,8 @@ if [ -n "${_specified_shells}" ]; then
 	set -- ${_specified_shells}
 elif [ "${_os}" = "freebsd" ]; then
 	set -- zsh bash sh
+elif [ "${_os}" = "openbsd" ]; then
+	set -- zsh bash ksh
 else
 	set -- zsh bash
 fi
@@ -183,6 +185,14 @@ fi
 if [ "${_os}" = "freebsd" ]; then
 	_shell_core_ms="$(_measure_cmd "sh -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
 	printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 64)"
+fi
+
+if [ "${_os}" = "openbsd" ] && command -v ksh > "/dev/null" 2>&1; then
+	_prompt_ksh="${_repo_dir}/target/openbsd/ksh/prompt.sh"
+	if [ -f "${_prompt_ksh}" ]; then
+		_shell_ksh_ms="$(_measure_cmd "ksh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_ksh}\"'")"
+		printf "%-24s %b\n" "Shell Stack (ksh)" "$(_format_ms "${_shell_ksh_ms}" 64)"
+	fi
 fi
 
 printf "\n%b✨ Benchmark completed successfully.%b\n" "${_c_green}" "${_c_reset}"

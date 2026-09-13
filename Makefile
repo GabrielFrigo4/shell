@@ -41,6 +41,11 @@ test:
 	if command -v zsh > "/dev/null" 2>&1; then \
 		find . -name "*.sh" -not -path "*/.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +; \
 	fi
+	if command -v ksh > "/dev/null" 2>&1; then \
+		find target/openbsd/ksh target/common/ksh.sh theme/ksh.sh -name "*.sh" -exec ksh -n {} +; \
+	elif command -v oksh > "/dev/null" 2>&1; then \
+		find target/openbsd/ksh target/common/ksh.sh theme/ksh.sh -name "*.sh" -exec oksh -n {} +; \
+	fi
 	echo "✅ Sintaxe de todos os módulos de shell validada com sucesso!"
 
 format:

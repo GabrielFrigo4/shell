@@ -1,9 +1,9 @@
 ---
 name: illumos-shell
 description: >-
-  Deep technical reference and runbook for illumos / Solaris shell environments (OpenIndiana, OmniOS, SmartOS).
-  Covers /usr/bin vs /usr/gnu/bin path duality, SMF (svcs, svcadm), IPS (pkg), and ZFS/DTrace administrative contexts.
-  Use when preparing, maintaining, or auditing illumos-specific shell scripts and portability.
+    Deep technical reference and runbook for illumos / Solaris shell environments (OpenIndiana, OmniOS, SmartOS).
+    Covers /usr/bin vs /usr/gnu/bin path duality, SMF (svcs, svcadm), IPS (pkg), and ZFS/DTrace administrative contexts.
+    Use when preparing, maintaining, or auditing illumos-specific shell scripts and portability.
 ---
 
 # illumos (Solaris) Shell — Architecture, Paths & Runtime Runbook
@@ -15,12 +15,12 @@ Este documento consolida o conhecimento canônico, particularidades do subsistem
 ## 1. O Shell Padrão no illumos: A Transição do Bourne Shell para o Ksh93 / Bash
 
 1. **Histórico do `/bin/sh`:**
-   - No Solaris tradicional da Sun Microsystems, o `/bin/sh` era o Bourne shell clássico de 1977 (sem suporte a funções no início e sem aritmética interna).
-   - No OpenSolaris e no **illumos moderno**, o `/bin/sh` foi substituído pelo **KSH93** ou symlink para o **Bash**, garantindo suporte a recursos POSIX modernos e funções com hífen.
+    - No Solaris tradicional da Sun Microsystems, o `/bin/sh` era o Bourne shell clássico de 1977 (sem aritmética interna).
+    - No OpenSolaris e no **illumos moderno**, o `/bin/sh` foi substituído pelo **KSH93** ou symlink para o **Bash**. No entanto, como o parser do AT&T KSH93 rejeita estritamente funções com hífen (`invalid function name`), o `ksh93` não pode ser utilizado como alvo interativo para a suíte pública em `kebab-case`.
 2. **Bash e Zsh:**
-   - Ambos estão amplamente disponíveis nas distribuições illumos modernas através dos repositórios nativos IPS (`pkg install bash zsh`).
+    - Ambos estão amplamente disponíveis nas distribuições illumos modernas através dos repositórios nativos IPS (`pkg install bash zsh`).
 3. **Alvos Interativos Suportados (`bash` e `zsh`):**
-   - No repositório, os alvos para illumos em `target/illumos/` são **estritamente `bash` e `zsh`**. Não existe alvo `target/illumos/sh` e o benchmark de `sh` não é executado nesta plataforma.
+    - No repositório, os alvos para illumos em `target/illumos/` são **estritamente `bash` e `zsh`**. Não existe alvo `target/illumos/sh` e o benchmark de `sh` não é executado nesta plataforma.
 
 ---
 
@@ -30,10 +30,10 @@ No ecossistema Solaris e illumos, os utilitários de sistema em `/usr/bin` prese
 
 - **O Problema:** Ferramentas como `grep`, `sed`, `awk`, `tar` e `find` em `/usr/bin` não aceitam flags comuns do Linux GNU (como `grep -q`, `sed -i`, `tar -z`).
 - **A Solução Canônica:** O illumos disponibiliza a suíte GNU completa sob o diretório `/usr/gnu/bin`:
-  ```sh
-  [ -d "/usr/gnu/bin" ] && path-front "/usr/gnu/bin"
-  ```
-  Isso garante que scripts compartilhados encontrem versões modernas e ricas das ferramentas sem quebrar utilitários administrativos do sistema.
+    ```sh
+    [ -d "/usr/gnu/bin" ] && path-front "/usr/gnu/bin"
+    ```
+    Isso garante que scripts compartilhados encontrem versões modernas e ricas das ferramentas sem quebrar utilitários administrativos do sistema.
 
 ---
 
@@ -42,9 +42,9 @@ No ecossistema Solaris e illumos, os utilitários de sistema em `/usr/bin` prese
 No illumos, não existe `systemd` nem os scripts simples `/etc/rc.d`:
 
 - O gerenciamento de serviços é feito pelo **SMF**, um subsistema transacional com controle de dependências em árvore:
-  - Listar serviços: `svcs` (ou `svcs -x` para verificar falhas).
-  - Iniciar/Parar: `svcadm enable <serviço>` e `svcadm disable <serviço>`.
-  - Reiniciar: `svcadm restart <serviço>`.
+    - Listar serviços: `svcs` (ou `svcs -x` para verificar falhas).
+    - Iniciar/Parar: `svcadm enable <serviço>` e `svcadm disable <serviço>`.
+    - Reiniciar: `svcadm restart <serviço>`.
 - **Integração no Shell:** O alias universal `services` mapeia nativamente para `svcs` no illumos.
 
 ---
@@ -54,9 +54,21 @@ No illumos, não existe `systemd` nem os scripts simples `/etc/rc.d`:
 Dependendo da distribuição illumos:
 
 1. **OpenIndiana e OmniOS:** Utilizam o **IPS (Image Packaging System)** com o comando unificado `pkg`:
-   ```sh
-   pkg refresh
-   pkg install <pacote>
-   pkg update
-   ```
+    ```sh
+    pkg refresh
+    pkg install <pacote>
+    pkg update
+    ```
 2. **SmartOS (Foco em Contêineres e Hipervisor):** Utiliza zonas ZFS e o ecossistema `pkgin` / `pkgsrc` sob `/opt/local/bin`.
+
+---
+
+## 🔗 Links Oficiais de Referência & Obras Recomendadas
+
+- **illumos Project:** <https://illumos.org/> | Documentação: <https://illumos.org/docs/>
+- **OpenIndiana Distribution:** <https://www.openindiana.org/>
+- **OmniOS Community Edition:** <https://omnios.org/>
+- **SmartOS (Triton DataCenter):** <https://www.smartos.org/>
+- **Literatura Técnica:**
+    - _Solaris Internals: Solaris 10 and OpenSolaris Kernel and Architecture_ (Richard McDougall & Jim Mauro, 2ª ed., 2006, Prentice Hall PTR).
+    - _The Art of UNIX Programming_ (Eric S. Raymond, 2003, Addison-Wesley).

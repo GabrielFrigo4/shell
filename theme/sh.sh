@@ -70,8 +70,8 @@ _git_branch() {
 	_branch=""
 	_is_dirty=""
 	if command git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
-		_branch="$(command git branch --show-current 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
-		[ -n "${_branch}" ] && _is_dirty="$(command git status --short -uno 2> "/dev/null" | command tail -n 1)"
+		_branch="$(command git symbolic-ref --quiet --short HEAD 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
+		[ -n "${_branch}" ] && _is_dirty="$(command git status --porcelain=v1 --untracked-files=no 2> "/dev/null" | command head -n 1)"
 	elif [ -d ".got" ] && command -v got > "/dev/null" 2>&1; then
 		_branch="$(command got branch 2> "/dev/null" || command got info 2> "/dev/null" | command awk '/work tree branch:/ {print $NF}')"
 	fi

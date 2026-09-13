@@ -1,9 +1,9 @@
 ---
 name: netbsd-shell
 description: >-
-  Deep technical reference and runbook for NetBSD shell environments, Almquist shell (/bin/sh),
-  the upstream birthplace of EditLine (libedit), pkgsrc / pkgin package management, and WSCONS console.
-  Use when preparing, maintaining, or auditing NetBSD-specific shell scripts and portability.
+    Deep technical reference and runbook for NetBSD shell environments, Almquist shell (/bin/sh),
+    the upstream birthplace of EditLine (libedit), pkgsrc / pkgin package management, and WSCONS console.
+    Use when preparing, maintaining, or auditing NetBSD-specific shell scripts and portability.
 ---
 
 # NetBSD Shell — Architecture, Libedit Origins & Runtime Runbook
@@ -30,8 +30,8 @@ O NetBSD possui uma das implementações de `/bin/sh` mais maduras e puras do mu
 2. Possui aritmética interna de 64 bits, controle avançado de jobs e suporte completo a expansão de parâmetros POSIX.
 3. É extremamente rápido e leve, servindo como o interpretador de inicialização de todo o sistema operacional em dezenas de arquiteturas de hardware (de x86_64 e ARM a VAX, SPARC e m68k).
 4. **Shell Estritamente Não-Interativo no Ecossistema:**
-   - A função `goodname()` em `bin/sh/parser.c` valida identificadores com rigor estrito `[a-zA-Z0-9_]`, rejeitando funções com hífen (`kebab-case`).
-   - Por essa razão, o NetBSD **não possui alvo `target/netbsd/sh`** e não avalia `sh` em benchmarks. Os alvos interativos suportados para NetBSD são **estritamente `bash` e `zsh`**.
+    - A função `goodname()` em `bin/sh/parser.c` valida identificadores com rigor estrito `[a-zA-Z0-9_]`, rejeitando funções com hífen (`kebab-case`).
+    - Por essa razão, o NetBSD **não possui alvo `target/netbsd/sh`** e não avalia `sh` em benchmarks. Os alvos interativos suportados para NetBSD são **estritamente `bash` e `zsh`**.
 
 ---
 
@@ -41,13 +41,13 @@ O ecossistema de software de terceiros no NetBSD gira em torno do **`pkgsrc`**:
 
 1. **`pkgsrc`:** O sistema de compilação a partir dos fontes mais portável do mundo UNIX (roda em NetBSD, Linux, macOS, Solaris, Illumos e BSDs).
 2. **`pkgin`:** O gerenciador binário de pacotes (equivalente ao `apt` ou `pkg`):
-   ```sh
-   pkgin update
-   pkgin install <pacote>
-   pkgin upgrade
-   ```
+    ```sh
+    pkgin update
+    pkgin install <pacote>
+    pkgin upgrade
+    ```
 3. **Caminho Canônico de Binários:** Pacotes instalados via `pkgsrc` residem tradicionalmente em `/usr/pkg/bin` e `/usr/pkg/sbin`.
-   - **Regra:** Em ambientes NetBSD, `/usr/pkg/bin` deve ser inserido no topo do `$PATH` usando `path-front`.
+    - **Regra:** Em ambientes NetBSD, `/usr/pkg/bin` deve ser inserido no topo do `$PATH` usando `path-front`.
 
 ---
 
@@ -55,3 +55,16 @@ O ecossistema de software de terceiros no NetBSD gira em torno do **`pkgsrc`**:
 
 - O console de texto do NetBSD é gerenciado pelo driver **WSCONS** (`/dev/ttyE0` a `/dev/ttyE7`, `$TERM=wvt25` ou `vt100`).
 - Ao operar no console puro (`_is_raw_tty`), o NetBSD requer a mesma disciplina de fallback ASCII simples observada no FreeBSD para evitar glifos quebrados.
+
+---
+
+## 🔗 Links Oficiais de Referência & Obras Recomendadas
+
+- **The NetBSD Project:** <https://www.netbsd.org/> | Documentação: <https://www.netbsd.org/docs/>
+- **NetBSD Manual Pages:**
+    - `sh(1)`: <https://man.netbsd.org/sh.1>
+    - `editline(3)`: <https://man.netbsd.org/editline.3>
+- **The NetBSD Packages Collection (pkgsrc):** <https://www.pkgsrc.org/> | Pkgin: <https://pkgin.net/>
+- **Literatura Técnica:**
+    - _The Design and Implementation of the 4.4BSD Operating System_ (Marshall Kirk McKusick, Keith Bostic, Michael J. Karels & John S. Quarterman, 1996, Addison-Wesley).
+    - _The Art of UNIX Programming_ (Eric S. Raymond, 2003, Addison-Wesley).

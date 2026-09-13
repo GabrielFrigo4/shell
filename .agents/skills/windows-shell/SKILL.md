@@ -1,9 +1,9 @@
 ---
 name: windows-shell
 description: >-
-  Deep technical reference and runbook for Windows shell environments via MSYS2 (UCRT64, MINGW64, CLANG64) and WSL.
-  Covers process fork latency, path translation (cygpath, /c/ vs C:\), CRLF vs LF traps, and Windows Terminal ConPTY.
-  Use when maintaining, developing, or auditing Windows/MSYS2-specific shell behaviors.
+    Deep technical reference and runbook for Windows shell environments via MSYS2 (UCRT64, MINGW64, CLANG64) and WSL.
+    Covers process fork latency, path translation (cygpath, /c/ vs C:\), CRLF vs LF traps, and Windows Terminal ConPTY.
+    Use when maintaining, developing, or auditing Windows/MSYS2-specific shell behaviors.
 ---
 
 # Windows (MSYS2 & WSL) Shell — Architecture, Paths & Runtime Runbook
@@ -15,15 +15,15 @@ Este documento consolida o conhecimento canônico, particularidades da camada PO
 ## 1. MSYS2 vs WSL: Dois Modelos de Execução Distintos
 
 1. **MSYS2 (Runtime Nativo via Camada de Emulação POSIX):**
-   - Roda executáveis Windows nativos compilados com GCC/Clang (`ucrt64`, `mingw64`, `clang64`).
-   - A camada `msys-2.0.dll` (baseada em Cygwin) fornece APIs POSIX (`fork`, `exec`, pipes) sobre o kernel Windows NT.
-   - **Variável de Ambiente Chave:** `$MSYSTEM` (`UCRT64`, `MINGW64`, `MSYS`).
+    - Roda executáveis Windows nativos compilados com GCC/Clang (`ucrt64`, `mingw64`, `clang64`).
+    - A camada `msys-2.0.dll` (baseada em Cygwin) fornece APIs POSIX (`fork`, `exec`, pipes) sobre o kernel Windows NT.
+    - **Variável de Ambiente Chave:** `$MSYSTEM` (`UCRT64`, `MINGW64`, `MSYS`).
 2. **WSL (Windows Subsystem for Linux):**
-   - Executa um kernel Linux autêntico dentro de uma micro-VM Hyper-V.
-   - Trata-se como ambiente Linux padrão, mas com pontes de interoperabilidade (`/mnt/c/`, `.exe` executáveis a partir do Linux).
-   - O contexto `wsl` foi unificado diretamente em `desktop` e `server` com auto-detecção em tempo de execução (`_is_wsl`).
+    - Executa um kernel Linux autêntico dentro de uma micro-VM Hyper-V.
+    - Trata-se como ambiente Linux padrão, mas com pontes de interoperabilidade (`/mnt/c/`, `.exe` executáveis a partir do Linux).
+    - O contexto `wsl` foi unificado diretamente em `desktop` e `server` com auto-detecção em tempo de execução (`_is_wsl`).
 3. **Alvos Interativos Suportados (`bash` e `zsh`):**
-   - No Windows (MSYS2), os alvos interativos são **estritamente `bash` e `zsh`** (`target/windows/bash` e `target/windows/zsh`). Não existe diretório `target/windows/sh` e `sh` não é executado no benchmark.
+    - No Windows (MSYS2), os alvos interativos são **estritamente `bash` e `zsh`** (`target/windows/bash` e `target/windows/zsh`). Não existe diretório `target/windows/sh` e `sh` não é executado no benchmark.
 
 ---
 
@@ -34,28 +34,28 @@ No Windows NT, o conceito de `fork()` (duplicação de processo preservando espa
 - A DLL do MSYS2 emula `fork()` através de `CreateProcess()`, cópia de páginas de memória e reconstrução de ponteiros.
 - **Custo Temporal:** Um subshell `$(comando)` no MSYS2 leva entre **20ms a 60ms** (enquanto no Linux/FreeBSD leva menos de 0.5ms).
 - **Regra de Ouro de Otimização:** **Zero subshells em loops ou no hot-path de inicialização do shell**.
-  - Prefira manipulação de strings em memória via substituição de parâmetros POSIX (`${var##*/}`, `${var%/*}`) em vez de chamar `cut`, `awk` ou `basename`.
+    - Prefira manipulação de strings em memória via substituição de parâmetros POSIX (`${var##*/}`, `${var%/*}`) em vez de chamar `cut`, `awk` ou `basename`.
 
 ---
 
 ## 3. Tradução de Caminhos e Armadilhas de Barra
 
 1. **Caminhos de Unidade:**
-   - No MSYS2, discos são montados na raiz: `C:\Users\Nome` ➔ `/c/Users/Nome`.
-   - No WSL, discos são montados sob `/mnt`: `C:\Users\Nome` ➔ `/mnt/c/Users/Nome`.
+    - No MSYS2, discos são montados na raiz: `C:\Users\Nome` ➔ `/c/Users/Nome`.
+    - No WSL, discos são montados sob `/mnt`: `C:\Users\Nome` ➔ `/mnt/c/Users/Nome`.
 2. **Utilitário `cygpath`:**
-   - Para converter caminhos para ferramentas nativas do Windows (`code.exe`, `explorer.exe`):
-     ```sh
-     command -v cygpath > "/dev/null" 2>&1 && win_path="$(cygpath -w "${posix_path}")"
-     ```
+    - Para converter caminhos para ferramentas nativas do Windows (`code.exe`, `explorer.exe`):
+        ```sh
+        command -v cygpath > "/dev/null" 2>&1 && win_path="$(cygpath -w "${posix_path}")"
+        ```
 3. **Sufixo `.exe`:**
-   - Na checagem com `command -v`, binários compilados para Windows possuem extensão `.exe`.
-   - Ao manipular `$0` ou nome do shell:
-     ```sh
-     _sh_name="${0##*/}"
-     _sh_name="${_sh_name#-}"
-     _sh_name="${_sh_name%.exe}"
-     ```
+    - Na checagem com `command -v`, binários compilados para Windows possuem extensão `.exe`.
+    - Ao manipular `$0` ou nome do shell:
+        ```sh
+        _sh_name="${0##*/}"
+        _sh_name="${_sh_name#-}"
+        _sh_name="${_sh_name%.exe}"
+        ```
 
 ---
 
@@ -71,3 +71,14 @@ No Windows NT, o conceito de `fork()` (duplicação de processo preservando espa
 
 - No Windows 10/11, o **Windows Terminal** utiliza a arquitetura moderna ConPTY, suportando sequências ANSI completas, 24-bit TrueColor e Nerd Fonts v3.
 - Em consoles legados (`conhost.exe` antigo), o suporte a ANSI é degradado. O instalador configura o ambiente preferencialmente dentro do Windows Terminal ou Mintty.
+
+---
+
+## 🔗 Links Oficiais de Referência & Obras Recomendadas
+
+- **MSYS2 Software Distribution:** <https://www.msys2.org/>
+- **Microsoft Learn (WSL Documentation):** <https://learn.microsoft.com/en-us/windows/wsl/>
+- **Microsoft Learn (Windows Terminal):** <https://learn.microsoft.com/en-us/windows/terminal/>
+- **Literatura Técnica:**
+    - _Windows Internals_ (Pavel Yosifovich, Alex Ionescu, Mark E. Russinovich & David A. Solomon, 7ª ed., Microsoft Press).
+    - _The Art of UNIX Programming_ (Eric S. Raymond, 2003, Addison-Wesley).

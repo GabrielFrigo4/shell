@@ -1,9 +1,9 @@
 ---
 name: proactive-guardian
 description: >-
-  Proactive code health guardian and autonomous quality enforcement.
-  Use to continuously audit code against the 18 UNIX Principles, Clean Code rules,
-  defensive guards, naming taxonomies, and actively suggest or apply fixes.
+    Proactive code health guardian and autonomous quality enforcement.
+    Use to continuously audit code against the 18 UNIX Principles, Clean Code rules,
+    defensive guards, naming taxonomies, and actively suggest or apply fixes.
 ---
 
 # Proactive Guardian — Autonomous Code Health & Quality Enforcement
@@ -17,12 +17,12 @@ O agente nunca deve agir de forma passiva diante de violações de princípios, 
 ## 1. Filosofia de Ação Proativa
 
 1. **Ação Direta no Escopo da Tarefa:**
-   - Se o arquivo que você está editando contém violações das regras do [PRINCIPLES.md](file:///usr/local/share/shell/PRINCIPLES.md) (como redirecionamento sem aspas, `printf` arcaico, falta de `[ -t 1 ]` ou wrapper gêmeo redundante), **corrija imediatamente de forma limpa** no mesmo ciclo, sem precisar que o usuário aponte.
+    - Se o arquivo que você está editando contém violações das regras do [PRINCIPLES.md](file:///usr/local/share/shell/PRINCIPLES.md) (como redirecionamento sem aspas, `printf` arcaico, falta de `[ -t 1 ]` ou wrapper gêmeo redundante), **corrija imediatamente de forma limpa** no mesmo ciclo, sem precisar que o usuário aponte.
 2. **Sugestão Construtiva Fora do Escopo Direto:**
-   - Se identificar inconformidades em arquivos adjacentes ou na arquitetura durante a análise, informe proativamente o usuário:
-     - Aponte o arquivo e a linha exata.
-     - Explique qual princípio ou regra do projeto foi violado.
-     - Demonstre o diff ou a solução recomendada.
+    - Se identificar inconformidades em arquivos adjacentes ou na arquitetura durante a análise, informe proativamente o usuário:
+        - Aponte o arquivo e a linha exata.
+        - Explique qual princípio ou regra do projeto foi violado.
+        - Demonstre o diff ou a solução recomendada.
 
 ---
 
@@ -75,3 +75,13 @@ Antes de dar uma resposta como concluída após aplicar melhorias:
 1. Execute `git diff --check` (deve ter 0 erros).
 2. Execute `./.githooks/pre-commit` (deve passar 100%).
 3. Mantenha os princípios do repositório como a mais alta autoridade de código.
+
+---
+
+## 🔗 Links Oficiais de Referência & Obras Recomendadas
+
+- **The Open Group (POSIX Standards):** <https://www.opengroup.org/> | Especificações Base: <https://pubs.opengroup.org/onlinepubs/9699919799/>
+- **Literatura Técnica:**
+    - _Clean Code: A Handbook of Agile Software Craftsmanship_ (Robert C. Martin, 2008, Prentice Hall) — Regra do Escoteiro e legibilidade.
+    - _The Art of UNIX Programming_ (Eric S. Raymond, 2003, Addison-Wesley) — Regras de modularidade, simplicidade e silêncio.
+    - _The Practice of Programming_ (Brian W. Kernighan & Rob Pike, 1999, Addison-Wesley) — Simplicidade, consistência e depuração.

@@ -5,7 +5,7 @@
 ### --------------------------------
 ### Cache Directory & Environment
 ### --------------------------------
-_SHELL_CACHE_DIR="${XDG_RUNTIME_DIR:-/tmp}/.universal_shell_cache_${USER:-$(id -un 2> "/dev/null" || echo "user")}"
+_SHELL_CACHE_DIR="${XDG_RUNTIME_DIR:-/tmp}/.universal_shell_cache_${USER:-${LOGNAME:-$(id -un 2> "/dev/null" || echo "user")}}"
 _SHELL_CACHE_FILE="${_SHELL_CACHE_DIR}/cache.env"
 
 [ -f "${_SHELL_CACHE_FILE}" ] && . "${_SHELL_CACHE_FILE}" 2> "/dev/null"

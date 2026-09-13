@@ -4,9 +4,9 @@
 
 _git_branch() {
 	if command git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
-		local _branch="$(command git branch --show-current 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
+		local _branch="$(command git symbolic-ref --quiet --short HEAD 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
 		if [ -n "${_branch}" ]; then
-			local _is_dirty="$(command git status --short -uno 2> "/dev/null" | command tail -n1)"
+			local _is_dirty="$(command git status --porcelain=v1 --untracked-files=no 2> "/dev/null" | command head -n 1)"
 			local _indicator=""
 			[ -n "${_is_dirty}" ] && _indicator="${C_BRT_YELLOW}*"
 			if _is_raw_tty; then

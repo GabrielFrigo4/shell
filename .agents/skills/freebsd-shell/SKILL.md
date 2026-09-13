@@ -1,9 +1,9 @@
 ---
 name: freebsd-shell
 description: >-
-  Deep technical reference and runbook for FreeBSD /bin/sh, EditLine (libedit), kernel versioning,
-  terminal drivers, and FreeBSD-specific shell environments. Use when maintaining, optimizing,
-  or auditing shell scripts and prompt rendering on FreeBSD.
+    Deep technical reference and runbook for FreeBSD /bin/sh, EditLine (libedit), kernel versioning,
+    terminal drivers, and FreeBSD-specific shell environments. Use when maintaining, optimizing,
+    or auditing shell scripts and prompt rendering on FreeBSD.
 ---
 
 # FreeBSD Shell — Architecture, Libedit & Runtime Runbook
@@ -16,7 +16,7 @@ Este documento consolida o conhecimento canônico, limitações físicas de baix
 
 No FreeBSD, o `/bin/sh` ocupa uma posição única e privilegiada em toda a computação UNIX:
 
-1. **Target Interativo Exclusivo do Repositório:** O FreeBSD é o **único sistema operacional** em que `/bin/sh` é suportado como shell interativo de usuário (`target/freebsd/sh`). Em todos os demais SOs (Linux, macOS, Windows, NetBSD, OpenBSD, illumos), os alvos interativos são estritamente `bash` e `zsh`.
+1. **Target Interativo Exclusivo do Repositório:** O FreeBSD é o **único sistema operacional** em que `/bin/sh` é suportado como shell interativo de usuário (`target/freebsd/sh`). O OpenBSD possui seu correspondente nativo exclusivo em `target/openbsd/ksh`. Em todos os demais SOs (Linux, macOS, Windows, NetBSD, illumos), os alvos interativos são estritamente `bash` e `zsh`.
 2. **Suporte Nativo a `kebab-case`:** Graças a uma extensão deliberada no parser C (`bin/sh/parser.c`), o `/bin/sh` do FreeBSD aceita hífens em identificadores de funções (`path-front`, `mount-device`), tornando-o perfeitamente compatível com as funções públicas do repositório, ao contrário de Dash, macOS sh e NetBSD sh.
 3. **Shell do Sistema Base:** É o shell do superusuário `root` por padrão no sistema base e o interpretador de todo o subsistema de boot e serviços (`/etc/rc`, `/etc/rc.subr`).
 4. **Resiliência:** Está presente no particionamento raiz (`/bin`), projetado para operar mesmo em modo monousuário (_single-user mode_) ou ambientes de emergência com memória severamente restrita.
@@ -39,18 +39,18 @@ static char ps[PROMPTLEN];
 - **Teto Rígido de 191 Bytes:** O buffer `ps` é estático e nunca cresce dinamicamente. Qualquer prompt expandido que atinja 192 bytes é **truncado abruptamente** no byte 191 (`ps[i] = '\0'`).
 - **A Conversão do Parser C (`bin/sh/parser.c:getprompt()`):**
   A contagem de caracteres na string do shell (`wc -c`) **NÃO REFLETE** os bytes ocupados no buffer C:
-  - `\[` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\001`).
-  - `\]` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\001`).
-  - `\e` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\033` ESC).
-  - _Consequência:_ Uma cor como `\[\e[95m\]` (9 caracteres) ocupa apenas **7 bytes reais em C**. Calcular custos via `wc -c` gera dezenas de "bytes fantasmas" que estrangulam o orçamento útil.
+    - `\[` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\001`).
+    - `\]` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\001`).
+    - `\e` (2 caracteres no script) $\longrightarrow$ vira **1 byte** no buffer C (`\033` ESC).
+    - _Consequência:_ Uma cor como `\[\e[95m\]` (9 caracteres) ocupa apenas **7 bytes reais em C**. Calcular custos via `wc -c` gera dezenas de "bytes fantasmas" que estrangulam o orçamento útil.
 - **Glifos Multi-byte UTF-8 (Nerd Fonts):**
-  - Glifos de ícones (``, ``, ``, ``) ocupam **3 bytes** cada em UTF-8.
-  - O ícone do Git (`󰊢`) ocupa **4 bytes**.
-  - O caractere de reticências (`…`) ocupa **3 bytes**, enquanto o til (`~`) ocupa apenas **1 byte**. Sob restrição severa (128B), o sufixo de poda deve ser estritamente `~` (1B) para manter a equivalência 1 caractere = 1 byte.
+    - Glifos de ícones (``, ``, ``, ``) ocupam **3 bytes** cada em UTF-8.
+    - O ícone do Git (`󰊢`) ocupa **4 bytes**.
+    - O caractere de reticências (`…`) ocupa **3 bytes**, enquanto o til (`~`) ocupa apenas **1 byte**. Sob restrição severa (128B), o sufixo de poda deve ser estritamente `~` (1B) para manter a equivalência 1 caractere = 1 byte.
 - **Medição Dinâmica em C em Tempo de Execução (`_calc_c_len`):**
-  - Para eliminar completamente números mágicos ou custos fixos hardcodados no script, o tema monta o molde estrutural real da moldura (`_fixed_str` contendo usuário, host, SO, cores, ícones e moldura do Git ativo) e calcula seus bytes reais em C dinamicamente via a relação canônica:
-    $$\text{Bytes C} = \text{Bytes UTF-8 Brutos} - \text{ocorrências de } \backslash[ - \text{ocorrências de } \backslash] - \text{ocorrências de } \backslash e$$
-  - Essa medição consome apenas ~1.3ms e vincula qualquer alteração visual (novas cores, troca de ícone, usuário com nome longo, estado sujo do Git) diretamente à calibragem de bytes, alocando a sobra matemática exata para o diretório e a branch.
+    - Para eliminar completamente números mágicos ou custos fixos hardcodados no script, o tema monta o molde estrutural real da moldura (`_fixed_str` contendo usuário, host, SO, cores, ícones e moldura do Git ativo) e calcula seus bytes reais em C dinamicamente via a relação canônica:
+      $$\text{Bytes C} = \text{Bytes UTF-8 Brutos} - \text{ocorrências de } \backslash[ - \text{ocorrências de } \backslash] - \text{ocorrências de } \backslash e$$
+    - Essa medição consome apenas ~1.3ms e vincula qualquer alteração visual (novas cores, troca de ícone, usuário com nome longo, estado sujo do Git) diretamente à calibragem de bytes, alocando a sobra matemática exata para o diretório e a branch.
 - **Parametrização Dinâmica (`PROMPT_BUFFER_LIMIT`):** Como `PROMPTLEN` é uma macro estática em C sem reflexão em tempo de execução para scripts, o motor dinâmico adota chaveamento nativo por versão do FreeBSD (128 bytes para FreeBSD <= 13 e 192 bytes para FreeBSD >= 14) e permite override dinâmico via variável `$PROMPT_BUFFER_LIMIT` (ex: `PROMPT_BUFFER_LIMIT=256`), garantindo que compilações customizadas ou futuras ampliações upstream sejam aproveitadas sem alterar o código do tema.
 
 ---
@@ -62,25 +62,25 @@ O `/bin/sh` do FreeBSD utiliza a `libedit` (`contrib/libedit/`) para edição de
 ### Comportamentos Críticos Identificados:
 
 1. **Delimitador Único de Escapes (`\001`):**
-   - Ao contrário da GNU Readline (que usa `\001` para início e `\002` para fim), o `/bin/sh` chama `el_set(el, EL_PROMPT_ESC, getprompt, '\001')`.
-   - Tanto `\[` quanto `\]` são convertidos para o mesmo byte `\001`.
+    - Ao contrário da GNU Readline (que usa `\001` para início e `\002` para fim), o `/bin/sh` chama `el_set(el, EL_PROMPT_ESC, getprompt, '\001')`.
+    - Tanto `\[` quanto `\]` são convertidos para o mesmo byte `\001`.
 2. **Escapes Consecutivos São Descartados:**
-   - Em `contrib/libedit/literal.c`, a função `literal_add` amarra a sequência não-imprimível ao _próximo caractere visível_.
-   - Se duas sequências `\[...\]` forem posicionadas sem nenhum caractere visível intermediário, `wcwidth` retorna `-1` e a `libedit` descarta silenciosamente o primeiro escape.
+    - Em `contrib/libedit/literal.c`, a função `literal_add` amarra a sequência não-imprimível ao _próximo caractere visível_.
+    - Se duas sequências `\[...\]` forem posicionadas sem nenhum caractere visível intermediário, `wcwidth` retorna `-1` e a `libedit` descarta silenciosamente o primeiro escape.
 3. **Descarte do Último Literal:**
-   - Se o prompt terminar em um escape ANSI sem um caractere visível subsequente (`!p[1]`), a `libedit` aciona a cláusula `// XXX: We lose the last literal` e o descarta.
-   - **Regra:** O prompt deve sempre encerrar com `${_c_reset}` seguido por um espaço imprimível ` `.
+    - Se o prompt terminar em um escape ANSI sem um caractere visível subsequente (`!p[1]`), a `libedit` aciona a cláusula `// XXX: We lose the last literal` e o descarta.
+    - **Regra:** O prompt deve sempre encerrar com `${_c_reset}` seguido por um espaço imprimível ` `.
 4. **Multilinhas (`\n`) no Redraw:**
-   - Em `contrib/libedit/refresh.c`, a função `re_putc` insere quebras de linha virtuais, mas não incrementa a coordenada vertical `r_cursor.v`.
-   - Prompts multilinhas longos no `sh` desincronizam a posição do cursor ao navegar pelo histórico (Up/Down). Por isso, **prompts de 1 linha são canonicamente recomendados no `sh`**.
+    - Em `contrib/libedit/refresh.c`, a função `re_putc` insere quebras de linha virtuais, mas não incrementa a coordenada vertical `r_cursor.v`.
+    - Prompts multilinhas longos no `sh` desincronizam a posição do cursor ao navegar pelo histórico (Up/Down). Por isso, **prompts de 1 linha são canonicamente recomendados no `sh`**.
 5. **Keybindings Canônicos e Busca de Histórico por Prefixo:**
-   - A invocação do builtin `bind` em subshells ou scripts não interativos falha com `bind: line editing is disabled`. Deve ser estritamente guardada com `if case "$-" in *i*) true;; *) false;; esac; then ... fi`.
-   - Para restaurar a ergonomia de frameworks modernos (Oh-My-Zsh / Oh-My-Bash) sem peso externo, remapeamos as setas para busca por prefixo digitado:
-     - `^[[A` e `^[OA`: `ed-search-prev-history` (sobe no histórico filtrando pelo comando digitado).
-     - `^[[B` e `^[OB`: `ed-search-next-history` (desce no histórico filtrando pelo comando digitado).
-     - `^R`: `em-inc-search-prev` (busca incremental reversa no histórico).
-     - `^W` e `\e^?`: `ed-delete-prev-word` (deleta a palavra anterior).
-     - `\e[1;5C` / `\e[1;5D`: `em-next-word` / `ed-prev-word` (navegação por palavras com Ctrl+Setas).
+    - A invocação do builtin `bind` em subshells ou scripts não interativos falha com `bind: line editing is disabled`. Deve ser estritamente guardada com `if case "$-" in *i*) true;; *) false;; esac; then ... fi`.
+    - Para restaurar a ergonomia de frameworks modernos (Oh-My-Zsh / Oh-My-Bash) sem peso externo, remapeamos as setas para busca por prefixo digitado:
+        - `^[[A` e `^[OA`: `ed-search-prev-history` (sobe no histórico filtrando pelo comando digitado).
+        - `^[[B` e `^[OB`: `ed-search-next-history` (desce no histórico filtrando pelo comando digitado).
+        - `^R`: `em-inc-search-prev` (busca incremental reversa no histórico).
+        - `^W` e `\e^?`: `ed-delete-prev-word` (deleta a palavra anterior).
+        - `\e[1;5C` / `\e[1;5D`: `em-next-word` / `ed-prev-word` (navegação por palavras com Ctrl+Setas).
 
 ---
 
@@ -131,8 +131,8 @@ alias :="_update_prompt; command :"
 
 - **`_is_raw_tty` (Console `vt`/`syscons`):** Prompt ASCII atômico de 1 linha 100% negrito via persistência ANSI ECMA-48, operando com orçamento dinâmico entre 150 e 190 bytes (salvaguarda total contra overflow).
 - **Gráfico (`! _is_raw_tty`):** Mini prompt Nerd Fonts de 1 linha que opera em dois modos via `$PROMPT_STYLE`:
-  - **Layout `pill` (192 bytes — FreeBSD 14+):** Consumo calibrado estritamente entre 170 e 185 bytes com pílulas visuais (` ❮ ❯ `).
-  - **Layout `micro` (128 bytes — FreeBSD <= 13 ou fallback):** Consumo calibrado estritamente entre 96 e 126 bytes com ícones contínuos _streamlined_ sem delimitadores redundantes (` 13.2  dir  user 󰊢 branch `).
+    - **Layout `pill` (192 bytes — FreeBSD 14+):** Consumo calibrado estritamente entre 170 e 185 bytes com pílulas visuais (` ❮ ❯ `).
+    - **Layout `micro` (128 bytes — FreeBSD <= 13 ou fallback):** Consumo calibrado estritamente entre 96 e 126 bytes com ícones contínuos _streamlined_ sem delimitadores redundantes (` 13.2  dir  user 󰊢 branch `).
 - **Motor de Orçamento Dinâmico de Buffer (Proteção 360°):** Como o buffer estático `ps[192]` do FreeBSD não cresce dinamicamente, o motor calcula em tempo real o espaço exato disponível no buffer `ps[192]`. Aplica travas defensivas de entrada no usuário (`${#_user} <= 12`), hostname (`<= 12`) e versão do SO (`<= 6`), deduzindo seus custos exatos e alocando a sobra inteligentemente entre diretório e branch via expansão recursiva POSIX nativa `_trim_str` (zero subshells / zero forks). Permite caminhos longos quando há espaço e contrai proporcionalmente sob pressão extrema para travar no teto físico inegociável de 191 bytes, mesmo com entradas anômalas de centenas de caracteres.
 
 ---
@@ -141,7 +141,21 @@ alias :="_update_prompt; command :"
 
 Ao analisar novas versões do FreeBSD (ex: FreeBSD 16-CURRENT):
 
-1. Inspecione o repositório oficial: `https://github.com/freebsd/freebsd-src`
+1. Inspecione o repositório oficial: <https://github.com/freebsd/freebsd-src>
 2. Verifique commits recentes em `bin/sh/parser.c` e `contrib/libedit/`.
 3. Busque por menções a `PROMPTLEN` ou `EL_PROMPT`.
 4. Atualize esta tabela e os temas em sincronia caso o teto seja expandido.
+
+---
+
+## 🔗 Links Oficiais de Referência & Obras Recomendadas
+
+- **The FreeBSD Project:** <https://www.freebsd.org/> | Releases: <https://www.freebsd.org/releases/>
+- **FreeBSD Manual Pages:**
+    - `sh(1)`: <https://man.freebsd.org/sh.1>
+    - `editline(3)`: <https://man.freebsd.org/editline.3>
+    - `freebsd-version(1)`: <https://man.freebsd.org/freebsd-version.1>
+- **Repositório Upstream (FreeBSD Src):** <https://github.com/freebsd/freebsd-src>
+- **Literatura Técnica:**
+    - _The Design and Implementation of the FreeBSD Operating System_ (Marshall Kirk McKusick, George V. Neville-Neil & Robert N.M. Watson, 2ª ed., 2014, Addison-Wesley).
+    - _The Art of UNIX Programming_ (Eric S. Raymond, 2003, Addison-Wesley).

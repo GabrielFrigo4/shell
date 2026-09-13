@@ -21,11 +21,12 @@ No ecossistema do **Quarteto de Produtividade**, o `/bin/sh` possui papéis dist
     - É o **mínimo denominador comum (LCD)** de execução.
     - Onipresente em qualquer ambiente UNIX, FreeBSD base, contêiner Alpine mínimo e instaladores.
     - Inicialização instantânea (< 5ms) com overhead residual mínimo de memória e CPU.
-2. **Sessão Interativa (`target/`): EXCLUSIVAMENTE FreeBSD `/bin/sh`:**
-    - No diretório `target/`, o alvo `sh` existe **única e exclusivamente para o FreeBSD** (`target/freebsd/sh`).
-    - Nos demais sistemas operacionais (Linux, macOS, Windows/MSYS2, NetBSD, OpenBSD, illumos), as sessões interativas suportam estritamente `bash` e `zsh`.
-    - Interpretadores `/bin/sh` não-FreeBSD (Dash, macOS Bash 3.2 em modo POSIX, NetBSD Almquist sh, OpenBSD pdksh) são shells de sistema não-interativos e deliberadamente não são alvos interativos deste repositório.
-    - O benchmark (`scripts/benchmark.sh`) só avalia `sh` quando executado nativamente no FreeBSD.
+2. **Sessão Interativa (`target/`): Alvos Nativos de Sistema Exclusivos:**
+    - No diretório `target/`, os shells nativos do sistema base possuem alvos exclusivos em suas respectivas plataformas:
+        - **FreeBSD:** `target/freebsd/sh` (exclusivo para FreeBSD `/bin/sh`).
+        - **OpenBSD:** `target/openbsd/ksh` (exclusivo para OpenBSD `/bin/ksh`).
+    - Nos demais sistemas operacionais (Linux, macOS, Windows/MSYS2, NetBSD, illumos), as sessões interativas suportam estritamente `bash` e `zsh`.
+    - Interpretadores `/bin/sh` estritamente não-interativos (Dash no Debian/Ubuntu, macOS Bash 3.2 em modo POSIX, NetBSD Almquist sh) são shells de sistema/boot e deliberadamente não são alvos interativos deste repositório.
 
 ---
 
@@ -33,20 +34,21 @@ No ecossistema do **Quarteto de Produtividade**, o `/bin/sh` possui papéis dist
 
 A convenção pública deste repositório utiliza `kebab-case` para funções utilitárias (`path-front`, `mount-device`, `update-all`). O comportamento entre os diferentes interpretadores deriva da gramática formal:
 
-| Interpretador                      | Comportamento com Hífen (`f-f()`) | Mecanismo Interno no Código C Upstream                                                              |
-| :--------------------------------- | :-------------------------------- | :-------------------------------------------------------------------------------------------------- |
-| **FreeBSD `/bin/sh`**              | **Suportado com perfeição** ✅    | `bin/sh/parser.c`: a tokenização de nomes de função aceita `-` como extensão deliberada.            |
-| **GNU Bash**                       | **Suportado** ✅                  | `parser.y`: nomes de função aceitam `-` exceto quando ativado o modo POSIX estrito.                 |
-| **Zsh**                            | **Suportado com perfeição** ✅    | Zsh trata nomes de funções com máxima flexibilidade por padrão.                                     |
-| **Dash (Debian/Ubuntu `/bin/sh`)** | **Falha fatal** ❌ (`exit 2`)     | `src/parser.c:goodname()`: rejeita `-` com `Syntax error: Bad function name`.                       |
-| **macOS `/bin/sh`**                | **Falha fatal** ❌ (`exit 2`)     | Bash 3.2 invocado como `sh` liga `posixly_correct`; `legal_identifier()` rejeita `-`.               |
-| **`bash --posix`**                 | **Falha fatal** ❌ (`exit 2`)     | Ativação de `posixly_correct = 1` no Bash força identificador legal POSIX (sem `-`).                |
-| **NetBSD `/bin/sh`**               | **Falha fatal** ❌ (`exit 2`)     | `bin/sh/parser.c:goodname()`: valida estritamente `[a-zA-Z0-9_]`.                                   |
-| **OpenBSD `/bin/sh` / `ksh`**      | **Falha fatal** ❌                | Parser pdksh rejeita `-` como identificador de função e não suporta delimitadores `\[...\]` de PS1. |
+| Interpretador                      | Comportamento com Hífen (`f-f()`) | Mecanismo Interno no Código C Upstream                                                          |
+| :--------------------------------- | :-------------------------------- | :---------------------------------------------------------------------------------------------- |
+| **FreeBSD `/bin/sh`**              | **Suportado com perfeição** ✅    | `bin/sh/parser.c`: a tokenização de nomes de função aceita `-` como extensão deliberada.        |
+| **GNU Bash**                       | **Suportado** ✅                  | `parser.y`: nomes de função aceitam `-` exceto quando ativado o modo POSIX estrito.             |
+| **Zsh**                            | **Suportado com perfeição** ✅    | Zsh trata nomes de funções com máxima flexibilidade por padrão.                                 |
+| **OpenBSD `/bin/ksh` (pdksh)**     | **Suportado com perfeição** ✅    | `bin/ksh/syn.c`: parser aceita `-` em nomes de função; alvo interativo em `target/openbsd/ksh`. |
+| **Dash (Debian/Ubuntu `/bin/sh`)** | **Falha fatal** ❌ (`exit 2`)     | `src/parser.c:goodname()`: rejeita `-` com `Syntax error: Bad function name`.                   |
+| **macOS `/bin/sh`**                | **Falha fatal** ❌ (`exit 2`)     | Bash 3.2 invocado como `sh` liga `posixly_correct`; `legal_identifier()` rejeita `-`.           |
+| **`bash --posix`**                 | **Falha fatal** ❌ (`exit 2`)     | Ativação de `posixly_correct = 1` no Bash força identificador legal POSIX (sem `-`).            |
+| **NetBSD `/bin/sh`**               | **Falha fatal** ❌ (`exit 2`)     | `bin/sh/parser.c:goodname()`: valida estritamente `[a-zA-Z0-9_]`.                               |
+| **illumos `/bin/sh` (ksh93)**      | **Falha fatal** ❌ (`exit 3`)     | Parser do AT&T ksh93 rejeita hífens com `invalid function name`.                                |
 
 ### Decisão de Engenharia:
 
-Não renomeamos as funções públicas para acomodar shells não-FreeBSD. Em vez disso, preservamos a clareza e elegância do `kebab-case` e declaramos formalmente que **o FreeBSD `/bin/sh` é o único shell POSIX interativo do ecossistema**. Em outros SOs, os usuários operam sob `bash` ou `zsh`.
+Não renomeamos as funções públicas para acomodar shells de script não-interativos. Em vez disso, preservamos a clareza e elegância do `kebab-case` e declaramos formalmente os alvos suportados: **FreeBSD `/bin/sh`** e **OpenBSD `/bin/ksh`** como alvos nativos de sistema exclusivos, e **`bash`** e **`zsh`** universalmente. Em outros SOs, os usuários operam sob `bash` ou `zsh`.
 
 ## 2. Bashismos Terminantemente Proibidos
 
@@ -316,3 +318,17 @@ Antes de concluir qualquer alteração em arquivos `.sh` portáveis:
 - [ ] **Tratamento de espaços:** Todas as variáveis em comandos cotadas (`"${var}"`).
 - [ ] **Permissões octais canônicas:** 4 dígitos aplicados (`chmod 0755` para scripts executáveis, `chmod 0644` para bibliotecas/temas).
 - [ ] **Pre-commit aprovado:** Boot latency < 50ms e zero alertas de formatação.
+
+---
+
+## 🔗 Links Oficiais de Referência & Obras Recomendadas
+
+- **The Open Group (POSIX Standard):** <https://www.opengroup.org/> | Especificações Base Issue 7: <https://pubs.opengroup.org/onlinepubs/9699919799/>
+- **POSIX Shell Command Language (`sh`):** <https://pubs.opengroup.org/onlinepubs/9699919799/utilities/sh.html>
+- **The FreeBSD Project:** <https://www.freebsd.org/> | Manual `sh(1)`: <https://man.freebsd.org/sh.1>
+- **The OpenBSD Project:** <https://www.openbsd.org/> | Manual `ksh(1)`: <https://man.openbsd.org/ksh.1>
+- **KornShell Portals:** <http://www.kornshell.com/> | <http://www.kornshell.org/>
+- **Literatura Técnica:**
+    - _The UNIX Programming Environment_ (Brian W. Kernighan & Rob Pike, 1984, Prentice Hall).
+    - _The Art of UNIX Programming_ (Eric S. Raymond, 2003, Addison-Wesley).
+    - _The KornShell Command and Programming Language_ (Morris I. Bolsky & David G. Korn, 2ª ed., 1995, Prentice Hall PTR).
