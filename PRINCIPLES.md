@@ -3,7 +3,7 @@
 > _"Rule of Separation: Separate policy from mechanism; separate engine from interface."_<br>
 > — Eric S. Raymond, _The Art of UNIX Programming_ (2003)
 
-O **Shell** é o motor interativo de terminal do **Quarteto de Produtividade** (`Setup`, `Shell`, `Vault`, `Profile`), orquestrado pelo ecossistema **[Environment](https://github.com/GabrielFrigo4/environment)**. Ele é responsável por fornecer uma experiência de linha de comando ultra-rápida (latência de boot < 50ms), modular, resiliente e consistente em qualquer contexto: Desktop, Servidor, Contêiner ou WSL.
+O **Shell** é o motor interativo de terminal do **Quarteto de Produtividade** (`Setup`, `Shell`, `Vault`, `Profile`), orquestrado pelo ecossistema **[Environment](https://github.com/GabrielFrigo4/environment)**. Ele é responsável por fornecer uma experiência de linha de comando ultra-rápida (latência de boot < 64ms, padrão binário $2^n$), modular, resiliente e consistente em qualquer contexto: Desktop, Servidor, Contêiner ou WSL.
 
 > [!IMPORTANT]
 > **A Regra de Ouro do Agente de IA:** Ao entrar em qualquer diretório de repositório, o agente DEVE SEMPRE ler os arquivos `AGENTS.md`, `PRINCIPLES.md` e `.agents/` daquele repositório antes de realizar qualquer alteração.
@@ -64,7 +64,7 @@ O ecossistema opera no **equilíbrio perfeito entre os três vértices**:
 
 > _Projete para a simplicidade; adicione complexidade apenas onde estritamente necessário._
 
-- Latência de inicialização agressiva (< 50ms). Evitamos frameworks pesados e plugins desnecessários.
+- Latência de inicialização agressiva (< 64ms, ULTRA < 32ms). Evitamos frameworks pesados e plugins desnecessários.
 
 ### 6. Regra da Parcimônia (_Rule of Parsimony_)
 
@@ -125,7 +125,7 @@ O ecossistema opera no **equilíbrio perfeito entre os três vértices**:
 
 > _Prototipe antes de polir. Faça funcionar antes de otimizar._
 
-- Primeiro assegurar conformidade POSIX; depois medir e polir para manter o tempo de boot rigorosamente abaixo de 50ms.
+- Primeiro assegurar conformidade POSIX; depois medir e polir para manter o tempo de boot rigorosamente abaixo de 64ms (padrão $2^n$).
 
 ### 16. Regra da Diversidade (_Rule of Diversity_)
 

@@ -74,9 +74,9 @@ if command -v prettier > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### Startup Latency Benchmark (<50ms)
+### Startup Latency Benchmark (<64ms)
 ### --------------------------------
-echo "  ↳ Benchmarking startup latency (target <50ms)..."
+echo "  ↳ Benchmarking startup latency (target <64ms)..."
 _boot_ms=$(bash -c '
 	_s=$(python3 -c "import time; print(int(time.time()*1e9))" 2> "/dev/null" || date +%s%N)
 	. ./library/detect.sh > "/dev/null" 2>&1

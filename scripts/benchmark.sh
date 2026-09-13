@@ -13,7 +13,14 @@ case ":${PATH}:" in
 	*) PATH="/usr/local/bin:${PATH}"; export PATH ;;
 esac
 
-if ! command -v python3 > "/dev/null" 2>&1; then
+_py_bin=""
+if command -v python3 > "/dev/null" 2>&1; then
+	_py_bin="python3"
+elif command -v python > "/dev/null" 2>&1 && python -c "import sys; sys.exit(0 if sys.version_info[0] >= 3 else 1)" > "/dev/null" 2>&1; then
+	_py_bin="python"
+fi
+
+if [ -z "${_py_bin}" ]; then
 	echo "❌ ERRO: 'python3' não foi encontrado no PATH." >&2
 	echo "Instale o python3 para executar o benchmark (ex: pkg install python3)." >&2
 	exit 1
@@ -59,7 +66,7 @@ printf "%b⚡ Shell Startup Latency Benchmark%b (iters: %s, standard: 2^n)\n\n" 
 ### --------------------------------
 _measure_cmd() {
 	_cmd="${1}"
-	python3 -c "
+	"${_py_bin}" -c "
 import sys, time, subprocess, shlex
 cmd_str = sys.argv[1]
 iters = max(1, int(sys.argv[2]))
@@ -106,16 +113,24 @@ printf "%s\n" "------------------------------------------------------------"
 _specified_shells=""
 for _arg in "$@"; do
 	case "${_arg}" in
-		zsh|bash|sh|dash|ksh|fish) _specified_shells="${_specified_shells} ${_arg}" ;;
+		zsh|bash|sh|dash|ksh|oksh|fish) _specified_shells="${_specified_shells} ${_arg}" ;;
 	esac
 done
+
+_is_shell_selected() {
+	[ -z "${_specified_shells}" ] || case " ${_specified_shells} " in *" ${1} "*) return 0 ;; *) return 1 ;; esac
+}
 
 if [ -n "${_specified_shells}" ]; then
 	set -- ${_specified_shells}
 elif [ "${_os}" = "freebsd" ]; then
 	set -- zsh bash sh
 elif [ "${_os}" = "openbsd" ]; then
-	set -- zsh bash ksh
+	if command -v ksh > "/dev/null" 2>&1; then
+		set -- zsh bash ksh
+	else
+		set -- zsh bash oksh
+	fi
 else
 	set -- zsh bash
 fi
@@ -158,7 +173,7 @@ done
 printf "\n%b📦 Ecosystem Modules Latency%b\n" "${_c_bold}${_c_cyan}" "${_c_reset}"
 printf "%s\n" "------------------------------------------------------------"
 
-if command -v zsh > "/dev/null" 2>&1; then
+if _is_shell_selected zsh && command -v zsh > "/dev/null" 2>&1; then
 	_prompt_zsh="${_repo_dir}/target/${_os}/zsh/prompt.sh"
 	if [ -f "${_prompt_zsh}" ]; then
 		_shell_zsh_ms="$(_measure_cmd "zsh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_zsh}\"'")"
@@ -166,7 +181,7 @@ if command -v zsh > "/dev/null" 2>&1; then
 	fi
 fi
 
-if command -v bash > "/dev/null" 2>&1; then
+if _is_shell_selected bash && command -v bash > "/dev/null" 2>&1; then
 	_prompt_bash="${_repo_dir}/target/${_os}/bash/prompt.sh"
 	if [ -f "${_prompt_bash}" ]; then
 		_shell_bash_ms="$(_measure_cmd "bash -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_bash}\"'")"
@@ -174,7 +189,7 @@ if command -v bash > "/dev/null" 2>&1; then
 	fi
 fi
 
-if [ "${_os}" = "freebsd" ] && command -v sh > "/dev/null" 2>&1; then
+if [ "${_os}" = "freebsd" ] && _is_shell_selected sh && command -v sh > "/dev/null" 2>&1; then
 	_prompt_sh="${_repo_dir}/target/freebsd/sh/prompt.sh"
 	if [ -f "${_prompt_sh}" ]; then
 		_shell_sh_ms="$(_measure_cmd "sh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_sh}\"'")"
@@ -182,16 +197,21 @@ if [ "${_os}" = "freebsd" ] && command -v sh > "/dev/null" 2>&1; then
 	fi
 fi
 
-if [ "${_os}" = "freebsd" ]; then
+if [ "${_os}" = "freebsd" ] && _is_shell_selected sh; then
 	_shell_core_ms="$(_measure_cmd "sh -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
 	printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 64)"
 fi
 
-if [ "${_os}" = "openbsd" ] && command -v ksh > "/dev/null" 2>&1; then
-	_prompt_ksh="${_repo_dir}/target/openbsd/ksh/prompt.sh"
-	if [ -f "${_prompt_ksh}" ]; then
-		_shell_ksh_ms="$(_measure_cmd "ksh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_ksh}\"'")"
-		printf "%-24s %b\n" "Shell Stack (ksh)" "$(_format_ms "${_shell_ksh_ms}" 64)"
+if [ "${_os}" = "openbsd" ]; then
+	_ksh_bin=""
+	command -v ksh > "/dev/null" 2>&1 && _ksh_bin="ksh"
+	[ -z "${_ksh_bin}" ] && command -v oksh > "/dev/null" 2>&1 && _ksh_bin="oksh"
+	if [ -n "${_ksh_bin}" ] && _is_shell_selected "${_ksh_bin}"; then
+		_prompt_ksh="${_repo_dir}/target/openbsd/ksh/prompt.sh"
+		if [ -f "${_prompt_ksh}" ]; then
+			_shell_ksh_ms="$(_measure_cmd "${_ksh_bin} -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_ksh}\"'")"
+			printf "%-24s %b\n" "Shell Stack (${_ksh_bin})" "$(_format_ms "${_shell_ksh_ms}" 64)"
+		fi
 	fi
 fi
 

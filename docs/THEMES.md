@@ -15,18 +15,18 @@ user@hostname:~/projects/myapp (main ✗) $
 ### Componentes Visuais:
 
 1. **Identificador de Usuário e Host:**
-   - Usuário comum: Exibido em tom suave (azul ou ciano).
-   - Usuário `root`: Destacado em vermelho para alertar sobre privilégios de superusuário.
+    - Usuário comum: Exibido em tom suave (azul ou ciano).
+    - Usuário `root`: Destacado em vermelho para alertar sobre privilégios de superusuário.
 2. **Diretório Atual (`PWD`):**
-   - Diretórios abreviados com base no `$HOME` (`~`).
-   - Cores de contraste para rápida localização do caminho.
+    - Diretórios abreviados com base no `$HOME` (`~`).
+    - Cores de contraste para rápida localização do caminho.
 3. **Status de Controle de Versão (Git / Got):**
-   - **Nome da Branch:** Exibido entre parênteses quando o diretório for um repositório versionado.
-   - **Símbolo de Estado Limpo (`✓`):** Verde quando não há arquivos modificados ou untracked.
-   - **Símbolo de Estado Modificado (`✗` / `*`):** Amarelo/Vermelho quando há alterações pendentes.
+    - **Nome da Branch:** Exibido entre parênteses quando o diretório for um repositório versionado.
+    - **Símbolo de Estado Limpo (`✓`):** Verde quando não há arquivos modificados ou untracked.
+    - **Símbolo de Estado Modificado (`✗` / `*`):** Amarelo/Vermelho quando há alterações pendentes.
 4. **Símbolo de Prompt Terminal:**
-   - `$` para usuários comuns.
-   - `#` para sessões com privilégios de `root`.
+    - `$` para usuários comuns.
+    - `#` para sessões com privilégios de `root`.
 
 ---
 
@@ -50,8 +50,8 @@ user@hostname:~/projects/myapp (main ✗) $
 - **Peculiaridades da `libedit`:** Utiliza delimitador único (`\001`), descarta literais consecutivos sem caractere imprimível e desincroniza o cursor vertical em multilinhas (`\n`). Por isso, o tema adota rigorosamente **1 linha**.
 - **Decisão Arquitetural Upstream:** Os mantenedores do FreeBSD rejeitam intencionalmente parsers reentrantes e hooks arbitrários (`PROMPT_COMMAND`) para preservar a segurança contra injeção de comandos e manter a estabilidade no _single-user mode_.
 - **Mini Prompt Gráfico (`! _is_raw_tty`):** Em emuladores modernos, suporta dois layouts de alta densidade via `$PROMPT_STYLE`:
-  - **Pílula (`pill` — padrão em FreeBSD 14+):** Exibe pílula inicial unificada de sistema (` 15.1  sh`), pasta (` shell`), usuário (` gabrielf`) e Git (`󰊢 main*` com `*` em amarelo), eliminando delimitadores `❮❯` para calibragem estrita entre 170 e 185 bytes no buffer de 192 bytes.
-  - **Micro (`micro` — auto-fallback em FreeBSD <= 13 ou `$PROMPT_BUFFER_LIMIT < 192`):** Layout _streamlined_ ultra-leve com ícones diretos sem delimitadores e sem identificador de shell (` 13.2  shell  gabrielf 󰊢 main* `), com o indicador `*` herdando a cor da branch, calibrado entre 96 e 126 bytes no buffer estático de 128 bytes.
+    - **Pílula (`pill` — padrão em FreeBSD 14+):** Exibe pílula inicial unificada de sistema (` 15.1  sh`), pasta (` shell`), usuário (` gabrielf`) e Git (`󰊢 main*` com `*` em amarelo), eliminando delimitadores `❮❯` para calibragem estrita entre 170 e 185 bytes no buffer de 192 bytes.
+    - **Micro (`micro` — auto-fallback em FreeBSD <= 13 ou `$PROMPT_BUFFER_LIMIT < 192`):** Layout _streamlined_ ultra-leve com ícones diretos sem delimitadores e sem identificador de shell (` 13.2  shell  gabrielf 󰊢 main* `), com o indicador `*` herdando a cor da branch, calibrado entre 96 e 126 bytes no buffer estático de 128 bytes.
 - **Motor de Orçamento Dinâmico de Buffer (Proteção 360°):** Em vez de limites fixos, calcula em tempo real via aritmética nativa POSIX o espaço exato disponível no buffer `ps[PROMPTLEN]`. Aplica travas defensivas de entrada no usuário (`${#_user} <= 12`), hostname (`<= 12`) e versão do SO (`<= 6`), deduzindo seus custos exatos e alocando a sobra inteligentemente entre pasta e branch. Permite nomes de pastas longos (até 40+ caracteres) quando fora do Git ou com branch curta, e contrai sob nomes extensos para travar inegociavelmente no teto físico (mesmo que o usuário ou branch tenham centenas de caracteres).
 - **Fallback TTY 100% Bold (`_is_raw_tty`):** No console puro `vt`/`syscons`, comuta para prompt ASCII atômico de linha única 100% negrito via persistência ANSI ECMA-48, com orçamento dinâmico operando entre 107 e 190 bytes com salvaguarda absoluta contra overflow e zero forks no PTY.
 - **Triggers de Precisão:** Atualização do Git através de wrappers de alto desempenho (`cd`, `git`, `got`, `:`) sem overhead de subshells a cada enter vazio.
@@ -63,12 +63,12 @@ Para garantir que o prompt utilize 100% do espaço útil do buffer físico sem r
 1. **Ingresso Protegido (Travas 360°):** Usuário (`<= 12`), hostname (`<= 12`) e versão do SO (`<= 6`) têm tetos defensivos para que nomes de usuário gigantes (ex: LDAP/SSO) não saturem o buffer antes da renderização de pastas.
 2. **Cálculo do Orçamento Livre (`_budget`) com Medição Real em C:** Em vez de estimativas estáticas ou números mágicos hardcodados, monta a string de molde estrutural real (`_fixed_str` com ícones, cores, usuário, host, SO e moldura de Git dirty se ativo) e mede em tempo de execução os bytes exatos em C (`_calc_c_len`), deduzindo delimitadores `\[`, `\]` e escapes `\e`. Subtrai a medição real do teto físico (`_prompt_limit - _margin - _c_bytes`), vinculando de forma 100% dinâmica qualquer alteração visual ao orçamento restante disponível.
 3. **Árvore de Decisão de Partilha:**
-   - **Fora do Git (`_branch=""`):** A pasta herda 100% do orçamento livre (podendo exibir 40+ caracteres intactos).
-   - **Dentro do Git ($\text{Pasta} + \text{Branch} \le \text{Orçamento}$):** Nenhuma truncagem é aplicada; ambos são exibidos por extenso.
-   - **Dentro do Git ($\text{Pasta} + \text{Branch} > \text{Orçamento}$):**
-     - Se a pasta for menor que a metade do orçamento: a pasta é preservada inteira e a branch recebe toda a folga restante.
-     - Se a branch for menor que a metade do orçamento (ex: `main`): a branch é preservada inteira e a pasta recebe toda a folga restante.
-     - Se ambos forem longos: o orçamento restante é dividido igualmente (meio a meio).
+    - **Fora do Git (`_branch=""`):** A pasta herda 100% do orçamento livre (podendo exibir 40+ caracteres intactos).
+    - **Dentro do Git ($\text{Pasta} + \text{Branch} \le \text{Orçamento}$):** Nenhuma truncagem é aplicada; ambos são exibidos por extenso.
+    - **Dentro do Git ($\text{Pasta} + \text{Branch} > \text{Orçamento}$):**
+        - Se a pasta for menor que a metade do orçamento: a pasta é preservada inteira e a branch recebe toda a folga restante.
+        - Se a branch for menor que a metade do orçamento (ex: `main`): a branch é preservada inteira e a pasta recebe toda a folga restante.
+        - Se ambos forem longos: o orçamento restante é dividido igualmente (meio a meio).
 4. **Truncagem Recursiva POSIX (`_trim_str`):** Se uma string precisar ser encurtada, o helper nativo retira caracteres do fim via `${var%?}` com zero subshell e insere o sufixo canônico (`…` no PTY, `~` no TTY).
 
 #### 📊 Matriz de Consumo e Headroom de Buffer no FreeBSD

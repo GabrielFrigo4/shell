@@ -74,7 +74,7 @@ Ao escrever scripts portáveis para `/bin/sh`, as seguintes construções de Bas
 
 ## 3. Manipulação Nativa de Strings (Zero Forks)
 
-Para manter a latência de execução abaixo do teto de 50ms, manipulações de strings **NUNCA DEVEM USAR SUBSHELLS** (`cut`, `awk`, `sed`, `basename`, `dirname`, `expr`) quando houver alternativa nativa de Parameter Expansion.
+Para manter a latência de execução abaixo do teto de 64ms (alvo binário $2^n$, ULTRA < 32ms), manipulações de strings **NUNCA DEVEM USAR SUBSHELLS** (`cut`, `awk`, `sed`, `basename`, `dirname`, `expr`) quando houver alternativa nativa de Parameter Expansion.
 
 ### 3.1. Expansões Canônicas POSIX
 
@@ -282,7 +282,7 @@ A contagem de caracteres na string do shell (`wc -c`) **NÃO REFLETE** os bytes 
 
 ## 9. Impressões Digitais Nativas de Shells (Zero-Fork Detection)
 
-Para inicialização com latência mínima (< 50ms), a identificação do interpretador em tempo de execução deve priorizar variáveis nativas e builtins em memória antes de recorrer a forks de processos externos (`ps`, `sed`, `awk`):
+Para inicialização com latência mínima (< 64ms, ULTRA < 32ms), a identificação do interpretador em tempo de execução deve priorizar variáveis nativas e builtins em memória antes de recorrer a forks de processos externos (`ps`, `sed`, `awk`):
 
 | Interpretador              | Expressão Canônica (Zero Fork)                                | Mecanismo Interno                                                                                                              |
 | :------------------------- | :------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------- |
@@ -317,7 +317,7 @@ Antes de concluir qualquer alteração em arquivos `.sh` portáveis:
 - [ ] **Shebang canônico:** Scripts autônomos iniciam com `#!/usr/bin/env sh`.
 - [ ] **Tratamento de espaços:** Todas as variáveis em comandos cotadas (`"${var}"`).
 - [ ] **Permissões octais canônicas:** 4 dígitos aplicados (`chmod 0755` para scripts executáveis, `chmod 0644` para bibliotecas/temas).
-- [ ] **Pre-commit aprovado:** Boot latency < 50ms e zero alertas de formatação.
+- [ ] **Pre-commit aprovado:** Boot latency < 64ms e zero alertas de formatação.
 
 ---
 

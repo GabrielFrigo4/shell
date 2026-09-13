@@ -21,7 +21,7 @@ help:
 	sec "Instalação & Runtime:"; \
 	cmd "install"        "Instala e sincroniza o runtime do Shell"; \
 	sec "Desempenho & Benchmark:"; \
-	cmd "bench"          "Mede latência de boot e módulos (alvo rigoroso <50ms)"; \
+	cmd "bench"          "Mede latência de boot e módulos (alvo binário <64ms)"; \
 	sec "Qualidade & Testes:"; \
 	cmd "test"           "Valida sintaxe POSIX e Zsh em todos os módulos"; \
 	cmd "format"         "Formata arquivos Markdown com Prettier"; \

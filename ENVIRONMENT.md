@@ -14,7 +14,7 @@ Em vez de um monólito caótico de dotfiles e scripts soltos, o ambiente é estr
 flowchart TD
     subgraph QUARTET ["🏛️ O Quarteto de Infraestrutura"]
         SETUP["📦 1. Setup (Público)<br/>• Provisionamento Ativo de SO<br/>• Pacotes de Sistema, Drivers, Kernel<br/>• Jails, Containers (Incus/Podman)<br/>• Cookbook Zero-Clone (GitHub)"]
-        SHELL["🐚 2. Shell (Público)<br/>• Motor Interativo de Terminal<br/>• Prompts Ultra-rápidos (&lt; 50ms)<br/>• Aliases e Funções de Linha de Comando<br/>• Targets de SO e Contextos"]
+        SHELL["🐚 2. Shell (Público)<br/>• Motor Interativo de Terminal<br/>• Prompts Ultra-rápidos (&lt; 64ms)<br/>• Aliases e Funções de Linha de Comando<br/>• Targets de SO e Contextos"]
         VAULT["🔐 3. Vault (Privado)<br/>• Chaves SSH / PuTTY PPK<br/>• Segredos e Variáveis .env<br/>• Senhas Wi-Fi e Mapeamento de Hosts<br/>• Loaders Multi-Shell (sh, ps1, cmd, nu)"]
         PROFILE["🎨 4. Profile (Público)<br/>• Dotfiles Declarativos de Usuário<br/>• Links de Editores e Terminais<br/>• Linters, Formatadores e Skills de IA"]
     end
@@ -92,7 +92,7 @@ sequenceDiagram
     Dev->>Sh: 5. Abre nova aba de terminal interativo
     Sh->>V: Detecta ~/.vault/vault.sh silenciosamente
     V-->>Sh: Injeta variáveis de ambiente e chaves SSH (ssh-agent) em silêncio absoluto
-    Note over Sh: Prompt renderizado em menos de 50ms pronto para produção!
+    Note over Sh: Prompt renderizado em menos de 64ms pronto para produção!
 ```
 
 ---
@@ -111,25 +111,25 @@ Baseados nos 17 Princípios UNIX (_The Art of UNIX Programming_, Eric S. Raymond
 
 - **Zero Comentários Narrativos:** Comentários explicativos inline ("faz isso", "verifica aquilo") são expressamente proibidos em código, scripts, templates e exemplos de documentação. O código expressa sua intenção por meio de nomes semânticos e separação por linhas em branco.
 - **Camada 1 — Header Banner (64 `-`):** Exclusivo para o topo do arquivo (linhas 2 a 4), delimitando a identidade do script:
-  ```sh
-  # ----------------------------------------------------------------
-  # Recipe: [Nome do Software / Funcionalidade]
-  # ----------------------------------------------------------------
-  ```
+    ```sh
+    # ----------------------------------------------------------------
+    # Recipe: [Nome do Software / Funcionalidade]
+    # ----------------------------------------------------------------
+    ```
 - **Camada 2 — Delimitadores de Corpo (32 caracteres):**
-  - **Seções Principais (32 `=`):**
-    ```sh
-    ### ================================
-    ### NOME DA SECAO PRINCIPAL
-    ### ================================
-    ```
-  - **Subseções (32 `-`):**
-    ```sh
-    ### --------------------------------
-    ### Nome da Subsecao
-    ### --------------------------------
-    ```
-  - **Regra do Não-Vazamento:** O texto do título DEVE ter no máximo 32 caracteres (total de 36 colunas com `### `) e JAMAIS vazar além da régua divisora. Títulos concisos, sem parênteses e sem numerações redundantes.
+    - **Seções Principais (32 `=`):**
+        ```sh
+        ### ================================
+        ### NOME DA SECAO PRINCIPAL
+        ### ================================
+        ```
+    - **Subseções (32 `-`):**
+        ```sh
+        ### --------------------------------
+        ### Nome da Subsecao
+        ### --------------------------------
+        ```
+    - **Regra do Não-Vazamento:** O texto do título DEVE ter no máximo 32 caracteres (total de 36 colunas com `### `) e JAMAIS vazar além da régua divisora. Títulos concisos, sem parênteses e sem numerações redundantes.
 
 ### 3. Padrão Universal de Documentação (README Templates)
 
@@ -153,9 +153,9 @@ Baseados nos 17 Princípios UNIX (_The Art of UNIX Programming_, Eric S. Raymond
 ### 6. Governança Autônoma com IA e Quality Gates
 
 - Todo repositório do ecossistema possui:
-  - `.githooks/pre-commit` executável e atômico para validar integridade, sintaxe e formatação antes do commit.
-  - `.agents/rules/principles.md` com diretrizes de engenharia específicas do seu domínio.
-  - `.agents/skills/` com runbooks cognitivos padronizados (`universal-*`, `proactive-guardian`, `deep-investigation`).
+    - `.githooks/pre-commit` executável e atômico para validar integridade, sintaxe e formatação antes do commit.
+    - `.agents/rules/principles.md` com diretrizes de engenharia específicas do seu domínio.
+    - `.agents/skills/` com runbooks cognitivos padronizados (`universal-*`, `proactive-guardian`, `deep-investigation`).
 
 ---
 

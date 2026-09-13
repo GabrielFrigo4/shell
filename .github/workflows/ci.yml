@@ -1,498 +1,533 @@
 name: Universal Shell CI
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  lint:
-    name: 🔍 Lint & Syntax Validation
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    lint:
+        name: 🔍 Lint & Syntax Validation
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
-      - name: Install Shell Interpreters
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y zsh
+            - name: Install Shell Interpreters
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y zsh
 
-      - name: Whitespace & Formatting Check (git diff --check)
-        run: |
-          ### --------------------------------
-          ### Whitespace & Formatting
-          ### --------------------------------
-          git diff --check HEAD~1..HEAD 2> "/dev/null" || git diff --check
+            - name: Whitespace & Formatting Check (git diff --check)
+              run: |
+                  ### --------------------------------
+                  ### Whitespace & Formatting
+                  ### --------------------------------
+                  git diff --check HEAD~1..HEAD 2> "/dev/null" || git diff --check
 
-      - name: Bash Syntax Check (bash -n)
-        run: |
-          ### --------------------------------
-          ### Bash & Shared Shell Syntax
-          ### --------------------------------
-          find . -name "*.sh" -not -path "./.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec bash -n {} +
+            - name: Bash Syntax Check (bash -n)
+              run: |
+                  ### --------------------------------
+                  ### Bash & Shared Shell Syntax
+                  ### --------------------------------
+                  find . -name "*.sh" -not -path "./.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec bash -n {} +
 
-      - name: Zsh Syntax Check (zsh -n)
-        run: |
-          ### --------------------------------
-          ### Zsh Syntax
-          ### --------------------------------
-          find . -name "*.sh" -not -path "./.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +
+            - name: Zsh Syntax Check (zsh -n)
+              run: |
+                  ### --------------------------------
+                  ### Zsh Syntax
+                  ### --------------------------------
+                  find . -name "*.sh" -not -path "./.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +
 
-      - name: Quoted Redirects Rule (> "/dev/null")
-        run: |
-          ### --------------------------------
-          ### Quoting & Security Rules
-          ### --------------------------------
-          UNQUOTED=$(grep -rn '> /dev/null' --include="*.sh" . | grep -v '> "/dev/null"' || true)
-          if [ -n "${UNQUOTED}" ]; then
-            echo "❌ Unquoted redirect '> /dev/null' found in:"
-            echo "${UNQUOTED}"
-            exit 1
-          fi
-          echo "✅ All redirects are properly quoted."
+            - name: Quoted Redirects Rule (> "/dev/null")
+              run: |
+                  ### --------------------------------
+                  ### Quoting & Security Rules
+                  ### --------------------------------
+                  UNQUOTED=$(grep -rn '> /dev/null' --include="*.sh" . | grep -v '> "/dev/null"' || true)
+                  if [ -n "${UNQUOTED}" ]; then
+                    echo "❌ Unquoted redirect '> /dev/null' found in:"
+                    echo "${UNQUOTED}"
+                    exit 1
+                  fi
+                  echo "✅ All redirects are properly quoted."
 
-  linux:
-    name: 🐧 Linux (Ubuntu) Matrix
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    linux:
+        name: 🐧 Linux (Ubuntu) Matrix
+        needs: lint
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
 
-      - name: Install Shell Interpreters
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y zsh
+            - name: Install Shell Interpreters
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y zsh
 
-      - name: Test in Linux Shell (Bash & Zsh)
-        run: |
-          ### ================================
-          ### LINUX ENVIRONMENT
-          ### ================================
-          . ./library/detect.sh
-          OS=$(_detect_os)
-          echo "Detected OS: ${OS}"
-          [ "${OS}" = "linux" ] || { echo "Expected linux, got ${OS}"; exit 1; }
+            - name: Test in Linux Shell (Bash & Zsh)
+              run: |
+                  ### ================================
+                  ### LINUX ENVIRONMENT
+                  ### ================================
+                  . ./library/detect.sh
+                  OS=$(_detect_os)
+                  echo "Detected OS: ${OS}"
+                  [ "${OS}" = "linux" ] || { echo "Expected linux, got ${OS}"; exit 1; }
 
-          ### --------------------------------
-          ### Linux Target Prompts
-          ### --------------------------------
-          bash -n target/linux/bash/prompt.sh
-          zsh -n target/linux/zsh/prompt.sh
+                  ### --------------------------------
+                  ### Linux Target Prompts
+                  ### --------------------------------
+                  bash -n target/linux/bash/prompt.sh
+                  zsh -n target/linux/zsh/prompt.sh
 
-          ### --------------------------------
-          ### Linux Bash
-          ### --------------------------------
-          bash -c '
-            export SHELL_REPO_DIR="${PWD}"
-            export SHELL_CONTEXT="desktop"
-            . ./library/detect.sh
-            . ./library/functions.sh
-            . ./core/environment.sh
-            . ./target/linux/environment.sh
-            . ./theme/bash.sh
-            _update_prompt
-            echo "Bash Prompt loaded OK: ${PS1}"
-          '
+                  ### --------------------------------
+                  ### Linux Bash
+                  ### --------------------------------
+                  bash -c '
+                    export SHELL_REPO_DIR="${PWD}"
+                    export SHELL_CONTEXT="desktop"
+                    . ./library/detect.sh
+                    . ./library/functions.sh
+                    . ./core/environment.sh
+                    . ./target/linux/environment.sh
+                    . ./theme/bash.sh
+                    _update_prompt
+                    echo "Bash Prompt loaded OK: ${PS1}"
+                  '
 
-          ### --------------------------------
-          ### Linux Zsh
-          ### --------------------------------
-          zsh -c '
-            export SHELL_REPO_DIR="${PWD}"
-            export SHELL_CONTEXT="desktop"
-            . ./library/detect.sh
-            . ./library/functions.sh
-            . ./core/environment.sh
-            . ./target/linux/environment.sh
-            . ./theme/zsh.sh
-            echo "Zsh Prompt loaded OK: ${PROMPT}"
-          '
+                  ### --------------------------------
+                  ### Linux Zsh
+                  ### --------------------------------
+                  zsh -c '
+                    export SHELL_REPO_DIR="${PWD}"
+                    export SHELL_CONTEXT="desktop"
+                    . ./library/detect.sh
+                    . ./library/functions.sh
+                    . ./core/environment.sh
+                    . ./target/linux/environment.sh
+                    . ./theme/zsh.sh
+                    echo "Zsh Prompt loaded OK: ${PROMPT}"
+                  '
 
-          ### --------------------------------
-          ### Startup Latency Benchmark
-          ### --------------------------------
-          bash -c '
-            START=$(date +%s%N)
-            export SHELL_REPO_DIR="${PWD}"
-            . ./library/detect.sh
-            . ./library/functions.sh
-            . ./core/environment.sh
-            . ./target/linux/environment.sh
-            . ./theme/bash.sh
-            _update_prompt
-            END=$(date +%s%N)
-            DIFF=$(( (END - START) / 1000000 ))
-            echo "Bash load time: ${DIFF}ms"
-            if [ "${DIFF}" -gt 50 ]; then
-              echo "⚠️ Warning: Load time exceeded 50ms on CI runner: ${DIFF}ms"
-            else
-              echo "⚡ Performance within 50ms target!"
-            fi
-          '
+                  ### --------------------------------
+                  ### Startup Latency Benchmark (bsh)
+                  ### --------------------------------
+                  ./scripts/benchmark.sh
 
-  freebsd:
-    name: 😈 FreeBSD (15.x) Matrix
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    freebsd:
+        name: 😈 FreeBSD (15.x) Matrix
+        needs: lint
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
 
-      - name: Test in FreeBSD Shell (sh, bash, zsh)
-        uses: vmactions/freebsd-vm@v1
-        with:
-          release: "15"
-          usesh: true
-          run: |
-            ### ================================
-            ### FREEBSD ENVIRONMENT
-            ### ================================
-            freebsd-version || uname -a
-            . ./library/detect.sh
-            OS=$(_detect_os)
-            echo "Detected OS: ${OS}"
-            [ "${OS}" = "freebsd" ] || { echo "Expected freebsd, got ${OS}"; exit 1; }
+            - name: Test in FreeBSD Shell (sh, bash, zsh)
+              uses: vmactions/freebsd-vm@v1
+              with:
+                  release: "15"
+                  usesh: true
+                  run: |
+                      ### ================================
+                      ### FREEBSD ENVIRONMENT
+                      ### ================================
+                      freebsd-version || uname -a
+                      . ./library/detect.sh
+                      OS=$(_detect_os)
+                      echo "Detected OS: ${OS}"
+                      [ "${OS}" = "freebsd" ] || { echo "Expected freebsd, got ${OS}"; exit 1; }
 
-            ### --------------------------------
-            ### Dependencies
-            ### --------------------------------
-            pkg install -y bash zsh
+                      ### --------------------------------
+                      ### Dependencies
+                      ### --------------------------------
+                      pkg install -y bash zsh python3
 
-            ### --------------------------------
-            ### FreeBSD /bin/sh
-            ### --------------------------------
-            sh -n library/functions.sh
-            sh -n core/environment.sh
-            sh -n target/freebsd/environment.sh
-            sh -n target/freebsd/sh/terminal.sh
-            sh -n target/freebsd/sh/prompt.sh
-            sh -n theme/sh.sh
+                      ### --------------------------------
+                      ### FreeBSD /bin/sh
+                      ### --------------------------------
+                      sh -n library/functions.sh
+                      sh -n core/environment.sh
+                      sh -n target/freebsd/environment.sh
+                      sh -n target/freebsd/sh/terminal.sh
+                      sh -n target/freebsd/sh/prompt.sh
+                      sh -n theme/sh.sh
 
-            sh -c '
-              export SHELL_REPO_DIR="${PWD}"
-              export SHELL_CONTEXT="desktop"
-              . ./library/detect.sh
-              . ./library/functions.sh
-              . ./core/environment.sh
-              . ./target/freebsd/environment.sh
-              . ./theme/sh.sh
-              _update_prompt
-              alias clear
-              echo "FreeBSD /bin/sh prompt: ${PS1}"
-            '
+                      sh -c '
+                        export SHELL_REPO_DIR="${PWD}"
+                        export SHELL_CONTEXT="desktop"
+                        . ./library/detect.sh
+                        . ./library/functions.sh
+                        . ./core/environment.sh
+                        . ./target/freebsd/environment.sh
+                        . ./theme/sh.sh
+                        _update_prompt
+                        alias clear
+                        echo "FreeBSD /bin/sh prompt: ${PS1}"
+                      '
 
-            ### --------------------------------
-            ### FreeBSD Bash
-            ### --------------------------------
-            bash -n theme/bash.sh
-            bash -c '
-              export SHELL_REPO_DIR="${PWD}"
-              export SHELL_CONTEXT="desktop"
-              . ./library/detect.sh
-              . ./library/functions.sh
-              . ./core/environment.sh
-              . ./target/freebsd/environment.sh
-              . ./theme/bash.sh
-              _update_prompt
-              echo "FreeBSD Bash prompt: ${PS1}"
-            '
+                      ### --------------------------------
+                      ### FreeBSD Bash
+                      ### --------------------------------
+                      bash -n theme/bash.sh
+                      bash -c '
+                        export SHELL_REPO_DIR="${PWD}"
+                        export SHELL_CONTEXT="desktop"
+                        . ./library/detect.sh
+                        . ./library/functions.sh
+                        . ./core/environment.sh
+                        . ./target/freebsd/environment.sh
+                        . ./theme/bash.sh
+                        _update_prompt
+                        echo "FreeBSD Bash prompt: ${PS1}"
+                      '
 
-            ### --------------------------------
-            ### FreeBSD Zsh
-            ### --------------------------------
-            zsh -n theme/zsh.sh
-            zsh -c '
-              export SHELL_REPO_DIR="${PWD}"
-              export SHELL_CONTEXT="desktop"
-              . ./library/detect.sh
-              . ./library/functions.sh
-              . ./core/environment.sh
-              . ./target/freebsd/environment.sh
-              . ./theme/zsh.sh
-              echo "FreeBSD Zsh prompt: ${PROMPT}"
-            '
+                      ### --------------------------------
+                      ### FreeBSD Zsh
+                      ### --------------------------------
+                      zsh -n theme/zsh.sh
+                      zsh -c '
+                        export SHELL_REPO_DIR="${PWD}"
+                        export SHELL_CONTEXT="desktop"
+                        . ./library/detect.sh
+                        . ./library/functions.sh
+                        . ./core/environment.sh
+                        . ./target/freebsd/environment.sh
+                        . ./theme/zsh.sh
+                        echo "FreeBSD Zsh prompt: ${PROMPT}"
+                      '
 
-  windows:
-    name: 🪟 Windows (MSYS2) Matrix
-    needs: lint
-    runs-on: windows-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+                      ### --------------------------------
+                      ### Startup Latency Benchmark (bsh)
+                      ### --------------------------------
+                      ./scripts/benchmark.sh
 
-      - name: Setup MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: UCRT64
-          update: true
-          install: bash zsh
+    windows:
+        name: 🪟 Windows (MSYS2) Matrix
+        needs: lint
+        runs-on: windows-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
 
-      - name: Test in MSYS2 Shell (Bash & Zsh)
-        shell: msys2 {0}
-        run: |
-          ### ================================
-          ### MSYS2 ENVIRONMENT
-          ### ================================
-          . ./library/detect.sh
-          OS=$(_detect_os)
-          echo "Detected OS: ${OS}"
-          [ "${OS}" = "windows" ] || { echo "Expected windows, got ${OS}"; exit 1; }
+            - name: Setup MSYS2
+              uses: msys2/setup-msys2@v2
+              with:
+                  msystem: UCRT64
+                  update: true
+                  install: bash zsh python
 
-          ### --------------------------------
-          ### Windows Target Prompts
-          ### --------------------------------
-          bash -n target/windows/bash/prompt.sh
-          zsh -n target/windows/zsh/prompt.sh
+            - name: Test in MSYS2 Shell (Bash & Zsh)
+              shell: msys2 {0}
+              run: |
+                  ### ================================
+                  ### MSYS2 ENVIRONMENT
+                  ### ================================
+                  . ./library/detect.sh
+                  OS=$(_detect_os)
+                  echo "Detected OS: ${OS}"
+                  [ "${OS}" = "windows" ] || { echo "Expected windows, got ${OS}"; exit 1; }
 
-          ### --------------------------------
-          ### MSYS2 Bash
-          ### --------------------------------
-          bash -c '
-            export SHELL_REPO_DIR="${PWD}"
-            . ./library/detect.sh
-            . ./library/functions.sh
-            . ./core/environment.sh
-            . ./target/windows/environment.sh
-            . ./theme/bash.sh
-            _update_prompt
-            echo "Windows MSYS2 Bash OK"
-          '
+                  ### --------------------------------
+                  ### Windows Target Prompts
+                  ### --------------------------------
+                  bash -n target/windows/bash/prompt.sh
+                  zsh -n target/windows/zsh/prompt.sh
 
-          ### --------------------------------
-          ### MSYS2 Zsh
-          ### --------------------------------
-          zsh -c '
-            export SHELL_REPO_DIR="${PWD}"
-            . ./library/detect.sh
-            . ./library/functions.sh
-            . ./core/environment.sh
-            . ./target/windows/environment.sh
-            . ./theme/zsh.sh
-            echo "Windows MSYS2 Zsh OK"
-          '
+                  ### --------------------------------
+                  ### MSYS2 Bash
+                  ### --------------------------------
+                  bash -c '
+                    export SHELL_REPO_DIR="${PWD}"
+                    . ./library/detect.sh
+                    . ./library/functions.sh
+                    . ./core/environment.sh
+                    . ./target/windows/environment.sh
+                    . ./theme/bash.sh
+                    _update_prompt
+                    echo "Windows MSYS2 Bash OK"
+                  '
 
-  macos:
-    name: 🍎 macOS (Darwin) Matrix
-    needs: lint
-    runs-on: macos-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+                  ### --------------------------------
+                  ### MSYS2 Zsh
+                  ### --------------------------------
+                  zsh -c '
+                    export SHELL_REPO_DIR="${PWD}"
+                    . ./library/detect.sh
+                    . ./library/functions.sh
+                    . ./core/environment.sh
+                    . ./target/windows/environment.sh
+                    . ./theme/zsh.sh
+                    echo "Windows MSYS2 Zsh OK"
+                  '
 
-      - name: Test in macOS Shell (Zsh & Bash)
-        run: |
-          ### ================================
-          ### MACOS ENVIRONMENT
-          ### ================================
-          . ./library/detect.sh
-          OS=$(_detect_os)
-          echo "Detected OS: ${OS}"
-          [ "${OS}" = "macos" ] || { echo "Expected macos, got ${OS}"; exit 1; }
+                  ### --------------------------------
+                  ### Startup Latency Benchmark (bsh)
+                  ### --------------------------------
+                  ./scripts/benchmark.sh
 
-          ### --------------------------------
-          ### macOS Target Prompts
-          ### --------------------------------
-          bash -n target/macos/bash/prompt.sh
-          zsh -n target/macos/zsh/prompt.sh
+    macos:
+        name: 🍎 macOS (Darwin) Matrix
+        needs: lint
+        runs-on: macos-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
 
-          ### --------------------------------
-          ### macOS Zsh
-          ### --------------------------------
-          zsh -n theme/zsh.sh
-          zsh -c '
-            export SHELL_REPO_DIR="${PWD}"
-            export SHELL_CONTEXT="desktop"
-            . ./library/detect.sh
-            . ./library/functions.sh
-            . ./core/environment.sh
-            . ./target/macos/zsh/prompt.sh
-            echo "macOS Zsh prompt OK: ${PROMPT}"
-          '
+            - name: Test in macOS Shell (Zsh & Bash)
+              run: |
+                  ### ================================
+                  ### MACOS ENVIRONMENT
+                  ### ================================
+                  . ./library/detect.sh
+                  OS=$(_detect_os)
+                  echo "Detected OS: ${OS}"
+                  [ "${OS}" = "macos" ] || { echo "Expected macos, got ${OS}"; exit 1; }
 
-          ### --------------------------------
-          ### macOS Bash
-          ### --------------------------------
-          bash -n theme/bash.sh
-          bash -c '
-            export SHELL_REPO_DIR="${PWD}"
-            export SHELL_CONTEXT="desktop"
-            . ./library/detect.sh
-            . ./library/functions.sh
-            . ./core/environment.sh
-            . ./target/macos/bash/prompt.sh
-            _update_prompt
-            echo "macOS Bash prompt OK: ${PS1}"
-          '
+                  ### --------------------------------
+                  ### macOS Target Prompts
+                  ### --------------------------------
+                  bash -n target/macos/bash/prompt.sh
+                  zsh -n target/macos/zsh/prompt.sh
 
-  openbsd:
-    name: 🐡 OpenBSD (7.x) Matrix
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+                  ### --------------------------------
+                  ### macOS Zsh
+                  ### --------------------------------
+                  zsh -n theme/zsh.sh
+                  zsh -c '
+                    export SHELL_REPO_DIR="${PWD}"
+                    export SHELL_CONTEXT="desktop"
+                    . ./library/detect.sh
+                    . ./library/functions.sh
+                    . ./core/environment.sh
+                    . ./target/macos/zsh/prompt.sh
+                    echo "macOS Zsh prompt OK: ${PROMPT}"
+                  '
 
-      - name: Test in OpenBSD Shell (bash)
-        uses: vmactions/openbsd-vm@v1
-        with:
-          usesh: true
-          run: |
-            ### ================================
-            ### OPENBSD ENVIRONMENT
-            ### ================================
-            uname -a
-            . ./library/detect.sh
-            OS=$(_detect_os)
-            echo "Detected OS: ${OS}"
-            [ "${OS}" = "openbsd" ] || { echo "Expected openbsd, got ${OS}"; exit 1; }
+                  ### --------------------------------
+                  ### macOS Bash
+                  ### --------------------------------
+                  bash -n theme/bash.sh
+                  bash -c '
+                    export SHELL_REPO_DIR="${PWD}"
+                    export SHELL_CONTEXT="desktop"
+                    . ./library/detect.sh
+                    . ./library/functions.sh
+                    . ./core/environment.sh
+                    . ./target/macos/bash/prompt.sh
+                    _update_prompt
+                    echo "macOS Bash prompt OK: ${PS1}"
+                  '
 
-            ### --------------------------------
-            ### Dependencies
-            ### --------------------------------
-            pkg_add -I bash
+                  ### --------------------------------
+                  ### Startup Latency Benchmark (bsh)
+                  ### --------------------------------
+                  ./scripts/benchmark.sh
 
-            ### --------------------------------
-            ### OpenBSD Target Prompts
-            ### --------------------------------
-            sh -n target/openbsd/environment.sh
-            bash -n target/openbsd/bash/prompt.sh
-            ksh -n target/openbsd/ksh/prompt.sh
-            ksh -n theme/ksh.sh
-            ksh -n target/common/ksh.sh
+    openbsd:
+        name: 🐡 OpenBSD (7.x) Matrix
+        needs: lint
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
 
-            ### --------------------------------
-            ### OpenBSD Bash
-            ### --------------------------------
-            bash -c '
-              export SHELL_REPO_DIR="${PWD}"
-              export SHELL_CONTEXT="desktop"
-              . ./library/detect.sh
-              . ./library/functions.sh
-              . ./core/environment.sh
-              . ./target/openbsd/environment.sh
-              . ./theme/bash.sh
-              _update_prompt
-              echo "OpenBSD Bash prompt: ${PS1}"
-            '
+            - name: Test in OpenBSD Shell (ksh, bash, zsh)
+              uses: vmactions/openbsd-vm@v1
+              with:
+                  usesh: true
+                  run: |
+                      ### ================================
+                      ### OPENBSD ENVIRONMENT
+                      ### ================================
+                      uname -a
+                      . ./library/detect.sh
+                      OS=$(_detect_os)
+                      echo "Detected OS: ${OS}"
+                      [ "${OS}" = "openbsd" ] || { echo "Expected openbsd, got ${OS}"; exit 1; }
 
-            ### --------------------------------
-            ### OpenBSD Native Ksh
-            ### --------------------------------
-            ksh -c '
-              export SHELL_REPO_DIR="${PWD}"
-              export SHELL_CONTEXT="desktop"
-              . ./library/detect.sh
-              . ./library/functions.sh
-              . ./core/environment.sh
-              . ./target/openbsd/environment.sh
-              . ./theme/ksh.sh
-              echo "OpenBSD ksh prompt: ${PS1}"
-            '
+                      ### --------------------------------
+                      ### Dependencies
+                      ### --------------------------------
+                      pkg_add -I bash zsh python3
 
-  netbsd:
-    name: 🚩 NetBSD (10.x) Matrix
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+                      ### --------------------------------
+                      ### OpenBSD Target Prompts
+                      ### --------------------------------
+                      sh -n target/openbsd/environment.sh
+                      bash -n target/openbsd/bash/prompt.sh
+                      zsh -n target/openbsd/zsh/prompt.sh
+                      zsh -n theme/zsh.sh
+                      ksh -n target/openbsd/ksh/prompt.sh
+                      ksh -n theme/ksh.sh
+                      ksh -n target/common/ksh.sh
 
-      - name: Test in NetBSD Shell (bash)
-        uses: vmactions/netbsd-vm@v1
-        with:
-          usesh: true
-          run: |
-            ### ================================
-            ### NETBSD ENVIRONMENT
-            ### ================================
-            export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:${PATH}"
-            uname -a
-            . ./library/detect.sh
-            OS=$(_detect_os)
-            echo "Detected OS: ${OS}"
-            [ "${OS}" = "netbsd" ] || { echo "Expected netbsd, got ${OS}"; exit 1; }
+                      ### --------------------------------
+                      ### OpenBSD Bash
+                      ### --------------------------------
+                      bash -c '
+                        export SHELL_REPO_DIR="${PWD}"
+                        export SHELL_CONTEXT="desktop"
+                        . ./library/detect.sh
+                        . ./library/functions.sh
+                        . ./core/environment.sh
+                        . ./target/openbsd/environment.sh
+                        . ./theme/bash.sh
+                        _update_prompt
+                        echo "OpenBSD Bash prompt: ${PS1}"
+                      '
 
-            ### --------------------------------
-            ### Dependencies
-            ### --------------------------------
-            if command -v pkgin > "/dev/null" 2>&1; then
-              pkgin -y update 2> "/dev/null" || true
-              pkgin -y install bash
-            elif command -v pkg_add > "/dev/null" 2>&1; then
-              pkg_add -I bash
-            elif [ -x "/usr/pkg/bin/pkgin" ]; then
-              /usr/pkg/bin/pkgin -y update 2> "/dev/null" || true
-              /usr/pkg/bin/pkgin -y install bash
-            elif [ -x "/usr/pkg/sbin/pkg_add" ]; then
-              /usr/pkg/sbin/pkg_add -I bash
-            elif [ -x "/usr/sbin/pkg_add" ]; then
-              /usr/sbin/pkg_add -I bash
-            fi
+                      ### --------------------------------
+                      ### OpenBSD Zsh
+                      ### --------------------------------
+                      zsh -c '
+                        export SHELL_REPO_DIR="${PWD}"
+                        export SHELL_CONTEXT="desktop"
+                        . ./library/detect.sh
+                        . ./library/functions.sh
+                        . ./core/environment.sh
+                        . ./target/openbsd/environment.sh
+                        . ./theme/zsh.sh
+                        echo "OpenBSD Zsh prompt: ${PROMPT}"
+                      '
 
-            ### --------------------------------
-            ### NetBSD Target Prompts
-            ### --------------------------------
-            sh -n target/netbsd/environment.sh
-            bash -n target/netbsd/bash/prompt.sh
+                      ### --------------------------------
+                      ### OpenBSD Native Ksh
+                      ### --------------------------------
+                      ksh -c '
+                        export SHELL_REPO_DIR="${PWD}"
+                        export SHELL_CONTEXT="desktop"
+                        . ./library/detect.sh
+                        . ./library/functions.sh
+                        . ./core/environment.sh
+                        . ./target/openbsd/environment.sh
+                        . ./theme/ksh.sh
+                        echo "OpenBSD ksh prompt: ${PS1}"
+                      '
 
-            ### --------------------------------
-            ### NetBSD Bash
-            ### --------------------------------
-            bash -c '
-              export SHELL_REPO_DIR="${PWD}"
-              export SHELL_CONTEXT="desktop"
-              . ./library/detect.sh
-              . ./library/functions.sh
-              . ./core/environment.sh
-              . ./target/netbsd/environment.sh
-              . ./theme/bash.sh
-              _update_prompt
-              echo "NetBSD Bash prompt: ${PS1}"
-            '
+                      ### --------------------------------
+                      ### Startup Latency Benchmark (bsh)
+                      ### --------------------------------
+                      ./scripts/benchmark.sh
 
-  illumos:
-    name: ☀️ illumos Matrix (Syntax & Simulation)
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    netbsd:
+        name: 🚩 NetBSD (10.x) Matrix
+        needs: lint
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
 
-      - name: Install Shell Interpreters
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y zsh
+            - name: Test in NetBSD Shell (bash, zsh)
+              uses: vmactions/netbsd-vm@v1
+              with:
+                  usesh: true
+                  run: |
+                      ### ================================
+                      ### NETBSD ENVIRONMENT
+                      ### ================================
+                      export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:${PATH}"
+                      uname -a
+                      . ./library/detect.sh
+                      OS=$(_detect_os)
+                      echo "Detected OS: ${OS}"
+                      [ "${OS}" = "netbsd" ] || { echo "Expected netbsd, got ${OS}"; exit 1; }
 
-      - name: Validate illumos Target Syntax
-        run: |
-          ### ================================
-          ### ILLUMOS ENVIRONMENT SYNTAX
-          ### ================================
-          bash -n target/illumos/environment.sh
-          bash -n target/illumos/bash/prompt.sh
-          zsh -n target/illumos/zsh/prompt.sh
+                      ### --------------------------------
+                      ### Dependencies
+                      ### --------------------------------
+                      if command -v pkgin > "/dev/null" 2>&1; then
+                        pkgin -y update 2> "/dev/null" || true
+                        pkgin -y install bash zsh
+                      elif command -v pkg_add > "/dev/null" 2>&1; then
+                        pkg_add -I bash zsh
+                      elif [ -x "/usr/pkg/bin/pkgin" ]; then
+                        /usr/pkg/bin/pkgin -y update 2> "/dev/null" || true
+                        /usr/pkg/bin/pkgin -y install bash zsh
+                      elif [ -x "/usr/pkg/sbin/pkg_add" ]; then
+                        /usr/pkg/sbin/pkg_add -I bash zsh
+                      elif [ -x "/usr/sbin/pkg_add" ]; then
+                        /usr/sbin/pkg_add -I bash zsh
+                      fi
 
-          ### --------------------------------
-          ### illumos Mock Boot Simulation
-          ### --------------------------------
-          bash -c '
-            export SHELL_REPO_DIR="${PWD}"
-            export SHELL_CONTEXT="desktop"
-            export PROMPT_OS_NAME="illumos"
-            . ./library/detect.sh
-            . ./library/functions.sh
-            . ./core/environment.sh
-            . ./target/illumos/environment.sh
-            . ./theme/bash.sh
-            _update_prompt
-            echo "illumos simulated bash prompt: ${PS1}"
-          '
+                      ### --------------------------------
+                      ### NetBSD Target Prompts
+                      ### --------------------------------
+                      sh -n target/netbsd/environment.sh
+                      bash -n target/netbsd/bash/prompt.sh
+                      zsh -n target/netbsd/zsh/prompt.sh
+                      zsh -n theme/zsh.sh
+
+                      ### --------------------------------
+                      ### NetBSD Bash
+                      ### --------------------------------
+                      bash -c '
+                        export SHELL_REPO_DIR="${PWD}"
+                        export SHELL_CONTEXT="desktop"
+                        . ./library/detect.sh
+                        . ./library/functions.sh
+                        . ./core/environment.sh
+                        . ./target/netbsd/environment.sh
+                        . ./theme/bash.sh
+                        _update_prompt
+                        echo "NetBSD Bash prompt: ${PS1}"
+                      '
+
+                      ### --------------------------------
+                      ### NetBSD Zsh
+                      ### --------------------------------
+                      zsh -c '
+                        export SHELL_REPO_DIR="${PWD}"
+                        export SHELL_CONTEXT="desktop"
+                        . ./library/detect.sh
+                        . ./library/functions.sh
+                        . ./core/environment.sh
+                        . ./target/netbsd/environment.sh
+                        . ./theme/zsh.sh
+                        echo "NetBSD Zsh prompt: ${PROMPT}"
+                      '
+
+    illumos:
+        name: ☀️ illumos (Syntax & Simulation) Matrix
+        needs: lint
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Install Shell Interpreters
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y zsh
+
+            - name: Validate illumos Target Syntax
+              run: |
+                  ### ================================
+                  ### ILLUMOS ENVIRONMENT SYNTAX
+                  ### ================================
+                  bash -n target/illumos/environment.sh
+                  bash -n target/illumos/bash/prompt.sh
+                  zsh -n target/illumos/zsh/prompt.sh
+
+                  ### --------------------------------
+                  ### illumos Mock Boot Simulation
+                  ### --------------------------------
+                  bash -c '
+                    export SHELL_REPO_DIR="${PWD}"
+                    export SHELL_CONTEXT="desktop"
+                    export PROMPT_OS_NAME="illumos"
+                    . ./library/detect.sh
+                    . ./library/functions.sh
+                    . ./core/environment.sh
+                    . ./target/illumos/environment.sh
+                    . ./theme/bash.sh
+                    _update_prompt
+                    echo "illumos simulated bash prompt: ${PS1}"
+                  '

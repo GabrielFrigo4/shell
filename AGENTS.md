@@ -6,9 +6,9 @@
 
 ## 🧭 Identidade e Papel
 
-O **Shell** é o **motor interativo de terminal** do ecossistema. Fornece prompts ultra-rápidos (< 50ms), aliases universais, funções POSIX e cascatas de ferramentas. Suporta:
+O **Shell** é o **motor interativo de terminal** do ecossistema. Fornece prompts ultra-rápidos (< 64ms, ULTRA < 32ms), aliases universais, funções POSIX e cascatas de ferramentas. Suporta:
 
-- **Shells:** Zsh, Bash e POSIX `sh` (FreeBSD `/bin/sh` como baseline exclusivo de sh)
+- **Shells:** Zsh, Bash, ksh (OpenBSD) e POSIX `sh` (FreeBSD `/bin/sh` como baseline exclusivo de sh)
 - **Contextos:** `desktop`, `server`, `container` (com extensões WSL automáticas)
 - **Plataformas:** Linux, FreeBSD, OpenBSD, NetBSD, illumos, macOS, Windows (MSYS2)
 
@@ -35,14 +35,14 @@ Se durante a execução de qualquer tarefa (seja criação de novas features, co
 
 1. **Notificar concisamente** o usuário sobre a divergência encontrada.
 2. **Corrigir imediatamente a inconformidade**, aplicando o padrão canônico correspondente:
-   - **Comentários Narrativos:** Eliminar imediatamente comentários óbvios que apenas narram código executável.
-   - **Banners Estruturais:** Ajustar réguas para exatamente 64 hífens no topo ou 32 caracteres com `### ` no corpo.
-   - **Portabilidade POSIX:** Substituir bashismos (`[[ ]]`, `&>`, arrays, `source`) por sintaxe estrita POSIX `/bin/sh`.
-   - **Shebang Universal:** Garantir sempre `#!/usr/bin/env sh` ou `#!/usr/bin/env python3`.
-   - **Sequências ANSI:** Substituir octais crípticos (``) e `printf` desnecessário por `[ -t 1 ] && echo -n $'\e...'`.
-   - **Redirecionamento Seguro:** Envolver destinos em aspas duplas (ex: `> "/dev/null" 2>&1`).
-   - **Makefiles:** Assegurar cabeçalho `.POSIX: .SILENT:`, `MAKEFLAGS += --no-print-directory -s`, alinhamento estético de variáveis e zero `@` redundante.
-   - **Permissões Canônicas:** Aplicar 4 dígitos octais (`chmod 0755`, `chmod 0644`, `chmod 0700`, `chmod 0600`).
+    - **Comentários Narrativos:** Eliminar imediatamente comentários óbvios que apenas narram código executável.
+    - **Banners Estruturais:** Ajustar réguas para exatamente 64 hífens no topo ou 32 caracteres com `### ` no corpo.
+    - **Portabilidade POSIX:** Substituir bashismos (`[[ ]]`, `&>`, arrays, `source`) por sintaxe estrita POSIX `/bin/sh`.
+    - **Shebang Universal:** Garantir sempre `#!/usr/bin/env sh` ou `#!/usr/bin/env python3`.
+    - **Sequências ANSI:** Substituir octais crípticos (``) e `printf` desnecessário por `[ -t 1 ] && echo -n $'\e...'`.
+    - **Redirecionamento Seguro:** Envolver destinos em aspas duplas (ex: `> "/dev/null" 2>&1`).
+    - **Makefiles:** Assegurar cabeçalho `.POSIX: .SILENT:`, `MAKEFLAGS += --no-print-directory -s`, alinhamento estético de variáveis e zero `@` redundante.
+    - **Permissões Canônicas:** Aplicar 4 dígitos octais (`chmod 0755`, `chmod 0644`, `chmod 0700`, `chmod 0600`).
 
 ## 📖 Referências Obrigatórias
 
