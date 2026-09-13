@@ -15,14 +15,38 @@ Este runbook consolida os padrões canônicos, limitações de baixo nível, arm
 
 ## 1. O Papel do POSIX `/bin/sh` no Ecossistema
 
-No ecossistema do **Quarteto de Produtividade**, o `/bin/sh` é o **mínimo denominador comum (LCD)** de execução:
+No ecossistema do **Quarteto de Produtividade**, o `/bin/sh` possui papéis distintos e bem delimitados:
 
-1. **Onipresença:** Está presente em qualquer ambiente UNIX, FreeBSD base, contêiner Alpine mínimo, instalador de emergência, chroot e init script (`/etc/rc`).
-2. **Determinismo:** Não assume a presença de binários GNU, utilitários GNU coreutils ou recursos específicos de shells modernos (Bash, Zsh).
-3. **Eficiência de Recursos:** Inicialização instantânea (< 5ms) com overhead residual mínimo de memória e CPU.
-4. **Resiliência:** Capaz de rodar no particionamento raiz puro (`/bin`), mesmo em modo monousuário (_single-user mode_).
+1. **Scripts e Bootstrapping (`library/`, `core/`, `install.sh`):**
+   - É o **mínimo denominador comum (LCD)** de execução.
+   - Onipresente em qualquer ambiente UNIX, FreeBSD base, contêiner Alpine mínimo e instaladores.
+   - Inicialização instantânea (< 5ms) com overhead residual mínimo de memória e CPU.
+2. **Sessão Interativa (`target/`): EXCLUSIVAMENTE FreeBSD `/bin/sh`:**
+   - No diretório `target/`, o alvo `sh` existe **única e exclusivamente para o FreeBSD** (`target/freebsd/sh`).
+   - Nos demais sistemas operacionais (Linux, macOS, Windows/MSYS2, NetBSD, OpenBSD, illumos), as sessões interativas suportam estritamente `bash` e `zsh`.
+   - Interpretadores `/bin/sh` não-FreeBSD (Dash, macOS Bash 3.2 em modo POSIX, NetBSD Almquist sh, OpenBSD pdksh) são shells de sistema não-interativos e deliberadamente não são alvos interativos deste repositório.
+   - O benchmark (`scripts/benchmark.sh`) só avalia `sh` quando executado nativamente no FreeBSD.
 
 ---
+
+## 1.1. A Anatomia do Parser de Identificadores: Por que `kebab-case` Falha em Sh Rígidos
+
+A convenção pública deste repositório utiliza `kebab-case` para funções utilitárias (`path-front`, `mount-device`, `update-all`). O comportamento entre os diferentes interpretadores deriva da gramática formal:
+
+| Interpretador                      | Comportamento com Hífen (`f-f()`) | Mecanismo Interno no Código C Upstream                                                              |
+| :--------------------------------- | :-------------------------------- | :-------------------------------------------------------------------------------------------------- |
+| **FreeBSD `/bin/sh`**              | **Suportado com perfeição** ✅    | `bin/sh/parser.c`: a tokenização de nomes de função aceita `-` como extensão deliberada.            |
+| **GNU Bash**                       | **Suportado** ✅                  | `parser.y`: nomes de função aceitam `-` exceto quando ativado o modo POSIX estrito.                 |
+| **Zsh**                            | **Suportado com perfeição** ✅    | Zsh trata nomes de funções com máxima flexibilidade por padrão.                                     |
+| **Dash (Debian/Ubuntu `/bin/sh`)** | **Falha fatal** ❌ (`exit 2`)     | `src/parser.c:goodname()`: rejeita `-` com `Syntax error: Bad function name`.                       |
+| **macOS `/bin/sh`**                | **Falha fatal** ❌ (`exit 2`)     | Bash 3.2 invocado como `sh` liga `posixly_correct`; `legal_identifier()` rejeita `-`.               |
+| **`bash --posix`**                 | **Falha fatal** ❌ (`exit 2`)     | Ativação de `posixly_correct = 1` no Bash força identificador legal POSIX (sem `-`).                |
+| **NetBSD `/bin/sh`**               | **Falha fatal** ❌ (`exit 2`)     | `bin/sh/parser.c:goodname()`: valida estritamente `[a-zA-Z0-9_]`.                                   |
+| **OpenBSD `/bin/sh` / `ksh`**      | **Falha fatal** ❌                | Parser pdksh rejeita `-` como identificador de função e não suporta delimitadores `\[...\]` de PS1. |
+
+### Decisão de Engenharia:
+
+Não renomeamos as funções públicas para acomodar shells não-FreeBSD. Em vez disso, preservamos a clareza e elegância do `kebab-case` e declaramos formalmente que **o FreeBSD `/bin/sh` é o único shell POSIX interativo do ecossistema**. Em outros SOs, os usuários operam sob `bash` ou `zsh`.
 
 ## 2. Bashismos Terminantemente Proibidos
 

@@ -16,20 +16,21 @@ Este guia detalha o fluxo operacional para estender, refatorar e auditar o repos
 
 Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vida:
 
-| Camada         | Diretório  | Papel & Responsabilidade                                                                                                 | Exemplos                                                             |
-| :------------- | :--------- | :----------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------- |
-| **Biblioteca** | `library/` | Funções puras reutilizáveis, detecção de ambiente e utilitários globais. Não deve conter aliases.                        | `_detect_os`, `_as_root`, `path-front`, `update-all`                 |
-| **Núcleo**     | `core/`    | Variáveis essenciais de ambiente, cascatas de editores/ferramentas e integração com o Vault (`vault.sh`).                | `editor()`, aliases universais (`u`, `l`, `g`, `c`, `f`)             |
-| **Contextos**  | `context/` | Especializações por propósito da máquina (`desktop`, `server`, `container`, `wsl`). Dividido em `common.sh` e `<os>.sh`. | Editores gráficos (`open-*`), montagem móvel (`mount-device`), emacs |
-| **Targets**    | `target/`  | Especializações pelo Sistema Operacional (`linux`, `freebsd`, `windows`). Injeta variáveis e caminhos específicos.       | `PROMPT_OS_*`, `clear` no FreeBSD, `incus` no Linux                  |
-| **Temas**      | `theme/`   | Renderização visual de prompts específicos por shell (`bash.sh`, `zsh.sh`, `sh.sh`).                                     | Prompt de 2 linhas com Nerd Fonts, fallback TTY bruto, Git/Got       |
+| Camada         | Diretório  | Papel & Responsabilidade                                                                                                                            | Exemplos                                                             |
+| :------------- | :--------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------- |
+| **Biblioteca** | `library/` | Funções puras reutilizáveis, detecção de ambiente e utilitários globais. Não deve conter aliases.                                                   | `_detect_os`, `_as_root`, `path-front`, `update-all`                 |
+| **Núcleo**     | `core/`    | Variáveis essenciais de ambiente, cascatas de editores/ferramentas e integração com o Vault (`vault.sh`).                                           | `editor()`, aliases universais (`u`, `l`, `g`, `c`, `f`)             |
+| **Contextos**  | `context/` | Especializações por propósito da máquina (`desktop`, `server`, `container` — WSL unificado com auto-detecção). Dividido em `common.sh` e `<os>.sh`. | Editores gráficos (`open-*`), montagem móvel (`mount-device`), emacs |
+| **Targets**    | `target/`  | Especializações por SO (`linux`, `freebsd`, `windows`, `openbsd`, `netbsd`, `illumos`, `macos`). Injeta variáveis e caminhos.                       | `PROMPT_OS_*`, `clear` no FreeBSD, `incus` no Linux                  |
+| **Temas**      | `theme/`   | Renderização visual de prompts específicos por shell (`bash.sh`, `zsh.sh`, `sh.sh`).                                                                | Prompt de 2 linhas com Nerd Fonts, fallback TTY bruto, Git/Got       |
 
 ---
 
 ## 2. Invariantes Arquiteturais Inegociáveis
 
-1. **Linha de Base FreeBSD `/bin/sh` & Adoção de `$'\e...'` e `echo -n`:**
-   - O `/bin/sh` do FreeBSD é a referência canônica para scripts compartilhados.
+1. **Linha de Base FreeBSD `/bin/sh` & Target Exclusivo:**
+   - O `/bin/sh` do FreeBSD é a referência canônica para scripts compartilhados em `library/`, `core/` e `install.sh`.
+   - **Target `/bin/sh` Exclusivo:** O alvo interativo `sh` existe unicamente no FreeBSD (`target/freebsd/sh`). Todos os demais SOs possuem exclusivamente `bash` e `zsh` como alvos interativos.
    - O formato `echo -n $'\e...'` é universalmente suportado em todo o ecossistema (FreeBSD `/bin/sh`, Zsh, Bash e Dash moderno, além do padrão POSIX Issue 8).
    - Use expressamente `echo -n $'\e...'` para sequências de controle de terminal (ex: `alias clear="echo -n $'\e[2J\e[3J\e[H'"`), priorizando a clareza e legibilidade do `$'\e'` sobre o octal arcaico.
 

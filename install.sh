@@ -15,7 +15,7 @@ if [ -z "${_active_comm}" ] && [ -r "/proc/$$/comm" ]; then
 	read -r _active_comm < "/proc/$$/comm" 2> "/dev/null"
 	_active_comm="${_active_comm#-}"
 fi
-if [ "${_active_comm}" = "dash" ]; then
+if [ "${_active_comm}" = "dash" ] || ! eval 'f-f() { :; }' 2> "/dev/null"; then
 	if command -v zsh > "/dev/null" 2>&1; then
 		exec zsh "$0" "$@"
 	elif command -v bash > "/dev/null" 2>&1; then
@@ -67,10 +67,7 @@ unset _skip_next
 
 case "${SHELL_CONTEXT}" in
 	desktop|server|container) ;;
-	wsl)
-		echo "ℹ️  Context 'wsl' foi unificado em 'desktop' (com auto-detecção WSL)."
-		SHELL_CONTEXT="desktop"
-		;;
+	wsl) SHELL_CONTEXT="desktop" ;;
 	*)
 		echo "ERROR: Invalid context '${SHELL_CONTEXT}'. Use 'desktop', 'server' or 'container'."
 		echo "Usage: install.sh [--context desktop|server|container] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"

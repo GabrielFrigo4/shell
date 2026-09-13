@@ -23,7 +23,10 @@ No OpenBSD, tanto para usuários regulares quanto para o `root`, o interpretador
    - O `ksh` possui modos de edição próprios (`set -o emacs` ou `set -o vi`), sem depender da `libedit` ou GNU Readline.
 3. **Comportamento do Prompt (`$PS1`):**
    - O `ksh` do OpenBSD suporta escapes específicos (`!`, `\h`, `\u`), mas **não suporta delimitadores `\[...\]` do Bash**.
-   - Para caracteres não-imprimíveis (cores ANSI), o `ksh` clássico do OpenBSD pode exigir isolamento via escape octal `\001` ou substituição cuidadosa para não desalinhar a contagem de colunas na linha de comando.
+   - Para caracteres não-imprimíveis (cores ANSI), o `ksh` clássico do OpenBSD não isola delimitadores de zero colunas de forma compatível com a GNU Readline ou `libedit`.
+4. **Alvos Interativos Suportados (`bash` e `zsh`):**
+   - Devido às particularidades de prompt do `ksh` e para manter conformidade com a decisão arquitetural do ecossistema, o OpenBSD **não possui alvo `target/openbsd/sh`**.
+   - Os alvos interativos suportados para OpenBSD são **estritamente `bash` e `zsh`**. O benchmark (`scripts/benchmark.sh`) não executa `sh` no OpenBSD.
 
 ---
 

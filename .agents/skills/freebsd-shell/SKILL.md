@@ -12,15 +12,16 @@ Este documento consolida o conhecimento canônico, limitações físicas de baix
 
 ---
 
-## 1. Papel Arquitetural do `/bin/sh` no FreeBSD
+## 1. Papel Arquitetural do `/bin/sh` no FreeBSD & Target Interativo Exclusivo
 
-No FreeBSD, o `/bin/sh` **não é apenas um shell de login interativo**:
+No FreeBSD, o `/bin/sh` ocupa uma posição única e privilegiada em toda a computação UNIX:
 
-1. É o shell do superusuário `root` por padrão no sistema base.
-2. É o interpretador de todo o subsistema de boot e serviços (`/etc/rc`, `/etc/rc.subr`).
-3. Está presente no particionamento raiz (`/bin`), projetado para operar mesmo em modo monousuário (_single-user mode_) ou ambientes de emergência com memória severamente restrita.
+1. **Target Interativo Exclusivo do Repositório:** O FreeBSD é o **único sistema operacional** em que `/bin/sh` é suportado como shell interativo de usuário (`target/freebsd/sh`). Em todos os demais SOs (Linux, macOS, Windows, NetBSD, OpenBSD, illumos), os alvos interativos são estritamente `bash` e `zsh`.
+2. **Suporte Nativo a `kebab-case`:** Graças a uma extensão deliberada no parser C (`bin/sh/parser.c`), o `/bin/sh` do FreeBSD aceita hífens em identificadores de funções (`path-front`, `mount-device`), tornando-o perfeitamente compatível com as funções públicas do repositório, ao contrário de Dash, macOS sh e NetBSD sh.
+3. **Shell do Sistema Base:** É o shell do superusuário `root` por padrão no sistema base e o interpretador de todo o subsistema de boot e serviços (`/etc/rc`, `/etc/rc.subr`).
+4. **Resiliência:** Está presente no particionamento raiz (`/bin`), projetado para operar mesmo em modo monousuário (_single-user mode_) ou ambientes de emergência com memória severamente restrita.
 
-Por essa razão, os mantenedores do FreeBSD (_upstream_) impõem rigor estrito contra alocações dinâmicas de heap (`malloc`), reentrância no parser e complexidade desnecessária no `/bin/sh`.
+Por essas razões, mantemos o suporte de primeira classe ao `/bin/sh` no FreeBSD, respeitando as restrições de heap (`malloc`) e a biblioteca `libedit`.
 
 ---
 

@@ -12,15 +12,21 @@ Este documento consolida o conhecimento canônico, particularidades de distribui
 
 ---
 
-## 1. Papel do `/bin/sh` no Linux e a Incompatibilidade do Dash
+## 1. Papel do `/bin/sh` no Linux e Exclusividade de Bash e Zsh
 
-Ao contrário dos BSDs, no Linux o `/bin/sh` não possui uma implementação canônica única:
+No Linux, os alvos interativos suportados em `target/linux/` são **estritamente `bash` e `zsh`**. Não existe alvo `target/linux/sh` e o benchmark de `sh` é desativado no Linux.
 
-1. **Debian / Ubuntu:** O `/bin/sh` aponta para o **Dash** (`/bin/dash`).
-   - **O Problema do Kebab-Case:** A BNF do parser do Dash rejeita estritamente o caractere hífen (`-`) em identificadores de funções POSIX (ex: `update-all()`, `clean-cache()`, `mount-device()`).
-   - **Decisão Arquitetural:** O Dash é **explicitamente descartado** para a sessão interativa do usuário no Universal Shell Environment. Em scripts ou funções de bootstrap, se o interpretador ativo for o Dash, deve-se aplicar guarda de auto-elevação para `bash` ou `zsh`.
-2. **Arch Linux / Fedora / openSUSE:** O `/bin/sh` geralmente é um symlink para o **GNU Bash** em modo POSIX (`bash --posix`).
-3. **Alpine Linux / Contêineres:** O `/bin/sh` é fornecido pelo **BusyBox ash**, que suporta nomes com hífen mas carece de certos builtins avançados.
+As implementações de `/bin/sh` no Linux são tratadas estritamente como shells não-interativos de sistema/boot:
+
+1. **Debian / Ubuntu (`/bin/dash`):**
+   - A BNF do parser do Dash rejeita estritamente hífens (`-`) em identificadores de funções POSIX com `Syntax error: Bad function name` (exit 2).
+   - Incompatível com o design de comandos públicos em `kebab-case` (`path-front`, `update-all`).
+   - Em scripts como `install.sh`, aplica-se guarda de auto-elevação imediata para `zsh` ou `bash`.
+2. **Arch Linux / Fedora / openSUSE (`bash --posix`):**
+   - O `/bin/sh` é um symlink para o GNU Bash. Quando invocado como `sh`, a variável interna `posixly_correct` é forçada para `1`.
+   - A função `legal_identifier()` do Bash passa a rejeitar hífens (`legal_identifier: 'path-front': not a valid identifier`), falhando na importação de bibliotecas compartilhadas.
+3. **Alpine Linux / Contêineres (BusyBox `ash`):**
+   - Embora o BusyBox ash suporte hífens, carece de recursos interativos modernos e é restrito a contêineres mínimos.
 
 ---
 

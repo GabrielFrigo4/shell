@@ -21,6 +21,9 @@ Este documento consolida o conhecimento canônico, particularidades da camada PO
 2. **WSL (Windows Subsystem for Linux):**
    - Executa um kernel Linux autêntico dentro de uma micro-VM Hyper-V.
    - Trata-se como ambiente Linux padrão, mas com pontes de interoperabilidade (`/mnt/c/`, `.exe` executáveis a partir do Linux).
+   - O contexto `wsl` foi unificado diretamente em `desktop` e `server` com auto-detecção em tempo de execução (`_is_wsl`).
+3. **Alvos Interativos Suportados (`bash` e `zsh`):**
+   - No Windows (MSYS2), os alvos interativos são **estritamente `bash` e `zsh`** (`target/windows/bash` e `target/windows/zsh`). Não existe diretório `target/windows/sh` e `sh` não é executado no benchmark.
 
 ---
 

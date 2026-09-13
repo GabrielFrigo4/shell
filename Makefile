@@ -33,10 +33,10 @@ help:
 ### ================================
 test:
 	echo "🧪 Validando sintaxe dos scripts do Shell..."
-	if sh -c 'f-f() { :; }' 2> "/dev/null"; then \
+	if command -v bash > "/dev/null" 2>&1; then \
+		find . -name "*.sh" -not -path "*/.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec bash -n {} +; \
+	elif sh -c 'f-f() { :; }' 2> "/dev/null"; then \
 		find . -name "*.sh" -not -path "*/.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec sh -n {} +; \
-	elif command -v bash > "/dev/null" 2>&1; then \
-		find . -name "*.sh" -not -path "*/.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec bash --posix -n {} +; \
 	fi
 	if command -v zsh > "/dev/null" 2>&1; then \
 		find . -name "*.sh" -not -path "*/.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +; \

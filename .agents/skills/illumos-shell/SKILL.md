@@ -19,6 +19,8 @@ Este documento consolida o conhecimento canônico, particularidades do subsistem
    - No OpenSolaris e no **illumos moderno**, o `/bin/sh` foi substituído pelo **KSH93** ou symlink para o **Bash**, garantindo suporte a recursos POSIX modernos e funções com hífen.
 2. **Bash e Zsh:**
    - Ambos estão amplamente disponíveis nas distribuições illumos modernas através dos repositórios nativos IPS (`pkg install bash zsh`).
+3. **Alvos Interativos Suportados (`bash` e `zsh`):**
+   - No repositório, os alvos para illumos em `target/illumos/` são **estritamente `bash` e `zsh`**. Não existe alvo `target/illumos/sh` e o benchmark de `sh` não é executado nesta plataforma.
 
 ---
 

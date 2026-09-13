@@ -29,6 +29,9 @@ O NetBSD possui uma das implementações de `/bin/sh` mais maduras e puras do mu
 1. Baseado no **Almquist Shell (ash)** de Kenneth Almquist, mas extensivamente modernizado ao longo de 30 anos.
 2. Possui aritmética interna de 64 bits, controle avançado de jobs e suporte completo a expansão de parâmetros POSIX.
 3. É extremamente rápido e leve, servindo como o interpretador de inicialização de todo o sistema operacional em dezenas de arquiteturas de hardware (de x86_64 e ARM a VAX, SPARC e m68k).
+4. **Shell Estritamente Não-Interativo no Ecossistema:**
+   - A função `goodname()` em `bin/sh/parser.c` valida identificadores com rigor estrito `[a-zA-Z0-9_]`, rejeitando funções com hífen (`kebab-case`).
+   - Por essa razão, o NetBSD **não possui alvo `target/netbsd/sh`** e não avalia `sh` em benchmarks. Os alvos interativos suportados para NetBSD são **estritamente `bash` e `zsh`**.
 
 ---
 

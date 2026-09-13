@@ -21,13 +21,14 @@ fi
 
 if [ -f "${_repo_dir}/library/detect.sh" ]; then
 	. "${_repo_dir}/library/detect.sh"
-	_os="$(_detect_os)"
+	_os="${_os:-$(_detect_os)}"
 fi
 
 _iterations=5
 for _arg in "$@"; do
 	case "${_arg}" in
 		--iterations=*|-i=*) _iterations="${_arg#*=}" ;;
+		--os=*)              _os="${_arg#*=}" ;;
 		[0-9]*)              _iterations="${_arg}" ;;
 	esac
 done
@@ -99,7 +100,13 @@ _format_ms() {
 printf "%b%-12s %-12s %-10s %s%b\n" "${_c_bold}" "SHELL" "LATENCY" "STATUS" "TARGET" "${_c_reset}"
 printf "%s\n" "----------------------------------------------------"
 
-for _sh in zsh bash sh; do
+if [ "${_os}" = "freebsd" ]; then
+	_benchmark_shells="zsh bash sh"
+else
+	_benchmark_shells="zsh bash"
+fi
+
+for _sh in ${_benchmark_shells}; do
 	if command -v "${_sh}" > "/dev/null" 2>&1; then
 		case "${_sh}" in
 			zsh)  _target="< 64ms"; _target_limit=64 ;;
@@ -136,14 +143,10 @@ done
 printf "\n%b📦 Ecosystem Modules Latency%b\n" "${_c_bold}${_c_cyan}" "${_c_reset}"
 printf "%s\n" "----------------------------------------------------"
 
-if sh -c 'f-f() { :; }' 2> "/dev/null"; then
-	_posix_sh="sh"
-else
-	_posix_sh="bash --posix"
+if [ "${_os}" = "freebsd" ]; then
+	_shell_core_ms="$(_measure_cmd "sh -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
+	printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 32)"
 fi
-
-_shell_core_ms="$(_measure_cmd "${_posix_sh} -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
-printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 32)"
 
 if command -v zsh > "/dev/null" 2>&1; then
 	_prompt_zsh="${_repo_dir}/target/${_os}/zsh/prompt.sh"
@@ -161,10 +164,10 @@ if command -v bash > "/dev/null" 2>&1; then
 	fi
 fi
 
-if command -v sh > "/dev/null" 2>&1; then
-	_prompt_sh="${_repo_dir}/target/${_os}/sh/prompt.sh"
+if [ "${_os}" = "freebsd" ] && command -v sh > "/dev/null" 2>&1; then
+	_prompt_sh="${_repo_dir}/target/freebsd/sh/prompt.sh"
 	if [ -f "${_prompt_sh}" ]; then
-		_shell_sh_ms="$(_measure_cmd "${_posix_sh} -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_sh}\"'")"
+		_shell_sh_ms="$(_measure_cmd "sh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_sh}\"'")"
 		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" 64)"
 	fi
 fi

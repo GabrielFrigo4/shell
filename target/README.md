@@ -8,10 +8,10 @@ Esta pasta contém as especializações declarativas por sistema operacional, de
 
 | Sistema Operacional | Identificador (`uname -s`) | Shells Suportados   | Particularidades da Plataforma                                            |
 | :------------------ | :------------------------- | :------------------ | :------------------------------------------------------------------------ |
-| **Linux**           | `Linux`                    | `sh`, `bash`, `zsh` | GNU Coreutils, `systemd` / OpenRC / runit, temas D-Bus / GTK / Qt         |
+| **Linux**           | `Linux`                    | `bash`, `zsh`       | GNU Coreutils, `systemd` / OpenRC / runit, temas D-Bus / GTK / Qt         |
 | **FreeBSD**         | `FreeBSD`                  | `sh`, `bash`, `zsh` | Baseline POSIX (`/bin/sh` + EditLine), `pkg`, `doas` / `sudo`             |
-| **OpenBSD**         | `OpenBSD`                  | `sh`, `bash`, `zsh` | Foco em segurança (`pledge`, `unveil`), `doas` nativo, `pkg_add`, X11     |
-| **NetBSD**          | `NetBSD`                   | `sh`, `bash`, `zsh` | Berço da `libedit`, Almquist `/bin/sh`, ecossistema `pkgsrc` / `pkgin`    |
-| **illumos**         | `SunOS`                    | `sh`, `bash`, `zsh` | Kernel SVR4 moderno, dualidade `/usr/gnu/bin` vs `/usr/bin`, SMF, ZFS     |
-| **macOS**           | `Darwin`                   | `sh`, `bash`, `zsh` | Homebrew (`/opt/homebrew` vs `/usr/local`), `pbcopy`/`pbpaste`, BSD utils |
-| **Windows**         | `MINGW*`, `MSYS*`          | `sh`, `bash`, `zsh` | Runtime MSYS2 / UCRT64, caminhos POSIX para Windows, ConPTY               |
+| **OpenBSD**         | `OpenBSD`                  | `bash`, `zsh`       | Foco em segurança (`pledge`, `unveil`), `doas` nativo, `pkg_add`, X11     |
+| **NetBSD**          | `NetBSD`                   | `bash`, `zsh`       | Berço da `libedit`, Almquist `/bin/sh`, ecossistema `pkgsrc` / `pkgin`    |
+| **illumos**         | `SunOS`                    | `bash`, `zsh`       | Kernel SVR4 moderno, dualidade `/usr/gnu/bin` vs `/usr/bin`, SMF, ZFS     |
+| **macOS**           | `Darwin`                   | `bash`, `zsh`       | Homebrew (`/opt/homebrew` vs `/usr/local`), `pbcopy`/`pbpaste`, BSD utils |
+| **Windows**         | `MINGW*`, `MSYS*`          | `bash`, `zsh`       | Runtime MSYS2 / UCRT64, caminhos POSIX para Windows, ConPTY               |

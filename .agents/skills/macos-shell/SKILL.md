@@ -22,6 +22,10 @@ Este documento consolida o conhecimento canônico, particularidades do subsistem
    - O Zsh no macOS é moderno e compatível com as convenções de alto desempenho do ecossistema.
 3. **Bash Moderno via Homebrew:**
    - Caso o usuário utilize Bash no macOS, o executável deve vir do Homebrew (`/opt/homebrew/bin/bash` ou `/usr/local/bin/bash`).
+4. **Descarte do `/bin/sh` como Shell Interativo:**
+   - No macOS, `/bin/sh` é o próprio Bash 3.2 invocado sob o nome `sh`.
+   - Essa invocação ativa internamente `posixly_correct = 1`, forçando o parser a rejeitar qualquer hífen em nomes de funções (`legal_identifier: 'path-front': not a valid identifier`, código de saída 2).
+   - Portanto, os alvos no macOS são **estritamente `zsh` e `bash`** (`target/macos/zsh` e `target/macos/bash`). Não existe diretório `target/macos/sh` e `sh` não é executado no benchmark.
 
 ---
 
