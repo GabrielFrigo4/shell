@@ -40,7 +40,7 @@
 ![Fish](https://img.shields.io/badge/fish-Incompat%C3%ADvel_POSIX-lightgrey?logo=fishshell&logoColor=white)
 
 ```mermaid
-flowchart LR
+flowchart TD
     subgraph OS ["🖥️ Plataformas"]
         BSD["😈 FreeBSD"]
         LNX["🐧 Linux"]
@@ -60,7 +60,7 @@ flowchart LR
     subgraph SHELLS ["🐚 Shells Interativos (zsh ≫ bash ≫ sh / ksh)"]
         ZSH["⚡ Zsh (Todos os SOs)"]
         BASH["📜 Bash (Todos os SOs)"]
-        SH_BSD["⚙️ Sh (Exclusivo FreeBSD)"]
+        SH_BSD["😈 Sh (Exclusivo FreeBSD)"]
         KSH_OBSD["🐡 Ksh (Exclusivo OpenBSD)"]
     end
 
