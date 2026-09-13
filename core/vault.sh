@@ -2,7 +2,15 @@
 ### VAULT LOADER & SSH
 ### ================================
 
-VAULT_DIR="${VAULT_DIR:-${HOME}/.vault}"
+if [ -z "${VAULT_DIR:-}" ]; then
+	if [ -d "${HOME}/.vault" ]; then
+		VAULT_DIR="${HOME}/.vault"
+	elif [ -d "/usr/local/share/vault" ]; then
+		VAULT_DIR="/usr/local/share/vault"
+	else
+		VAULT_DIR="${HOME}/.vault"
+	fi
+fi
 
 ### --------------------------------
 ### Vault Environment
@@ -29,13 +37,29 @@ unset _ssh_cache
 ### Update Vault
 ### --------------------------------
 update-vault() {
-	if [ -d "${VAULT_DIR}" ]; then
-		echo "🔄 Updating vault repository at ${VAULT_DIR}..."
-		command git -C "${VAULT_DIR}" pull
-		echo "♻️ Reloading shell environment..."
-		. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
-	else
-		echo "❌ ERROR: VAULT_DIR is not set or invalid."
+	_target=""
+	if [ -n "${VAULT_DIR:-}" ] && [ -d "${VAULT_DIR}/.git" ]; then
+		_target="${VAULT_DIR}"
+	elif [ -d "${HOME}/.vault/.git" ]; then
+		_target="${HOME}/.vault"
+	elif [ -d "/usr/local/share/vault/.git" ]; then
+		_target="/usr/local/share/vault"
 	fi
+
+	if [ -n "${_target}" ]; then
+		echo "🔄 Updating vault repository at ${_target}..."
+		if [ -w "${_target}" ]; then
+			command git -C "${_target}" pull
+		else
+			_as_root git -C "${_target}" pull
+		fi
+		echo "♻️ Reloading shell environment..."
+		_rc_name="$(_detect_enabled_shell --name 2> "/dev/null" || echo "sh")"
+		[ -f "${HOME}/.${_rc_name}rc" ] && . "${HOME}/.${_rc_name}rc" 2> "/dev/null" || true
+		unset _rc_name
+	else
+		echo "ℹ️  No active vault repository found at ~/.vault or /usr/local/share/vault."
+	fi
+	unset _target
 }
 alias upvt="update-vault"

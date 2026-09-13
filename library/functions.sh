@@ -89,12 +89,12 @@ update-shell() {
 	_target=""
 	if [ -n "${SHELL_REPO_DIR:-}" ] && [ -e "${SHELL_REPO_DIR}/.git" ]; then
 		_target="${SHELL_REPO_DIR}"
-	elif [ -e "${HOME}/.local/share/shell/.git" ]; then
-		_target="${HOME}/.local/share/shell"
-	elif [ -e "${HOME}/.shell/.git" ]; then
-		_target="${HOME}/.shell"
 	elif [ -e "/usr/local/share/shell/.git" ]; then
 		_target="/usr/local/share/shell"
+	elif [ -e "${HOME}/.shell/.git" ]; then
+		_target="${HOME}/.shell"
+	elif [ -e "${HOME}/.local/share/shell/.git" ]; then
+		_target="${HOME}/.local/share/shell"
 	elif [ -n "${SHELL_REPO_DIR:-}" ] && [ -d "${SHELL_REPO_DIR}" ]; then
 		_target="${SHELL_REPO_DIR}"
 	fi
@@ -132,9 +132,7 @@ update-shell() {
 			. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
 		fi
 	else
-		echo "❌ ERROR: No active shell repository found."
-		echo "Expected /usr/local/share/shell, ~/.local/share/shell, or valid SHELL_REPO_DIR."
-		return 1
+		echo "ℹ️  No active shell repository found at /usr/local/share/shell, ~/.shell, or \$SHELL_REPO_DIR."
 	fi
 	unset _target
 }
@@ -624,6 +622,26 @@ update-all() {
 		echo ""
 		echo "📦 Updating Mac App Store packages..."
 		update-mas "$@" && echo "✅ Mac App Store packages updated!"
+	fi
+
+	if [ -e "/usr/local/share/shell/.git" ] || [ -e "${HOME}/.shell/.git" ]; then
+		echo ""
+		update-shell "$@"
+	fi
+
+	if [ -d "${HOME}/.vault/.git" ] || [ -d "/usr/local/share/vault/.git" ]; then
+		echo ""
+		update-vault "$@"
+	fi
+
+	if [ -d "${HOME}/.emacs.d/.git" ] || [ -d "${XDG_CONFIG_HOME:-${HOME}/.config}/nvim/.git" ] || [ -d "${XDG_CONFIG_HOME:-${HOME}/.config}/helix/.git" ] || [ -d "${HOME}/vimfiles/.git" ]; then
+		echo ""
+		update-editors "$@"
+	fi
+
+	if [ -d "${HOME}/.config/profile/.git" ] || [ -d "${HOME}/.profile-repo/.git" ]; then
+		echo ""
+		update-profile "$@"
 	fi
 
 	echo ""
