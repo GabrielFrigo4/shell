@@ -343,27 +343,24 @@ fi
 ### GUI Integration
 ### --------------------------------
 if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
+	[ -z "${GTK_THEME:-}" ] && [ -n "${_DETECTED_GTK_THEME:-}" ] && export GTK_THEME="${_DETECTED_GTK_THEME}"
 	if [ -z "${GTK_THEME:-}" ]; then
 		_gtk_theme="$(_detect_gtk_theme)"
-		if [ -n "${_gtk_theme}" ]; then
-			export GTK_THEME="${_gtk_theme}"
-		fi
+		[ -n "${_gtk_theme}" ] && export GTK_THEME="${_gtk_theme}"
 		unset _gtk_theme
 	fi
 
+	[ -z "${QT_STYLE_OVERRIDE:-}" ] && [ -n "${_DETECTED_QT_THEME:-}" ] && export QT_STYLE_OVERRIDE="${_DETECTED_QT_THEME}"
 	if [ -z "${QT_STYLE_OVERRIDE:-}" ]; then
 		_qt_style="$(_detect_qt_theme)"
-		if [ -n "${_qt_style}" ]; then
-			export QT_STYLE_OVERRIDE="${_qt_style}"
-		fi
+		[ -n "${_qt_style}" ] && export QT_STYLE_OVERRIDE="${_qt_style}"
 		unset _qt_style
 	fi
 
+	[ -z "${QT_QPA_PLATFORMTHEME:-}" ] && [ -n "${_DETECTED_QT_PLATFORM_THEME:-}" ] && export QT_QPA_PLATFORMTHEME="${_DETECTED_QT_PLATFORM_THEME}"
 	if [ -z "${QT_QPA_PLATFORMTHEME:-}" ]; then
 		_qt_platform="$(_detect_qt_platform_theme)"
-		if [ -n "${_qt_platform}" ]; then
-			export QT_QPA_PLATFORMTHEME="${_qt_platform}"
-		fi
+		[ -n "${_qt_platform}" ] && export QT_QPA_PLATFORMTHEME="${_qt_platform}"
 		unset _qt_platform
 	fi
 

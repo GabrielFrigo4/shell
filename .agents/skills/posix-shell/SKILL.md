@@ -284,6 +284,7 @@ Para inicialização com latência mínima (< 50ms), a identificação do interp
 
 | Interpretador              | Expressão Canônica (Zero Fork)                                | Mecanismo Interno                                                                                                              |
 | :------------------------- | :------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------- |
+| **Linux (Qualquer Shell)** | `[ -r "/proc/$$/comm" ] && read -r _name < "/proc/$$/comm"`   | Leitura atômica via builtin `read` do nome exato do executável ou symlink no kernel Linux (0.01ms, zero subprocessos)         |
 | **Zsh**                    | `[ -n "${ZSH_VERSION:-}" ]`                                   | Variável de sistema gerada no startup                                                                                          |
 | **Bash**                   | `[ -n "${BASH_VERSION:-}" ]`                                  | Variável de sistema gerada no startup                                                                                          |
 | **NetBSD `/bin/sh`**       | `[ -n "${NETBSD_SHELL:-}" ]`                                  | Variável unexportable / read-only nativa do NetBSD                                                                             |
@@ -293,6 +294,12 @@ Para inicialização com latência mínima (< 50ms), a identificação do interp
 | **FreeBSD `/bin/sh`**      | `[ -z "${BASH_VERSION:-}" ] && builtin : 2> "/dev/null"`      | O comando `builtin` é exclusivo do `/bin/sh` do FreeBSD entre os shells POSIX mínimos (Dash e NetBSD retornam `127 not found`) |
 | **Dash**                   | `case "${0##*/}" in dash\|*dash*)` ou ausência de `builtin :` | Parser estrito POSIX (rejeita hífens e builtin)                                                                                |
 | **BusyBox `ash`**          | `case "${0##*/}" in busybox\|*busybox*)`                      | Builtin `help` nativo (`type help` retorna builtin) ou binário unificado                                                       |
+
+### 9.1. Imunidade a Cascatas e Proibição de Cache em Disco Compartilhado
+
+Ao operar em ambientes onde múltiplos interpretadores podem ser abertos de forma aninhada (`zsh -> bash -> zsh -> sh`):
+1. **Nunca grave a identidade do shell em cache no disco (`cache.env`):** Arquivos compartilhados causam contaminação cruzada imediata quando um shell filho é aberto a partir de outro shell pai diferente.
+2. **Isolamento de Memória do Processo:** A variável de cache `_DETECTED_SHELL` deve ser mantida como variável interna não-exportada do shell corrente. Ao criar um processo filho, este executará sua própria detecção nativa ultrarrápida (< 0.05ms) sem herdar o estado do pai.
 
 ---
 

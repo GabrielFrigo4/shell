@@ -108,7 +108,7 @@ _update_prompt() {
 		[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
 
 		local _u_color="${_c_b_green}" _sym="\$" _sym_color="${_c_cyan}"
-		[ "$(command id -u)" -eq 0 ] && _u_color="${_c_b_red}" && _sym="#" && _sym_color="${_c_red}"
+		[ "${EUID:-$(command id -u)}" -eq 0 ] && _u_color="${_c_b_red}" && _sym="#" && _sym_color="${_c_red}"
 
 		local _git_frame_str=""
 		local _ind=""
@@ -176,12 +176,12 @@ _update_prompt() {
 		fi
 	else
 		local _u_color="${_c_green}" _term_color="${_c_blue}"
-		[ "$(command id -u)" -eq 0 ] && _u_color="${_c_red}" && _term_color="${_c_red}"
+		[ "${EUID:-$(command id -u)}" -eq 0 ] && _u_color="${_c_red}" && _term_color="${_c_red}"
 
 		local _os_icon="${PROMPT_OS_ICON:- }"
 		_trim_str "${_os_icon}" 4 ""
 		_os_icon="${_trimmed}"
-		local _os_name="${PROMPT_OS_NAME:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "BSD")}"
+		local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "BSD")}}"
 		_os_name="${_os_name%%-*}"
 		local _os_color
 		local _git_frame_str=""

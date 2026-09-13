@@ -5,48 +5,6 @@
 setopt PROMPT_SUBST
 
 () {
-	if _is_raw_tty; then
-		zstyle ':prompt:colors' reset     '%f%b'
-
-		zstyle ':prompt:colors' n_black   '%b%F{black}'
-		zstyle ':prompt:colors' n_red     '%b%F{red}'
-		zstyle ':prompt:colors' n_green   '%b%F{green}'
-		zstyle ':prompt:colors' n_yellow  '%b%F{yellow}'
-		zstyle ':prompt:colors' n_blue    '%b%F{blue}'
-		zstyle ':prompt:colors' n_magenta '%b%F{magenta}'
-		zstyle ':prompt:colors' n_cyan    '%b%F{cyan}'
-		zstyle ':prompt:colors' n_white   '%b%F{white}'
-
-		zstyle ':prompt:colors' b_gray    '%B%F{black}'
-		zstyle ':prompt:colors' b_red     '%B%F{red}'
-		zstyle ':prompt:colors' b_green   '%B%F{green}'
-		zstyle ':prompt:colors' b_yellow  '%B%F{yellow}'
-		zstyle ':prompt:colors' b_blue    '%B%F{blue}'
-		zstyle ':prompt:colors' b_magenta '%B%F{magenta}'
-		zstyle ':prompt:colors' b_cyan    '%B%F{cyan}'
-		zstyle ':prompt:colors' b_white   '%B%F{white}'
-	else
-		zstyle ':prompt:colors' reset     '%f%b'
-
-		zstyle ':prompt:colors' n_black   '%b%F{0}'
-		zstyle ':prompt:colors' n_red     '%b%F{1}'
-		zstyle ':prompt:colors' n_green   '%b%F{2}'
-		zstyle ':prompt:colors' n_yellow  '%b%F{3}'
-		zstyle ':prompt:colors' n_blue    '%b%F{4}'
-		zstyle ':prompt:colors' n_magenta '%b%F{5}'
-		zstyle ':prompt:colors' n_cyan    '%b%F{6}'
-		zstyle ':prompt:colors' n_white   '%b%F{7}'
-
-		zstyle ':prompt:colors' b_gray    '%B%F{8}'
-		zstyle ':prompt:colors' b_red     '%B%F{9}'
-		zstyle ':prompt:colors' b_green   '%B%F{10}'
-		zstyle ':prompt:colors' b_yellow  '%B%F{11}'
-		zstyle ':prompt:colors' b_blue    '%B%F{12}'
-		zstyle ':prompt:colors' b_magenta '%B%F{13}'
-		zstyle ':prompt:colors' b_cyan    '%B%F{14}'
-		zstyle ':prompt:colors' b_white   '%B%F{15}'
-	fi
-
 	_git_branch() {
 		if command git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
 			local _branch="$(command git branch --show-current 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
@@ -73,26 +31,35 @@ setopt PROMPT_SUBST
 		fi
 	}
 
-	local z
-	zstyle -s ':prompt:colors' reset z
-
+	local z='%f%b'
 	local k K r R g G y Y b B m M c C w W
-	zstyle -s ':prompt:colors' n_black   k; zstyle -s ':prompt:colors' b_gray    K
-	zstyle -s ':prompt:colors' n_red     r; zstyle -s ':prompt:colors' b_red     R
-	zstyle -s ':prompt:colors' n_green   g; zstyle -s ':prompt:colors' b_green   G
-	zstyle -s ':prompt:colors' n_yellow  y; zstyle -s ':prompt:colors' b_yellow  Y
-	zstyle -s ':prompt:colors' n_blue    b; zstyle -s ':prompt:colors' b_blue    B
-	zstyle -s ':prompt:colors' n_magenta m; zstyle -s ':prompt:colors' b_magenta M
-	zstyle -s ':prompt:colors' n_cyan    c; zstyle -s ':prompt:colors' b_cyan    C
-	zstyle -s ':prompt:colors' n_white   w; zstyle -s ':prompt:colors' b_white   W
+	if _is_raw_tty; then
+		k='%b%F{black}'; K='%B%F{black}'
+		r='%b%F{red}';   R='%B%F{red}'
+		g='%b%F{green}'; G='%B%F{green}'
+		y='%b%F{yellow}'; Y='%B%F{yellow}'
+		b='%b%F{blue}';  B='%B%F{blue}'
+		m='%b%F{magenta}'; M='%B%F{magenta}'
+		c='%b%F{cyan}';  C='%B%F{cyan}'
+		w='%b%F{white}'; W='%B%F{white}'
+	else
+		k='%b%F{0}'; K='%B%F{8}'
+		r='%b%F{1}'; R='%B%F{9}'
+		g='%b%F{2}'; G='%B%F{10}'
+		y='%b%F{3}'; Y='%B%F{11}'
+		b='%b%F{4}'; B='%B%F{12}'
+		m='%b%F{5}'; M='%B%F{13}'
+		c='%b%F{6}'; C='%B%F{14}'
+		w='%b%F{7}'; W='%B%F{15}'
+	fi
 
 	local u _sym_color _term_color
-	if [ "$(id -u)" -eq 0 ]; then
-		zstyle -s ':prompt:colors' b_red u
+	if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+		u="${R}"
 		_sym_color="${R}"
 		_term_color="${R}"
 	else
-		zstyle -s ':prompt:colors' b_green u
+		u="${G}"
 		_sym_color="${C}"
 		_term_color="${B}"
 	fi

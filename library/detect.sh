@@ -101,42 +101,59 @@ _is_wsl() {
 ### Detect Shell
 ### --------------------------------
 _detect_shell() {
-	[ -n "${ZSH_VERSION:-}" ] && echo "zsh" && return 0
-	[ -n "${BASH_VERSION:-}" ] && echo "bash" && return 0
-	[ -n "${KSH_VERSION:-}" ] && echo "ksh" && return 0
-	[ -n "${NETBSD_SHELL:-}" ] && echo "sh" && return 0
-	[ -n "${YASH_VERSION:-}" ] && echo "yash" && return 0
+	[ -n "${_DETECTED_SHELL:-}" ] && echo "${_DETECTED_SHELL}" && return 0
 
-	local _os="$(_detect_os)"
-	if [ "${_os}" = "freebsd" ] && builtin : 2> "/dev/null"; then
-		echo "sh"
-		return 0
-	fi
-
-	case "${0##*/}" in
-		*zsh*)                       echo "zsh"; return 0 ;;
-		*bash*)                      echo "bash"; return 0 ;;
-		*dash*)                      echo "dash"; return 0 ;;
-		*busybox*|*ash*|*hush*)      echo "busybox"; return 0 ;;
-		*ksh*|*mksh*|*pdksh*|*oksh*) echo "ksh"; return 0 ;;
-		*yash*)                      echo "yash"; return 0 ;;
-	esac
-
+	local _name=""
 	local _pid="$$"
-	local _name
+	local _os="$(_detect_os)"
 
-	_name="$(command ps -p "${_pid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
-
-	if [ -z "${_name}" ] && [ -r "/proc/${_pid}/comm" ]; then
+	if [ -r "/proc/${_pid}/comm" ]; then
 		read -r _name < "/proc/${_pid}/comm" 2> "/dev/null"
 		_name="${_name#-}"
+	fi
+
+	if [ -z "${_name}" ]; then
+		if [ -n "${ZSH_VERSION:-}" ]; then
+			_name="zsh"
+		elif [ -n "${BASH_VERSION:-}" ]; then
+			_name="bash"
+		elif [ -n "${KSH_VERSION:-}" ]; then
+			_name="ksh"
+		elif [ -n "${FISH_VERSION:-}" ]; then
+			_name="fish"
+		elif [ -n "${NU_VERSION:-}" ]; then
+			_name="nu"
+		elif [ -n "${YASH_VERSION:-}" ]; then
+			_name="yash"
+		elif [ -n "${NETBSD_SHELL:-}" ]; then
+			_name="sh"
+		fi
+	fi
+
+	if [ -z "${_name}" ]; then
+		local _arg0="${0##*/}"
+		_arg0="${_arg0#-}"
+		case "${_arg0}" in
+			*zsh*)                       _name="zsh" ;;
+			*bash*)                      _name="bash" ;;
+			*dash*)                      _name="dash" ;;
+			*busybox*|*ash*|*hush*)      _name="busybox" ;;
+			*ksh*|*mksh*|*pdksh*|*oksh*) _name="ksh" ;;
+			*fish*)                      _name="fish" ;;
+			*csh*)                       _name="csh" ;;
+			*tcsh*)                      _name="tcsh" ;;
+			*yash*)                      _name="yash" ;;
+			*nu*)                        _name="nu" ;;
+			*sh*)                        _name="sh" ;;
+		esac
 	fi
 
 	if [ -z "${_name}" ]; then
 		if [ "${_os}" = "windows" ]; then
 			_name="$(command ps 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $8}' | command awk -F'/' '{print $NF}' | command sed 's/^-//; s/\.exe$//')"
 		else
-			_name="$(command ps -o pid,comm 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $2}' | command awk -F'/' '{print $NF}' | command sed 's/^-//; s/\.exe$//')"
+			_name="$(command ps -p "${_pid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
+			[ -z "${_name}" ] && _name="$(command ps -o pid,comm 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $2}' | command awk -F'/' '{print $NF}' | command sed 's/^-//; s/\.exe$//')"
 		fi
 	fi
 
@@ -149,45 +166,34 @@ _detect_shell() {
 				_gpid="$(command ps -o pid,ppid 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $2}')"
 			fi
 		fi
-		_name="$(command ps -p "${_gpid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
-		if [ -z "${_name}" ] && [ -r "/proc/${_gpid}/comm" ]; then
+		if [ -n "${_gpid}" ] && [ -r "/proc/${_gpid}/comm" ]; then
 			read -r _name < "/proc/${_gpid}/comm" 2> "/dev/null"
 			_name="${_name#-}"
 		fi
 		if [ -z "${_name}" ]; then
-			if [ "${_os}" = "windows" ]; then
-				_name="$(command ps 2> "/dev/null" | command awk -v pid="${_gpid}" '$1 == pid {print $8}' | command awk -F'/' '{print $NF}' | command sed 's/^-//; s/\.exe$//')"
-			else
-				_name="$(command ps -o pid,comm 2> "/dev/null" | command awk -v pid="${_gpid}" '$1 == pid {print $2}' | command awk -F'/' '{print $NF}' | command sed 's/^-//; s/\.exe$//')"
-			fi
+			_name="$(command ps -p "${_gpid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
 		fi
 	fi
 
 	case "${_name}" in
-		zsh*|*zsh)         echo "zsh"; return 0 ;;
-		bash*|*bash)       echo "bash"; return 0 ;;
-		dash*|*dash)       echo "dash"; return 0 ;;
-		busybox*|*busybox) echo "busybox"; return 0 ;;
-		ksh*|*ksh)         echo "ksh"; return 0 ;;
-		fish*|*fish)       echo "fish"; return 0 ;;
-		sh*|*sh)           echo "sh"; return 0 ;;
+		zsh*|*zsh)         _DETECTED_SHELL="zsh" ;;
+		bash*|*bash)       _DETECTED_SHELL="bash" ;;
+		dash*|*dash)       _DETECTED_SHELL="dash" ;;
+		busybox*|*busybox) _DETECTED_SHELL="busybox" ;;
+		ksh*|*ksh)         _DETECTED_SHELL="ksh" ;;
+		fish*|*fish)       _DETECTED_SHELL="fish" ;;
+		sh*|*sh)           _DETECTED_SHELL="sh" ;;
+		ash*|*ash)         _DETECTED_SHELL="ash" ;;
+		csh*|*csh)         _DETECTED_SHELL="csh" ;;
+		tcsh*|*tcsh)       _DETECTED_SHELL="tcsh" ;;
+		yash*|*yash)       _DETECTED_SHELL="yash" ;;
+		nu*|*nu)           _DETECTED_SHELL="nu" ;;
+		*)                 _DETECTED_SHELL="${_name:-sh}" ;;
 	esac
 
-	local _arg0="${0##*/}"
-	_arg0="${_arg0#-}"
-	case "${_arg0}" in
-		zsh*|*zsh)         echo "zsh"; return 0 ;;
-		bash*|*bash)       echo "bash"; return 0 ;;
-		dash*|*dash)       echo "dash"; return 0 ;;
-		busybox*|*busybox) echo "busybox"; return 0 ;;
-		ksh*|*ksh)         echo "ksh"; return 0 ;;
-		fish*|*fish)       echo "fish"; return 0 ;;
-		sh*|*sh)           echo "sh"; return 0 ;;
-	esac
-
-	[ -z "${_name}" ] && _name="$(command basename "${SHELL:-sh}")"
-
-	echo "${_name##*/}"
+	[ -z "${_DETECTED_SHELL}" ] && _DETECTED_SHELL="$(command basename "${SHELL:-sh}")"
+	_DETECTED_SHELL="${_DETECTED_SHELL##*/}"
+	echo "${_DETECTED_SHELL}"
 }
 
 ### --------------------------------

@@ -12,7 +12,7 @@ unset CDPATH
 ### --------------------------------
 ### Auto-Correct SHELL
 ### --------------------------------
-_current_sh="$(_detect_shell)"
+_current_sh="${_DETECTED_SHELL:-$(_detect_shell)}"
 case "${SHELL:-}" in
 	*"/${_current_sh}") ;;
 	*) export SHELL="$(command -v "${_current_sh}" 2> "/dev/null")" ;;

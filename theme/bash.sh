@@ -62,7 +62,7 @@ _update_prompt() {
 	esac
 
 	local _usr_color _sym _sym_color _term_color
-	if [ "$(id -u)" -eq 0 ]; then
+	if [ "${EUID:-$(id -u)}" -eq 0 ]; then
 		_usr_color="${C_BRT_RED}"
 		_sym="#"
 		_sym_color="${C_BRT_RED}"

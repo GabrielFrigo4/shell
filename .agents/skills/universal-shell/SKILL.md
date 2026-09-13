@@ -81,6 +81,24 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
    - Ao disparar sub-scripts a partir de funções do shell (`install.sh`, `benchmark.sh`), execute sempre através da cascata canônica: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`.
    - NUNCA use `sh <script>` hardcoded: em Linux, `/bin/sh` pode ser `dash`, que rejeita a taxonomia canônica `kebab-case`. Em scripts utilitários, garanta guard de auto-elevação para `zsh`/`bash` no topo.
 
+10. **Engenharia de Performance e Boot Ultra-Rápido (< 20ms):**
+   - **Zero Subshells no Boot-Time:** É expressamente vedado o uso de `find`, `sed`, `awk`, `grep`, `dd` e `ps` no carregamento interativo de qualquer shell. Cada fork de processo externo custa entre 2ms e 7ms.
+   - **Globbing Nativo:** Varreduras de arquivos de configuração, temas e chaves devem usar exclusivamente loops com globbing nativo (`for _f in "${DIR}"/*/*.env; do [ -f "${_f}" ] && . "${_f}"; done`).
+   - **Expansão de Parâmetros com Fallback:** Sempre utilize `${VAR:-$(fallback)}` para que a captura de saída por subshell ocorra apenas se a variável não tiver sido carregada do cache.
+
+11. **Detecção Resiliente de Shell em Cascata (Multi-Shell):**
+   - A detecção de shell ativo (`_detect_shell`) deve ser determinística, rápida (< 0.1ms) e tolerante a shells aninhados (`zsh` -> `bash` -> `zsh` -> `sh`).
+   - Priorize a leitura direta de `/proc/$$/comm` (via builtin `read`, sem pipes ou subshell) e a checagem de variáveis nativas do interpretador (`$ZSH_VERSION`, `$BASH_VERSION`, `$KSH_VERSION`, `$FISH_VERSION`, `$NU_VERSION`, `$YASH_VERSION`, `$NETBSD_SHELL`).
+   - **Proibição de Cache em Disco Compartilhado para Shells:** A variável `_DETECTED_SHELL` DEVE existir estritamente em memória do processo corrente. NUNCA a grave em arquivo de cache compartilhado no disco (`cache.env`), sob pena de contaminar subshells de tipos diferentes abertos em cascata.
+
+12. **Lazy Completion no Zsh (`_lazy_compinit`):**
+   - A inicialização da engine de completion do Zsh (`compinit`) NÃO deve rodar sincronicamente no boot, pois adiciona de 5ms a 7ms de latência.
+   - Implemente o carregamento sob demanda (*Lazy Evaluation*) interceptando o widget da tecla `<Tab>` (`bindkey '^I' _lazy_compinit`). No primeiro toque, o completion é inicializado de forma imperceptível e o widget `expand-or-complete` é restaurado para as próximas chamadas.
+
+13. **Otimização de Prompts e Cores ANSI:**
+   - Evite o uso repetitivo de `zstyle` em loops de renderização de prompt (`theme/zsh.sh`). Declare e utilize diretamente variáveis locais de cores ANSI.
+   - Para checar privilégios de root no prompt, utilize a variável nativa `${EUID:-$(id -u)}`, eliminando a invocação do executável externo `id`.
+
 ---
 
 ## 3. Procedimento para Criar um Novo Comando / Editor

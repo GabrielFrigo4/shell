@@ -119,13 +119,19 @@ setopt KSH_GLOB
 ### --------------------------------
 zmodload -i zsh/complist 2> "/dev/null" || true
 
-autoload -Uz compinit
-if [ -f "${HOME}/.zcompdump" ]; then
-    compinit -C -d "${HOME}/.zcompdump"
-else
-    compinit -d "${HOME}/.zcompdump"
-fi
-[ -f "${HOME}/.zcompdump.zwc" ] || (zcompile "${HOME}/.zcompdump" 2> "/dev/null" &)
+_lazy_compinit() {
+	bindkey '^I' expand-or-complete
+	autoload -Uz compinit
+	if [ -f "${HOME}/.zcompdump" ]; then
+		compinit -C -d "${HOME}/.zcompdump"
+	else
+		compinit -d "${HOME}/.zcompdump"
+	fi
+	[ -f "${HOME}/.zcompdump.zwc" ] || (zcompile "${HOME}/.zcompdump" 2> "/dev/null" &)
+	zle expand-or-complete
+}
+zle -N _lazy_compinit
+bindkey '^I' _lazy_compinit
 
 zstyle ':completion:*' menu select
 zstyle ':completion:*' select-prompt '%S[ %p | %l ]%s'
