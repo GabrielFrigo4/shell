@@ -46,6 +46,13 @@ jobs:
           ### --------------------------------
           find . -name "*.sh" -not -path "./.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +
 
+      - name: POSIX Sh Syntax Check (sh -n)
+        run: |
+          ### --------------------------------
+          ### POSIX Sh Syntax
+          ### --------------------------------
+          find . -name "*.sh" -not -path "./.git/*" -not -path "*/bash/*" -not -name "bash.sh" -not -path "*/zsh/*" -not -name "zsh.sh" -exec sh -n {} +
+
       - name: Quoted Redirects Rule (> "/dev/null")
         run: |
           ### --------------------------------
@@ -85,8 +92,24 @@ jobs:
           ### --------------------------------
           ### Linux Target Prompts
           ### --------------------------------
+          sh -n target/linux/sh/prompt.sh
           bash -n target/linux/bash/prompt.sh
           zsh -n target/linux/zsh/prompt.sh
+
+          ### --------------------------------
+          ### Linux POSIX Sh
+          ### --------------------------------
+          sh -c '
+            export SHELL_REPO_DIR="${PWD}"
+            export SHELL_CONTEXT="desktop"
+            . ./library/detect.sh
+            . ./library/functions.sh
+            . ./core/environment.sh
+            . ./target/linux/environment.sh
+            . ./theme/sh.sh
+            _update_prompt
+            echo "Linux sh Prompt loaded OK: ${PS1}"
+          '
 
           ### --------------------------------
           ### Linux Bash
@@ -250,8 +273,23 @@ jobs:
           ### --------------------------------
           ### Windows Target Prompts
           ### --------------------------------
+          sh -n target/windows/sh/prompt.sh
           bash -n target/windows/bash/prompt.sh
           zsh -n target/windows/zsh/prompt.sh
+
+          ### --------------------------------
+          ### MSYS2 POSIX Sh
+          ### --------------------------------
+          sh -c '
+            export SHELL_REPO_DIR="${PWD}"
+            . ./library/detect.sh
+            . ./library/functions.sh
+            . ./core/environment.sh
+            . ./target/windows/environment.sh
+            . ./theme/sh.sh
+            _update_prompt
+            echo "Windows MSYS2 sh OK"
+          '
 
           ### --------------------------------
           ### MSYS2 Bash
@@ -288,7 +326,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Test in macOS Shell (Zsh & Bash)
+      - name: Test in macOS Shell (Sh, Zsh & Bash)
         run: |
           ### ================================
           ### MACOS ENVIRONMENT
@@ -301,8 +339,24 @@ jobs:
           ### --------------------------------
           ### macOS Target Prompts
           ### --------------------------------
+          sh -n target/macos/sh/prompt.sh
           bash -n target/macos/bash/prompt.sh
           zsh -n target/macos/zsh/prompt.sh
+
+          ### --------------------------------
+          ### macOS POSIX Sh
+          ### --------------------------------
+          sh -c '
+            export SHELL_REPO_DIR="${PWD}"
+            export SHELL_CONTEXT="desktop"
+            . ./library/detect.sh
+            . ./library/functions.sh
+            . ./core/environment.sh
+            . ./target/macos/environment.sh
+            . ./theme/sh.sh
+            _update_prompt
+            echo "macOS sh prompt OK: ${PS1}"
+          '
 
           ### --------------------------------
           ### macOS Zsh
@@ -331,4 +385,133 @@ jobs:
             . ./target/macos/bash/prompt.sh
             _update_prompt
             echo "macOS Bash prompt OK: ${PS1}"
+          '
+
+  openbsd:
+    name: 🐡 OpenBSD (7.x) Matrix
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Test in OpenBSD Shell (sh, bash)
+        uses: vmactions/openbsd-vm@v1
+        with:
+          usesh: true
+          run: |
+            ### ================================
+            ### OPENBSD ENVIRONMENT
+            ### ================================
+            uname -a
+            . ./library/detect.sh
+            OS=$(_detect_os)
+            echo "Detected OS: ${OS}"
+            [ "${OS}" = "openbsd" ] || { echo "Expected openbsd, got ${OS}"; exit 1; }
+
+            ### --------------------------------
+            ### OpenBSD Target Prompts
+            ### --------------------------------
+            sh -n target/openbsd/environment.sh
+            sh -n target/openbsd/sh/prompt.sh
+            sh -n target/openbsd/bash/prompt.sh
+            sh -n target/openbsd/zsh/prompt.sh
+
+            ### --------------------------------
+            ### OpenBSD /bin/sh
+            ### --------------------------------
+            sh -c '
+              export SHELL_REPO_DIR="${PWD}"
+              export SHELL_CONTEXT="desktop"
+              . ./library/detect.sh
+              . ./library/functions.sh
+              . ./core/environment.sh
+              . ./target/openbsd/environment.sh
+              . ./theme/sh.sh
+              _update_prompt
+              echo "OpenBSD /bin/sh prompt: ${PS1}"
+            '
+
+  netbsd:
+    name: 🚩 NetBSD (10.x) Matrix
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Test in NetBSD Shell (sh, bash)
+        uses: vmactions/netbsd-vm@v1
+        with:
+          usesh: true
+          run: |
+            ### ================================
+            ### NETBSD ENVIRONMENT
+            ### ================================
+            uname -a
+            . ./library/detect.sh
+            OS=$(_detect_os)
+            echo "Detected OS: ${OS}"
+            [ "${OS}" = "netbsd" ] || { echo "Expected netbsd, got ${OS}"; exit 1; }
+
+            ### --------------------------------
+            ### NetBSD Target Prompts
+            ### --------------------------------
+            sh -n target/netbsd/environment.sh
+            sh -n target/netbsd/sh/prompt.sh
+            sh -n target/netbsd/bash/prompt.sh
+            sh -n target/netbsd/zsh/prompt.sh
+
+            ### --------------------------------
+            ### NetBSD /bin/sh
+            ### --------------------------------
+            sh -c '
+              export SHELL_REPO_DIR="${PWD}"
+              export SHELL_CONTEXT="desktop"
+              . ./library/detect.sh
+              . ./library/functions.sh
+              . ./core/environment.sh
+              . ./target/netbsd/environment.sh
+              . ./theme/sh.sh
+              _update_prompt
+              echo "NetBSD /bin/sh prompt: ${PS1}"
+            '
+
+  illumos:
+    name: ☀️ illumos Matrix (Syntax & Simulation)
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Shell Interpreters
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh ksh
+
+      - name: Validate illumos Target Syntax
+        run: |
+          ### ================================
+          ### ILLUMOS ENVIRONMENT SYNTAX
+          ### ================================
+          sh -n target/illumos/environment.sh
+          sh -n target/illumos/sh/prompt.sh
+          bash -n target/illumos/bash/prompt.sh
+          zsh -n target/illumos/zsh/prompt.sh
+
+          ### --------------------------------
+          ### illumos Mock Boot Simulation
+          ### --------------------------------
+          sh -c '
+            export SHELL_REPO_DIR="${PWD}"
+            export SHELL_CONTEXT="desktop"
+            export PROMPT_OS_NAME="illumos"
+            . ./library/detect.sh
+            . ./library/functions.sh
+            . ./core/environment.sh
+            . ./target/illumos/environment.sh
+            . ./theme/sh.sh
+            _update_prompt
+            echo "illumos simulated sh prompt: ${PS1}"
           '

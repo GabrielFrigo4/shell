@@ -19,7 +19,7 @@ O **Shell** é o motor interativo de terminal do **Quarteto de Produtividade** (
 - A arquitetura do Shell é estritamente decomposta em camadas ortogonais:
   - `library/`: Funções puras e utilitários compartilhados em POSIX shell.
   - `core/`: Orquestração de inicialização, cache e variáveis globais.
-  - `target/`: Especializações declarativas por sistema operacional (`linux/`, `freebsd/`, `windows/`, `macos/`).
+  - `target/`: Especializações declarativas por sistema operacional (`linux/`, `freebsd/`, `openbsd/`, `netbsd/`, `illumos/`, `macos/`, `windows/`).
   - `context/`: Especializações por ambiente operacional (`desktop/`, `server/`, `container/`, `wsl/`).
   - `theme/`: Renderização de prompts ultra-rápidos para cada shell (`sh`, `bash`, `zsh`).
 
@@ -113,7 +113,7 @@ O **Shell** é o motor interativo de terminal do **Quarteto de Produtividade** (
 > _Desconfie de todas as afirmações de "uma única maneira verdadeira"._
 
 - Suporte nativo e intencional a:
-  - **Sistemas:** FreeBSD, Linux (Fedora, Debian, Arch), macOS e Windows (MSYS2).
+  - **Sistemas:** FreeBSD, OpenBSD, NetBSD, illumos, Linux (Fedora, Debian, Arch), macOS e Windows (MSYS2).
   - **Shells:** FreeBSD `/bin/sh`, Zsh e Bash.
 
 ### 17. Regra da Extensibilidade (_Rule of Extensibility_)

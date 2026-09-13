@@ -71,6 +71,9 @@ _detect_os() {
 	case "$(uname -s)" in
 		Linux*)               _DETECTED_OS="linux" ;;
 		FreeBSD*)             _DETECTED_OS="freebsd" ;;
+		OpenBSD*)             _DETECTED_OS="openbsd" ;;
+		NetBSD*)              _DETECTED_OS="netbsd" ;;
+		SunOS*)               _DETECTED_OS="illumos" ;;
 		Darwin*)              _DETECTED_OS="macos" ;;
 		MINGW*|CYGWIN*|MSYS*) _DETECTED_OS="windows" ;;
 		*)                    _DETECTED_OS="unknown" ;;
@@ -221,8 +224,21 @@ _detect_distro() {
 		_DETECTED_DISTRO="arch"
 	elif [ -f "/etc/debian_version" ]; then
 		_DETECTED_DISTRO="debian"
+	elif [ -f "/etc/release" ]; then
+		case "$(command cat /etc/release 2> "/dev/null")" in
+			*OmniOS*)      _DETECTED_DISTRO="omnios" ;;
+			*SmartOS*)     _DETECTED_DISTRO="smartos" ;;
+			*OpenIndiana*) _DETECTED_DISTRO="openindiana" ;;
+			*)             _DETECTED_DISTRO="illumos" ;;
+		esac
 	else
-		_DETECTED_DISTRO="unknown"
+		case "$(uname -s)" in
+			OpenBSD*) _DETECTED_DISTRO="openbsd" ;;
+			NetBSD*)  _DETECTED_DISTRO="netbsd" ;;
+			FreeBSD*) _DETECTED_DISTRO="freebsd" ;;
+			Darwin*)  _DETECTED_DISTRO="macos" ;;
+			*)        _DETECTED_DISTRO="unknown" ;;
+		esac
 	fi
 	_cache_write "distro" "${_DETECTED_DISTRO}"
 	echo "${_DETECTED_DISTRO}"
@@ -252,6 +268,9 @@ _detect_distro_family() {
 		alpine)                               _DETECTED_DISTRO_FAMILY="alpine" ;;
 		gentoo|funtoo|calculate)              _DETECTED_DISTRO_FAMILY="gentoo" ;;
 		nixos)                                _DETECTED_DISTRO_FAMILY="nixos" ;;
+		freebsd|openbsd|netbsd)               _DETECTED_DISTRO_FAMILY="bsd" ;;
+		omnios|smartos|openindiana|illumos)   _DETECTED_DISTRO_FAMILY="illumos" ;;
+		macos)                                _DETECTED_DISTRO_FAMILY="darwin" ;;
 		*)
 			case "${_like}" in
 				*arch*)            _DETECTED_DISTRO_FAMILY="arch" ;;
@@ -595,11 +614,11 @@ _detect_privilege_escalator() {
 ### --------------------------------
 _is_raw_tty() {
 	case "${TERM}" in
-		linux|dumb|vt100|cons25*) return 0 ;;
+		linux|dumb|vt100|cons25*|wvt25*) return 0 ;;
 	esac
 
 	case "$(command tty 2> "/dev/null")" in
-		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/console) return 0 ;;
+		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/ttyC*|/dev/ttyE*|/dev/console) return 0 ;;
 		*) return 1 ;;
 	esac
 }

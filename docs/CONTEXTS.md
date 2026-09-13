@@ -20,7 +20,7 @@ O **Universal Shell** introduz o conceito de **Contextos de Ambiente** (`SHELL_C
 Dentro de `context/{CONTEXT}/`, as configurações são divididas em duas etapas:
 
 1. **`common.sh`**: Regras e aliases independentes de plataforma aplicáveis a qualquer máquina naquele contexto.
-2. **`{OS}.sh`** (`Linux.sh`, `FreeBSD.sh`, `Darwin.sh`, `MSYS.sh`): Especializações que dependem do kernel ou ferramentas nativas do sistema operacional hospedeiro.
+2. **`{OS}.sh`** (`linux.sh`, `freebsd.sh`, `openbsd.sh`, `netbsd.sh`, `illumos.sh`, `macos.sh`, `windows.sh`): Especializações que dependem do kernel ou ferramentas nativas do sistema operacional hospedeiro.
 
 ---
 

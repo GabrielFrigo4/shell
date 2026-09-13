@@ -141,7 +141,6 @@ printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 32)"
 
 if command -v zsh > "/dev/null" 2>&1; then
 	_prompt_zsh="${_repo_dir}/target/${_os}/zsh/prompt.sh"
-	[ ! -f "${_prompt_zsh}" ] && _prompt_zsh="${_repo_dir}/target/linux/zsh/prompt.sh"
 	if [ -f "${_prompt_zsh}" ]; then
 		_shell_zsh_ms="$(_measure_cmd "zsh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_zsh}\"'")"
 		printf "%-24s %b\n" "Shell Stack (zsh)" "$(_format_ms "${_shell_zsh_ms}" 64)"
@@ -150,7 +149,6 @@ fi
 
 if command -v bash > "/dev/null" 2>&1; then
 	_prompt_bash="${_repo_dir}/target/${_os}/bash/prompt.sh"
-	[ ! -f "${_prompt_bash}" ] && _prompt_bash="${_repo_dir}/target/linux/bash/prompt.sh"
 	if [ -f "${_prompt_bash}" ]; then
 		_shell_bash_ms="$(_measure_cmd "bash -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_bash}\"'")"
 		printf "%-24s %b\n" "Shell Stack (bash)" "$(_format_ms "${_shell_bash_ms}" 64)"
@@ -159,7 +157,6 @@ fi
 
 if command -v sh > "/dev/null" 2>&1; then
 	_prompt_sh="${_repo_dir}/target/${_os}/sh/prompt.sh"
-	[ ! -f "${_prompt_sh}" ] && _prompt_sh="${_repo_dir}/target/linux/sh/prompt.sh"
 	if [ -f "${_prompt_sh}" ]; then
 		_shell_sh_ms="$(_measure_cmd "sh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_sh}\"'")"
 		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" 64)"

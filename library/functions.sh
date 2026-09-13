@@ -437,6 +437,21 @@ update-snap() {
 	_as_root snap refresh "$@"
 }
 
+update-pkg-add() {
+	command -v pkg_add > "/dev/null" 2>&1 || { echo "❌ pkg_add not found." >&2; return 127; }
+	command -v syspatch > "/dev/null" 2>&1 && _as_root syspatch
+	_as_root pkg_add -u "$@"
+}
+
+update-pkgin() {
+	command -v pkgin > "/dev/null" 2>&1 || { echo "❌ pkgin not found." >&2; return 127; }
+	_as_root pkgin -y update && _as_root pkgin -y upgrade "$@"
+}
+
+update-brew() {
+	command -v brew > "/dev/null" 2>&1 || { echo "❌ brew not found." >&2; return 127; }
+	brew update && brew upgrade "$@"
+}
 
 ### --------------------------------
 ### Update System
@@ -453,6 +468,16 @@ update-system() {
 		*)
 			case "$(_detect_os)" in
 				freebsd) command -v pkg > "/dev/null" 2>&1 && update-pkg "$@" ;;
+				openbsd) command -v pkg_add > "/dev/null" 2>&1 && update-pkg-add "$@" ;;
+				netbsd)  command -v pkgin > "/dev/null" 2>&1 && update-pkgin "$@" ;;
+				illumos)
+					if command -v pkg > "/dev/null" 2>&1; then
+						update-pkg "$@"
+					elif command -v pkgin > "/dev/null" 2>&1; then
+						update-pkgin "$@"
+					fi
+					;;
+				macos)   command -v brew > "/dev/null" 2>&1 && update-brew "$@" ;;
 				windows) command -v pacman > "/dev/null" 2>&1 && update-pacman "$@" ;;
 			esac
 			;;

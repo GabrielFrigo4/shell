@@ -36,6 +36,12 @@ chost() {
 		echo "kubernetes"
 	elif command grep -qsF 'docker' /proc/1/cgroup 2> "/dev/null"; then
 		echo "docker"
+	elif [ -n "${CONTAINER_RUNTIME:-}" ]; then
+		echo "${CONTAINER_RUNTIME}"
+	elif command -v zonename > "/dev/null" 2>&1 && [ "$(command zonename 2> "/dev/null")" != "global" ]; then
+		echo "zone"
+	elif command sysctl -n security.jail.jailed 2> "/dev/null" | command grep -qF '1'; then
+		echo "jail"
 	elif [ -n "${container:-}" ]; then
 		echo "${container}"
 	else

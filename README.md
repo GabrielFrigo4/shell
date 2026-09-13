@@ -164,7 +164,7 @@ flowchart TD
 - ⚙️ **[core/](core/README.md)**: Fundações do ambiente (`environment.sh`) e integração com segredos (`vault.sh`).
 - 🎯 **[context/](context/README.md)**: Orquestrador de perfis operacionais (`desktop`, `server`, `container`, `wsl`).
 - 🖌️ **[theme/](theme/README.md)**: Motores de renderização de prompts (Bash, Zsh, Sh).
-- 🎨 **`target/`**: Configurações específicas por sistema operacional (`Linux`, `FreeBSD`, `MacOS`, `Windows`).
+- 🎨 **`target/`**: Configurações específicas por sistema operacional (`Linux`, `FreeBSD`, `OpenBSD`, `NetBSD`, `illumos`, `macOS`, `Windows`).
 
 ---
 

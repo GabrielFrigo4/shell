@@ -103,8 +103,19 @@ else
 		linux)
 			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
 			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
+			command -v sh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} sh"
 			;;
-		freebsd)
+		freebsd|netbsd)
+			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
+			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
+			TARGET_SHELLS="${TARGET_SHELLS} sh"
+			;;
+		openbsd)
+			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
+			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
+			TARGET_SHELLS="${TARGET_SHELLS} sh"
+			;;
+		illumos)
 			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
 			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
 			TARGET_SHELLS="${TARGET_SHELLS} sh"
@@ -112,10 +123,12 @@ else
 		macos)
 			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
 			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
+			command -v sh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} sh"
 			;;
 		windows)
 			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
 			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
+			command -v sh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} sh"
 			;;
 		*)
 			TARGET_SHELLS="${SHELL_NAME}"
