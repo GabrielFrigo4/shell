@@ -10,19 +10,16 @@ unset IFS
 ### --------------------------------
 ### Active Shell Elevation Guard
 ### --------------------------------
-_active_comm="$(command ps -p "$$" -o comm= 2> "/dev/null" | command sed 's/^-//')"
-if [ -z "${_active_comm}" ] && [ -r "/proc/$$/comm" ]; then
-	read -r _active_comm < "/proc/$$/comm" 2> "/dev/null"
-	_active_comm="${_active_comm#-}"
-fi
-if [ "${_active_comm}" = "dash" ] || ! eval 'f-f() { :; }' 2> "/dev/null"; then
-	if command -v zsh > "/dev/null" 2>&1; then
-		exec zsh "$0" "$@"
-	elif command -v bash > "/dev/null" 2>&1; then
-		exec bash "$0" "$@"
+if [ -z "${BASH_VERSION:-}" ] && [ -z "${ZSH_VERSION:-}" ]; then
+	if ! (eval 'f-f() { :; }') 2> "/dev/null"; then
+		if command -v zsh > "/dev/null" 2>&1; then
+			exec zsh "$0" "$@"
+		elif command -v bash > "/dev/null" 2>&1; then
+			exec bash "$0" "$@"
+		fi
 	fi
 fi
-unset _active_comm
+
 
 ### --------------------------------
 ### Help Documentation

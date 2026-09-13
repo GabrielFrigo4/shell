@@ -2,6 +2,8 @@
 ### TERMINAL ENVIRONMENT
 ### ================================
 
+[ -t 0 ] && [ -t 1 ] || return 0 2> "/dev/null" || exit 0
+
 case "$(command ps -o comm= -p "${PPID}" 2> "/dev/null")" in
 	su|-su) unset SHELL_INIT ;;
 esac

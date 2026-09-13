@@ -168,12 +168,12 @@ jobs:
                       ### --------------------------------
                       ### FreeBSD Bash (Interactive with installed dotfiles)
                       ### --------------------------------
-                      bash -i -c 'echo "FreeBSD Bash prompt: ${PS1}"'
+                      bash -i +m -c 'echo "FreeBSD Bash prompt: ${PS1}"' < /dev/null
 
                       ### --------------------------------
                       ### FreeBSD /bin/sh (Interactive with installed dotfiles)
                       ### --------------------------------
-                      ENV="${HOME}/.shrc" sh -i -c 'echo "FreeBSD /bin/sh prompt: ${PS1}"'
+                      ENV="${HOME}/.shrc" SHELL_INIT=1 sh -i -c 'echo "FreeBSD /bin/sh prompt: ${PS1}"' < /dev/null
 
                       ### --------------------------------
                       ### Startup Latency Benchmark (bsh)
