@@ -3,6 +3,15 @@
 ### ================================
 
 ### --------------------------------
+### Sandbox & Chroot Detection
+### --------------------------------
+if [ ! -f /netbsd ]; then
+	export CONTAINER_RUNTIME="chroot"
+else
+	export CONTAINER_RUNTIME="sandbox"
+fi
+
+### --------------------------------
 ### Process Inspector
 ### --------------------------------
 cprocs() {

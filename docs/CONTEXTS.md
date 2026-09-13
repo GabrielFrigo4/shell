@@ -55,10 +55,14 @@ Projetado para instâncias efêmeras e contêineres de compilação:
 
 ## 🧩 4. Contexto WSL
 
-Projetado para o Linux rodando dentro do Windows:
+Projetado para o Linux rodando dentro do Windows (WSL2):
 
-- Mapeia atalhos diretos para executáveis do Windows:
-  - `clip`: Envia a saída do terminal diretamente para a área de transferência do Windows (`/mnt/c/Windows/System32/clip.exe`).
-  - `explorer`: Abre a pasta atual no Windows Explorer (`explorer.exe .`).
-  - `pwsh` / `powershell` / `cmd`: Invocação direta dos interpretadores nativos da máquina hospedeira.
-- Sincronização e detecção do `win32yank` para área de transferência compartilhada no Neovim.
+- **Camada Comum (`common.sh`):**
+  - Mapeia atalhos diretos para executáveis do Windows (`explorer`, `pwsh`, `powershell`, `cmd`).
+  - Sincronização de área de transferência bidirecional (`clip`, `paste`) com suporte a `win32yank.exe`, `clip.exe` e PowerShell.
+- **Camada Linux Especializada (`linux.sh`):**
+  - **Tradução de Caminhos:** `win-path` (converte Linux para Windows) e `wsl-path` (converte Windows para Linux) via `wslpath`.
+  - **Navegação:** `cd-win` para saltar diretamente ao perfil de usuário do Windows (`/mnt/c/Users/<user>`).
+  - **Abertura de Arquivos:** `open-win` para abrir arquivos Linux com aplicações padrão do Windows.
+  - **Resolução de Rede:** Exporta `WSL_HOST_IP` resolvendo o IP do host Windows sem subshells ou forks.
+  - **Gestão de Recursos:** `wsl-drop-caches` para liberar cache de memória da VM para o Windows e `wsl-ip` para consultar o IP da VM.
