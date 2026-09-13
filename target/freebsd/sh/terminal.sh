@@ -2,19 +2,25 @@
 ### TERMINAL ENVIRONMENT
 ### ================================
 
-[ -t 0 ] && [ -t 1 ] || return 0 2> "/dev/null" || exit 0
+if [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ] || [ ! -t 0 ] || [ ! -t 1 ]; then
+	return 0 2> "/dev/null" || exit 0
+fi
+
+case "$-" in
+	*i*) ;;
+	*) return 0 2> "/dev/null" || exit 0 ;;
+esac
 
 case "$(command ps -o comm= -p "${PPID}" 2> "/dev/null")" in
 	su|-su) unset SHELL_INIT ;;
 esac
 
-if [ "${USER}" != "$(command id -un)" ]; then
-	export USER="$(command id -un)"
-	unset SHELL_INIT
+if [ -z "${USER:-}" ] || [ "${USER}" != "$(command id -un 2> "/dev/null")" ]; then
+	export USER="$(command id -un 2> "/dev/null")"
 fi
 
-if [ -z "${SHELL_INIT}" ]; then
-	if [ -z "${SHELL_TARGET}" ]; then
+if [ -z "${SHELL_INIT:-}" ]; then
+	if [ -z "${SHELL_TARGET:-}" ]; then
 		if _is_raw_tty; then
 			SHELL_TARGET="$(command -v sh 2> "/dev/null")"
 		else
