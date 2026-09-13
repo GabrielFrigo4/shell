@@ -358,7 +358,7 @@ jobs:
                       ./scripts/benchmark.sh
 
     netbsd:
-        name: 🚩 NetBSD (10.x) Matrix
+        name: 🚩 NetBSD (11.x) Matrix
         needs: lint
         runs-on: ubuntu-latest
         steps:
