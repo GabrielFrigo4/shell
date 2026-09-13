@@ -10,7 +10,7 @@ unset IFS
 ### --------------------------------
 ### Active Shell Elevation Guard
 ### --------------------------------
-if [ -z "${BASH_VERSION:-}" ] && [ -z "${ZSH_VERSION:-}" ]; then
+if [ -z "${ZSH_VERSION:-}" ]; then
 	if ! (eval 'f-f() { :; }') 2> "/dev/null"; then
 		if command -v zsh > "/dev/null" 2>&1; then
 			exec zsh "$0" "$@"
