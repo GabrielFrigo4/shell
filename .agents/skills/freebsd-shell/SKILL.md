@@ -46,11 +46,10 @@ static char ps[PROMPTLEN];
   - Glifos de ícones (``, ``, ``, ``) ocupam **3 bytes** cada em UTF-8.
   - O ícone do Git (`󰊢`) ocupa **4 bytes**.
   - O caractere de reticências (`…`) ocupa **3 bytes**, enquanto o til (`~`) ocupa apenas **1 byte**. Sob restrição severa (128B), o sufixo de poda deve ser estritamente `~` (1B) para manter a equivalência 1 caractere = 1 byte.
-- **Matriz Auditada de Custos Reais em C (`_base_cost` & `_git_frame`):**
-  - **TTY micro (128B):** Base C = **55B** | Git C = **24B** | Dirty = **+1B** (`*`)
-  - **TTY pill (192B):** Base C = **90B** | Git C = **24B** | Dirty = **+8B** (`\[\e[93m\]*`)
-  - **PTY micro (128B):** Base C = **76B** | Git C = **20B** | Dirty = **+1B** (`*`)
-  - **PTY pill (192B):** Base C = **118B** | Git C = **20B** | Dirty = **+8B** (`\[\e[93m\]*`)
+- **Medição Dinâmica em C em Tempo de Execução (`_calc_c_len`):**
+  - Para eliminar completamente números mágicos ou custos fixos hardcodados no script, o tema monta o molde estrutural real da moldura (`_fixed_str` contendo usuário, host, SO, cores, ícones e moldura do Git ativo) e calcula seus bytes reais em C dinamicamente via a relação canônica:
+    $$\text{Bytes C} = \text{Bytes UTF-8 Brutos} - \text{ocorrências de } \backslash[ - \text{ocorrências de } \backslash] - \text{ocorrências de } \backslash e$$
+  - Essa medição consome apenas ~1.3ms e vincula qualquer alteração visual (novas cores, troca de ícone, usuário com nome longo, estado sujo do Git) diretamente à calibragem de bytes, alocando a sobra matemática exata para o diretório e a branch.
 - **Parametrização Dinâmica (`PROMPT_BUFFER_LIMIT`):** Como `PROMPTLEN` é uma macro estática em C sem reflexão em tempo de execução para scripts, o motor dinâmico adota chaveamento nativo por versão do FreeBSD (128 bytes para FreeBSD <= 13 e 192 bytes para FreeBSD >= 14) e permite override dinâmico via variável `$PROMPT_BUFFER_LIMIT` (ex: `PROMPT_BUFFER_LIMIT=256`), garantindo que compilações customizadas ou futuras ampliações upstream sejam aproveitadas sem alterar o código do tema.
 
 ---
