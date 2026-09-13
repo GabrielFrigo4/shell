@@ -101,12 +101,12 @@ printf "%b%-12s %-12s %-10s %s%b\n" "${_c_bold}" "SHELL" "LATENCY" "STATUS" "TAR
 printf "%s\n" "----------------------------------------------------"
 
 if [ "${_os}" = "freebsd" ]; then
-	_benchmark_shells="zsh bash sh"
+	set -- zsh bash sh
 else
-	_benchmark_shells="zsh bash"
+	set -- zsh bash
 fi
 
-for _sh in ${_benchmark_shells}; do
+for _sh in "$@"; do
 	if command -v "${_sh}" > "/dev/null" 2>&1; then
 		case "${_sh}" in
 			zsh)  _target="< 64ms"; _target_limit=64 ;;
@@ -143,11 +143,6 @@ done
 printf "\n%b📦 Ecosystem Modules Latency%b\n" "${_c_bold}${_c_cyan}" "${_c_reset}"
 printf "%s\n" "----------------------------------------------------"
 
-if [ "${_os}" = "freebsd" ]; then
-	_shell_core_ms="$(_measure_cmd "sh -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
-	printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 32)"
-fi
-
 if command -v zsh > "/dev/null" 2>&1; then
 	_prompt_zsh="${_repo_dir}/target/${_os}/zsh/prompt.sh"
 	if [ -f "${_prompt_zsh}" ]; then
@@ -170,6 +165,11 @@ if [ "${_os}" = "freebsd" ] && command -v sh > "/dev/null" 2>&1; then
 		_shell_sh_ms="$(_measure_cmd "sh -c 'export SHELL_REPO_DIR=${_repo_dir}; for f in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$f\"; done; . \"${_prompt_sh}\"'")"
 		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" 64)"
 	fi
+fi
+
+if [ "${_os}" = "freebsd" ]; then
+	_shell_core_ms="$(_measure_cmd "sh -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
+	printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" 32)"
 fi
 
 printf "\n%b✨ Benchmark completed successfully.%b\n" "${_c_green}" "${_c_reset}"

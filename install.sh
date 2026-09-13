@@ -67,7 +67,6 @@ unset _skip_next
 
 case "${SHELL_CONTEXT}" in
 	desktop|server|container) ;;
-	wsl) SHELL_CONTEXT="desktop" ;;
 	*)
 		echo "ERROR: Invalid context '${SHELL_CONTEXT}'. Use 'desktop', 'server' or 'container'."
 		echo "Usage: install.sh [--context desktop|server|container] [-c ...] [--shell all|zsh|bash|sh] [-s ...] [--pure|--no-framework]"
@@ -101,35 +100,14 @@ if [ "${SHELL_TARGET}" != "all" ]; then
 else
 	TARGET_SHELLS=""
 	case "${OS_NAME}" in
-		linux)
-			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
-			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
-			command -v sh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} sh"
-			;;
-		freebsd|netbsd)
+		freebsd)
 			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
 			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
 			TARGET_SHELLS="${TARGET_SHELLS} sh"
 			;;
-		openbsd)
+		linux|macos|windows|openbsd|netbsd|illumos)
 			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
 			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
-			TARGET_SHELLS="${TARGET_SHELLS} sh"
-			;;
-		illumos)
-			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
-			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
-			TARGET_SHELLS="${TARGET_SHELLS} sh"
-			;;
-		macos)
-			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
-			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
-			command -v sh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} sh"
-			;;
-		windows)
-			command -v zsh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} zsh"
-			command -v bash > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} bash"
-			command -v sh > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} sh"
 			;;
 		*)
 			TARGET_SHELLS="${SHELL_NAME}"

@@ -397,6 +397,7 @@ jobs:
             ### ================================
             ### NETBSD ENVIRONMENT
             ### ================================
+            export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:${PATH}"
             uname -a
             . ./library/detect.sh
             OS=$(_detect_os)
@@ -406,7 +407,19 @@ jobs:
             ### --------------------------------
             ### Dependencies
             ### --------------------------------
-            pkgin -y install bash
+            if command -v pkgin > "/dev/null" 2>&1; then
+              pkgin -y update 2> "/dev/null" || true
+              pkgin -y install bash
+            elif command -v pkg_add > "/dev/null" 2>&1; then
+              pkg_add -I bash
+            elif [ -x "/usr/pkg/bin/pkgin" ]; then
+              /usr/pkg/bin/pkgin -y update 2> "/dev/null" || true
+              /usr/pkg/bin/pkgin -y install bash
+            elif [ -x "/usr/pkg/sbin/pkg_add" ]; then
+              /usr/pkg/sbin/pkg_add -I bash
+            elif [ -x "/usr/sbin/pkg_add" ]; then
+              /usr/sbin/pkg_add -I bash
+            fi
 
             ### --------------------------------
             ### NetBSD Target Prompts
