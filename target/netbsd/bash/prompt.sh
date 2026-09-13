@@ -2,7 +2,7 @@
 ### SHELL APPEARANCE
 ### ================================
 
-PROMPT_OS_ICON="󰈺 "
+PROMPT_OS_ICON=" "
 PROMPT_OS_COLOR="yellow"
 PROMPT_OS_NAME="$(command uname -r 2> "/dev/null" || echo "NetBSD")"
 
