@@ -124,6 +124,22 @@ open-zed() {
 alias oz="open-zed"
 
 ### --------------------------------
+### AI CLI (Google Antigravity agy)
+### --------------------------------
+alias agy-continue="agy -c"
+alias agyc="agy -c"
+
+alias agy-auto="agy --dangerously-skip-permissions"
+alias agy-danger="agy --dangerously-skip-permissions"
+alias agya="agy --dangerously-skip-permissions"
+alias agyd="agy --dangerously-skip-permissions"
+
+alias agy-continue-auto="agy -c --dangerously-skip-permissions"
+alias agy-continue-danger="agy -c --dangerously-skip-permissions"
+alias agyca="agy -c --dangerously-skip-permissions"
+alias agycd="agy -c --dangerously-skip-permissions"
+
+### --------------------------------
 ### Emacs Daemon & Client
 ### --------------------------------
 export EMACS_SOCKET_NAME="${HOME}/.emacs.d/var/server/auth/server"
