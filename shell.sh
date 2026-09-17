@@ -65,10 +65,10 @@ _shell_update() {
 }
 
 _shell_bench() {
-	if [ -f "${_SHELL_ROOT}/scripts/benchmark.sh" ]; then
-		sh "${_SHELL_ROOT}/scripts/benchmark.sh" "$@"
+	if [ -f "${_SHELL_ROOT}/benchmark.sh" ]; then
+		sh "${_SHELL_ROOT}/benchmark.sh" "$@"
 	else
-		echo "❌ Script de benchmark não encontrado em ${_SHELL_ROOT}/scripts/benchmark.sh" >&2
+		echo "❌ Script de benchmark não encontrado em ${_SHELL_ROOT}/benchmark.sh" >&2
 		return 1
 	fi
 }

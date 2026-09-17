@@ -6,7 +6,7 @@
 ### --------------------------------
 ### Environment Setup
 ### --------------------------------
-_repo_dir="$(cd "$(dirname "${0}")/.." && pwd)"
+_repo_dir="$(cd "$(dirname "${0}")" && pwd)"
 
 case ":${PATH}:" in
 	*":/usr/local/bin:"*) ;;

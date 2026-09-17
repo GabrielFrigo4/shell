@@ -405,11 +405,11 @@ reinstall-shell() {
 ### Benchmark Shell
 ### --------------------------------
 bench-shell() {
-	if [ -n "${SHELL_REPO_DIR}" ] && [ -f "${SHELL_REPO_DIR}/scripts/benchmark.sh" ]; then
+	if [ -n "${SHELL_REPO_DIR}" ] && [ -f "${SHELL_REPO_DIR}/benchmark.sh" ]; then
 		local _cur_bin="$(_detect_enabled_shell)"
-		"${_cur_bin}" "${SHELL_REPO_DIR}/scripts/benchmark.sh" "$@"
+		"${_cur_bin}" "${SHELL_REPO_DIR}/benchmark.sh" "$@"
 	else
-		echo "❌ ERROR: Benchmark script not found in ${SHELL_REPO_DIR}/scripts/benchmark.sh."
+		echo "❌ ERROR: Benchmark script not found in ${SHELL_REPO_DIR}/benchmark.sh."
 		return 1
 	fi
 }

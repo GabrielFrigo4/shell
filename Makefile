@@ -58,7 +58,7 @@ format:
 	fi
 
 bench:
-	sh scripts/benchmark.sh
+	sh benchmark.sh
 
 install:
 	sh install.sh

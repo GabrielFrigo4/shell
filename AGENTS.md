@@ -22,6 +22,7 @@ O **Shell** é o **motor interativo de terminal** do ecossistema. Fornece prompt
 4. **Proteção de terminal:** `[ -t 1 ]` antes de sequências ANSI em pipes.
 5. **Zero comentários narrativos:** Blocos lógicos separados por linhas em branco.
 6. **Prompts com `\[...\]`:** Códigos ANSI em `PS1` DEVEM estar entre delimitadores de largura zero.
+7. **Hermetismo de Produção & Invariante `rm -rf .agents`:** Repositório 100% autônomo. Zero acoplamento de código de produção, carregadores ou aliases a `.agents/` ou `skills/` (o Shell funciona plenamente se `.agents/` for deletado).
 
 ---
 

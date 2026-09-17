@@ -175,7 +175,7 @@ if [ "${OS_NAME}" != "windows" ]; then
 	_as_root find "${SHELL_REPO_DIR}" -type d -exec chmod 0755 {} + 2> "/dev/null" || true
 	_as_root find "${SHELL_REPO_DIR}" -type f -exec chmod 0644 {} + 2> "/dev/null" || true
 	[ -f "${SHELL_REPO_DIR}/install.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/install.sh" 2> "/dev/null" || true
-	[ -f "${SHELL_REPO_DIR}/scripts/benchmark.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/scripts/benchmark.sh" 2> "/dev/null" || true
+	[ -f "${SHELL_REPO_DIR}/benchmark.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/benchmark.sh" 2> "/dev/null" || true
 	[ -f "${SHELL_REPO_DIR}/.githooks/pre-commit" ] && chmod 0755 "${SHELL_REPO_DIR}/.githooks/pre-commit" 2> "/dev/null" || true
 fi
 
