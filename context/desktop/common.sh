@@ -170,11 +170,39 @@ emacs-open() {
 		command nohup emacsclient --create-frame --alternate-editor "" "$@" > "/dev/null" 2>&1 &
 	fi
 }
+emacs-eshell() {
+	command -v emacsclient > "/dev/null" 2>&1 || command -v emacs > "/dev/null" 2>&1 || {
+		echo "❌ emacs não encontrado no PATH." >&2
+		return 127
+	}
+
+	local _dir="${1:-.}"
+	[ -d "${_dir}" ] && _dir="$(cd "${_dir}" && pwd)" || _dir="${PWD}"
+
+	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+		if command -v emacsclient > "/dev/null" 2>&1; then
+			command nohup emacsclient --create-frame --alternate-editor "" \
+				--eval "(progn (cd \"${_dir}/\") (aweshell/new))" > "/dev/null" 2>&1 &
+		else
+			command nohup emacs --eval "(progn (cd \"${_dir}/\") (aweshell/new))" > "/dev/null" 2>&1 &
+		fi
+	else
+		if command -v emacsclient > "/dev/null" 2>&1; then
+			command emacsclient -t --alternate-editor "" \
+				--eval "(progn (cd \"${_dir}/\") (aweshell/new))"
+		else
+			command emacs -nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
+		fi
+	fi
+}
 alias ek="emacs-kill"
 alias es="emacs-start"
 alias er="emacs-restart"
 alias ec="emacs-client"
 alias oe="emacs-open"
+alias open-eshell="emacs-eshell"
+alias oes="emacs-eshell"
+alias esh="emacs-eshell"
 
 ### --------------------------------
 ### Servers
