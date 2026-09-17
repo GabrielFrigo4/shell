@@ -306,10 +306,8 @@ update-profile() {
 		_target="${HOME}/.local/share/profile"
 	elif [ -e "${HOME}/.config/profile/.git" ]; then
 		_target="${HOME}/.config/profile"
-	elif [ -e "${HOME}/.profile.d/.git" ]; then
-		_target="${HOME}/.profile.d"
-	elif [ -e "${HOME}/.profile-repo/.git" ]; then
-		_target="${HOME}/.profile-repo"
+	elif [ -e "${HOME}/.profile/.git" ]; then
+		_target="${HOME}/.profile"
 	elif [ -e "/usr/local/share/profile/.git" ]; then
 		_target="/usr/local/share/profile"
 	fi
@@ -767,7 +765,7 @@ update-all() {
 		update-editors "$@"
 	fi
 
-	if [ -d "${HOME}/.local/share/profile/.git" ] || [ -d "${HOME}/.config/profile/.git" ] || [ -d "${HOME}/.profile-repo/.git" ]; then
+	if [ -d "${HOME}/.local/share/profile/.git" ] || [ -d "${HOME}/.config/profile/.git" ] || [ -d "${HOME}/.profile/.git" ]; then
 		echo ""
 		update-profile "$@"
 	fi
