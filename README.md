@@ -98,7 +98,23 @@ O instalador é **multi-shell automático**: ao ser executado, ele detecta os sh
 
 > 💡 **Novo shell instalado depois?** Se você instalar um novo shell posteriormente (ex: `sudo pacman -S zsh` ou `pkg install zsh`), basta executar `reinstall-shell` (ou reexecutar o `install.sh`) e ele configurará o novo shell automaticamente!
 
-### 🐧 Linux / 😈 FreeBSD / 🍎 macOS
+### 🐧 Linux / 😈 FreeBSD / 🍎 macOS (Modo Rootless XDG — Recomendado)
+
+A abordagem recomendada privilegia a independência de usuário e zero acoplamento administrativo (`sudo`):
+
+```sh
+# Opção A: XDG Data (Canônico Rootless)
+git clone "https://github.com/GabrielFrigo4/shell" "${HOME}/.local/share/shell"
+sh "${HOME}/.local/share/shell/install.sh" --context desktop
+
+# Opção B: XDG Config (Ergonomia unificada sob ~/.config)
+git clone "https://github.com/GabrielFrigo4/shell" "${HOME}/.config/shell"
+sh "${HOME}/.config/shell/install.sh" --context desktop
+```
+
+### 🏛️ Linux / 😈 FreeBSD / 🍎 macOS (Modo Global de Sistema — Padrão com Sudo)
+
+Padrão em estações de trabalho e servidores administrados onde o par `root` + usuário administrador compartilha a mesma pilha de terminal:
 
 ```sh
 sudo git clone "https://github.com/GabrielFrigo4/shell" "/usr/local/share/shell"
@@ -125,32 +141,32 @@ sh "${HOME}/.shell/install.sh" --context desktop
 
 ## ⚡ Comandos Mais Usados
 
-| Comando / Alias                       | Ação                                                                                                            | Destino               |
-| :------------------------------------ | :-------------------------------------------------------------------------------------------------------------- | :-------------------- |
-| `update-all` / `upall` / `u`          | **Orquestrador Global:** Atualiza SO + AUR + Flatpak + Snap + MAS.                                              | Universal             |
-| `update-system` / `upsys`             | Atualiza pacotes do sistema operacional nativo.                                                                 | Universal             |
-| `update-shell` / `upsh`               | Atualiza o repositório ativo do shell (`$SHELL_REPO_DIR` ou `/usr/local/share/shell`), limpa cache e recarrega. | Universal             |
-| `update-editors` / `uped`             | Atualiza as configurações residentes ativas dos editores (`~/.emacs.d`, `~/.config/nvim`, etc.).                | Universal             |
-| `update-emacs-modes` / `upmodes`      | Sincroniza diretamente os submódulos Elisp locais (`~/.emacs.d/usr/local/*`) com o upstream remoto.             | Universal             |
-| `update-profile` / `uprc`             | Atualiza o repositório do profile (`~/.config/profile`), reaplica dotfiles/skills e recarrega `~/.profile`.     | Universal             |
-| `reinstall-shell` / `resh`            | Reexecuta o instalador em todos os shells instalados no SO.                                                     | Universal             |
-| `clean-cache` / `ccache`              | Limpa o cache em memória e tmpfs de todos os detectores do ambiente.                                            | Universal             |
-| `update-vault` / `upvt`               | Sincroniza segredos (`~/.vault`) e recarrega chaves SSH.                                                        | Universal             |
-| `bench-shell` / `bsh` / `shell-bench` | Mede a latência de inicialização dos shells e módulos isolados.                                                 | Universal             |
-| `update-wifi` / `upwf`                | Sincroniza credenciais Wi-Fi configuradas com o SO.                                                             | Linux, BSD, Windows   |
-| `update-network` / `upnet`            | Valida conectividade e sincroniza credenciais de rede.                                                          | Universal             |
-| `editor [alvo]` / `e`                 | Abre o editor padrão configurado na cascata de prioridade.                                                      | `$VISUAL` / `$EDITOR` |
-| `open-neovim` / `on`                  | Abre o Neovim no alvo especificado (padrão: `.`).                                                               | `nvim`                |
-| `open-helix` / `oh` / `h`             | Abre o Helix no alvo especificado (padrão: `.`).                                                                | `hx`                  |
-| `open-code` / `oc`                    | Abre o VS Code no alvo especificado (padrão: `.`).                                                              | `code` / `vscode`     |
-| `mount-device` / `mntdev` / `mdev`    | Monta celular em `~/Device` via GVfs/KIO-FUSE/GSConnect/ADB.                                                    | Desktop               |
-| `umount-device` / `umdev` / `udev`    | Desmonta e desconecta `~/Device` com segurança.                                                                 | Desktop               |
-| `ports` / `p`                         | Inspeciona portas de rede em escuta (`ss` > `netstat` > `sockstat`)                                             | Servidor / Desktop    |
-| `services` / `svc`                    | Inspeciona status dos serviços (`systemctl` > `service` > `rc-status`)                                          | Servidor / Desktop    |
-| `l`, `ll`, `la`, `lt`                 | Listagem moderna com ícones e status git (`eza`/`exa`/`ls`).                                                    | Universal             |
-| `g <termo>`                           | Busca inteligente de texto em arquivos (`rg` > `grep`).                                                         | Universal             |
-| `c <arquivo>` / `b`                   | Visualizador formatado com syntax highlighting (`bat` > `cat`).                                                 | Universal             |
-| `f <alvo>` / `ff`                     | Localizador ultrarrápido de arquivos (`fd` > `find`).                                                           | Universal             |
+| Comando / Alias                       | Ação                                                                                                                                                | Destino               |
+| :------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------- |
+| `update-all` / `upall` / `u`          | **Orquestrador Global:** Atualiza SO + AUR + Flatpak + Snap + MAS.                                                                                  | Universal             |
+| `update-system` / `upsys`             | Atualiza pacotes do sistema operacional nativo.                                                                                                     | Universal             |
+| `update-shell` / `upsh`               | Atualiza o repositório ativo do shell (`/usr/local/share/shell`, `~/.local/share/shell`, `~/.config/shell` ou `~/.shell`), limpa cache e recarrega. | Universal             |
+| `update-editors` / `uped`             | Atualiza as configurações residentes ativas dos editores (`~/.emacs.d`, `~/.config/nvim`, etc.).                                                    | Universal             |
+| `update-emacs-modes` / `upmodes`      | Sincroniza diretamente os submódulos Elisp locais (`~/.emacs.d/usr/local/*`) com o upstream remoto.                                                 | Universal             |
+| `update-profile` / `uprc`             | Atualiza o repositório do profile (`~/.local/share/profile` ou `~/.config/profile`), reaplica dotfiles/skills e recarrega `~/.profile`.             | Universal             |
+| `reinstall-shell` / `resh`            | Reexecuta o instalador em todos os shells instalados no SO.                                                                                         | Universal             |
+| `clean-cache` / `ccache`              | Limpa o cache em memória e tmpfs de todos os detectores do ambiente.                                                                                | Universal             |
+| `update-vault` / `upvt`               | Sincroniza segredos (`~/.vault`) e recarrega chaves SSH.                                                                                            | Universal             |
+| `bench-shell` / `bsh` / `shell-bench` | Mede a latência de inicialização dos shells e módulos isolados.                                                                                     | Universal             |
+| `update-wifi` / `upwf`                | Sincroniza credenciais Wi-Fi configuradas com o SO.                                                                                                 | Linux, BSD, Windows   |
+| `update-network` / `upnet`            | Valida conectividade e sincroniza credenciais de rede.                                                                                              | Universal             |
+| `editor [alvo]` / `e`                 | Abre o editor padrão configurado na cascata de prioridade.                                                                                          | `$VISUAL` / `$EDITOR` |
+| `open-neovim` / `on`                  | Abre o Neovim no alvo especificado (padrão: `.`).                                                                                                   | `nvim`                |
+| `open-helix` / `oh` / `h`             | Abre o Helix no alvo especificado (padrão: `.`).                                                                                                    | `hx`                  |
+| `open-code` / `oc`                    | Abre o VS Code no alvo especificado (padrão: `.`).                                                                                                  | `code` / `vscode`     |
+| `mount-device` / `mntdev` / `mdev`    | Monta celular em `~/Device` via GVfs/KIO-FUSE/GSConnect/ADB.                                                                                        | Desktop               |
+| `umount-device` / `umdev` / `udev`    | Desmonta e desconecta `~/Device` com segurança.                                                                                                     | Desktop               |
+| `ports` / `p`                         | Inspeciona portas de rede em escuta (`ss` > `netstat` > `sockstat`)                                                                                 | Servidor / Desktop    |
+| `services` / `svc`                    | Inspeciona status dos serviços (`systemctl` > `service` > `rc-status`)                                                                              | Servidor / Desktop    |
+| `l`, `ll`, `la`, `lt`                 | Listagem moderna com ícones e status git (`eza`/`exa`/`ls`).                                                                                        | Universal             |
+| `g <termo>`                           | Busca inteligente de texto em arquivos (`rg` > `grep`).                                                                                             | Universal             |
+| `c <arquivo>` / `b`                   | Visualizador formatado com syntax highlighting (`bat` > `cat`).                                                                                     | Universal             |
+| `f <alvo>` / `ff`                     | Localizador ultrarrápido de arquivos (`fd` > `find`).                                                                                               | Universal             |
 
 > 📖 **Consulte o catálogo completo de atalhos e variáveis em [docs/ALIASES.md](docs/ALIASES.md).**
 

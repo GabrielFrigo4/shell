@@ -161,12 +161,14 @@ update-shell() {
 	_target=""
 	if [ -n "${SHELL_REPO_DIR:-}" ] && [ -e "${SHELL_REPO_DIR}/.git" ]; then
 		_target="${SHELL_REPO_DIR}"
-	elif [ -e "${HOME}/.shell/.git" ]; then
-		_target="${HOME}/.shell"
-	elif [ -e "${HOME}/.local/share/shell/.git" ]; then
-		_target="${HOME}/.local/share/shell"
 	elif [ -e "/usr/local/share/shell/.git" ]; then
 		_target="/usr/local/share/shell"
+	elif [ -e "${HOME}/.local/share/shell/.git" ]; then
+		_target="${HOME}/.local/share/shell"
+	elif [ -e "${HOME}/.config/shell/.git" ]; then
+		_target="${HOME}/.config/shell"
+	elif [ -e "${HOME}/.shell/.git" ]; then
+		_target="${HOME}/.shell"
 	elif [ -n "${SHELL_REPO_DIR:-}" ] && [ -d "${SHELL_REPO_DIR}" ]; then
 		_target="${SHELL_REPO_DIR}"
 	fi
@@ -195,7 +197,7 @@ update-shell() {
 			. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
 		fi
 	else
-		_ui_info "Nenhum repositório de shell encontrado em ~/.shell, ~/.local/share/shell, /usr/local/share/shell ou \$SHELL_REPO_DIR."
+		_ui_info "Nenhum repositório de shell encontrado em /usr/local/share/shell, ~/.local/share/shell, ~/.config/shell ou ~/.shell."
 	fi
 	unset _target
 }
@@ -300,8 +302,12 @@ update-profile() {
 	_target=""
 	if [ -n "${PROFILE_DIR:-}" ] && [ -e "${PROFILE_DIR}/.git" ]; then
 		_target="${PROFILE_DIR}"
+	elif [ -e "${HOME}/.local/share/profile/.git" ]; then
+		_target="${HOME}/.local/share/profile"
 	elif [ -e "${HOME}/.config/profile/.git" ]; then
 		_target="${HOME}/.config/profile"
+	elif [ -e "${HOME}/.profile.d/.git" ]; then
+		_target="${HOME}/.profile.d"
 	elif [ -e "${HOME}/.profile-repo/.git" ]; then
 		_target="${HOME}/.profile-repo"
 	elif [ -e "/usr/local/share/profile/.git" ]; then
@@ -332,7 +338,7 @@ update-profile() {
 		fi
 		_ui_ok "Universal Profile atualizado e sincronizado com sucesso!"
 	else
-		_ui_info "Nenhum repositório Profile encontrado em ~/.config/profile, ~/.profile-repo ou \$PROFILE_DIR."
+		_ui_info "Nenhum repositório Profile encontrado em ~/.local/share/profile, ~/.config/profile ou \$PROFILE_DIR."
 	fi
 
 	if [ -f "${HOME}/.profile" ]; then

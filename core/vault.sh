@@ -3,12 +3,16 @@
 ### ================================
 
 if [ -z "${VAULT_DIR:-}" ]; then
-	if [ -d "${HOME}/.vault" ]; then
+	if [ -d "${HOME}/.local/share/vault" ]; then
+		VAULT_DIR="${HOME}/.local/share/vault"
+	elif [ -d "${HOME}/.config/vault" ]; then
+		VAULT_DIR="${HOME}/.config/vault"
+	elif [ -d "${HOME}/.vault" ]; then
 		VAULT_DIR="${HOME}/.vault"
 	elif [ -d "/usr/local/share/vault" ]; then
 		VAULT_DIR="/usr/local/share/vault"
 	else
-		VAULT_DIR="${HOME}/.vault"
+		VAULT_DIR="${HOME}/.local/share/vault"
 	fi
 fi
 
@@ -40,6 +44,10 @@ update-vault() {
 	_target=""
 	if [ -n "${VAULT_DIR:-}" ] && [ -d "${VAULT_DIR}/.git" ]; then
 		_target="${VAULT_DIR}"
+	elif [ -d "${HOME}/.local/share/vault/.git" ]; then
+		_target="${HOME}/.local/share/vault"
+	elif [ -d "${HOME}/.config/vault/.git" ]; then
+		_target="${HOME}/.config/vault"
 	elif [ -d "${HOME}/.vault/.git" ]; then
 		_target="${HOME}/.vault"
 	elif [ -d "/usr/local/share/vault/.git" ]; then
@@ -64,7 +72,7 @@ update-vault() {
 		[ -f "${HOME}/.${_rc_name}rc" ] && . "${HOME}/.${_rc_name}rc" 2> "/dev/null" || true
 		unset _rc_name
 	else
-		_ui_info "Nenhum repositório de Vault encontrado em ~/.vault ou /usr/local/share/vault."
+		_ui_info "Nenhum repositório de Vault encontrado em ~/.local/share/vault, ~/.config/vault ou ~/.vault."
 	fi
 	unset _target
 }
