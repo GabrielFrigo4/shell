@@ -99,11 +99,11 @@ _git_pull_resilient() {
 		fi
 	fi
 
-	local _content_diff
-	_content_diff="$(eval "${_cmd} diff -U0" 2> "/dev/null" | grep '^[+-][^+-]' || true)"
-	if [ -z "${_content_diff}" ] && [ -z "$(eval "${_cmd} status --porcelain" 2> "/dev/null" | grep '^??' || true)" ]; then
-		eval "${_cmd} checkout -- ." > "/dev/null" 2>&1 || true
-	fi
+	eval "${_cmd} diff --numstat" 2> "/dev/null" | while IFS="$(printf '\t')" read -r _add _del _file; do
+		if [ "${_add}" = "0" ] && [ "${_del}" = "0" ] && [ -n "${_file}" ]; then
+			eval "${_cmd} checkout -- \"${_file}\"" > "/dev/null" 2>&1 || true
+		fi
+	done
 
 	local _has_dirty=0
 	local _status
@@ -133,9 +133,16 @@ _git_pull_resilient() {
 					_ui_info "Alterações locais mantidas salvas em 'git stash list'."
 				fi
 			fi
+			eval "${_cmd} diff --numstat" 2> "/dev/null" | while IFS="$(printf '\t')" read -r _add _del _file; do
+				if [ "${_add}" = "0" ] && [ "${_del}" = "0" ] && [ -n "${_file}" ]; then
+					eval "${_cmd} checkout -- \"${_file}\"" > "/dev/null" 2>&1 || true
+				fi
+			done
 		fi
 
-		find "${_dir}" -maxdepth 2 -type f \( -name "*.sh" -o -path "*/.githooks/*" \) -exec chmod 0755 {} + 2> "/dev/null" || true
+		if [ -d "${_dir}/.githooks" ]; then
+			chmod 0755 "${_dir}/.githooks/"* 2> "/dev/null" || true
+		fi
 
 		if [ -f "${_dir}/.gitmodules" ]; then
 			eval "${_cmd} submodule update --init --recursive" > "/dev/null" 2>&1 || true
