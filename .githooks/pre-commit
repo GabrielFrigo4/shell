@@ -56,6 +56,50 @@ if [ -n "${_unquoted_null}" ]; then
 fi
 
 ### --------------------------------
+### Banner Geometry & Length Check
+### --------------------------------
+if command -v python3 > "/dev/null" 2>&1; then
+	_staged_sh=$(git diff --cached --name-only --diff-filter=d | grep '\.sh$' 2> "/dev/null" || true)
+	if [ -n "${_staged_sh}" ]; then
+		echo "  ↳ Validating banner geometry (32/64 cols)..."
+		python3 -c '
+import sys, re
+failed = False
+for f in sys.argv[1:]:
+    with open(f, "r", encoding="utf-8", errors="ignore") as fp:
+        lines = [l.rstrip("\r\n") for l in fp]
+    for idx, line in enumerate(lines, 1):
+        m_sec = re.match(r"^###\s+(=+|-+)$", line)
+        if m_sec and len(m_sec.group(1)) != 32:
+            print(f"❌ {f}:L{idx}: Régua de seção possui {len(m_sec.group(1))} caracteres (esperado 32)")
+            failed = True
+        prev_line = lines[idx - 2] if idx >= 2 else ""
+        next_line = lines[idx] if idx < len(lines) else ""
+        if (re.match(r"^###\s+(=|-){32}$", prev_line) or re.match(r"^###\s+(=|-){32}$", next_line)) and line.startswith("### "):
+            title = line[4:]
+            if len(title) > 32:
+                print(f"❌ {f}:L{idx}: Título vazou 32 colunas ({len(title)} cols): {title}")
+                failed = True
+            if re.search(r"[\(\)\[\]]", title):
+                print(f"❌ {f}:L{idx}: Título contém parênteses/colchetes: {title}")
+                failed = True
+        if idx <= 6:
+            m_hdr = re.match(r"^#\s+(-+)$", line)
+            if m_hdr and len(m_hdr.group(1)) >= 20 and len(m_hdr.group(1)) != 64:
+                print(f"❌ {f}:L{idx}: Régua de cabeçalho possui {len(m_hdr.group(1))} hífens (esperado 64)")
+                failed = True
+            if (re.match(r"^#\s+-{64}$", prev_line) or re.match(r"^#\s+-{64}$", next_line)) and line.startswith("# "):
+                title = line[2:]
+                if len(title) > 64:
+                    print(f"❌ {f}:L{idx}: Título de cabeçalho vazou 64 hífens ({len(title)} cols): {title}")
+                    failed = True
+if failed:
+    sys.exit(1)
+' ${_staged_sh}
+	fi
+fi
+
+### --------------------------------
 ### Markdown Prettier Validation
 ### --------------------------------
 if command -v prettier > "/dev/null" 2>&1; then
