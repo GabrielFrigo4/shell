@@ -8,3 +8,8 @@
 path-front "${HOME}/.local/bin"
 path-front "${HOME}/.cargo/bin"
 path-dedup
+
+### --------------------------------
+### Housekeeping
+### --------------------------------
+[ -e "${HOME}/:0" ] && rm -f "${HOME}/:0" 2> "/dev/null"
