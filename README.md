@@ -131,6 +131,7 @@ sh "${HOME}/.shell/install.sh" --context desktop
 | `update-system` / `upsys`             | Atualiza pacotes do sistema operacional nativo.                                                                 | Universal             |
 | `update-shell` / `upsh`               | Atualiza o repositório ativo do shell (`$SHELL_REPO_DIR` ou `/usr/local/share/shell`), limpa cache e recarrega. | Universal             |
 | `update-editors` / `uped`             | Atualiza as configurações residentes ativas dos editores (`~/.emacs.d`, `~/.config/nvim`, etc.).                | Universal             |
+| `update-emacs-modes` / `upmodes`      | Sincroniza diretamente os submódulos Elisp locais (`~/.emacs.d/usr/local/*`) com o upstream remoto.             | Universal             |
 | `update-profile` / `uprc`             | Atualiza o repositório do profile (`~/.config/profile`), reaplica dotfiles/skills e recarrega `~/.profile`.     | Universal             |
 | `reinstall-shell` / `resh`            | Reexecuta o instalador em todos os shells instalados no SO.                                                     | Universal             |
 | `clean-cache` / `ccache`              | Limpa o cache em memória e tmpfs de todos os detectores do ambiente.                                            | Universal             |

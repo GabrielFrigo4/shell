@@ -232,6 +232,14 @@ update-editors() {
 			else
 				_ui_warn "${_ed}: sincronização falhou."
 			fi
+			if [ "${_ed}" = "Emacs" ] && [ -f "${_target}/.gitmodules" ]; then
+				_ui_sub "Sincronizando submódulos Elisp locais em ${_target}..."
+				if git -C "${_target}" submodule update --init --recursive --remote --merge > "/dev/null" 2>&1; then
+					_ui_ok "Submódulos Elisp atualizados com sucesso!"
+				else
+					_ui_warn "Falha na sincronização dos submódulos Elisp com upstream."
+				fi
+			fi
 			_found=1
 		fi
 	done
@@ -242,6 +250,32 @@ update-editors() {
 		_ui_ok "Suíte de Editores sincronizada!"
 	fi
 	unset _found _ed _target
+}
+
+### --------------------------------
+### Update Emacs Modes
+### --------------------------------
+update-emacs-modes() {
+	_target=""
+	if [ -d "${HOME}/.emacs.d/.git" ]; then
+		_target="${HOME}/.emacs.d"
+	elif [ -d "${XDG_CONFIG_HOME:-${HOME}/.config}/emacs/.git" ]; then
+		_target="${XDG_CONFIG_HOME:-${HOME}/.config}/emacs"
+	fi
+
+	if [ -z "${_target}" ]; then
+		_ui_warn "Diretório do GNU Emacs não encontrado em ~/.emacs.d ou ~/.config/emacs."
+		return 1
+	fi
+
+	_ui_step "Atualizando submódulos Elisp locais em ${_target}..."
+	if git -C "${_target}" submodule update --init --recursive --remote --merge; then
+		_ui_ok "Submódulos Elisp (aweshell, aweww, emacs-lisp-ts-mode) atualizados com sucesso!"
+	else
+		_ui_err "Falha na sincronização dos submódulos Elisp."
+		return 1
+	fi
+	unset _target
 }
 
 ### --------------------------------
@@ -288,7 +322,7 @@ update-profile() {
 
 	if [ -f "${HOME}/.profile" ]; then
 		_ui_info "Recarregando ${HOME}/.profile..."
-		. "${HOME}/.profile" 2> "/dev/null" || true
+		. "${HOME}/.profile" > "/dev/null" 2>&1 || true
 	fi
 	unset _target
 }
