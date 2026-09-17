@@ -13,7 +13,7 @@ MAKEFLAGS += --no-print-directory -s
 ### HELP & DOCUMENTATION
 ### ================================
 help:
-	cmd() { printf "    \033[36mmake %-20s\033[0m %s\n" "$$1" "$$2"; }; \
+	cmd() { printf "    \033[36mmake %-22s\033[0m %s\n" "$$1" "$$2"; }; \
 	sec() { printf "\n  \033[1;33m%s\033[0m\n" "$$1"; }; \
 	sub() { printf "  \033[1;34m  ── %s ──\033[0m\n" "$$1"; }; \
 	printf "\n  \033[1;37mUniversal Shell — Motor Interativo de Terminal & Ergonomia\033[0m\n"; \

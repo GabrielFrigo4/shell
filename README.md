@@ -183,7 +183,8 @@ flowchart TD
     end
 ```
 
-- 📚 **[library/](library/README.md)**: Biblioteca padrão com utilitários POSIX (`functions.sh`) e módulos analíticos (`detect.sh`).
+- 🐚 **`shell.sh`**: Interface unificada de componente e entrypoint de runtime (CLI & source reentrante).
+- 📚 **[library/](library/README.md)**: Biblioteca padrão com utilitários POSIX (`functions.sh`), sistema de emissão semântica (`ui.sh`) e módulos analíticos (`detect.sh`).
 - ⚙️ **[core/](core/README.md)**: Fundações do ambiente (`environment.sh`) e integração com segredos (`vault.sh`).
 - 🎯 **[context/](context/README.md)**: Orquestrador de perfis operacionais (`desktop`, `server`, `container`).
 - 🖌️ **[theme/](theme/README.md)**: Motores de renderização de prompts (Zsh, Bash, Sh, Ksh).

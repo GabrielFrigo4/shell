@@ -76,11 +76,58 @@ path-dedup() {
 ### Clean Cache
 ### --------------------------------
 clean-cache() {
+	_ui_step "Limpando cache do Universal Shell..."
 	_cache_clean
-	echo "🧹 Universal Shell cache cleared."
+	_ui_ok "Cache do Universal Shell limpo com sucesso!"
 }
 alias cleancache="clean-cache"
 alias ccache="clean-cache"
+
+### --------------------------------
+### Resilient Git Pull Helper
+### --------------------------------
+_git_pull_resilient() {
+	local _dir="$1"
+	[ -d "${_dir}/.git" ] || [ -f "${_dir}/.git" ] || return 1
+
+	local _cmd="command git -C \"${_dir}\""
+	if [ ! -w "${_dir}" ]; then
+		if command -v sudo > "/dev/null" 2>&1; then
+			_cmd="sudo git -C \"${_dir}\""
+		elif command -v doas > "/dev/null" 2>&1; then
+			_cmd="doas git -C \"${_dir}\""
+		fi
+	fi
+
+	local _has_dirty=0
+	if ! eval "${_cmd} diff --quiet" 2> "/dev/null" || ! eval "${_cmd} diff --cached --quiet" 2> "/dev/null"; then
+		_has_dirty=1
+		_ui_warn "Alterações locais ou de permissões detectadas em ${_dir}."
+		_ui_sub "Criando auto-stash defensivo antes da sincronização..."
+		eval "${_cmd} stash push -u -m 'autostash-before-update-$(date +%s)'" > "/dev/null" 2>&1 || true
+	fi
+
+	if eval "${_cmd} pull --ff-only" 2> "/dev/null"; then
+		if [ "${_has_dirty}" -eq 1 ]; then
+			_ui_info "Reaplicando alterações locais de ${_dir}..."
+			eval "${_cmd} stash pop" > "/dev/null" 2>&1 || {
+				_ui_info "Alterações preservadas com segurança em git stash list."
+			}
+		fi
+		return 0
+	fi
+
+	_ui_warn "Fast-forward direto falhou em ${_dir}. Tentando reconciliação com o upstream..."
+	if eval "${_cmd} pull" 2> "/dev/null"; then
+		if [ "${_has_dirty}" -eq 1 ]; then
+			eval "${_cmd} stash pop" > "/dev/null" 2>&1 || true
+		fi
+		return 0
+	fi
+
+	_ui_err "Falha na sincronização Git de ${_dir}."
+	return 1
+}
 
 ### --------------------------------
 ### Update Shell
@@ -100,30 +147,21 @@ update-shell() {
 	fi
 
 	if [ -n "${_target}" ] && [ -d "${_target}" ]; then
-		echo "🔄 Updating shell repository at ${_target}..."
-		if [ -w "${_target}" ]; then
-			command git -C "${_target}" pull --ff-only
-		else
-			echo "🔒 ${_target} requires administrative privileges:"
-			if command -v sudo > "/dev/null" 2>&1; then
-				sudo git -C "${_target}" pull --ff-only
-			elif command -v doas > "/dev/null" 2>&1; then
-				doas git -C "${_target}" pull --ff-only
-			else
-				command git -C "${_target}" pull --ff-only
-			fi
-		fi
+		_ui_step "Atualizando repositório do Universal Shell em ${_target}..."
+		_ui_sub "Sincronizando com o upstream com autoproteção contra conflitos..."
+		_git_pull_resilient "${_target}" || _ui_warn "Falha ao sincronizar ${_target}"
 
 		if [ -d "${OSH:-${HOME}/.oh-my-bash}" ]; then
-			echo "🔄 Updating Oh-My-Bash..."
-			command git -C "${OSH:-${HOME}/.oh-my-bash}" pull --ff-only 2> "/dev/null" || true
+			_ui_sub "Atualizando Oh-My-Bash..."
+			_git_pull_resilient "${OSH:-${HOME}/.oh-my-bash}" 2> "/dev/null" || true
 		fi
 		if [ -d "${ZSH:-${HOME}/.oh-my-zsh}" ]; then
-			echo "🔄 Updating Oh-My-Zsh..."
-			command git -C "${ZSH:-${HOME}/.oh-my-zsh}" pull --ff-only 2> "/dev/null" || true
+			_ui_sub "Atualizando Oh-My-Zsh..."
+			_git_pull_resilient "${ZSH:-${HOME}/.oh-my-zsh}" 2> "/dev/null" || true
 		fi
 		command -v _cache_clean > "/dev/null" 2>&1 && _cache_clean || true
-		echo "♻️ Reloading shell environment..."
+		_ui_ok "Universal Shell atualizado com sucesso!"
+		_ui_info "Recarregando ambiente do shell..."
 		if [ -n "${ZSH_VERSION:-}" ] && [ -f "${HOME}/.zshrc" ]; then
 			. "${HOME}/.zshrc" 2> "/dev/null" || true
 		elif [ -n "${BASH_VERSION:-}" ] && [ -f "${HOME}/.bashrc" ]; then
@@ -132,7 +170,7 @@ update-shell() {
 			. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
 		fi
 	else
-		echo "ℹ️  No active shell repository found at ~/.shell, ~/.local/share/shell, /usr/local/share/shell, or \$SHELL_REPO_DIR."
+		_ui_info "Nenhum repositório de shell encontrado em ~/.shell, ~/.local/share/shell, /usr/local/share/shell ou \$SHELL_REPO_DIR."
 	fi
 	unset _target
 }
@@ -143,6 +181,7 @@ update-shell() {
 update-editors() {
 	_ed_list="Emacs Helix NeoVim Vim"
 	_found=0
+	_ui_step "Atualizando a Suíte de Editores..."
 
 	for _ed in ${_ed_list}; do
 		_target=""
@@ -178,14 +217,20 @@ update-editors() {
 		esac
 
 		if [ -n "${_target}" ]; then
-			echo "⬇️  Updating ${_ed} at ${_target}..."
-			command git -C "${_target}" pull --ff-only || echo "⚠️  ${_ed}: git pull failed."
+			_ui_sub "Atualizando ${_ed} em ${_target}..."
+			if _git_pull_resilient "${_target}"; then
+				_ui_ok "${_ed} atualizado com sucesso!"
+			else
+				_ui_warn "${_ed}: sincronização falhou."
+			fi
 			_found=1
 		fi
 	done
 
 	if [ "${_found}" -eq 0 ]; then
-		echo "ℹ️  No active editor repositories found in standard user paths (~/.emacs.d, ~/.config/nvim, ~/.config/helix, ~/.vim, ~/vimfiles)."
+		_ui_info "Nenhum repositório de editor encontrado nos caminhos canônicos (~/.emacs.d, ~/.config/nvim, ~/.config/helix, ~/.vim, ~/vimfiles)."
+	else
+		_ui_ok "Suíte de Editores sincronizada!"
 	fi
 	unset _ed_list _found _ed _target
 }
@@ -201,31 +246,41 @@ update-profile() {
 		_target="${HOME}/.config/profile"
 	elif [ -e "${HOME}/.profile-repo/.git" ]; then
 		_target="${HOME}/.profile-repo"
-	elif [ -e "${ENVIRONMENT_DIR:-${HOME}/Documentos/Environment}/Profile/.git" ]; then
-		_target="${ENVIRONMENT_DIR:-${HOME}/Documentos/Environment}/Profile"
+	elif [ -e "/usr/local/share/profile/.git" ]; then
+		_target="/usr/local/share/profile"
 	fi
 
 	if [ -n "${_target}" ]; then
-		echo "🎨 Updating Profile repository at ${_target}..."
-		command git -C "${_target}" pull --ff-only || echo "⚠️  Profile: git pull failed."
+		_ui_step "Atualizando Universal Profile em ${_target}..."
+		_ui_sub "Sincronizando com o upstream com autoproteção..."
+		if _git_pull_resilient "${_target}"; then
+			_ui_ok "Repositório Profile atualizado!"
+		else
+			_ui_warn "Profile: sincronização falhou."
+		fi
 
-		if [ -f "${_target}/scripts/sync/sync-dotfiles.sh" ]; then
-			echo "🔗 Synchronizing declarative dotfiles..."
-			sh "${_target}/scripts/sync/sync-dotfiles.sh" 2> "/dev/null" || true
+		if [ -f "${_target}/profile.sh" ]; then
+			_ui_sub "Executando sincronização via profile.sh..."
+			sh "${_target}/profile.sh" sync 2> "/dev/null" || true
+		else
+			if [ -f "${_target}/scripts/sync/sync-dotfiles.sh" ]; then
+				_ui_sub "Sincronizando dotfiles declarativos..."
+				sh "${_target}/scripts/sync/sync-dotfiles.sh" 2> "/dev/null" || true
+			fi
+			if [ -f "${_target}/scripts/sync/sync-skills.sh" ]; then
+				_ui_sub "Sincronizando skills de IA..."
+				sh "${_target}/scripts/sync/sync-skills.sh" 2> "/dev/null" || true
+			fi
 		fi
-		if [ -f "${_target}/scripts/sync/sync-skills.sh" ]; then
-			echo "🧠 Synchronizing portable AI skills..."
-			sh "${_target}/scripts/sync/sync-skills.sh" 2> "/dev/null" || true
-		fi
+		_ui_ok "Universal Profile atualizado e sincronizado com sucesso!"
 	else
-		echo "ℹ️  No Profile repository found at ~/.config/profile, ~/.profile-repo or \$PROFILE_DIR."
+		_ui_info "Nenhum repositório Profile encontrado em ~/.config/profile, ~/.profile-repo ou \$PROFILE_DIR."
 	fi
 
 	if [ -f "${HOME}/.profile" ]; then
-		echo "♻️ Reloading ${HOME}/.profile..."
+		_ui_info "Recarregando ${HOME}/.profile..."
 		. "${HOME}/.profile" 2> "/dev/null" || true
 	fi
-	echo "✅ Universal Profile updated!"
 	unset _target
 }
 
@@ -235,22 +290,21 @@ update-profile() {
 update-git() {
 	_target_root="${1:-${PWD}}"
 	if [ ! -d "${_target_root}" ]; then
-		echo "❌ ERROR: Diretório não encontrado: ${_target_root}"
+		_ui_err "Diretório não encontrado: ${_target_root}"
 		return 1
 	fi
 
-	echo "🔄 [upgit] Buscando e atualizando repositórios Git em: ${_target_root}"
+	_ui_step "Buscando e atualizando repositórios Git em: ${_target_root}"
 	echo ""
 
 	find "${_target_root}" -maxdepth 3 -name ".git" 2> "/dev/null" | while read -r _git_entry; do
 		_repo_dir="$(dirname "${_git_entry}")"
-		echo "# ----------------------------------------------------------------"
-		echo "# ${_repo_dir}"
-		echo "# ----------------------------------------------------------------"
-		command git -C "${_repo_dir}" pull --ff-only 2> "/dev/null" || command git -C "${_repo_dir}" pull || echo "⚠️  Falha ao atualizar ${_repo_dir}"
-		echo ""
+		_ui_sub "Atualizando ${_repo_dir}..."
+		_git_pull_resilient "${_repo_dir}" || _ui_warn "Falha ao atualizar ${_repo_dir}"
 	done
 
+	echo ""
+	_ui_ok "Varredura e atualização de repositórios Git concluída!"
 	unset _target_root _git_entry _repo_dir
 }
 
@@ -458,16 +512,17 @@ update-wifi() {
 ### Update Network
 ### --------------------------------
 update-network() {
-	echo "🌐 Starting network..."
+	_ui_step "Atualizando subsistema de rede..."
 	update-wifi
-	echo "✅ Network update complete!"
+	_ui_ok "Atualização de rede concluída com sucesso!"
 }
 
 ### --------------------------------
 ### Package Managers
 ### --------------------------------
 update-pacman() {
-	command -v pacman > "/dev/null" 2>&1 || { echo "❌ pacman not found." >&2; return 127; }
+	command -v pacman > "/dev/null" 2>&1 || { _ui_err "pacman não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via pacman..."
 	if [ "$(_detect_os)" = "windows" ]; then
 		command pacman --noconfirm -Syu "$@"
 	else
@@ -476,79 +531,94 @@ update-pacman() {
 }
 
 update-apt() {
-	command -v apt > "/dev/null" 2>&1 || { echo "❌ apt not found." >&2; return 127; }
+	command -v apt > "/dev/null" 2>&1 || { _ui_err "apt não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via apt..."
 	_as_root apt update && _as_root apt upgrade --yes "$@"
 }
 
 update-dnf() {
-	command -v dnf > "/dev/null" 2>&1 || { echo "❌ dnf not found." >&2; return 127; }
+	command -v dnf > "/dev/null" 2>&1 || { _ui_err "dnf não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via dnf..."
 	_as_root dnf upgrade --assumeyes "$@"
 }
 
 update-zypper() {
-	command -v zypper > "/dev/null" 2>&1 || { echo "❌ zypper not found." >&2; return 127; }
+	command -v zypper > "/dev/null" 2>&1 || { _ui_err "zypper não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via zypper..."
 	_as_root zypper --non-interactive update "$@"
 }
 
 update-xbps() {
-	command -v xbps-install > "/dev/null" 2>&1 || { echo "❌ xbps-install not found." >&2; return 127; }
+	command -v xbps-install > "/dev/null" 2>&1 || { _ui_err "xbps-install não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via xbps..."
 	_as_root xbps-install --yes -Su "$@"
 }
 
 update-apk() {
-	command -v apk > "/dev/null" 2>&1 || { echo "❌ apk not found." >&2; return 127; }
+	command -v apk > "/dev/null" 2>&1 || { _ui_err "apk não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via apk..."
 	_as_root apk update && _as_root apk upgrade "$@"
 }
 
 update-pkg() {
-	command -v pkg > "/dev/null" 2>&1 || { echo "❌ pkg not found." >&2; return 127; }
+	command -v pkg > "/dev/null" 2>&1 || { _ui_err "pkg não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via pkg (FreeBSD)..."
 	_as_root pkg update && _as_root pkg upgrade --yes "$@"
 }
 
 update-aur() {
 	if command -v paru > "/dev/null" 2>&1; then
+		_ui_step "Executando atualização de pacotes AUR via paru..."
 		command paru --noconfirm -Syu "$@"
 	elif command -v yay > "/dev/null" 2>&1; then
+		_ui_step "Executando atualização de pacotes AUR via yay..."
 		command yay --noconfirm -Syu "$@"
 	else
-		echo "❌ Neither 'paru' nor 'yay' found." >&2
+		_ui_err "Nenhum helper AUR ('paru' ou 'yay') encontrado no sistema."
 		return 127
 	fi
 }
 
 update-flatpak() {
-	command -v flatpak > "/dev/null" 2>&1 || { echo "❌ flatpak not found." >&2; return 127; }
+	command -v flatpak > "/dev/null" 2>&1 || { _ui_err "flatpak não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via Flatpak..."
 	command flatpak update --assumeyes "$@"
 }
 
 update-snap() {
-	command -v snap > "/dev/null" 2>&1 || { echo "❌ snap not found." >&2; return 127; }
+	command -v snap > "/dev/null" 2>&1 || { _ui_err "snap não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via Snap..."
 	_as_root snap refresh "$@"
 }
 
 update-pkg-add() {
-	command -v pkg_add > "/dev/null" 2>&1 || { echo "❌ pkg_add not found." >&2; return 127; }
+	command -v pkg_add > "/dev/null" 2>&1 || { _ui_err "pkg_add não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via pkg_add (OpenBSD)..."
 	command -v syspatch > "/dev/null" 2>&1 && _as_root syspatch
 	_as_root pkg_add -u "$@"
 }
 
 update-pkgin() {
-	command -v pkgin > "/dev/null" 2>&1 || { echo "❌ pkgin not found." >&2; return 127; }
+	command -v pkgin > "/dev/null" 2>&1 || { _ui_err "pkgin não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via pkgin..."
 	_as_root pkgin -y update && _as_root pkgin -y upgrade "$@"
 }
 
 update-ips() {
-	command -v pkg > "/dev/null" 2>&1 || { echo "❌ pkg (IPS) not found." >&2; return 127; }
+	command -v pkg > "/dev/null" 2>&1 || { _ui_err "pkg (IPS) não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via pkg IPS (illumos/Solaris)..."
 	_as_root pkg refresh && _as_root pkg update "$@"
 }
 
 update-brew() {
-	command -v brew > "/dev/null" 2>&1 || { echo "❌ brew not found." >&2; return 127; }
+	command -v brew > "/dev/null" 2>&1 || { _ui_err "brew não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via Homebrew..."
 	brew update && brew upgrade "$@"
 }
 
 update-mas() {
-	command -v mas > "/dev/null" 2>&1 || { echo "❌ mas not found." >&2; return 127; }
+	command -v mas > "/dev/null" 2>&1 || { _ui_err "mas não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via Mac App Store (mas)..."
 	mas upgrade "$@"
 }
 
@@ -556,7 +626,7 @@ update-mas() {
 ### Update System
 ### --------------------------------
 update-system() {
-	echo "📦 Updating OS system packages..."
+	_ui_step "Atualizando pacotes do sistema operacional..."
 	case "$(_detect_distro_family)" in
 		arch)   command -v pacman > "/dev/null" 2>&1 && update-pacman "$@" ;;
 		debian) command -v apt > "/dev/null" 2>&1 && update-apt "$@" ;;
@@ -583,45 +653,39 @@ update-system() {
 			esac
 			;;
 	esac
-	echo "✅ OS system packages updated!"
+	_ui_ok "Pacotes do sistema operacional atualizados com sucesso!"
 }
 
 ### --------------------------------
 ### Update All Packages
 ### --------------------------------
 update-all() {
-	echo "🚀 Starting full system update..."
-	echo ""
+	_ui_banner "Iniciando Atualização Geral do Ecossistema"
 	update-system "$@"
 
 	if command -v paru > "/dev/null" 2>&1 || command -v yay > "/dev/null" 2>&1; then
 		echo ""
-		echo "📦 Updating AUR packages..."
-		update-aur "$@" && echo "✅ AUR packages updated!"
+		update-aur "$@" && _ui_ok "Pacotes AUR atualizados!"
 	fi
 
 	if [ "$(_detect_os)" != "macos" ] && command -v brew > "/dev/null" 2>&1; then
 		echo ""
-		echo "📦 Updating Linuxbrew packages..."
-		update-brew "$@" && echo "✅ Linuxbrew packages updated!"
+		update-brew "$@" && _ui_ok "Pacotes Linuxbrew atualizados!"
 	fi
 
 	if command -v flatpak > "/dev/null" 2>&1; then
 		echo ""
-		echo "📦 Updating Flatpak packages..."
-		update-flatpak "$@" && echo "✅ Flatpak packages updated!"
+		update-flatpak "$@" && _ui_ok "Pacotes Flatpak atualizados!"
 	fi
 
 	if command -v snap > "/dev/null" 2>&1; then
 		echo ""
-		echo "📦 Updating Snap packages..."
-		update-snap "$@" && echo "✅ Snap packages updated!"
+		update-snap "$@" && _ui_ok "Pacotes Snap atualizados!"
 	fi
 
 	if command -v mas > "/dev/null" 2>&1; then
 		echo ""
-		echo "📦 Updating Mac App Store packages..."
-		update-mas "$@" && echo "✅ Mac App Store packages updated!"
+		update-mas "$@" && _ui_ok "Pacotes Mac App Store atualizados!"
 	fi
 
 	if [ -e "${HOME}/.shell/.git" ] || [ -e "${HOME}/.local/share/shell/.git" ] || [ -e "/usr/local/share/shell/.git" ]; then
@@ -644,8 +708,7 @@ update-all() {
 		update-profile "$@"
 	fi
 
-	echo ""
-	echo "✅ All packages updated!"
+	_ui_banner "Atualização Geral Concluída com Sucesso!"
 }
 
 ### --------------------------------

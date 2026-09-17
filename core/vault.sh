@@ -47,18 +47,24 @@ update-vault() {
 	fi
 
 	if [ -n "${_target}" ]; then
-		echo "🔄 Updating vault repository at ${_target}..."
-		if [ -w "${_target}" ]; then
-			command git -C "${_target}" pull
+		_ui_step "Atualizando Universal Vault em ${_target}..."
+		_ui_sub "Sincronizando com o upstream com autoproteção..."
+		if command -v _git_pull_resilient > "/dev/null" 2>&1; then
+			_git_pull_resilient "${_target}" || _ui_warn "Falha ao sincronizar ${_target}"
 		else
-			_as_root git -C "${_target}" pull
+			if [ -w "${_target}" ]; then
+				command git -C "${_target}" pull
+			else
+				_as_root git -C "${_target}" pull
+			fi
 		fi
-		echo "♻️ Reloading shell environment..."
+		_ui_ok "Universal Vault atualizado com sucesso!"
+		_ui_info "Recarregando ambiente do shell..."
 		_rc_name="$(_detect_enabled_shell --name 2> "/dev/null" || echo "sh")"
 		[ -f "${HOME}/.${_rc_name}rc" ] && . "${HOME}/.${_rc_name}rc" 2> "/dev/null" || true
 		unset _rc_name
 	else
-		echo "ℹ️  No active vault repository found at ~/.vault or /usr/local/share/vault."
+		_ui_info "Nenhum repositório de Vault encontrado em ~/.vault ou /usr/local/share/vault."
 	fi
 	unset _target
 }
