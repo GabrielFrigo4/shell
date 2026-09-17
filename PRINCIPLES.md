@@ -61,6 +61,11 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 
 - Antes de tentar instalar pacotes ou aplicar configurações, os scripts validam pré-requisitos (`command -v`, variáveis de ambiente necessárias, privilégios).
 - Uso extensivo do **ZFS** para snapshots automáticos antes de mudanças críticas no sistema.
+- **Sincronização Resiliente & Auto-Cura de Repositórios:** Utilitários e comandos de atualização (`update-*`, `upsh`, `uprc`, `upvt`, etc.) nunca devem abortar nem entrar em loops infinitos causados por discrepâncias de atributos POSIX (`filemode` 0755 vs 0644). Adotam a estratégia em 4 etapas:
+    1. _Auto-cura de Atributos:_ Se o repositório estiver sujo apenas por divergências de permissão executável (`_content_diff` vazio e zero untracked), restaura o índice (`checkout -- .`) imediatamente, sem poluir a pilha com stashes desnecessários.
+    2. _Isolamento Defensivo:_ Cria auto-stash rastreável (`autostash-before-update-<timestamp>`) apenas se existirem modificações reais de código ou arquivos novos.
+    3. _Cascata de Sincronização:_ Tentativa sequencial de `--ff-only` $\rightarrow$ `--rebase` $\rightarrow$ `pull`.
+    4. _Garantia Canônica Pós-Pull:_ Restaura `chmod 0755` em todos os executáveis e `.githooks/` para prevenir drift futuro de atributos.
 
 ### 9. Regra da Representação (_Rule of Representation_)
 

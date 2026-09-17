@@ -312,6 +312,12 @@ _create_trigger cd git got
 alias :="_update_prompt; command :"
 
 case "$-" in
-	*i*) _update_prompt ;;
+	*i*)
+		if [ -t 1 ]; then
+			_update_prompt
+		else
+			PS1='$ '
+		fi
+		;;
 	*) PS1='$ ' ;;
 esac
