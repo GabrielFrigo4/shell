@@ -100,27 +100,37 @@ _git_pull_resilient() {
 	fi
 
 	local _has_dirty=0
-	if ! eval "${_cmd} diff --quiet" 2> "/dev/null" || ! eval "${_cmd} diff --cached --quiet" 2> "/dev/null"; then
+	local _status
+	_status="$(eval "${_cmd} status --porcelain" 2> "/dev/null" || true)"
+	if [ -n "${_status}" ]; then
 		_has_dirty=1
-		_ui_warn "Alterações locais ou de permissões detectadas em ${_dir}."
+		_ui_warn "Alterações locais ou arquivos novos detectados em ${_dir}."
 		_ui_sub "Criando auto-stash defensivo antes da sincronização..."
 		eval "${_cmd} stash push -u -m 'autostash-before-update-$(date +%s)'" > "/dev/null" 2>&1 || true
 	fi
 
-	if eval "${_cmd} pull --ff-only" 2> "/dev/null"; then
-		if [ "${_has_dirty}" -eq 1 ]; then
-			_ui_info "Reaplicando alterações locais de ${_dir}..."
-			eval "${_cmd} stash pop" > "/dev/null" 2>&1 || {
-				_ui_info "Alterações preservadas com segurança em git stash list."
-			}
-		fi
-		return 0
+	local _pull_ok=0
+	if eval "${_cmd} pull --ff-only" > "/dev/null" 2>&1; then
+		_pull_ok=1
+	elif eval "${_cmd} pull --rebase" > "/dev/null" 2>&1; then
+		_pull_ok=1
+	elif eval "${_cmd} pull" > "/dev/null" 2>&1; then
+		_pull_ok=1
 	fi
 
-	_ui_warn "Fast-forward direto falhou em ${_dir}. Tentando reconciliação com o upstream..."
-	if eval "${_cmd} pull" 2> "/dev/null"; then
+	if [ "${_pull_ok}" -eq 1 ]; then
 		if [ "${_has_dirty}" -eq 1 ]; then
-			eval "${_cmd} stash pop" > "/dev/null" 2>&1 || true
+			if ! eval "${_cmd} stash pop" > "/dev/null" 2>&1; then
+				if [ -z "$(eval "${_cmd} status --porcelain" 2> "/dev/null" || true)" ]; then
+					eval "${_cmd} stash drop" > "/dev/null" 2>&1 || true
+				else
+					_ui_info "Alterações locais mantidas salvas em 'git stash list'."
+				fi
+			fi
+		fi
+
+		if [ -f "${_dir}/.gitmodules" ]; then
+			eval "${_cmd} submodule update --init --recursive" > "/dev/null" 2>&1 || true
 		fi
 		return 0
 	fi
