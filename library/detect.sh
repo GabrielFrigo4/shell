@@ -709,13 +709,24 @@ _detect_privilege_escalator() {
 ### Detect Raw TTY
 ### --------------------------------
 _is_raw_tty() {
-	case "${TERM}" in
-		linux|dumb|vt100|cons25*|wvt25*) return 0 ;;
+	[ -n "${_IS_RAW_TTY_CACHED+x}" ] && return "${_IS_RAW_TTY_CACHED}"
+
+	case "${TERM:-}" in
+		linux|dumb|vt100|cons25*|wvt25*)
+			_IS_RAW_TTY_CACHED=0
+			return 0
+			;;
 	esac
 
 	case "$(command tty 2> "/dev/null")" in
-		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/ttyC*|/dev/ttyE*|/dev/console) return 0 ;;
-		*) return 1 ;;
+		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/ttyC*|/dev/ttyE*|/dev/console)
+			_IS_RAW_TTY_CACHED=0
+			return 0
+			;;
+		*)
+			_IS_RAW_TTY_CACHED=1
+			return 1
+			;;
 	esac
 }
 

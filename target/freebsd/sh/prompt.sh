@@ -22,7 +22,7 @@ done
 
 PROMPT_OS_ICON=" "
 PROMPT_OS_COLOR="red"
-_ver="${_DETECTED_KERNEL_RELEASE:-$(command freebsd-version 2> "/dev/null" || command uname -r 2> "/dev/null" || echo "BSD")}"
+_ver="${_DETECTED_KERNEL_RELEASE:-$(command uname -r 2> "/dev/null" || command freebsd-version 2> "/dev/null" || echo "BSD")}"
 PROMPT_OS_NAME="${_ver%%-*}"
 unset _ver
 

@@ -99,6 +99,12 @@ _git_pull_resilient() {
 		fi
 	fi
 
+	local _content_diff
+	_content_diff="$(eval "${_cmd} diff -U0" 2> "/dev/null" | grep '^[+-][^+-]' || true)"
+	if [ -z "${_content_diff}" ] && [ -z "$(eval "${_cmd} status --porcelain" 2> "/dev/null" | grep '^??' || true)" ]; then
+		eval "${_cmd} checkout -- ." > "/dev/null" 2>&1 || true
+	fi
+
 	local _has_dirty=0
 	local _status
 	_status="$(eval "${_cmd} status --porcelain" 2> "/dev/null" || true)"
@@ -128,6 +134,8 @@ _git_pull_resilient() {
 				fi
 			fi
 		fi
+
+		find "${_dir}" -maxdepth 2 -type f \( -name "*.sh" -o -path "*/.githooks/*" \) -exec chmod 0755 {} + 2> "/dev/null" || true
 
 		if [ -f "${_dir}/.gitmodules" ]; then
 			eval "${_cmd} submodule update --init --recursive" > "/dev/null" 2>&1 || true
