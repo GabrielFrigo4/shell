@@ -235,7 +235,7 @@ fi
 unset _fd_bin _env_os
 
 ### --------------------------------
-### Disk Usage (Dust Fallback)
+### Dust Disk Usage
 ### --------------------------------
 _dust_bin="${_DETECTED_DUST:-$(_detect_dust)}"
 if [ -n "${_dust_bin}" ]; then
@@ -245,7 +245,7 @@ fi
 unset _dust_bin
 
 ### --------------------------------
-### Process Inspection (Procs Fallback)
+### Procs Process Inspection
 ### --------------------------------
 _procs_bin="${_DETECTED_PROCS:-$(_detect_procs)}"
 if [ -n "${_procs_bin}" ]; then
@@ -255,7 +255,7 @@ fi
 unset _procs_bin
 
 ### --------------------------------
-### System Monitor (Bottom Fallback)
+### Bottom System Monitor
 ### --------------------------------
 _btm_bin="${_DETECTED_BOTTOM:-$(_detect_bottom)}"
 if [ -n "${_btm_bin}" ]; then

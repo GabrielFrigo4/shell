@@ -7,7 +7,7 @@ _SHELL_ROOT="$(cd "$(dirname "$0")" && pwd)"
 export SHELL_REPO_DIR="${_SHELL_ROOT}"
 
 ### ================================
-### DETECCAO DE INVOCACAO (SOURCE VS EXEC)
+### DETECCAO DE INVOCACAO
 ### ================================
 _shell_is_sourced() {
 	if [ -n "${ZSH_VERSION:-}" ]; then
@@ -26,7 +26,7 @@ _shell_is_sourced() {
 }
 
 ### ================================
-### BOOTSTRAP DE RUNTIME (MODO SOURCE)
+### BOOTSTRAP DE RUNTIME
 ### ================================
 _shell_bootstrap() {
 	for _mod in "${_SHELL_ROOT}/library/"*.sh; do

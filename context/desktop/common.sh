@@ -127,7 +127,7 @@ open-zed() {
 alias oz="open-zed"
 
 ### --------------------------------
-### AI CLI (Google Antigravity agy)
+### Google Antigravity CLI
 ### --------------------------------
 alias agy-continue="agy -c"
 alias agyc="agy -c"

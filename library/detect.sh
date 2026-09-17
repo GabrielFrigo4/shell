@@ -614,7 +614,7 @@ _detect_fd() {
 }
 
 ### --------------------------------
-### Detect Dust Binary (du-dust)
+### Detect Dust Binary
 ### --------------------------------
 _detect_dust() {
 	[ -n "${_DETECTED_DUST+x}" ] && echo "${_DETECTED_DUST}" && return 0
@@ -636,7 +636,7 @@ _detect_dust() {
 }
 
 ### --------------------------------
-### Detect Procs Binary (Rust ps)
+### Detect Procs Binary
 ### --------------------------------
 _detect_procs() {
 	[ -n "${_DETECTED_PROCS+x}" ] && echo "${_DETECTED_PROCS}" && return 0
@@ -658,7 +658,7 @@ _detect_procs() {
 }
 
 ### --------------------------------
-### Detect Bottom Binary (btm)
+### Detect Bottom Binary
 ### --------------------------------
 _detect_bottom() {
 	[ -n "${_DETECTED_BOTTOM+x}" ] && echo "${_DETECTED_BOTTOM}" && return 0
