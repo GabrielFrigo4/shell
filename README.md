@@ -98,19 +98,43 @@ O instalador é **multi-shell automático**: ao ser executado, ele detecta os sh
 
 > 💡 **Novo shell instalado depois?** Se você instalar um novo shell posteriormente (ex: `sudo pacman -S zsh` ou `pkg install zsh`), basta executar `reinstall-shell` (ou reexecutar o `install.sh`) e ele configurará o novo shell automaticamente!
 
-### 🐧 Linux / 😈 FreeBSD / 🍎 macOS (Modo Rootless XDG — Recomendado)
+### 🗺️ Matriz de Caminhos de Instalação do Shell
+
+| Localização Canônica         | Escopo / Privilégios           |  Status & Recomendação   | Casos de Uso & Contexto                                                                               |
+| :--------------------------- | :----------------------------- | :----------------------: | :---------------------------------------------------------------------------------------------------- |
+| **`/usr/local/share/shell`** | Global / FHS (`root` / `sudo`) | 🟢 **Padrão de Sistema** | Estações de trabalho e servidores administrados onde `root` e admin compartilham o mesmo runtime.     |
+| **`~/.local/share/shell`**   | XDG Data (Rootless)            |    ⭐ **Recomendado**    | Ambientes rootless, Linux, FreeBSD, macOS e MSYS2 com isolamento completo de usuário.                 |
+| **`~/.config/shell`**        | XDG Config (Rootless)          |  🔵 **Alternativa XDG**  | Usuários que preferem manter todas as configurações de ferramentas centralizadas sob `~/.config`.     |
+| **`~/.shell`**               | Home Direta (Clássico UNIX)    |  ⚪ **Fallback Legado**  | Servidores antigos, ambientes restritos sem suporte XDG ou preferência por dotdir na raiz da `$HOME`. |
+
+---
+
+### 🐧 Unix & 🪟 MSYS2 (Modo Rootless — Recomendado)
 
 A abordagem recomendada privilegia a independência de usuário e zero acoplamento administrativo (`sudo`):
 
+#### Opção A: XDG Data (Canônico Rootless — Recomendado)
+
 ```sh
-# Opção A: XDG Data (Canônico Rootless)
 git clone "https://github.com/GabrielFrigo4/shell" "${HOME}/.local/share/shell"
 sh "${HOME}/.local/share/shell/install.sh" --context desktop
+```
 
-# Opção B: XDG Config (Ergonomia unificada sob ~/.config)
+#### Opção B: XDG Config (Ergonomia unificada sob ~/.config)
+
+```sh
 git clone "https://github.com/GabrielFrigo4/shell" "${HOME}/.config/shell"
 sh "${HOME}/.config/shell/install.sh" --context desktop
 ```
+
+#### Opção C: Home Direta (Fallback Clássico UNIX / Ambientes Legados)
+
+```sh
+git clone "https://github.com/GabrielFrigo4/shell" "${HOME}/.shell"
+sh "${HOME}/.shell/install.sh" --context desktop
+```
+
+---
 
 ### 🏛️ Linux / 😈 FreeBSD / 🍎 macOS (Modo Global de Sistema — Padrão com Sudo)
 
@@ -119,13 +143,6 @@ Padrão em estações de trabalho e servidores administrados onde o par `root` +
 ```sh
 sudo git clone "https://github.com/GabrielFrigo4/shell" "/usr/local/share/shell"
 sh "/usr/local/share/shell/install.sh" --context desktop
-```
-
-### 🪟 Windows (MSYS2)
-
-```sh
-git clone "https://github.com/GabrielFrigo4/shell" "${HOME}/.shell"
-sh "${HOME}/.shell/install.sh" --context desktop
 ```
 
 ### ⚙️ Opções do Instalador
