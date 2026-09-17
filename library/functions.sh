@@ -189,11 +189,10 @@ update-shell() {
 ### Update Editors
 ### --------------------------------
 update-editors() {
-	_ed_list="Emacs Helix NeoVim Vim"
 	_found=0
 	_ui_step "Atualizando a Suíte de Editores..."
 
-	for _ed in ${_ed_list}; do
+	for _ed in Emacs Helix NeoVim Vim; do
 		_target=""
 		case "${_ed}" in
 			Emacs)
@@ -242,7 +241,7 @@ update-editors() {
 	else
 		_ui_ok "Suíte de Editores sincronizada!"
 	fi
-	unset _ed_list _found _ed _target
+	unset _found _ed _target
 }
 
 ### --------------------------------
