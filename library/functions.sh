@@ -752,12 +752,12 @@ update-all() {
 		update-mas "$@" && _ui_ok "Pacotes Mac App Store atualizados!"
 	fi
 
-	if [ -e "${HOME}/.shell/.git" ] || [ -e "${HOME}/.local/share/shell/.git" ] || [ -e "/usr/local/share/shell/.git" ]; then
+	if [ -e "${HOME}/.local/share/shell/.git" ] || [ -e "${HOME}/.config/shell/.git" ] || [ -e "/usr/local/share/shell/.git" ] || [ -e "${HOME}/.shell/.git" ]; then
 		echo ""
 		update-shell "$@"
 	fi
 
-	if [ -d "${HOME}/.vault/.git" ] || [ -d "/usr/local/share/vault/.git" ]; then
+	if [ -d "${HOME}/.local/share/vault/.git" ] || [ -d "${HOME}/.config/vault/.git" ] || [ -d "${HOME}/.vault/.git" ] || [ -d "/usr/local/share/vault/.git" ]; then
 		echo ""
 		update-vault "$@"
 	fi
@@ -767,7 +767,7 @@ update-all() {
 		update-editors "$@"
 	fi
 
-	if [ -d "${HOME}/.config/profile/.git" ] || [ -d "${HOME}/.profile-repo/.git" ]; then
+	if [ -d "${HOME}/.local/share/profile/.git" ] || [ -d "${HOME}/.config/profile/.git" ] || [ -d "${HOME}/.profile-repo/.git" ]; then
 		echo ""
 		update-profile "$@"
 	fi
