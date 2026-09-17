@@ -113,7 +113,7 @@ jobs:
                   ### --------------------------------
                   ### Startup Latency Benchmark (bsh)
                   ### --------------------------------
-                  ./scripts/benchmark.sh
+                  ./benchmark.sh
 
     freebsd:
         name: 😈 FreeBSD (15.x) Matrix
@@ -184,7 +184,7 @@ jobs:
                       ### --------------------------------
                       ### Startup Latency Benchmark (bsh)
                       ### --------------------------------
-                      ./scripts/benchmark.sh
+                      ./benchmark.sh
 
     windows:
         name: 🪟 Windows (MSYS2) Matrix
@@ -238,7 +238,7 @@ jobs:
                   ### --------------------------------
                   ### Startup Latency Benchmark (bsh)
                   ### --------------------------------
-                  ./scripts/benchmark.sh
+                  ./benchmark.sh
 
     macos:
         name: 🍎 macOS (Darwin) Matrix
@@ -288,7 +288,7 @@ jobs:
                   ### --------------------------------
                   ### Startup Latency Benchmark (bsh)
                   ### --------------------------------
-                  ./scripts/benchmark.sh
+                  ./benchmark.sh
 
     openbsd:
         name: 🐡 OpenBSD (7.x) Matrix
@@ -355,7 +355,7 @@ jobs:
                       ### --------------------------------
                       ### Startup Latency Benchmark (bsh)
                       ### --------------------------------
-                      ./scripts/benchmark.sh
+                      ./benchmark.sh
 
     netbsd:
         name: 🚩 NetBSD (11.x) Matrix
@@ -423,7 +423,7 @@ jobs:
                       ### --------------------------------
                       ### Startup Latency Benchmark (bsh)
                       ### --------------------------------
-                      ./scripts/benchmark.sh -i 2
+                      ./benchmark.sh -i 2
 
     illumos:
         name: ☀️ illumos (Syntax & Simulation) Matrix
