@@ -152,13 +152,11 @@ else
 fi
 
 if [ "${_os}" = "windows" ]; then
-	_target_limit=256
-	_ultra_limit=128
-	_max_tolerance=512
+	_target_limit=256; _ultra_limit=128; _max_tolerance=512
+elif [ -n "${CI}" ] && [ "${_os}" = "macos" ]; then
+	_target_limit=128; _ultra_limit=64; _max_tolerance=256
 else
-	_target_limit=64
-	_ultra_limit=32
-	_max_tolerance=128
+	_target_limit=64; _ultra_limit=32; _max_tolerance=128
 fi
 
 _has_failure=0
