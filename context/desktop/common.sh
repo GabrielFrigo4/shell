@@ -80,13 +80,16 @@ alias og="open-geany"
 
 open-code() {
 	local _bin=""
-	command -v code > "/dev/null" 2>&1 && _bin="code"
-	[ -z "${_bin}" ] && command -v vscode > "/dev/null" 2>&1 && _bin="vscode"
-	[ -z "${_bin}" ] && { echo "❌ Neither 'code' nor 'vscode' found." >&2; return 127; }
+	if command -v vscode > "/dev/null" 2>&1; then
+		_bin="vscode"
+	elif command -v code > "/dev/null" 2>&1; then
+		_bin="code"
+	fi
+	[ -z "${_bin}" ] && { echo "❌ Neither 'vscode' nor 'code' found." >&2; return 127; }
 	if [ "$#" -eq 0 ]; then
-		command "${_bin}" .
+		"${_bin}" .
 	else
-		command "${_bin}" "$@"
+		"${_bin}" "$@"
 	fi
 }
 alias oc="open-code"

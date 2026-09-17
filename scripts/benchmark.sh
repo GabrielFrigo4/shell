@@ -83,7 +83,7 @@ cmd_str = sys.argv[1]
 iters = max(1, int(sys.argv[2]))
 try:
     cmd_args = shlex.split(cmd_str)
-    use_shell = any(tok in ('|', '||', '&&', ';', '&', '>', '>>', '<') for tok in cmd_args)
+    use_shell = any(tok in ('|', '||', '&&', ';', '&', '>', '>>', '<') for tok in cmd_args) or any('=' in tok for tok in cmd_args)
     if use_shell:
         cmd_args = cmd_str
 except Exception:
@@ -168,9 +168,9 @@ for _sh in "$@"; do
 		_target="< ${_target_limit}ms (U < ${_ultra_limit}ms, W < ${_max_tolerance}ms)"
 		_cmd_bench="${_sh} -i -c exit"
 		if [ "${_sh}" = "sh" ] && [ -f "${HOME}/.shrc" ]; then
-			_cmd_bench="ENV=\"${HOME}/.shrc\" SHELL_INIT=1 ${_sh} -i -c exit"
+			_cmd_bench="env ENV=\"${HOME}/.shrc\" SHELL_INIT=1 ${_sh} -i -c exit"
 		elif [ "${_sh}" = "ksh" ] && [ -f "${HOME}/.kshrc" ]; then
-			_cmd_bench="ENV=\"${HOME}/.kshrc\" SHELL_INIT=1 ${_sh} -i -c exit"
+			_cmd_bench="env ENV=\"${HOME}/.kshrc\" SHELL_INIT=1 ${_sh} -i -c exit"
 		fi
 		_ms="$(_measure_cmd "${_cmd_bench}")"
 		_ms_int="${_ms%.*}"
