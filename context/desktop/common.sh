@@ -61,9 +61,9 @@ alias om="open-micro"
 open-kate() {
 	command -v kate > "/dev/null" 2>&1 || { echo "❌ kate not found." >&2; return 127; }
 	if [ "$#" -eq 0 ]; then
-		command nohup kate . > "/dev/null" 2>&1 &
+		(command nohup kate . < "/dev/null" > "/dev/null" 2>&1 &)
 	else
-		command nohup kate "$@" > "/dev/null" 2>&1 &
+		(command nohup kate "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 	fi
 }
 alias ok="open-kate"
@@ -71,9 +71,9 @@ alias ok="open-kate"
 open-geany() {
 	command -v geany > "/dev/null" 2>&1 || { echo "❌ geany not found." >&2; return 127; }
 	if [ "$#" -eq 0 ]; then
-		command nohup geany . > "/dev/null" 2>&1 &
+		(command nohup geany . < "/dev/null" > "/dev/null" 2>&1 &)
 	else
-		command nohup geany "$@" > "/dev/null" 2>&1 &
+		(command nohup geany "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 	fi
 }
 alias og="open-geany"
@@ -165,9 +165,9 @@ emacs-client() {
 emacs-open() {
 	command -v emacsclient > "/dev/null" 2>&1 || { echo "❌ emacsclient not found." >&2; return 127; }
 	if [ "$#" -eq 0 ]; then
-		command nohup emacsclient --create-frame --alternate-editor "" . > "/dev/null" 2>&1 &
+		(command nohup emacsclient --create-frame --alternate-editor "" . < "/dev/null" > "/dev/null" 2>&1 &)
 	else
-		command nohup emacsclient --create-frame --alternate-editor "" "$@" > "/dev/null" 2>&1 &
+		(command nohup emacsclient --create-frame --alternate-editor "" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 	fi
 }
 emacs-eshell() {
@@ -181,10 +181,10 @@ emacs-eshell() {
 
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if command -v emacsclient > "/dev/null" 2>&1; then
-			command nohup emacsclient --create-frame --alternate-editor "" \
-				--eval "(progn (cd \"${_dir}/\") (aweshell/new))" > "/dev/null" 2>&1 &
+			(command nohup emacsclient --create-frame --alternate-editor "" \
+				--eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
 		else
-			command nohup emacs --eval "(progn (cd \"${_dir}/\") (aweshell/new))" > "/dev/null" 2>&1 &
+			(command nohup emacs --eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
 		fi
 	else
 		if command -v emacsclient > "/dev/null" 2>&1; then

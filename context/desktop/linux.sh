@@ -36,7 +36,7 @@ paste() {
 ### --------------------------------
 o() {
 	command -v xdg-open > "/dev/null" 2>&1 || { echo "❌ xdg-open not found." >&2; return 127; }
-	command nohup xdg-open "$@" > "/dev/null" 2>&1 &
+	(command nohup xdg-open "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 }
 
 ### --------------------------------
