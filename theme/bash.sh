@@ -2,86 +2,70 @@
 ### BOURNE AGAIN SHELL APPEARANCE
 ### ================================
 
-_git_branch() {
-	if command git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
-		local _branch="$(command git symbolic-ref --quiet --short HEAD 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
-		if [ -n "${_branch}" ]; then
-			local _is_dirty="$(command git status --porcelain=v1 --untracked-files=no 2> "/dev/null" | command head -n 1)"
-			local _indicator=""
-			[ -n "${_is_dirty}" ] && _indicator="${C_BRT_YELLOW}*"
-			if _is_raw_tty; then
-				echo " ${C_BRT_BLUE}(${C_BRT_RED}${_branch}${_indicator}${C_BRT_BLUE})${C_RESET}"
-			else
-				echo "❮${C_BRT_RED}󰊢 ${C_BRT_MAGENTA}${_branch}${_indicator}${C_NORM_YELLOW}❯"
-			fi
-		fi
-	elif [ -d ".got" ] && command -v got > "/dev/null" 2>&1; then
-		local _branch="$(command got branch 2> "/dev/null" || command got info 2> "/dev/null" | command awk '/work tree branch:/ {print $NF}')"
-		if [ -n "${_branch}" ]; then
-			if _is_raw_tty; then
-				echo " ${C_BRT_BLUE}(${C_BRT_MAGENTA}${_branch}${C_BRT_BLUE})${C_RESET}"
-			else
-				echo "❮${C_BRT_RED}󰊢 ${C_BRT_MAGENTA}${_branch}${C_NORM_YELLOW}❯"
-			fi
-		fi
-	fi
-}
+_base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
+[ -f "${_base_dir}/theme/common/colors.sh" ] && . "${_base_dir}/theme/common/colors.sh"
+[ -f "${_base_dir}/theme/common/git.sh" ] && . "${_base_dir}/theme/common/git.sh"
 
 _update_prompt() {
-	local C_RESET="\[\e[0m\]"
+	_setup_colors
 
-	local C_NORM_BLACK="\[\e[0;30m\]"
-	local C_NORM_RED="\[\e[0;31m\]"
-	local C_NORM_GREEN="\[\e[0;32m\]"
-	local C_NORM_YELLOW="\[\e[0;33m\]"
-	local C_NORM_BLUE="\[\e[0;34m\]"
-	local C_NORM_MAGENTA="\[\e[0;35m\]"
-	local C_NORM_CYAN="\[\e[0;36m\]"
-	local C_NORM_WHITE="\[\e[0;37m\]"
+	local _user="${USER:-$(command id -un)}"
+	local _host="${HOSTNAME%%.*}"
+	[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
 
-	local C_BRT_GRAY="\[\e[1;90m\]"
-	local C_BRT_RED="\[\e[1;91m\]"
-	local C_BRT_GREEN="\[\e[1;92m\]"
-	local C_BRT_YELLOW="\[\e[1;93m\]"
-	local C_BRT_BLUE="\[\e[1;94m\]"
-	local C_BRT_MAGENTA="\[\e[1;95m\]"
-	local C_BRT_CYAN="\[\e[1;96m\]"
-	local C_BRT_WHITE="\[\e[1;97m\]"
+	local _pwd="${PWD:-$(command pwd)}"
+	if [ "${_pwd}" = "${HOME}" ]; then
+		_pwd="~"
+	elif [ "${_pwd}" = "/" ]; then
+		_pwd="/"
+	else
+		_pwd="${_pwd##*/}"
+		[ -z "${_pwd}" ] && _pwd="/"
+	fi
 
-	local _os_icon="${PROMPT_OS_ICON}"
-	local _os_name="${PROMPT_OS_NAME}"
-	local _sh_name="${0##*/}"
-	_sh_name="${_sh_name#-}"
-	_sh_name="${_sh_name%.exe}"
+	local _sh_name="bash"
+	local _os_icon="${PROMPT_OS_ICON:- }"
+	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "Linux")}}"
+	_os_name="${_os_name%%-*}"
 
 	local _os_color
-	case "${PROMPT_OS_COLOR}" in
-		red)  _os_color="${C_BRT_RED}" ;;
-		blue) _os_color="${C_BRT_BLUE}" ;;
-		*)    _os_color="${C_BRT_BLUE}" ;;
+	case "${PROMPT_OS_COLOR:-blue}" in
+		red)  _os_color="${_c_red}" ;;
+		blue) _os_color="${_c_blue}" ;;
+		*)    _os_color="${_c_blue}" ;;
 	esac
 
-	local _usr_color _sym _sym_color _term_color
+	local _u_color="${_c_green}" _sym="\$" _sym_color="${_c_cyan}" _term_color="${_c_blue}"
 	if [ "${EUID:-$(id -u)}" -eq 0 ]; then
-		_usr_color="${C_BRT_RED}"
+		_u_color="${_c_red}"
 		_sym="#"
-		_sym_color="${C_BRT_RED}"
-		_term_color="${C_BRT_RED}"
-	else
-		_usr_color="${C_BRT_GREEN}"
-		_sym="\$"
-		_sym_color="${C_BRT_CYAN}"
-		_term_color="${C_BRT_BLUE}"
+		_sym_color="${_c_red}"
+		_term_color="${_c_red}"
 	fi
 
-	if _is_raw_tty; then
-		local _git_info="$(_git_branch)"
-		PS1="${_usr_color}\u${C_BRT_BLUE}@${C_BRT_MAGENTA}\h ${C_BRT_BLUE}(${C_BRT_CYAN}bash${C_BRT_BLUE})${C_BRT_GRAY}:${C_BRT_GRAY}[${C_BRT_YELLOW}\W${C_BRT_GRAY}]${C_RESET}${_git_info} ${_sym_color}${_sym}${C_RESET} "
-	else
-		PS1="\n${C_NORM_YELLOW}${_os_color}${_os_icon}${C_BRT_MAGENTA}${_os_name}${C_NORM_YELLOW}─${C_BRT_BLUE} ${C_BRT_MAGENTA}${_sh_name}${C_NORM_YELLOW}"
-		PS1+="\n${C_NORM_YELLOW}┌──❮ ${C_BRT_GREEN} \t${C_NORM_YELLOW} ❯─❮ ${C_BRT_GREEN} \D{%d/%m/%y}${C_NORM_YELLOW} ❯─❮ ${C_BRT_YELLOW} ${C_BRT_CYAN}\W${C_NORM_YELLOW} ❯─ ❮${C_BRT_BLUE} ${_usr_color}\u${C_NORM_YELLOW}❯ $(_git_branch)"
-		PS1+="\n${C_NORM_YELLOW}└─${_term_color}${C_RESET} "
+	local _branch _is_dirty
+	_git_branch
+
+	local _mode="pty"
+	_is_raw_tty && _mode="tty"
+
+	local _style="${PROMPT_STYLE:-multi}"
+	[ "${_mode}" = "tty" ] && _style="${PROMPT_STYLE:-pill}"
+	case "${_style}" in
+		micro|pill) ;;
+		multi) [ "${_mode}" = "tty" ] && _style="pill" ;;
+		*) _style="pill" ;;
+	esac
+
+	local _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
+	if [ "${_mode}_${_style}" != "${_LOADED_PROMPT_STYLE_BASH:-}" ]; then
+		if [ -f "${_base_dir}/theme/styles/${_mode}/${_style}.sh" ]; then
+			. "${_base_dir}/theme/styles/${_mode}/${_style}.sh"
+			_LOADED_PROMPT_STYLE_BASH="${_mode}_${_style}"
+		fi
 	fi
+
+	_theme_render
 }
 
 case "${PROMPT_COMMAND:-}" in

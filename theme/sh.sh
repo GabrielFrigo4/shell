@@ -2,25 +2,9 @@
 ### POSIX SHELL APPEARANCE
 ### ================================
 
-_c_reset="\[\e[0m\]"
-
-_c_del="\[\e[33m\]"
-_c_red="\[\e[91m\]"
-_c_green="\[\e[92m\]"
-_c_yellow="\[\e[93m\]"
-_c_blue="\[\e[94m\]"
-_c_magenta="\[\e[95m\]"
-_c_cyan="\[\e[96m\]"
-_c_gray="\[\e[90m\]"
-
-_c_b_del="\[\e[1;33m\]"
-_c_b_red="\[\e[1;91m\]"
-_c_b_green="\[\e[1;92m\]"
-_c_b_yellow="\[\e[1;93m\]"
-_c_b_blue="\[\e[1;94m\]"
-_c_b_magenta="\[\e[1;95m\]"
-_c_b_cyan="\[\e[1;96m\]"
-_c_b_gray="\[\e[1;90m\]"
+_base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
+[ -f "${_base_dir}/theme/common/colors.sh" ] && . "${_base_dir}/theme/common/colors.sh"
+[ -f "${_base_dir}/theme/common/git.sh" ] && . "${_base_dir}/theme/common/git.sh"
 
 _trim_str() {
 	_trimmed="$1"
@@ -66,47 +50,11 @@ _calc_c_len() {
 	_c_bytes=$(( _raw - _n_open - _n_close - _n_esc ))
 }
 
-_git_branch() {
-	_branch=""
-	_is_dirty=""
-	local _d="${PWD}"
-	local _git_root=""
-	while [ -n "${_d}" ]; do
-		if [ -d "${_d}/.git" ]; then
-			_git_root="${_d}/.git"
-			break
-		elif [ -f "${_d}/.git" ]; then
-			local _gitdir=""
-			read -r _gitdir < "${_d}/.git" 2> "/dev/null" || true
-			case "${_gitdir}" in
-				gitdir:\ *) _git_root="${_gitdir#gitdir: }" ;;
-			esac
-			break
-		fi
-		case "${_d}" in
-			/|"${HOME}"/..|//*) break ;;
-			*) _d="${_d%/*}" ;;
-		esac
-	done
-
-	if [ -n "${_git_root}" ]; then
-		if [ -f "${_git_root}/HEAD" ]; then
-			local _head=""
-			read -r _head < "${_git_root}/HEAD" 2> "/dev/null" || true
-			case "${_head}" in
-				"ref: refs/heads/"*) _branch="${_head#ref: refs/heads/}" ;;
-				"ref: "*)            _branch="${_head#ref: }" ;;
-				*)                   _branch="$(command git rev-parse --short HEAD 2> "/dev/null" || true)" ;;
-			esac
-		fi
-		[ -n "${_branch}" ] && _is_dirty="$(command git status --porcelain=v1 --untracked-files=no 2> "/dev/null" | command head -n 1)"
-	elif [ -d ".got" ] && command -v got > "/dev/null" 2>&1; then
-		_branch="$(command got branch 2> "/dev/null" || command got info 2> "/dev/null" | command awk '/work tree branch:/ {print $NF}')"
-	fi
-}
-
 _update_prompt() {
+	_setup_colors
+
 	local _user="${USER:-$(command id -un)}"
+	local _sh_name="sh"
 
 	local _pwd="${PWD:-$(command pwd)}"
 	if [ "${_pwd}" = "${HOME}" ]; then
@@ -127,168 +75,81 @@ _update_prompt() {
 
 	local _prompt_limit="${PROMPT_BUFFER_LIMIT:-192}"
 	local _style="${PROMPT_STYLE:-pill}"
+	case "${_style}" in
+		micro) ;;
+		*) _style="pill" ;;
+	esac
 	[ "${_prompt_limit}" -lt 192 ] && _style="micro"
 
-	if _is_raw_tty; then
-		local _host="${HOSTNAME%%.*}"
-		[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
+	local _mode="pty"
+	_is_raw_tty && _mode="tty"
 
-		local _u_color="${_c_b_green}" _sym="\$" _sym_color="${_c_cyan}"
-		[ "${EUID:-$(command id -u)}" -eq 0 ] && _u_color="${_c_b_red}" && _sym="#" && _sym_color="${_c_red}"
-
-		local _git_frame_str=""
-		local _ind=""
-		if [ -n "${_branch}" ]; then
-			if [ "${_style}" = "micro" ]; then
-				[ -n "${_is_dirty}" ] && _ind="*"
-			else
-				[ -n "${_is_dirty}" ] && _ind="${_c_yellow}*"
-			fi
-			_git_frame_str=" ${_c_blue}(${_c_red}${_ind}${_c_blue})"
-		fi
-
-		local _fixed_str
-		if [ "${_style}" = "micro" ]; then
-			_trim_str "${_user}" 10 "~"
-			_user="${_trimmed}"
-			_trim_str "${_host}" 10 "~"
-			_host="${_trimmed}"
-			_fixed_str="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host}${_c_gray}:${_c_yellow}${_git_frame_str} ${_sym_color}${_sym}${_c_reset} "
-		else
-			_trim_str "${_user}" 14 "~"
-			_user="${_trimmed}"
-			_trim_str "${_host}" 12 "~"
-			_host="${_trimmed}"
-			_fixed_str="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host} ${_c_blue}(${_c_cyan}sh${_c_blue})${_c_gray}:[${_c_yellow}${_c_gray}]${_git_frame_str} ${_sym_color}${_sym}${_c_reset} "
-		fi
-
-		_calc_c_len "${_fixed_str}"
-		_budget=$(( _prompt_limit - 2 - _c_bytes ))
-		[ "${_budget}" -lt 4 ] && _budget=4
-
-		if [ -n "${_branch}" ]; then
-			if [ $(( _pwd_len + _branch_len )) -le "${_budget}" ]; then
-				_max_pwd="${_pwd_len}"
-				_max_branch="${_branch_len}"
-			else
-				local _half=$(( _budget / 2 ))
-				if [ "${_pwd_len}" -lt "${_half}" ]; then
-					_max_pwd="${_pwd_len}"
-					_max_branch=$(( _budget - _pwd_len ))
-				elif [ "${_branch_len}" -lt "${_half}" ]; then
-					_max_branch="${_branch_len}"
-					_max_pwd=$(( _budget - _branch_len ))
-				else
-					_max_pwd="${_half}"
-					_max_branch=$(( _budget - _half ))
-				fi
-			fi
-			_trim_str "${_branch}" "${_max_branch}" "~"
-			_branch="${_trimmed}"
-		else
-			_max_pwd="${_budget}"
-		fi
-
-		_trim_str "${_pwd}" "${_max_pwd}" "~"
-		_pwd="${_trimmed}"
-
-		local _git_info=""
-		[ -n "${_branch}" ] && _git_info=" ${_c_blue}(${_c_red}${_branch}${_ind}${_c_blue})"
-
-		if [ "${_style}" = "micro" ]; then
-			export PS1="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host}${_c_gray}:${_c_yellow}${_pwd}${_git_info} ${_sym_color}${_sym}${_c_reset} "
-		else
-			export PS1="${_u_color}${_user}${_c_blue}@${_c_magenta}${_host} ${_c_blue}(${_c_cyan}sh${_c_blue})${_c_gray}:[${_c_yellow}${_pwd}${_c_gray}]${_git_info} ${_sym_color}${_sym}${_c_reset} "
-		fi
-	else
-		local _u_color="${_c_green}" _term_color="${_c_blue}"
-		[ "${EUID:-$(command id -u)}" -eq 0 ] && _u_color="${_c_red}" && _term_color="${_c_red}"
-
-		local _os_icon="${PROMPT_OS_ICON:- }"
-		_trim_str "${_os_icon}" 4 ""
-		_os_icon="${_trimmed}"
-		local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "BSD")}}"
-		_os_name="${_os_name%%-*}"
-		local _os_color
-		local _git_frame_str=""
-		local _ind=""
-		if [ -n "${_branch}" ]; then
-			if [ "${_style}" = "micro" ]; then
-				[ -n "${_is_dirty}" ] && _ind="*"
-			else
-				[ -n "${_is_dirty}" ] && _ind="${_c_yellow}*"
-			fi
-			_git_frame_str=" ${_c_red}󰊢 ${_c_magenta}${_ind}"
-		fi
-
-		local _fixed_str
-		if [ "${_style}" = "micro" ]; then
-			_trim_str "${_user}" 8 "~"
-			_user="${_trimmed}"
-			_trim_str "${_os_name}" 5 "~"
-			_os_name="${_trimmed}"
-
-			case "${PROMPT_OS_COLOR:-red}" in
-				red)  _os_color="${_c_b_red}" ;;
-				blue) _os_color="${_c_b_blue}" ;;
-				*)    _os_color="${_c_b_blue}" ;;
-			esac
-
-			_fixed_str="${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_yellow} ${_c_cyan} ${_c_blue} ${_u_color}${_user}${_git_frame_str} ${_term_color}${_c_reset} "
-		else
-			_trim_str "${_user}" 10 "~"
-			_user="${_trimmed}"
-			_trim_str "${_os_name}" 5 "~"
-			_os_name="${_trimmed}"
-
-			case "${PROMPT_OS_COLOR:-red}" in
-				red)  _os_color="${_c_b_red}" ;;
-				blue) _os_color="${_c_b_blue}" ;;
-				*)    _os_color="${_c_b_blue}" ;;
-			esac
-
-			_fixed_str="${_c_del}${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_blue} ${_c_magenta}sh\[\e[0;33m\] \[\e[1m\] ${_c_cyan} ${_c_blue} ${_u_color}${_user}${_git_frame_str} ${_term_color}${_c_reset} "
-		fi
-
-		_calc_c_len "${_fixed_str}"
-		_budget=$(( _prompt_limit - 2 - _c_bytes ))
-		[ "${_budget}" -lt 4 ] && _budget=4
-
-		if [ -n "${_branch}" ]; then
-			if [ $(( _pwd_len + _branch_len )) -le "${_budget}" ]; then
-				_max_pwd="${_pwd_len}"
-				_max_branch="${_branch_len}"
-			else
-				local _half=$(( _budget / 2 ))
-				if [ "${_pwd_len}" -lt "${_half}" ]; then
-					_max_pwd="${_pwd_len}"
-					_max_branch=$(( _budget - _pwd_len ))
-				elif [ "${_branch_len}" -lt "${_half}" ]; then
-					_max_branch="${_branch_len}"
-					_max_pwd=$(( _budget - _branch_len ))
-				else
-					_max_pwd="${_half}"
-					_max_branch=$(( _budget - _half ))
-				fi
-			fi
-			_trim_str "${_branch}" "${_max_branch}" "~"
-			_branch="${_trimmed}"
-		else
-			_max_pwd="${_budget}"
-		fi
-
-		_trim_str "${_pwd}" "${_max_pwd}" "~"
-		_pwd="${_trimmed}"
-
-		local _git_info=""
-		[ -n "${_branch}" ] && _git_info=" ${_c_red}󰊢 ${_c_magenta}${_branch}${_ind}"
-
-		if [ "${_style}" = "micro" ]; then
-			export PS1="${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_yellow} ${_c_cyan}${_pwd} ${_c_blue} ${_u_color}${_user}${_git_info} ${_term_color}${_c_reset} "
-		else
-			export PS1="${_c_del}${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_blue} ${_c_magenta}sh\[\e[0;33m\] \[\e[1m\] ${_c_cyan}${_pwd} ${_c_blue} ${_u_color}${_user}${_git_info} ${_term_color}${_c_reset} "
+	local _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
+	if [ "${_mode}_${_style}" != "${_LOADED_PROMPT_STYLE_SH:-}" ]; then
+		if [ -f "${_base_dir}/theme/styles/${_mode}/${_style}.sh" ]; then
+			. "${_base_dir}/theme/styles/${_mode}/${_style}.sh"
+			_LOADED_PROMPT_STYLE_SH="${_mode}_${_style}"
 		fi
 	fi
+
+	local _u_color="${_c_green}" _term_color="${_c_blue}" _sym="\$" _sym_color="${_c_cyan}"
+	if [ "${EUID:-$(command id -u)}" -eq 0 ]; then
+		_u_color="${_c_red}"
+		_term_color="${_c_red}"
+		_sym="#"
+		_sym_color="${_c_red}"
+	fi
+
+	local _host="${HOSTNAME%%.*}"
+	[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
+
+	local _os_icon="${PROMPT_OS_ICON:- }"
+	_trim_str "${_os_icon}" 4 ""
+	_os_icon="${_trimmed}"
+	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "BSD")}}"
+	_os_name="${_os_name%%-*}"
+	local _os_color
+
+	case "${PROMPT_OS_COLOR:-red}" in
+		red)  _os_color="${_c_b_red}" ;;
+		blue) _os_color="${_c_b_blue}" ;;
+		*)    _os_color="${_c_b_blue}" ;;
+	esac
+
+	local _fixed_str=""
+	_theme_layout
+
+	_calc_c_len "${_fixed_str}"
+	_budget=$(( _prompt_limit - 2 - _c_bytes ))
+	[ "${_budget}" -lt 4 ] && _budget=4
+
+	if [ -n "${_branch}" ]; then
+		if [ $(( _pwd_len + _branch_len )) -le "${_budget}" ]; then
+			_max_pwd="${_pwd_len}"
+			_max_branch="${_branch_len}"
+		else
+			local _half=$(( _budget / 2 ))
+			if [ "${_pwd_len}" -lt "${_half}" ]; then
+				_max_pwd="${_pwd_len}"
+				_max_branch=$(( _budget - _pwd_len ))
+			elif [ "${_branch_len}" -lt "${_half}" ]; then
+				_max_branch="${_branch_len}"
+				_max_pwd=$(( _budget - _branch_len ))
+			else
+				_max_pwd="${_half}"
+				_max_branch=$(( _budget - _half ))
+			fi
+		fi
+		_trim_str "${_branch}" "${_max_branch}" "~"
+		_branch="${_trimmed}"
+	else
+		_max_pwd="${_budget}"
+	fi
+
+	_trim_str "${_pwd}" "${_max_pwd}" "~"
+	_pwd="${_trimmed}"
+
+	_theme_render
 }
 
 ### --------------------------------

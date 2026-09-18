@@ -34,16 +34,30 @@ user@hostname:~/projects/myapp (main ✗) $
 
 ### 1. Zsh (`theme/zsh.sh`)
 
-- Utiliza o módulo nativo `vcs_info` do Zsh.
-- Renderização de cores através do sistema de expansão `%F{color}...%f`.
-- Suporte a Zstyle nativo para autocompletion colorido e menu interativo.
+- Arquitetura modular com suporte a `$PROMPT_STYLE` (`multi`, `pill`, `micro`).
+- No PTY:
+    - **`multi` (padrão):** Prompt informativo de 3 linhas com relógio, calendário, pasta, usuário e branch Git.
+    - **`pill`:** Prompt de 1 linha com cápsula gráfica (`...`), pasta, usuário e Git.
+    - **`micro`:** Prompt minimalista de 1 linha _streamlined_ sem cápsula.
+- No TTY: Comutação automática para `pill` ou `micro` em ASCII puro.
+- Renderização de cores através do sistema de expansão nativo `%F{color}...%f` e escapes isolados em `%{...%}`.
 
 ### 2. Bash (`theme/bash.sh`)
 
-- Utiliza sequências de escape ANSI embutidas entre `\[` e `\]` para garantir que o Bash calcule corretamente a largura da linha e evite quebras de texto ao navegar pelo histórico.
-- Helper assíncrono ou atômico para leitura rápida de branch Git via `git symbolic-ref` / `git rev-parse`.
+- Arquitetura modular com suporte a `$PROMPT_STYLE` (`multi`, `pill`, `micro`).
+- No PTY:
+    - **`multi` (padrão):** Prompt de 3 linhas estruturado com árvore ANSI.
+    - **`pill`:** Prompt compacto de 1 linha com pílula de sistema e ícones Nerd Fonts.
+    - **`micro`:** Prompt minimalista de 1 linha ultra-denso.
+- No TTY: Comutação automática para `pill` ou `micro` em ASCII puro.
+- Sequências de escape ANSI estritamente delimitadas em `\[...\]` para cálculo perfeito de quebra de linha no Readline.
 
-### 3. POSIX Sh (`theme/sh.sh`)
+### 3. KornShell (`theme/ksh.sh`)
+
+- Prompt dinâmico via `PS1='$(_ksh_prompt)'` para OpenBSD pdksh/oksh.
+- Suporte a `$PROMPT_STYLE` nos estilos `pill`, `micro` e `multi` em PTY, e `pill` e `micro` em TTY.
+
+### 4. POSIX Sh (`theme/sh.sh`)
 
 - **Linha de Base FreeBSD 14+/15+ (`/bin/sh`):** Suporta expansão de parâmetros no `$PS1`/`$PS2` (`$VAR`, `${VAR}`, `$?`, `$$`) e sequências ANSI canônicas.
 - **Teto Físico de Memória (`PROMPTLEN = 192`):** O parser em C do FreeBSD (`bin/sh/parser.c`) aloca um buffer estático de 192 bytes sem alocação dinâmica no heap (`malloc`). Qualquer prompt acima de 191 bytes é truncado pelo sistema.

@@ -2,31 +2,13 @@
 ### KORN SHELL APPEARANCE
 ### ================================
 
-_esc="$(printf '\033')"
-_c_reset="\[${_esc}[0m\]"
-_c_bold="\[${_esc}[1m\]"
-_c_del="\[${_esc}[0;33m\]"
-
-_c_red="\[${_esc}[1;91m\]"
-_c_green="\[${_esc}[1;92m\]"
-_c_yellow="\[${_esc}[1;93m\]"
-_c_blue="\[${_esc}[1;94m\]"
-_c_magenta="\[${_esc}[1;95m\]"
-_c_cyan="\[${_esc}[1;96m\]"
-_c_gray="\[${_esc}[1;90m\]"
-
-_git_branch() {
-	_branch=""
-	_is_dirty=""
-	if command git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
-		_branch="$(command git symbolic-ref --quiet --short HEAD 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
-		[ -n "${_branch}" ] && _is_dirty="$(command git status --porcelain=v1 --untracked-files=no 2> "/dev/null" | command head -n 1)"
-	elif [ -d ".got" ] && command -v got > "/dev/null" 2>&1; then
-		_branch="$(command got branch 2> "/dev/null" || command got info 2> "/dev/null" | command awk '/work tree branch:/ {print $NF}')"
-	fi
-}
+_base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
+[ -f "${_base_dir}/theme/common/colors.sh" ] && . "${_base_dir}/theme/common/colors.sh"
+[ -f "${_base_dir}/theme/common/git.sh" ] && . "${_base_dir}/theme/common/git.sh"
 
 _ksh_prompt() {
+	_setup_colors
+
 	local _pwd="${PWD:-$(command pwd)}"
 	if [ "${_pwd}" = "${HOME}" ]; then
 		_pwd="~"
@@ -37,6 +19,7 @@ _ksh_prompt() {
 		[ -z "${_pwd}" ] && _pwd="/"
 	fi
 
+	local _sh_name="ksh"
 	local _branch _is_dirty
 	_git_branch
 
@@ -44,11 +27,16 @@ _ksh_prompt() {
 	local _u_color="${_c_green}"
 	local _term_color="${_c_blue}"
 	local _sym="\$"
+	local _sym_color="${_c_cyan}"
 	if [ "${EUID:-$(id -u 2> "/dev/null")}" -eq 0 ]; then
 		_u_color="${_c_red}"
 		_term_color="${_c_red}"
 		_sym="#"
+		_sym_color="${_c_red}"
 	fi
+
+	local _host="${HOSTNAME%%.*}"
+	[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
 
 	local _os_icon="${PROMPT_OS_ICON:-🐡 }"
 	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(uname -r 2> "/dev/null" || echo "OpenBSD")}}"
@@ -62,23 +50,26 @@ _ksh_prompt() {
 		*)      _os_color="${_c_yellow}" ;;
 	esac
 
-	if _is_raw_tty; then
-		local _git_info=""
-		if [ -n "${_branch}" ]; then
-			local _ind=""
-			[ -n "${_is_dirty}" ] && _ind="${_c_yellow}*"
-			_git_info=" ${_c_blue}(${_c_red}${_branch}${_ind}${_c_blue})"
+	local _mode="pty"
+	_is_raw_tty && _mode="tty"
+
+	local _style="${PROMPT_STYLE:-pill}"
+	case "${_style}" in
+		micro|pill) ;;
+		multi) [ "${_mode}" = "tty" ] && _style="pill" ;;
+		*) _style="pill" ;;
+	esac
+
+	local _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
+	if [ "${_mode}_${_style}" != "${_LOADED_PROMPT_STYLE_KSH:-}" ]; then
+		if [ -f "${_base_dir}/theme/styles/${_mode}/${_style}.sh" ]; then
+			. "${_base_dir}/theme/styles/${_mode}/${_style}.sh"
+			_LOADED_PROMPT_STYLE_KSH="${_mode}_${_style}"
 		fi
-		printf "%s" "${_u_color}${_user}${_c_blue}@\h ${_c_blue}(${_c_cyan}ksh${_c_blue})${_c_gray}:[${_c_yellow}${_pwd}${_c_gray}]${_git_info} ${_term_color}${_sym}${_c_reset} "
-	else
-		local _git_info=""
-		if [ -n "${_branch}" ]; then
-			local _ind=""
-			[ -n "${_is_dirty}" ] && _ind="${_c_yellow}*"
-			_git_info=" ${_c_red}󰊢 ${_c_magenta}${_branch}${_ind}"
-		fi
-		printf "%s" "${_c_del}${_os_color}${_os_icon}${_c_magenta}${_os_name} ${_c_blue} ${_c_magenta}ksh${_c_del} ${_c_bold} ${_c_cyan}${_pwd} ${_c_blue} ${_u_color}${_user}${_git_info} ${_term_color}${_c_reset} "
 	fi
+
+	_theme_render
+	printf "%s" "${PS1}"
 }
 
 export PS1='$(_ksh_prompt)'

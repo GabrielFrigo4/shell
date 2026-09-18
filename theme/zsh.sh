@@ -4,83 +4,66 @@
 
 setopt PROMPT_SUBST
 
-() {
-	_git_branch() {
-		if command git rev-parse --is-inside-work-tree > "/dev/null" 2>&1; then
-			local _branch="$(command git symbolic-ref --quiet --short HEAD 2> "/dev/null" || command git rev-parse --short HEAD 2> "/dev/null")"
-			if [[ -n "${_branch}" ]]; then
-				if _is_raw_tty; then
-					local _indicator=""
-					[[ -n "$(command git status --porcelain=v1 --untracked-files=no 2> "/dev/null" | command head -n 1)" ]] && _indicator="%B%F{yellow}*"
-					echo " %B%F{blue}(%B%F{red}${_branch}${_indicator}%B%F{blue})%f%b"
-				else
-					local _indicator=""
-					[[ -n "$(command git status --porcelain=v1 --untracked-files=no 2> "/dev/null" | command head -n 1)" ]] && _indicator="%B%F{11}*"
-					echo "❮%B%F{9}󰊢 %B%F{13}${_branch}${_indicator}%b%F{3}❯"
-				fi
-			fi
-		elif [[ -d ".got" ]] && command -v got > "/dev/null" 2>&1; then
-			local _branch="$(command got branch 2> "/dev/null" || command got info 2> "/dev/null" | command awk '/work tree branch:/ {print $NF}')"
-			if [[ -n "${_branch}" ]]; then
-				if _is_raw_tty; then
-					echo " %B%F{blue}(%B%F{magenta}${_branch}%B%F{blue})%f%b"
-				else
-					echo "❮%B%F{9}󰊢 %B%F{13}${_branch}%b%F{3}❯"
-				fi
-			fi
-		fi
-	}
+_base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
+[ -f "${_base_dir}/theme/common/colors.sh" ] && . "${_base_dir}/theme/common/colors.sh"
+[ -f "${_base_dir}/theme/common/git.sh" ] && . "${_base_dir}/theme/common/git.sh"
 
-	local z='%f%b'
-	local k K r R g G y Y b B m M c C w W
-	if _is_raw_tty; then
-		k='%b%F{black}'; K='%B%F{black}'
-		r='%b%F{red}';   R='%B%F{red}'
-		g='%b%F{green}'; G='%B%F{green}'
-		y='%b%F{yellow}'; Y='%B%F{yellow}'
-		b='%b%F{blue}';  B='%B%F{blue}'
-		m='%b%F{magenta}'; M='%B%F{magenta}'
-		c='%b%F{cyan}';  C='%B%F{cyan}'
-		w='%b%F{white}'; W='%B%F{white}'
-	else
-		k='%b%F{0}'; K='%B%F{8}'
-		r='%b%F{1}'; R='%B%F{9}'
-		g='%b%F{2}'; G='%B%F{10}'
-		y='%b%F{3}'; Y='%B%F{11}'
-		b='%b%F{4}'; B='%B%F{12}'
-		m='%b%F{5}'; M='%B%F{13}'
-		c='%b%F{6}'; C='%B%F{14}'
-		w='%b%F{7}'; W='%B%F{15}'
-	fi
+_update_prompt() {
+	_setup_colors
 
-	local u _sym_color _term_color
-	if [ "${EUID:-$(id -u)}" -eq 0 ]; then
-		u="${R}"
-		_sym_color="${R}"
-		_term_color="${R}"
-	else
-		u="${G}"
-		_sym_color="${C}"
-		_term_color="${B}"
-	fi
-
-	local _os_icon="${PROMPT_OS_ICON}"
-	local _os_name="${PROMPT_OS_NAME}"
-	local _sh_name="${ZSH_NAME}"
+	local _user="${USER:-$(command id -un)}"
+	local _host="${(%):-%m}"
+	local _pwd="${(%):-%c}"
+	local _sh_name="zsh"
+	local _os_icon="${PROMPT_OS_ICON:- }"
+	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "Linux")}}"
+	_os_name="${_os_name%%-*}"
 
 	local _os_color
-	case "${PROMPT_OS_COLOR}" in
-		red)  _os_color="${R}" ;;
-		blue) _os_color="${B}" ;;
-		*)    _os_color="${B}" ;;
+	case "${PROMPT_OS_COLOR:-blue}" in
+		red)  _os_color="${_c_red}" ;;
+		blue) _os_color="${_c_blue}" ;;
+		*)    _os_color="${_c_blue}" ;;
 	esac
 
-	if _is_raw_tty; then
-		export PROMPT="${u}%n${B}@${M}%m ${B}(${C}zsh${B})${K}:${K}[${Y}%c${K}]${z}\$(_git_branch)${_sym_color} %#${z} "
-	else
-		export PROMPT="
-${y}${_os_color}${_os_icon}${M}${_os_name}${y}─${B} ${M}${_sh_name}${y}
-${y}┌──❮ ${G} %D{%H:%M:%S}${y} ❯─❮ ${G} %D{%d/%m/%y}${y} ❯─❮ ${Y} ${C}%c${y} ❯─ ❮${B} ${u}%n${y}❯ \$(_git_branch)
-${y}└─${_term_color}${z} "
+	local _u_color="${_c_green}" _sym="\$" _sym_color="${_c_cyan}" _term_color="${_c_blue}"
+	if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+		_u_color="${_c_red}"
+		_sym="#"
+		_sym_color="${_c_red}"
+		_term_color="${_c_red}"
 	fi
+
+	local _branch _is_dirty
+	_git_branch
+
+	local _mode="pty"
+	_is_raw_tty && _mode="tty"
+
+	local _style="${PROMPT_STYLE:-multi}"
+	[[ "${_mode}" = "tty" ]] && _style="${PROMPT_STYLE:-pill}"
+	case "${_style}" in
+		micro|pill) ;;
+		multi) [[ "${_mode}" = "tty" ]] && _style="pill" ;;
+		*) _style="pill" ;;
+	esac
+
+	local _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
+	if [[ "${_mode}_${_style}" != "${_LOADED_PROMPT_STYLE_ZSH:-}" ]]; then
+		if [[ -f "${_base_dir}/theme/styles/${_mode}/${_style}.sh" ]]; then
+			. "${_base_dir}/theme/styles/${_mode}/${_style}.sh"
+			_LOADED_PROMPT_STYLE_ZSH="${_mode}_${_style}"
+		fi
+	fi
+
+	_theme_render
 }
+
+autoload -Uz add-zsh-hook 2> "/dev/null" || true
+if typeset -f add-zsh-hook > "/dev/null" 2>&1; then
+	add-zsh-hook precmd _update_prompt
+else
+	precmd_functions+=(_update_prompt)
+fi
+
+_update_prompt
