@@ -17,7 +17,7 @@ _trim_str() {
 	fi
 }
 
-_calc_theme_color_len() {
+_calc_c_len() {
 	local _s="$1"
 	local _raw="${#_s}"
 
@@ -47,7 +47,7 @@ _calc_theme_color_len() {
 		esac
 	done
 
-	_theme_color_bytes=$(( _raw - _n_open - _n_close - _n_esc ))
+	_c_bytes=$(( _raw - _n_open - _n_close - _n_esc ))
 }
 
 _update_prompt() {
@@ -82,7 +82,9 @@ _update_prompt() {
 	[ "${_prompt_limit}" -lt 192 ] && _style="micro"
 
 	local _mode="pty"
-	_is_raw_tty && _mode="tty"
+	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		_mode="tty"
+	fi
 
 	local _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
 	if [ "${_mode}_${_style}" != "${_LOADED_PROMPT_STYLE_SH:-}" ]; then
@@ -117,10 +119,12 @@ _update_prompt() {
 	esac
 
 	local _fixed_str=""
-	_theme_layout
+	if command -v _theme_layout > "/dev/null" 2>&1; then
+		_theme_layout
+	fi
 
-	_calc_theme_color_len "${_fixed_str}"
-	_budget=$(( _prompt_limit - 2 - _theme_color_bytes ))
+	_calc_c_len "${_fixed_str}"
+	_budget=$(( _prompt_limit - 2 - _c_bytes ))
 	[ "${_budget}" -lt 4 ] && _budget=4
 
 	if [ -n "${_branch}" ]; then
@@ -149,7 +153,9 @@ _update_prompt() {
 	_trim_str "${_pwd}" "${_max_pwd}" "~"
 	_pwd="${_trimmed}"
 
-	_theme_render
+	if command -v _theme_render > "/dev/null" 2>&1; then
+		_theme_render
+	fi
 }
 
 ### --------------------------------

@@ -38,25 +38,29 @@ _update_prompt() {
 	_git_branch
 
 	local _mode="pty"
-	_is_raw_tty && _mode="tty"
+	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		_mode="tty"
+	fi
 
 	local _style="${PROMPT_STYLE:-multi}"
-	[[ "${_mode}" = "tty" ]] && _style="${PROMPT_STYLE:-pill}"
+	[ "${_mode}" = "tty" ] && _style="${PROMPT_STYLE:-pill}"
 	case "${_style}" in
 		micro|pill) ;;
-		multi) [[ "${_mode}" = "tty" ]] && _style="pill" ;;
+		multi) [ "${_mode}" = "tty" ] && _style="pill" ;;
 		*) _style="pill" ;;
 	esac
 
 	local _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
-	if [[ "${_mode}_${_style}" != "${_LOADED_PROMPT_STYLE_ZSH:-}" ]]; then
-		if [[ -f "${_base_dir}/theme/styles/${_mode}/${_style}.sh" ]]; then
+	if [ "${_mode}_${_style}" != "${_LOADED_PROMPT_STYLE_ZSH:-}" ]; then
+		if [ -f "${_base_dir}/theme/styles/${_mode}/${_style}.sh" ]; then
 			. "${_base_dir}/theme/styles/${_mode}/${_style}.sh"
 			_LOADED_PROMPT_STYLE_ZSH="${_mode}_${_style}"
 		fi
 	fi
 
-	_theme_render
+	if command -v _theme_render > "/dev/null" 2>&1; then
+		_theme_render
+	fi
 }
 
 autoload -Uz add-zsh-hook 2> "/dev/null" || true

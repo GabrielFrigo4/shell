@@ -8,6 +8,7 @@ _theme_layout() {
 	_trim_str "${_os_name}" 5 "~"
 	_os_name="${_trimmed}"
 
+	_git_frame_str=""
 	local _ind=""
 	if [ -n "${_branch}" ]; then
 		[ -n "${_is_dirty}" ] && _ind="${_theme_color_yellow}*"

@@ -8,6 +8,7 @@ _theme_layout() {
 	_trim_str "${_host}" 10 "~"
 	_host="${_trimmed}"
 
+	_git_frame_str=""
 	local _ind=""
 	if [ -n "${_branch}" ]; then
 		[ -n "${_is_dirty}" ] && _ind="*"

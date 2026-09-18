@@ -51,7 +51,9 @@ _ksh_prompt() {
 	esac
 
 	local _mode="pty"
-	_is_raw_tty && _mode="tty"
+	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		_mode="tty"
+	fi
 
 	local _style="${PROMPT_STYLE:-pill}"
 	case "${_style}" in
@@ -68,8 +70,10 @@ _ksh_prompt() {
 		fi
 	fi
 
-	_theme_render
-	printf "%s" "${PS1}"
+	if command -v _theme_render > "/dev/null" 2>&1; then
+		_theme_render
+	fi
+	printf "%s" "${PS1:-}"
 }
 
 export PS1='$(_ksh_prompt)'

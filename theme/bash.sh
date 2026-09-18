@@ -47,7 +47,9 @@ _update_prompt() {
 	_git_branch
 
 	local _mode="pty"
-	_is_raw_tty && _mode="tty"
+	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		_mode="tty"
+	fi
 
 	local _style="${PROMPT_STYLE:-multi}"
 	[ "${_mode}" = "tty" ] && _style="${PROMPT_STYLE:-pill}"
@@ -65,7 +67,9 @@ _update_prompt() {
 		fi
 	fi
 
-	_theme_render
+	if command -v _theme_render > "/dev/null" 2>&1; then
+		_theme_render
+	fi
 }
 
 case "${PROMPT_COMMAND:-}" in

@@ -127,11 +127,9 @@ _git_pull_resilient() {
 	if [ "${_pull_ok}" -eq 1 ]; then
 		if [ "${_has_dirty}" -eq 1 ]; then
 			if ! eval "${_cmd} stash pop" > "/dev/null" 2>&1; then
-				if [ -z "$(eval "${_cmd} status --porcelain" 2> "/dev/null" || true)" ]; then
-					eval "${_cmd} stash drop" > "/dev/null" 2>&1 || true
-				else
-					_ui_info "Alterações locais mantidas salvas em 'git stash list'."
-				fi
+				eval "${_cmd} reset --merge" > "/dev/null" 2>&1 || eval "${_cmd} checkout -f" > "/dev/null" 2>&1 || true
+				_ui_warn "Conflito detectado ao restaurar alterações locais em ${_dir}."
+				_ui_info "Sua versão local foi preservada com segurança em 'git stash list'."
 			fi
 			eval "${_cmd} diff --numstat" 2> "/dev/null" | while IFS="$(printf '\t')" read -r _add _del _file; do
 				if [ "${_add}" = "0" ] && [ "${_del}" = "0" ] && [ -n "${_file}" ]; then

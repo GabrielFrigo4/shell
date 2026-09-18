@@ -34,8 +34,14 @@ _setup_colors() {
 	_theme_color_b_cyan="${_theme_color_open}${_esc}[1;96m${_theme_color_close}"
 	_theme_color_b_white="${_theme_color_open}${_esc}[1;97m${_theme_color_close}"
 
+	local _raw=0
+	if command -v _is_raw_tty > "/dev/null" 2>&1; then
+		_is_raw_tty && _raw=1
+	fi
+
 	_theme_color_gray="${_theme_color_b_gray}"
-	if ! _is_raw_tty; then
+	if [ "${_raw}" -eq 0 ]; then
+		_theme_color_del="${_theme_color_b_yellow}"
 		_theme_color_red="${_theme_color_b_red}"
 		_theme_color_green="${_theme_color_b_green}"
 		_theme_color_yellow="${_theme_color_b_yellow}"
