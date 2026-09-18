@@ -23,9 +23,12 @@ _theme_render() {
 		_date="$(command date +%d/%m/%y 2> "/dev/null" || true)"
 	fi
 
-	PS1="\n${_c_del}${_os_color}${_os_icon}${_c_magenta}${_os_name}${_c_del}─${_c_blue} ${_c_magenta}${_sh_name}${_c_del}"
-	PS1="${PS1}\n${_c_del}┌──❮ ${_c_green} ${_time}${_c_del} ❯─❮ ${_c_green} ${_date}${_c_del} ❯─❮ ${_c_yellow} ${_c_cyan}${_pwd}${_c_del} ❯─ ❮${_c_blue} ${_u_color}${_user}${_c_del}❯${_git_info}"
-	PS1="${PS1}\n${_c_del}└─${_term_color}${_c_reset} "
+	local _nl="
+"
+
+	PS1="${_nl}${_c_del}${_os_color}${_os_icon}${_c_magenta}${_os_name}${_c_del}─${_c_blue} ${_c_magenta}${_sh_name}${_c_del}"
+	PS1="${PS1}${_nl}${_c_del}┌──❮ ${_c_green} ${_time}${_c_del} ❯─❮ ${_c_green} ${_date}${_c_del} ❯─❮ ${_c_yellow} ${_c_cyan}${_pwd}${_c_del} ❯─ ❮${_c_blue} ${_u_color}${_user}${_c_del}❯${_git_info}"
+	PS1="${PS1}${_nl}${_c_del}└─${_term_color}${_c_reset} "
 
 	[ -n "${ZSH_VERSION:-}" ] && export PROMPT="${PS1}"
 	return 0
