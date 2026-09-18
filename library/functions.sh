@@ -207,9 +207,9 @@ update-editors() {
 	_found=0
 	_ui_step "Atualizando a Suíte de Editores..."
 
-	for _ed in Emacs Helix NeoVim Vim; do
+	for _editor in Emacs Helix NeoVim Vim; do
 		_target=""
-		case "${_ed}" in
+		case "${_editor}" in
 			Emacs)
 				if [ -d "${HOME}/.emacs.d/.git" ]; then
 					_target="${HOME}/.emacs.d"
@@ -241,13 +241,13 @@ update-editors() {
 		esac
 
 		if [ -n "${_target}" ]; then
-			_ui_sub "Atualizando ${_ed} em ${_target}..."
+			_ui_sub "Atualizando ${_editor} em ${_target}..."
 			if _git_pull_resilient "${_target}"; then
-				_ui_ok "${_ed} atualizado com sucesso!"
+				_ui_ok "${_editor} atualizado com sucesso!"
 			else
-				_ui_warn "${_ed}: sincronização falhou."
+				_ui_warn "${_editor}: sincronização falhou."
 			fi
-			if [ "${_ed}" = "Emacs" ] && [ -f "${_target}/.gitmodules" ]; then
+			if [ "${_editor}" = "Emacs" ] && [ -f "${_target}/.gitmodules" ]; then
 				_ui_sub "Sincronizando submódulos Elisp locais em ${_target}..."
 				if git -C "${_target}" submodule update --init --recursive --remote --merge > "/dev/null" 2>&1; then
 					_ui_ok "Submódulos Elisp atualizados com sucesso!"
@@ -264,7 +264,7 @@ update-editors() {
 	else
 		_ui_ok "Suíte de Editores sincronizada!"
 	fi
-	unset _found _ed _target
+	unset _found _editor _target
 }
 
 ### --------------------------------
@@ -432,16 +432,16 @@ update-wifi() {
 
 		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r _name _ssid; do
 			_suffix="${_name#WIFI_SSID_}"
-			_pass_var="WIFI_PASS_${_suffix}"
-			eval _pass="\$${_pass_var}"
+			_password_var="WIFI_PASS_${_suffix}"
+			eval _password="\$${_password_var}"
 
-			if [ -n "${_ssid}" ] && [ -n "${_pass}" ]; then
+			if [ -n "${_ssid}" ] && [ -n "${_password}" ]; then
 				if nmcli connection show "${_ssid}" > "/dev/null" 2>&1; then
 					echo "   🔄 Updating network: '${_ssid}'"
-					nmcli connection modify "${_ssid}" wifi-sec.psk "${_pass}" > "/dev/null" 2>&1
+					nmcli connection modify "${_ssid}" wifi-sec.psk "${_password}" > "/dev/null" 2>&1
 				else
 					echo "   ➕ Adding network: '${_ssid}'"
-					nmcli connection add type wifi con-name "${_ssid}" ssid "${_ssid}" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${_pass}" > "/dev/null" 2>&1
+					nmcli connection add type wifi con-name "${_ssid}" ssid "${_ssid}" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${_password}" > "/dev/null" 2>&1
 				fi
 			fi
 		done
@@ -450,8 +450,8 @@ update-wifi() {
 	elif [ "$(command uname -s 2> "/dev/null")" = "FreeBSD" ] || [ -f "/etc/wpa_supplicant.conf" ]; then
 		echo "😈 FreeBSD/wpa_supplicant detected. Syncing Wi-Fi configurations..."
 
-		_tmp_conf=$(command mktemp)
-		cat <<-EOF >| "${_tmp_conf}"
+		_temporary_config=$(command mktemp)
+		cat <<-EOF >| "${_temporary_config}"
 			ctrl_interface=/var/run/wpa_supplicant
 			ctrl_interface_group=wheel
 			update_config=1
@@ -460,15 +460,15 @@ update-wifi() {
 
 		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r _name _ssid; do
 			_suffix="${_name#WIFI_SSID_}"
-			_pass_var="WIFI_PASS_${_suffix}"
-			eval _pass="\$${_pass_var}"
+			_password_var="WIFI_PASS_${_suffix}"
+			eval _password="\$${_password_var}"
 
-			if [ -n "${_ssid}" ] && [ -n "${_pass}" ]; then
+			if [ -n "${_ssid}" ] && [ -n "${_password}" ]; then
 				echo "   ➕ Mapping network: '${_ssid}'"
-				cat <<-EOF >> "${_tmp_conf}"
+				cat <<-EOF >> "${_temporary_config}"
 					network={
 					    ssid="${_ssid}"
-					    psk="${_pass}"
+					    psk="${_password}"
 					}
 
 				EOF
@@ -478,11 +478,11 @@ update-wifi() {
 		_wifi_dir="/etc"
 		_wifi_target="${_wifi_dir}/wpa_supplicant.conf"
 
-		if _as_root cmp -s "${_tmp_conf}" "${_wifi_target}" 2> "/dev/null"; then
+		if _as_root cmp -s "${_temporary_config}" "${_wifi_target}" 2> "/dev/null"; then
 			echo "   👉 FreeBSD ${_wifi_target} is already up-to-date."
 		else
 			echo "   🔄 Changes detected! Overwriting ${_wifi_target}..."
-			_as_root cp "${_tmp_conf}" "${_wifi_target}"
+			_as_root cp "${_temporary_config}" "${_wifi_target}"
 
 			echo "   ⚡ Restarting network stack (netif)..."
 			_as_root service netif restart > "/dev/null" 2>&1 || true
@@ -495,11 +495,11 @@ update-wifi() {
 			echo "   📦 Wifibox detected. Syncing Wifibox Wi-Fi configuration..."
 			_as_root mkdir -p "${_wifibox_dir}/wpa_supplicant"
 
-			if _as_root cmp -s "${_tmp_conf}" "${_wifibox_target}" 2> "/dev/null"; then
+			if _as_root cmp -s "${_temporary_config}" "${_wifibox_target}" 2> "/dev/null"; then
 				echo "   👉 Wifibox configuration is already up-to-date."
 			else
 				echo "   🔄 Changes detected! Overwriting ${_wifibox_target}..."
-				_as_root cp "${_tmp_conf}" "${_wifibox_target}"
+				_as_root cp "${_temporary_config}" "${_wifibox_target}"
 
 				if _as_root service wifibox status > "/dev/null" 2>&1; then
 					echo "   ⚡ Restarting wifibox service..."
@@ -508,7 +508,7 @@ update-wifi() {
 			fi
 		fi
 
-		command rm -f "${_tmp_conf}"
+		command rm -f "${_temporary_config}"
 
 		echo "✅ FreeBSD Wi-Fi configs applied!"
 
@@ -517,10 +517,10 @@ update-wifi() {
 
 		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r _name _ssid; do
 			_suffix="${_name#WIFI_SSID_}"
-			_pass_var="WIFI_PASS_${_suffix}"
-			eval _pass="\$${_pass_var}"
+			_password_var="WIFI_PASS_${_suffix}"
+			eval _password="\$${_password_var}"
 
-			if [ -n "${_ssid}" ] && [ -n "${_pass}" ]; then
+			if [ -n "${_ssid}" ] && [ -n "${_password}" ]; then
 				echo "   ➕ Injecting profile: '${_ssid}'"
 				_xml_file=$(command mktemp)
 
@@ -545,17 +545,17 @@ update-wifi() {
 					            <sharedKey>
 					                <keyType>passPhrase</keyType>
 					                <protected>false</protected>
-					                <keyMaterial>${_pass}</keyMaterial>
+					                <keyMaterial>${_password}</keyMaterial>
 					            </sharedKey>
 					        </security>
 					    </MSM>
 					</WLANProfile>
 				EOF
 
-				_win_path="${_xml_file}"
-				command -v cygpath > "/dev/null" 2>&1 && _win_path=$(cygpath -w "${_xml_file}")
+				_windows_path="${_xml_file}"
+				command -v cygpath > "/dev/null" 2>&1 && _windows_path=$(cygpath -w "${_xml_file}")
 
-				command netsh wlan add profile filename="${_win_path}" > "/dev/null" 2>&1
+				command netsh wlan add profile filename="${_windows_path}" > "/dev/null" 2>&1
 				command rm -f "${_xml_file}"
 			fi
 		done
@@ -565,7 +565,7 @@ update-wifi() {
 		echo "❌ No supported Wi-Fi manager (nmcli/wpa_supplicant/netsh) found."
 	fi
 
-	unset _name _ssid _suffix _pass_var _pass _tmp_conf _xml_file _win_path _wifi_dir _wifi_target _wifibox_dir _wifibox_target 2> "/dev/null" || true
+	unset _name _ssid _suffix _password_var _password _temporary_config _xml_file _windows_path _wifi_dir _wifi_target _wifibox_dir _wifibox_target 2> "/dev/null" || true
 }
 
 ### --------------------------------

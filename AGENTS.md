@@ -18,7 +18,7 @@ O **Shell** é o **motor interativo de terminal** do ecossistema. Fornece prompt
 
 1. **Baseline FreeBSD `/bin/sh`:** Scripts compartilhados DEVEM ser compatíveis com o `/bin/sh` do FreeBSD.
 2. **Programação defensiva (`command -v`):** Nunca defina aliases sem verificar se o binário existe.
-3. **Nomenclatura:** `kebab-case` público, `_snake_case` privado, `SNAKE_CASE` constantes.
+3. **Nomenclatura Expressiva & Zero Abreviações Crípticas:** `kebab-case` público, `_snake_case` privado, `SNAKE_CASE` constantes. Nomes de variáveis DEVEM ser autoexplicativos (proibido `_c` para color, `_u` para user, `_ind`, `_sym`, `_del`, `_ed`, `_f`, etc.; permitido designações técnicas formais como linguagem C e acrônimos universais IP, OS, PID).
 4. **Proteção de terminal:** `[ -t 1 ]` antes de sequências ANSI em pipes.
 5. **Zero comentários narrativos:** Blocos lógicos separados por linhas em branco.
 6. **Prompts com `\[...\]`:** Códigos ANSI em `PS1` DEVEM estar entre delimitadores de largura zero.
@@ -36,6 +36,7 @@ Se durante a execução de qualquer tarefa (seja criação de novas features, co
 1. **Notificar concisamente** o usuário sobre a divergência encontrada.
 2. **Corrigir imediatamente a inconformidade**, aplicando o padrão canônico correspondente:
     - **Comentários Narrativos:** Eliminar imediatamente comentários óbvios que apenas narram código executável.
+    - **Nomenclatura Semântica:** Substituir imediatamente variáveis crípticas ou de uma letra (`_c`, `_u`, `_ind`, `_sym`, `_del`, `_ed`, `_f`) por nomes explícitos (`_color`, `_user`, `_indicator`, `_module`, etc.), preservando termos formais (linguagem C, IP, OS, PID).
     - **Banners Estruturais:** Ajustar réguas para exatamente 64 hífens no topo ou 32 caracteres com `### ` no corpo.
     - **Portabilidade POSIX:** Substituir bashismos (`[[ ]]`, `&>`, arrays, `source`) por sintaxe estrita POSIX `/bin/sh`.
     - **Shebang Universal:** Garantir sempre `#!/usr/bin/env sh` ou `#!/usr/bin/env python3`.
@@ -49,6 +50,6 @@ Se durante a execução de qualquer tarefa (seja criação de novas features, co
 Antes de qualquer modificação neste ecossistema, consulte:
 
 - **[ENVIRONMENT.md](ENVIRONMENT.md)**: Arquitetura do Quarteto de Produtividade
-- **[PRINCIPLES.md](PRINCIPLES.md)**: Os 21 Princípios de Engenharia UNIX + Clean Code
+- **[PRINCIPLES.md](PRINCIPLES.md)**: Os 22 Princípios de Engenharia UNIX + Clean Code
 - **[.agents/rules/principles.md](.agents/rules/principles.md)**: Regras específicas do Shell
 - **[.agents/skills/](.agents/skills/)**: Runbooks operacionais (`universal-shell`, `posix-shell`, `proactive-guardian`, `deep-investigation`) e runbooks por SO (`freebsd-shell`, `linux-shell`, `macos-shell`, `windows-shell`, `openbsd-shell`, `netbsd-shell`, `illumos-shell`)

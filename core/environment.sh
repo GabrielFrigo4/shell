@@ -57,14 +57,14 @@ _is_generic_editor() {
 }
 
 if _is_generic_editor "${EDITOR}"; then
-	for _ed in nvim hx micro kak vim nano ee mg mcedit vi; do
-		if command -v "${_ed}" > "/dev/null" 2>&1; then
-			export EDITOR="${_ed}"
-			export VISUAL="${_ed}"
+	for _editor in nvim hx micro kak vim nano ee mg mcedit vi; do
+		if command -v "${_editor}" > "/dev/null" 2>&1; then
+			export EDITOR="${_editor}"
+			export VISUAL="${_editor}"
 			break
 		fi
 	done
-	unset _ed
+	unset _editor
 fi
 
 ### --------------------------------

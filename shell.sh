@@ -29,13 +29,13 @@ _shell_is_sourced() {
 ### BOOTSTRAP DE RUNTIME
 ### ================================
 _shell_bootstrap() {
-	for _mod in "${_SHELL_ROOT}/library/"*.sh; do
-		[ -f "${_mod}" ] && . "${_mod}"
+	for _module in "${_SHELL_ROOT}/library/"*.sh; do
+		[ -f "${_module}" ] && . "${_module}"
 	done
-	for _mod in "${_SHELL_ROOT}/core/"*.sh; do
-		[ -f "${_mod}" ] && . "${_mod}"
+	for _module in "${_SHELL_ROOT}/core/"*.sh; do
+		[ -f "${_module}" ] && . "${_module}"
 	done
-	unset _mod
+	unset _module
 }
 
 ### ================================

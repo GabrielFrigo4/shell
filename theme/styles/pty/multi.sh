@@ -5,9 +5,9 @@
 _theme_render() {
 	local _git_info=""
 	if [ -n "${_branch}" ]; then
-		local _ind=""
-		[ -n "${_is_dirty}" ] && _ind="${_theme_color_yellow}*"
-		_git_info=" ${_theme_color_del}❮${_theme_color_red}󰊢 ${_theme_color_magenta}${_branch}${_ind}${_theme_color_del}❯"
+		local _indicator=""
+		[ -n "${_is_dirty}" ] && _indicator="${_theme_color_yellow}*"
+		_git_info=" ${_theme_color_delimiter}❮${_theme_color_red}󰊢 ${_theme_color_magenta}${_branch}${_indicator}${_theme_color_delimiter}❯"
 	fi
 
 	local _time
@@ -23,12 +23,12 @@ _theme_render() {
 		_date="$(command date +%d/%m/%y 2> "/dev/null" || true)"
 	fi
 
-	local _nl="
+	local _newline="
 "
 
-	PS1="${_nl}${_theme_color_del}${_os_color}${_os_icon}${_theme_color_magenta}${_os_name}${_theme_color_del}─${_theme_color_blue} ${_theme_color_magenta}${_sh_name}${_theme_color_del}"
-	PS1="${PS1}${_nl}${_theme_color_del}┌──❮ ${_theme_color_green} ${_time}${_theme_color_del} ❯─❮ ${_theme_color_green} ${_date}${_theme_color_del} ❯─❮ ${_theme_color_yellow} ${_theme_color_cyan}${_pwd}${_theme_color_del} ❯─ ${_theme_color_del}❮${_theme_color_blue} ${_u_color}${_user}${_theme_color_del}❯${_git_info}"
-	PS1="${PS1}${_nl}${_theme_color_del}└─${_term_color}${_theme_color_reset} "
+	PS1="${_newline}${_theme_color_delimiter}${_os_color}${_os_icon}${_theme_color_magenta}${_os_name}${_theme_color_delimiter}─${_theme_color_blue} ${_theme_color_magenta}${_shell_name}${_theme_color_delimiter}"
+	PS1="${PS1}${_newline}${_theme_color_delimiter}┌──❮ ${_theme_color_green} ${_time}${_theme_color_delimiter} ❯─❮ ${_theme_color_green} ${_date}${_theme_color_delimiter} ❯─❮ ${_theme_color_yellow} ${_theme_color_cyan}${_pwd}${_theme_color_delimiter} ❯─ ${_theme_color_delimiter}❮${_theme_color_blue} ${_user_color}${_user}${_theme_color_delimiter}❯${_git_info}"
+	PS1="${PS1}${_newline}${_theme_color_delimiter}└─${_terminal_color}${_theme_color_reset} "
 
 	[ -n "${ZSH_VERSION:-}" ] && export PROMPT="${PS1}"
 	return 0

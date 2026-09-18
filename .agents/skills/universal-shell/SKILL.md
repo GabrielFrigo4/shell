@@ -62,6 +62,7 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
     - Helpers internos e variáveis locais: `_snake_case` (`_detect_os`, `_as_root`, `_branch`).
     - Variáveis globais de ambiente: `SNAKE_CASE` maiúsculo (`SHELL_REPO_DIR`, `SHELL_CONTEXT`).
     - Sem funções gêmeas: declare diretamente a função pública final.
+    - **Nomenclatura Semântica Expressiva (Zero Abreviações Crípticas):** Proibição categórica de variáveis de uma única letra ou abreviações contraídas (`_c`, `_u`, `_ind`, `_sym`, `_del`, `_b`, `_f`, `_ed`, `_mod`). Use sempre nomes explícitos e semânticos (`_user_color`, `_prompt_symbol`, `_indicator`, `_delimiter`, `_module`, `_file`), exceto referências formais da computação (a linguagem `C` em buffers de parser `_calc_c_len` / `_c_bytes`, e acrônimos de sistema consagrados como `_os`, `_ip`, `_pid`).
 
 5. **Delimitadores de Largura Zero em Prompts (`\[...\]` e `\e`):**
     - No FreeBSD `/bin/sh` (`libedit`) e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar estritamente contidos entre `\[` e `\]` (ex: `_color_red="\[\e[1;91m\]"`).

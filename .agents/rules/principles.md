@@ -42,6 +42,8 @@ Toda alteração de código, adição de alias, refatoração ou otimização no
 - **`kebab-case` (público):** Comandos destinados ao uso interativo (`mount-device`, `update-all`, `open-helix`, `path-front`). Suportados por Zsh, Bash e FreeBSD `/bin/sh`. Definidos diretamente, sem wrappers redundantes. Interpretadores que rejeitam hífen em funções por rigidez POSIX (como `dash`) não são alvo de execução deste repositório.
 - **`_snake_case` (privado):** Funções internas de bootstrapping e variáveis locais temporárias (`_as_root`, `_detect_os`, `_pwd`). Mantém o autocompletion limpo.
 - **`SNAKE_CASE` (maiúsculo):** Constantes e variáveis de ambiente globais (`PATH`, `SHELL_REPO_DIR`, `SHELL_CONTEXT`).
+- **Nomenclatura Expressiva & Proibição de Abreviações Crípticas:** Variáveis e funções internas DEVEM ser descritivas e autoexplicativas (`_user_color`, `_prompt_symbol`, `_indicator`, `_delimiter`, `_target_length`, `_remaining_string`, `_module`, `_editor`, `_file`). É terminantemente proibido o uso de abreviações crípticas de uma ou duas letras para conceitos comuns (`_c` para cor, `_u` para usuário, `_ind`, `_sym`, `_del`, `_b`, `_f`, `_ed`, `_mod`).
+- **Exceções Técnicas Formais:** Termos que representam formalmente entidades da ciência da computação são plenamente aceitos (ex: a linguagem `C` em buffers como `_calc_c_len` e `_c_bytes` que interagem com o parser C do FreeBSD `/bin/sh`, além de acrônimos canônicos de sistemas e redes como `_os`, `_ip`, `_pid`, `_ppid`).
 
 ## 4. Estrutura de Arquivos & Arquitetura de Comentários (Regra do Não-Vazamento)
 

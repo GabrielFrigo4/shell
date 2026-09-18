@@ -290,3 +290,11 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 
 - Todas as funções utilitárias do motor interativo (`Shell`) adotam estritamente a convenção **kebab-case** (`reinstall-shell`, `update-editors`, `update-git`, `open-neovim`).
 - O interpretador `dash` é formalmente descartado como shell interativo por incompatibilidade com essa convenção, focando a experiência do usuário nos shells suportados (`bash`, `zsh` e FreeBSD `/bin/sh`).
+
+### 13. Nomenclatura Expressiva & Proibição de Abreviações Crípticas (_Expressive Naming & Zero Cryptic Abbreviations_)
+
+- Variáveis, argumentos e funções DEVEM possuir nomes explícitos, autodescritivos e semânticos. É expressamente vedado o uso de abreviações crípticas de uma única letra ou contrações truncadas que ocultem a intenção do código (ex: proibido `_c` para cor, `_u` para usuário, `_sym` para símbolo, `_ind` para indicador, `_del` para delimitador, `_b` para brilho, `_mod` para módulo, `_ed` para editor, `_f` para arquivo).
+- **Exceções Técnicas Formais:** Siglas e designações canônicas consagradas na ciência da computação são válidas quando expressam a entidade exata e não uma contração preguiçosa:
+    - Referências a linguagens de programação, como a linguagem `C` em buffers de baixo nível (`_calc_c_len`, `_c_bytes`), referindo-se diretamente ao array de caracteres `char ps[]` do parser C do FreeBSD `/bin/sh` (`parser.c`).
+    - Acrônimos padronizados da indústria de sistemas e redes (`_os`, `_ip`, `_pid`, `_ppid`, `_tty`, `_ssh`, `_uri`, `_url`, `_eof`, `_xdg`).
+- Nomes longos e expressivos previnem colisões acidentais no escopo global do interpretador, isolam efeitos colaterais em shells aninhados e eliminam a necessidade de comentários narrativos.

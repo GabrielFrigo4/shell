@@ -6,11 +6,11 @@ _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
 [ -f "${_base_dir}/theme/common/colors.sh" ] && . "${_base_dir}/theme/common/colors.sh"
 [ -f "${_base_dir}/theme/common/git.sh" ] && . "${_base_dir}/theme/common/git.sh"
 
-_trim_str() {
+_trim_string() {
 	_trimmed="$1"
 	if [ "${#_trimmed}" -gt "$2" ]; then
-		local _target=$(( $2 - 1 ))
-		while [ "${#_trimmed}" -gt "${_target}" ]; do
+		local _target_length=$(( $2 - 1 ))
+		while [ "${#_trimmed}" -gt "${_target_length}" ]; do
 			_trimmed="${_trimmed%?}"
 		done
 		_trimmed="${_trimmed}$3"
@@ -18,43 +18,43 @@ _trim_str() {
 }
 
 _calc_c_len() {
-	local _s="$1"
-	local _raw="${#_s}"
+	local _string="$1"
+	local _raw_length="${#_string}"
 
-	local _tmp="${_s}" _n_open=0
+	local _remaining_string="${_string}" _open_delimiter_count=0
 	while :; do
-		case "${_tmp}" in
-			*"\\["*) _n_open=$(( _n_open + 1 )); _tmp="${_tmp#*"\\["}" ;;
+		case "${_remaining_string}" in
+			*"\\["*) _open_delimiter_count=$(( _open_delimiter_count + 1 )); _remaining_string="${_remaining_string#*"\\["}" ;;
 			*) break ;;
 		esac
 	done
 
-	_tmp="${_s}"
-	local _n_close=0
+	_remaining_string="${_string}"
+	local _close_delimiter_count=0
 	while :; do
-		case "${_tmp}" in
-			*"\\]"*) _n_close=$(( _n_close + 1 )); _tmp="${_tmp#*"\\]"}" ;;
+		case "${_remaining_string}" in
+			*"\\]"*) _close_delimiter_count=$(( _close_delimiter_count + 1 )); _remaining_string="${_remaining_string#*"\\]"}" ;;
 			*) break ;;
 		esac
 	done
 
-	_tmp="${_s}"
-	local _n_esc=0
+	_remaining_string="${_string}"
+	local _escape_count=0
 	while :; do
-		case "${_tmp}" in
-			*"\\e"*) _n_esc=$(( _n_esc + 1 )); _tmp="${_tmp#*"\\e"}" ;;
+		case "${_remaining_string}" in
+			*"\\e"*) _escape_count=$(( _escape_count + 1 )); _remaining_string="${_remaining_string#*"\\e"}" ;;
 			*) break ;;
 		esac
 	done
 
-	_c_bytes=$(( _raw - _n_open - _n_close - _n_esc ))
+	_c_bytes=$(( _raw_length - _open_delimiter_count - _close_delimiter_count - _escape_count ))
 }
 
 _update_prompt() {
 	_setup_colors
 
 	local _user="${USER:-$(command id -un)}"
-	local _sh_name="sh"
+	local _shell_name="sh"
 
 	local _pwd="${PWD:-$(command pwd)}"
 	if [ "${_pwd}" = "${HOME}" ]; then
@@ -94,36 +94,36 @@ _update_prompt() {
 		fi
 	fi
 
-	local _u_color="${_theme_color_green}" _term_color="${_theme_color_blue}" _sym="\$" _sym_color="${_theme_color_cyan}"
+	local _user_color="${_theme_color_green}" _terminal_color="${_theme_color_blue}" _prompt_symbol="\$" _prompt_symbol_color="${_theme_color_cyan}"
 	if [ "${EUID:-$(command id -u)}" -eq 0 ]; then
-		_u_color="${_theme_color_red}"
-		_term_color="${_theme_color_red}"
-		_sym="#"
-		_sym_color="${_theme_color_red}"
+		_user_color="${_theme_color_red}"
+		_terminal_color="${_theme_color_red}"
+		_prompt_symbol="#"
+		_prompt_symbol_color="${_theme_color_red}"
 	fi
 
 	local _host="${HOSTNAME%%.*}"
 	[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
 
 	local _os_icon="${PROMPT_OS_ICON:- }"
-	_trim_str "${_os_icon}" 4 ""
+	_trim_string "${_os_icon}" 4 ""
 	_os_icon="${_trimmed}"
 	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "BSD")}}"
 	_os_name="${_os_name%%-*}"
 	local _os_color
 
 	case "${PROMPT_OS_COLOR:-red}" in
-		red)  _os_color="${_theme_color_b_red}" ;;
-		blue) _os_color="${_theme_color_b_blue}" ;;
-		*)    _os_color="${_theme_color_b_blue}" ;;
+		red)  _os_color="${_theme_color_bright_red}" ;;
+		blue) _os_color="${_theme_color_bright_blue}" ;;
+		*)    _os_color="${_theme_color_bright_blue}" ;;
 	esac
 
-	local _fixed_str=""
+	local _fixed_string=""
 	if command -v _theme_layout > "/dev/null" 2>&1; then
 		_theme_layout
 	fi
 
-	_calc_c_len "${_fixed_str}"
+	_calc_c_len "${_fixed_string}"
 	_budget=$(( _prompt_limit - 2 - _c_bytes ))
 	[ "${_budget}" -lt 4 ] && _budget=4
 
@@ -144,13 +144,13 @@ _update_prompt() {
 				_max_branch=$(( _budget - _half ))
 			fi
 		fi
-		_trim_str "${_branch}" "${_max_branch}" "~"
+		_trim_string "${_branch}" "${_max_branch}" "~"
 		_branch="${_trimmed}"
 	else
 		_max_pwd="${_budget}"
 	fi
 
-	_trim_str "${_pwd}" "${_max_pwd}" "~"
+	_trim_string "${_pwd}" "${_max_pwd}" "~"
 	_pwd="${_trimmed}"
 
 	if command -v _theme_render > "/dev/null" 2>&1; then
@@ -162,13 +162,13 @@ _update_prompt() {
 ### Precision Triggers
 ### --------------------------------
 _create_trigger() {
-	for _cmd in "$@"; do
+	for _command in "$@"; do
 		eval "
-		${_cmd}() {
-			command ${_cmd} \"\$@\"
-			local _ret=\$?
+		${_command}() {
+			command ${_command} \"\$@\"
+			local _exit_code=\$?
 			_update_prompt
-			return \${_ret}
+			return \${_exit_code}
 		}
 		"
 	done

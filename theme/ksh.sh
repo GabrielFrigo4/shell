@@ -19,20 +19,20 @@ _ksh_prompt() {
 		[ -z "${_pwd}" ] && _pwd="/"
 	fi
 
-	local _sh_name="ksh"
+	local _shell_name="ksh"
 	local _branch _is_dirty
 	_git_branch
 
 	local _user="${USER:-${LOGNAME:-$(command id -un 2> "/dev/null" || echo "user")}}"
-	local _u_color="${_theme_color_green}"
-	local _term_color="${_theme_color_blue}"
-	local _sym="\$"
-	local _sym_color="${_theme_color_cyan}"
+	local _user_color="${_theme_color_green}"
+	local _terminal_color="${_theme_color_blue}"
+	local _prompt_symbol="\$"
+	local _prompt_symbol_color="${_theme_color_cyan}"
 	if [ "${EUID:-$(id -u 2> "/dev/null")}" -eq 0 ]; then
-		_u_color="${_theme_color_red}"
-		_term_color="${_theme_color_red}"
-		_sym="#"
-		_sym_color="${_theme_color_red}"
+		_user_color="${_theme_color_red}"
+		_terminal_color="${_theme_color_red}"
+		_prompt_symbol="#"
+		_prompt_symbol_color="${_theme_color_red}"
 	fi
 
 	local _host="${HOSTNAME%%.*}"

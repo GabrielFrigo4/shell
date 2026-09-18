@@ -16,9 +16,9 @@ _SHELL_CACHE_FILE="${_SHELL_CACHE_DIR}/cache.env"
 _cache_read() {
 	local _file="${_SHELL_CACHE_DIR}/${1}"
 	if [ -f "${_file}" ]; then
-		local _val
-		read -r _val < "${_file}" 2> "/dev/null"
-		echo "${_val}"
+		local _value
+		read -r _value < "${_file}" 2> "/dev/null"
+		echo "${_value}"
 		return 0
 	fi
 	return 1
@@ -88,9 +88,9 @@ _detect_os() {
 _is_wsl() {
 	[ -n "${WSL_DISTRO_NAME:-}" ] || [ -n "${WSL_INTEROP:-}" ] && return 0
 	if [ -r "/proc/version" ]; then
-		local _proc_ver
-		read -r _proc_ver < "/proc/version" 2> "/dev/null"
-		case "${_proc_ver}" in
+		local _proc_version
+		read -r _proc_version < "/proc/version" 2> "/dev/null"
+		case "${_proc_version}" in
 			*[Mm]icrosoft*|*WSL*) return 0 ;;
 		esac
 	fi
@@ -138,9 +138,9 @@ _detect_shell() {
 	fi
 
 	if [ -z "${_name}" ]; then
-		local _arg0="${0##*/}"
-		_arg0="${_arg0#-}"
-		case "${_arg0}" in
+		local _invoked_name="${0##*/}"
+		_invoked_name="${_invoked_name#-}"
+		case "${_invoked_name}" in
 			*zsh*)                       _name="zsh" ;;
 			*bash*)                      _name="bash" ;;
 			*dash*)                      _name="dash" ;;
@@ -165,20 +165,20 @@ _detect_shell() {
 	fi
 
 	if [ "${_name}" = "sudo" ] || [ "${_name}" = "doas" ] || [ "${_name}" = "su" ]; then
-		local _gpid="$(command ps -p "${_pid}" -o ppid= 2> "/dev/null" | command tr -d ' ')"
-		if [ -z "${_gpid}" ]; then
+		local _parent_pid="$(command ps -p "${_pid}" -o ppid= 2> "/dev/null" | command tr -d ' ')"
+		if [ -z "${_parent_pid}" ]; then
 			if [ "${_os}" = "windows" ]; then
-				_gpid="$(command ps 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $2}')"
+				_parent_pid="$(command ps 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $2}')"
 			else
-				_gpid="$(command ps -o pid,ppid 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $2}')"
+				_parent_pid="$(command ps -o pid,ppid 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $2}')"
 			fi
 		fi
-		if [ -n "${_gpid}" ] && [ -r "/proc/${_gpid}/comm" ]; then
-			read -r _name < "/proc/${_gpid}/comm" 2> "/dev/null"
+		if [ -n "${_parent_pid}" ] && [ -r "/proc/${_parent_pid}/comm" ]; then
+			read -r _name < "/proc/${_parent_pid}/comm" 2> "/dev/null"
 			_name="${_name#-}"
 		fi
 		if [ -z "${_name}" ]; then
-			_name="$(command ps -p "${_gpid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
+			_name="$(command ps -p "${_parent_pid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
 		fi
 	fi
 
@@ -208,29 +208,29 @@ _detect_shell() {
 ### --------------------------------
 _detect_enabled_shell() {
 	local _target="${1:-path}"
-	local _cur=""
+	local _current_shell=""
 
 	case "${_target}" in
 		--preferred|-p|preferred)
-			_cur=""
+			_current_shell=""
 			;;
 		*)
-			_cur="$(_detect_shell)"
-			case "${_cur}" in
-				dash|fish) _cur="" ;;
+			_current_shell="$(_detect_shell)"
+			case "${_current_shell}" in
+				dash|fish) _current_shell="" ;;
 			esac
 			;;
 	esac
 
-	local _bin
-	_bin="$( { [ -n "${_cur}" ] && command -v "${_cur}" 2> "/dev/null"; } || \
+	local _shell_binary
+	_shell_binary="$( { [ -n "${_current_shell}" ] && command -v "${_current_shell}" 2> "/dev/null"; } || \
 		command -v zsh 2> "/dev/null" || \
 		command -v bash 2> "/dev/null" || \
 		command -v sh 2> "/dev/null")"
 
 	case "${_target}" in
-		--name|-n|name) echo "${_bin##*/}" ;;
-		*)              echo "${_bin}" ;;
+		--name|-n|name) echo "${_shell_binary##*/}" ;;
+		*)              echo "${_shell_binary}" ;;
 	esac
 }
 
@@ -246,8 +246,8 @@ _detect_distro() {
 	fi
 
 	if [ -f "/etc/os-release" ]; then
-		local _id="$(. /etc/os-release && echo "${ID}")"
-		_DETECTED_DISTRO="${_id:-unknown}"
+		local _os_id="$(. /etc/os-release && echo "${ID}")"
+		_DETECTED_DISTRO="${_os_id:-unknown}"
 	elif [ -f "/etc/arch-release" ]; then
 		_DETECTED_DISTRO="arch"
 	elif [ -f "/etc/debian_version" ]; then
@@ -283,11 +283,11 @@ _detect_distro_family() {
 		return 0
 	fi
 
-	local _id="$(_detect_distro)"
-	local _like=""
-	[ -f "/etc/os-release" ] && _like="$(. /etc/os-release && echo "${ID_LIKE}")"
+	local _distro_id="$(_detect_distro)"
+	local _distro_like=""
+	[ -f "/etc/os-release" ] && _distro_like="$(. /etc/os-release && echo "${ID_LIKE}")"
 
-	case "${_id}" in
+	case "${_distro_id}" in
 		arch|manjaro|endeavouros)             _DETECTED_DISTRO_FAMILY="arch" ;;
 		debian|ubuntu|linuxmint|pop|raspbian) _DETECTED_DISTRO_FAMILY="debian" ;;
 		fedora|rhel|centos|rocky|alma)        _DETECTED_DISTRO_FAMILY="fedora" ;;
@@ -356,12 +356,12 @@ _detect_color_scheme() {
 
 	_DETECTED_COLOR_SCHEME="dark"
 	if command -v gdbus > "/dev/null" 2>&1; then
-		local _portal
-		_portal="$(gdbus call --session --dest org.freedesktop.portal.Desktop \
+		local _portal_scheme
+		_portal_scheme="$(gdbus call --session --dest org.freedesktop.portal.Desktop \
 			--object-path /org/freedesktop/portal/desktop \
 			--method org.freedesktop.portal.Settings.Read \
 			"org.freedesktop.appearance" "color-scheme" 2> "/dev/null")"
-		case "${_portal}" in
+		case "${_portal_scheme}" in
 			*uint32\ 1*) _DETECTED_COLOR_SCHEME="dark" ;;
 			*uint32\ 2*) _DETECTED_COLOR_SCHEME="light" ;;
 		esac

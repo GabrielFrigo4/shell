@@ -14,7 +14,7 @@ _update_prompt() {
 	local _user="${USER:-$(command id -un)}"
 	local _host="${(%):-%m}"
 	local _pwd="${(%):-%c}"
-	local _sh_name="zsh"
+	local _shell_name="zsh"
 	local _os_icon="${PROMPT_OS_ICON:- }"
 	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "Linux")}}"
 	_os_name="${_os_name%%-*}"
@@ -26,12 +26,12 @@ _update_prompt() {
 		*)    _os_color="${_theme_color_blue}" ;;
 	esac
 
-	local _u_color="${_theme_color_green}" _sym="\$" _sym_color="${_theme_color_cyan}" _term_color="${_theme_color_blue}"
+	local _user_color="${_theme_color_green}" _prompt_symbol="\$" _prompt_symbol_color="${_theme_color_cyan}" _terminal_color="${_theme_color_blue}"
 	if [ "${EUID:-$(id -u)}" -eq 0 ]; then
-		_u_color="${_theme_color_red}"
-		_sym="#"
-		_sym_color="${_theme_color_red}"
-		_term_color="${_theme_color_red}"
+		_user_color="${_theme_color_red}"
+		_prompt_symbol="#"
+		_prompt_symbol_color="${_theme_color_red}"
+		_terminal_color="${_theme_color_red}"
 	fi
 
 	local _branch _is_dirty

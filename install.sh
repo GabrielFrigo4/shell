@@ -400,9 +400,9 @@ _install_shell_target() {
 		${_context_line}
 		export SHELL_FRAMEWORK=${SHELL_FRAMEWORK}
 
-		for _f in "\${SHELL_REPO_DIR}/library/"*.sh; do [ -f "\${_f}" ] && ${_source_cmd} "\${_f}"; done
-		for _f in "\${SHELL_REPO_DIR}/core/"*.sh; do [ -f "\${_f}" ] && ${_source_cmd} "\${_f}"; done
-		unset _f
+		for _file in "\${SHELL_REPO_DIR}/library/"*.sh; do [ -f "\${_file}" ] && ${_source_cmd} "\${_file}"; done
+		for _file in "\${SHELL_REPO_DIR}/core/"*.sh; do [ -f "\${_file}" ] && ${_source_cmd} "\${_file}"; done
+		unset _file
 
 		${_source_line}
 	EOF

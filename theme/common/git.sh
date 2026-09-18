@@ -5,23 +5,23 @@
 _git_branch() {
 	_branch=""
 	_is_dirty=""
-	local _d="${PWD}"
+	local _dir="${PWD}"
 	local _git_root=""
-	while [ -n "${_d}" ]; do
-		if [ -d "${_d}/.git" ]; then
-			_git_root="${_d}/.git"
+	while [ -n "${_dir}" ]; do
+		if [ -d "${_dir}/.git" ]; then
+			_git_root="${_dir}/.git"
 			break
-		elif [ -f "${_d}/.git" ]; then
+		elif [ -f "${_dir}/.git" ]; then
 			local _gitdir=""
-			read -r _gitdir < "${_d}/.git" 2> "/dev/null" || true
+			read -r _gitdir < "${_dir}/.git" 2> "/dev/null" || true
 			case "${_gitdir}" in
 				gitdir:\ *) _git_root="${_gitdir#gitdir: }" ;;
 			esac
 			break
 		fi
-		case "${_d}" in
+		case "${_dir}" in
 			/|"${HOME}"/..|//*) break ;;
-			*) _d="${_d%/*}" ;;
+			*) _dir="${_dir%/*}" ;;
 		esac
 	done
 

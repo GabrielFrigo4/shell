@@ -5,16 +5,16 @@
 ### ================================
 ### ANSI ESCAPE SEQUENCES
 ### ================================
-_ui_esc="$(printf '\033')"
-_ui_color_reset="${_ui_esc}[0m"
-_ui_color_bold="${_ui_esc}[1m"
-_ui_color_cyan="${_ui_esc}[1;36m"
-_ui_color_green="${_ui_esc}[1;32m"
-_ui_color_yellow="${_ui_esc}[1;33m"
-_ui_color_red="${_ui_esc}[1;31m"
-_ui_color_blue="${_ui_esc}[1;34m"
-_ui_color_magenta="${_ui_esc}[1;35m"
-_ui_color_dim="${_ui_esc}[2m"
+_ui_escape="$(printf '\033')"
+_ui_color_reset="${_ui_escape}[0m"
+_ui_color_bold="${_ui_escape}[1m"
+_ui_color_cyan="${_ui_escape}[1;36m"
+_ui_color_green="${_ui_escape}[1;32m"
+_ui_color_yellow="${_ui_escape}[1;33m"
+_ui_color_red="${_ui_escape}[1;31m"
+_ui_color_blue="${_ui_escape}[1;34m"
+_ui_color_magenta="${_ui_escape}[1;35m"
+_ui_color_dim="${_ui_escape}[2m"
 
 _ui_has_color() {
 	[ -t 1 ] || return 1
@@ -83,16 +83,16 @@ _ui_info() {
 
 _ui_banner() {
 	local _title="$1"
-	local _sep="================================================================"
+	local _separator="================================================================"
 	echo ""
 	if _ui_has_color; then
-		echo "${_ui_color_bold}${_ui_color_cyan}${_sep}${_ui_color_reset}"
+		echo "${_ui_color_bold}${_ui_color_cyan}${_separator}${_ui_color_reset}"
 		echo "${_ui_color_bold}  ${_title}${_ui_color_reset}"
-		echo "${_ui_color_bold}${_ui_color_cyan}${_sep}${_ui_color_reset}"
+		echo "${_ui_color_bold}${_ui_color_cyan}${_separator}${_ui_color_reset}"
 	else
-		echo "${_sep}"
+		echo "${_separator}"
 		echo "  ${_title}"
-		echo "${_sep}"
+		echo "${_separator}"
 	fi
 	echo ""
 }

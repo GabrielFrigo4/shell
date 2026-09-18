@@ -51,6 +51,7 @@ Sempre que ler, editar ou inspecionar qualquer script `.sh`, valide silenciosame
 - [ ] **Funções Públicas:** Nomes em `kebab-case` (`open-helix`, `path-front`, `update-all`).
 - [ ] **Funções Privadas e Variáveis Locais:** Nomes em `_snake_case` com prefixo `_` (`_as_root`, `_detect_os`, `_pwd`).
 - [ ] **Sem Funções Gêmeas:** Nunca permita funções duplicadas (como criar um helper privado `_foo` só para chamar um alias/função pública `foo` sem lógica adicional). Declare a função pública diretamente.
+- [ ] **Zero Abreviações Crípticas:** Identifique e substitua ativamente variáveis truncadas ou de uma só letra (`_c` para cor, `_u` para usuário, `_ind`, `_sym`, `_del`, `_b`, `_f`, `_ed`, `_mod`) por nomes expressivos integrais (`_user_color`, `_prompt_symbol`, `_indicator`, `_delimiter`, `_module`, `_file`), respeitando termos técnicos canônicos (linguagem C em buffers de parser, `_os`, `_ip`, `_pid`).
 
 ### E. Comentários Estruturais & Regra do Não-Vazamento
 
