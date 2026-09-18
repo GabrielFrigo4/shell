@@ -23,7 +23,7 @@ Toda alteração de código, adição de alias, refatoração ou otimização no
     - `ksh` e `sh` NUNCA coexistem no mesmo sistema operacional.
     - Todos os demais sistemas operacionais (Linux, macOS, Windows/MSYS2, NetBSD, illumos) suportam estritamente `zsh` e `bash`.
 - **Adoção Universal de `$'\e...'` e `echo -n`:** O formato `echo -n $'\e...'` é suportado em todos os shells do ecossistema (FreeBSD `/bin/sh`, Zsh, Bash, OpenBSD ksh moderno e Dash moderno, além de formalizado no POSIX Issue 8). É o padrão canônico preferido para sequências de controle de terminal (`alias clear="echo -n $'\e[2J\e[3J\e[H'"`), eliminando a necessidade de notação críptica em octal (`\033`) do `printf`.
-- **Delimitadores de Largura Zero em Prompts (`\[...\]`):** No FreeBSD `/bin/sh` (`libedit`), OpenBSD `ksh` e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar entre `\[` e `\]` (ex: `_ui_color_red="\[\e[1;91m\]"`). Sem isso, o editor conta bytes ANSI como colunas visíveis, quebrando o cálculo de linhas e o cursor.
+- **Delimitadores de Largura Zero em Prompts (`\[...\]`):** No FreeBSD `/bin/sh` (`libedit`), OpenBSD `ksh` e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar entre `\[` e `\]` (ex: `_color_red="\[\e[1;91m\]"`). Sem isso, o editor conta bytes ANSI como colunas visíveis, quebrando o cálculo de linhas e o cursor.
 - Recursos do Zsh e Bash permanecem estritamente em `zsh/` e `bash/`.
 
 ## 2. Programação Defensiva Obrigatória

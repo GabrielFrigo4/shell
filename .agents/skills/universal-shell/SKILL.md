@@ -64,7 +64,7 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
     - Sem funções gêmeas: declare diretamente a função pública final.
 
 5. **Delimitadores de Largura Zero em Prompts (`\[...\]` e `\e`):**
-    - No FreeBSD `/bin/sh` (`libedit`) e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar estritamente contidos entre `\[` e `\]` (ex: `_ui_color_red="\[\e[1;91m\]"`).
+    - No FreeBSD `/bin/sh` (`libedit`) e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar estritamente contidos entre `\[` e `\]` (ex: `_color_red="\[\e[1;91m\]"`).
     - Sem `\[...\]`, a `libedit` computa bytes ANSI como colunas físicas ocupadas, quebrando a contagem de quebra de linha e causando sobreposição de caracteres (`\r`) e cursor travado sobre o início do prompt.
 
 6. **Heredocs Indentados com `cat <<- 'EOF'`:**
