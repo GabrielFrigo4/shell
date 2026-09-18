@@ -205,10 +205,59 @@ alias oes="emacs-eshell"
 alias esh="emacs-eshell"
 
 ### --------------------------------
-### Servers
+### Remote Servers
 ### --------------------------------
-alias frigo-server='ssh -i "${FRIGO_SERVER_KEY}" "ubuntu@${FRIGO_SERVER_IP}"'
-alias orbs-server='ssh -i "${ORBS_SERVER_KEY}" "ubuntu@${ORBS_SERVER_IP}"'
+_resolve_vault_ssh_key() {
+	_explicit_key="${1:-}"
+	_key_name="${2:-}"
+
+	if [ -n "${_explicit_key}" ] && [ -f "${_explicit_key}" ]; then
+		chmod 0600 "${_explicit_key}" 2> "/dev/null" || true
+		echo "${_explicit_key}"
+		return 0
+	fi
+
+	for _candidate in \
+		"${VAULT_DIR:-}/keys/${_key_name}" \
+		"${XDG_DATA_HOME:-${HOME}/.local/share}/vault/keys/${_key_name}" \
+		"${XDG_CONFIG_HOME:-${HOME}/.config}/vault/keys/${_key_name}" \
+		"${HOME}/.vault/keys/${_key_name}" \
+		"/usr/local/share/vault/keys/${_key_name}"; do
+		if [ -n "${_candidate}" ] && [ -f "${_candidate}" ]; then
+			chmod 0600 "${_candidate}" 2> "/dev/null" || true
+			echo "${_candidate}"
+			return 0
+		fi
+	done
+
+	return 1
+}
+
+frigo-server() {
+	_ip="${FRIGO_SERVER_IP:-144.22.210.65}"
+	_user="${FRIGO_SERVER_USER:-ubuntu}"
+	_key="$(_resolve_vault_ssh_key "${FRIGO_SERVER_KEY:-}" "ssh-key-frigo-server.key")"
+
+	if [ -n "${_key}" ]; then
+		export FRIGO_SERVER_KEY="${_key}"
+		ssh -i "${_key}" "${_user}@${_ip}" "$@"
+	else
+		ssh "${_user}@${_ip}" "$@"
+	fi
+}
+
+orbs-server() {
+	_ip="${ORBS_SERVER_IP:-137.131.238.161}"
+	_user="${ORBS_SERVER_USER:-ubuntu}"
+	_key="$(_resolve_vault_ssh_key "${ORBS_SERVER_KEY:-}" "ssh-key-orbs-server.key")"
+
+	if [ -n "${_key}" ]; then
+		export ORBS_SERVER_KEY="${_key}"
+		ssh -i "${_key}" "${_user}@${_ip}" "$@"
+	else
+		ssh "${_user}@${_ip}" "$@"
+	fi
+}
 
 ### --------------------------------
 ### Mobile Device Management

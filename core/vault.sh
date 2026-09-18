@@ -15,6 +15,7 @@ if [ -z "${VAULT_DIR:-}" ]; then
 		VAULT_DIR="${HOME}/.local/share/vault"
 	fi
 fi
+export VAULT_DIR
 
 ### --------------------------------
 ### Vault Environment
