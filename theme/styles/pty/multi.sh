@@ -27,7 +27,7 @@ _theme_render() {
 "
 
 	PS1="${_newline}${_theme_color_delimiter}${_os_color}${_os_icon}${_theme_color_magenta}${_os_name}${_theme_color_delimiter}─${_theme_color_blue} ${_theme_color_magenta}${_shell_name}${_theme_color_delimiter}"
-	PS1="${PS1}${_newline}${_theme_color_delimiter}┌──❮ ${_theme_color_green} ${_time}${_theme_color_delimiter} ❯─❮ ${_theme_color_green} ${_date}${_theme_color_delimiter} ❯─❮ ${_theme_color_yellow} ${_theme_color_cyan}${_pwd}${_theme_color_delimiter} ❯─ ${_theme_color_delimiter}❮${_theme_color_blue} ${_user_color}${_user}${_theme_color_delimiter}❯${_git_info}"
+	PS1="${PS1}${_newline}${_theme_color_delimiter}┌──❮ ${_theme_color_green} ${_time}${_theme_color_delimiter} ❯─❮ ${_theme_color_green} ${_date}${_theme_color_delimiter} ❯─❮ ${_theme_color_yellow} ${_theme_color_cyan}${_pwd}${_theme_color_delimiter} ❯─ ❮${_theme_color_blue} ${_user_color}${_user}${_theme_color_delimiter}❯${_git_info}"
 	PS1="${PS1}${_newline}${_theme_color_delimiter}└─${_terminal_color}${_theme_color_reset} "
 
 	[ -n "${ZSH_VERSION:-}" ] && export PROMPT="${PS1}"

@@ -41,7 +41,6 @@ _setup_colors() {
 
 	_theme_color_gray="${_theme_color_bright_gray}"
 	if [ "${_is_raw}" -eq 0 ]; then
-		_theme_color_delimiter="${_theme_color_bright_yellow}"
 		_theme_color_red="${_theme_color_bright_red}"
 		_theme_color_green="${_theme_color_bright_green}"
 		_theme_color_yellow="${_theme_color_bright_yellow}"
