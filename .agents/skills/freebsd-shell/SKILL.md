@@ -47,7 +47,7 @@ static char ps[PROMPTLEN];
     - Glifos de ícones (``, ``, ``, ``) ocupam **3 bytes** cada em UTF-8.
     - O ícone do Git (`󰊢`) ocupa **4 bytes**.
     - O caractere de reticências (`…`) ocupa **3 bytes**, enquanto o til (`~`) ocupa apenas **1 byte**. Sob restrição severa (128B), o sufixo de poda deve ser estritamente `~` (1B) para manter a equivalência 1 caractere = 1 byte.
-- **Medição Dinâmica em C em Tempo de Execução (`_calc_c_len`):**
+- **Medição Dinâmica em C em Tempo de Execução (`_calc_ui_color_len`):**
     - Para eliminar completamente números mágicos ou custos fixos hardcodados no script, o tema monta o molde estrutural real da moldura (`_fixed_str` contendo usuário, host, SO, cores, ícones e moldura do Git ativo) e calcula seus bytes reais em C dinamicamente via a relação canônica:
       $$\text{Bytes C} = \text{Bytes UTF-8 Brutos} - \text{ocorrências de } \backslash[ - \text{ocorrências de } \backslash] - \text{ocorrências de } \backslash e$$
     - Essa medição consome apenas ~1.3ms e vincula qualquer alteração visual (novas cores, troca de ícone, usuário com nome longo, estado sujo do Git) diretamente à calibragem de bytes, alocando a sobra matemática exata para o diretório e a branch.
@@ -69,7 +69,7 @@ O `/bin/sh` do FreeBSD utiliza a `libedit` (`contrib/libedit/`) para edição de
     - Se duas sequências `\[...\]` forem posicionadas sem nenhum caractere visível intermediário, `wcwidth` retorna `-1` e a `libedit` descarta silenciosamente o primeiro escape.
 3. **Descarte do Último Literal:**
     - Se o prompt terminar em um escape ANSI sem um caractere visível subsequente (`!p[1]`), a `libedit` aciona a cláusula `// XXX: We lose the last literal` e o descarta.
-    - **Regra:** O prompt deve sempre encerrar com `${_c_reset}` seguido por um espaço imprimível ` `.
+    - **Regra:** O prompt deve sempre encerrar com `${_ui_color_reset}` seguido por um espaço imprimível ` `.
 4. **Multilinhas (`\n`) no Redraw:**
     - Em `contrib/libedit/refresh.c`, a função `re_putc` insere quebras de linha virtuais, mas não incrementa a coordenada vertical `r_cursor.v`.
     - Prompts multilinhas longos no `sh` desincronizam a posição do cursor ao navegar pelo histórico (Up/Down). Por isso, **prompts de 1 linha são canonicamente recomendados no `sh`**.
@@ -152,12 +152,14 @@ Ao orquestrar testes automatizados ou tarefas em segundo plano no FreeBSD (ex: G
     script -q /dev/null bash -i -c 'echo "Prompt: ${PS1}"'
     ENV="${HOME}/.shrc" script -q /dev/null sh -i -c 'echo "Prompt: ${PS1}"'
     ```
+
     - O `script(1)` aloca um par de pseudo-terminais reais (`/dev/pts`), registra o comando como líder de sessão do terminal e atende perfeitamente à chamada `tcsetpgrp()`, evitando a suspensão do processo.
 3. **Alternativa em GNU Bash (`+m`):**
     - Desativar explicitamente o monitor de job control preservando o modo interativo:
     ```sh
     bash +m -i -c 'echo "Prompt: ${PS1}"'
     ```
+
     - A flag `+m` desativa a tentativa de assumir controle de tarefas, enquanto `-i` garante o carregamento completo do `.bashrc`.
 4. **Proteção Contra Recursão no `/bin/sh` (`target/freebsd/sh/terminal.sh`):**
     - Em pipelines de CI ou subshells sem terminal alocado, o script terminal deve conter guardas defensivas explícitas para não tentar invocar `exec zsh`:

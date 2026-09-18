@@ -21,17 +21,17 @@ _update_prompt() {
 
 	local _os_color
 	case "${PROMPT_OS_COLOR:-blue}" in
-		red)  _os_color="${_c_red}" ;;
-		blue) _os_color="${_c_blue}" ;;
-		*)    _os_color="${_c_blue}" ;;
+		red)  _os_color="${_theme_color_red}" ;;
+		blue) _os_color="${_theme_color_blue}" ;;
+		*)    _os_color="${_theme_color_blue}" ;;
 	esac
 
-	local _u_color="${_c_green}" _sym="\$" _sym_color="${_c_cyan}" _term_color="${_c_blue}"
+	local _u_color="${_theme_color_green}" _sym="\$" _sym_color="${_theme_color_cyan}" _term_color="${_theme_color_blue}"
 	if [ "${EUID:-$(id -u)}" -eq 0 ]; then
-		_u_color="${_c_red}"
+		_u_color="${_theme_color_red}"
 		_sym="#"
-		_sym_color="${_c_red}"
-		_term_color="${_c_red}"
+		_sym_color="${_theme_color_red}"
+		_term_color="${_theme_color_red}"
 	fi
 
 	local _branch _is_dirty

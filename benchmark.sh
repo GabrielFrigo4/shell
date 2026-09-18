@@ -55,22 +55,22 @@ case "${_iterations}" in
 esac
 
 if [ -t 1 ]; then
-	_c_reset=$'\e[0m'
-	_c_bold=$'\e[1m'
-	_c_green=$'\e[32m'
-	_c_yellow=$'\e[33m'
-	_c_red=$'\e[31m'
-	_c_cyan=$'\e[36m'
+	_ui_color_reset=$'\e[0m'
+	_ui_color_bold=$'\e[1m'
+	_ui_color_green=$'\e[32m'
+	_ui_color_yellow=$'\e[33m'
+	_ui_color_red=$'\e[31m'
+	_ui_color_cyan=$'\e[36m'
 else
-	_c_reset=""
-	_c_bold=""
-	_c_green=""
-	_c_yellow=""
-	_c_red=""
-	_c_cyan=""
+	_ui_color_reset=""
+	_ui_color_bold=""
+	_ui_color_green=""
+	_ui_color_yellow=""
+	_ui_color_red=""
+	_ui_color_cyan=""
 fi
 
-printf "%b⚡ Shell Startup Latency Benchmark%b (iters: %s, standard: 2^n)\n\n" "${_c_bold}${_c_cyan}" "${_c_reset}" "${_iterations}"
+printf "%b⚡ Shell Startup Latency Benchmark%b (iters: %s, standard: 2^n)\n\n" "${_ui_color_bold}${_ui_color_cyan}" "${_ui_color_reset}" "${_iterations}"
 
 ### --------------------------------
 ### Measurement Runner
@@ -108,20 +108,20 @@ _format_ms() {
 	_val_int="${_val%.*}"
 	_ultra_limit="$(( _limit / 2 ))"
 	if [ "${_val_int:-0}" -lt "${_ultra_limit}" ]; then
-		printf "%b%sms%b" "${_c_bold}${_c_cyan}" "${_val}" "${_c_reset}"
+		printf "%b%sms%b" "${_ui_color_bold}${_ui_color_cyan}" "${_val}" "${_ui_color_reset}"
 	elif [ "${_val_int:-0}" -lt "${_limit}" ]; then
-		printf "%b%sms%b" "${_c_green}" "${_val}" "${_c_reset}"
+		printf "%b%sms%b" "${_ui_color_green}" "${_val}" "${_ui_color_reset}"
 	elif [ "${_val_int:-0}" -le "$(( _limit * 2 ))" ]; then
-		printf "%b%sms%b" "${_c_yellow}" "${_val}" "${_c_reset}"
+		printf "%b%sms%b" "${_ui_color_yellow}" "${_val}" "${_ui_color_reset}"
 	else
-		printf "%b%sms%b" "${_c_red}" "${_val}" "${_c_reset}"
+		printf "%b%sms%b" "${_ui_color_red}" "${_val}" "${_ui_color_reset}"
 	fi
 }
 
 ### --------------------------------
 ### Benchmark Interactive Shells
 ### --------------------------------
-printf "%b%-12s %-12s %-10s %s%b\n" "${_c_bold}" "SHELL" "LATENCY" "STATUS" "TARGET (PASS / ULTRA / WARN)" "${_c_reset}"
+printf "%b%-12s %-12s %-10s %s%b\n" "${_ui_color_bold}" "SHELL" "LATENCY" "STATUS" "TARGET (PASS / ULTRA / WARN)" "${_ui_color_reset}"
 printf "%s\n" "----------------------------------------------------------------"
 
 _specified_shells=""
@@ -174,26 +174,26 @@ for _sh in "$@"; do
 		_ms_int="${_ms%.*}"
 		if [ "${_ms_int:-0}" -lt "${_ultra_limit}" ]; then
 			_status_text="ULTRA"
-			_status_color="${_c_bold}${_c_cyan}"
-			_lat_color="${_c_bold}${_c_cyan}"
+			_status_color="${_ui_color_bold}${_ui_color_cyan}"
+			_lat_color="${_ui_color_bold}${_ui_color_cyan}"
 		elif [ "${_ms_int:-0}" -lt "${_target_limit}" ]; then
 			_status_text="PASS"
-			_status_color="${_c_green}"
-			_lat_color="${_c_green}"
+			_status_color="${_ui_color_green}"
+			_lat_color="${_ui_color_green}"
 		elif [ "${_ms_int:-0}" -le "${_max_tolerance}" ]; then
 			_status_text="WARN"
-			_status_color="${_c_yellow}"
-			_lat_color="${_c_yellow}"
+			_status_color="${_ui_color_yellow}"
+			_lat_color="${_ui_color_yellow}"
 		else
 			_status_text="FAIL"
-			_status_color="${_c_bold}${_c_red}"
-			_lat_color="${_c_bold}${_c_red}"
+			_status_color="${_ui_color_bold}${_ui_color_red}"
+			_lat_color="${_ui_color_bold}${_ui_color_red}"
 			_has_failure=1
 		fi
 		printf "%-12s %b%-12s%b %b%-10s%b %s\n" \
 			"${_sh}" \
-			"${_lat_color}" "${_ms}ms" "${_c_reset}" \
-			"${_status_color}" "${_status_text}" "${_c_reset}" \
+			"${_lat_color}" "${_ms}ms" "${_ui_color_reset}" \
+			"${_status_color}" "${_status_text}" "${_ui_color_reset}" \
 			"${_target}"
 	fi
 done
@@ -201,7 +201,7 @@ done
 ### --------------------------------
 ### Benchmark Ecosystem Modules
 ### --------------------------------
-printf "\n%b📦 Ecosystem Modules Latency%b\n" "${_c_bold}${_c_cyan}" "${_c_reset}"
+printf "\n%b📦 Ecosystem Modules Latency%b\n" "${_ui_color_bold}${_ui_color_cyan}" "${_ui_color_reset}"
 printf "%s\n" "----------------------------------------------------------------"
 
 if _is_shell_selected zsh && command -v zsh > "/dev/null" 2>&1; then
@@ -247,8 +247,8 @@ if [ "${_os}" = "openbsd" ]; then
 fi
 
 if [ "${_has_failure}" -ne 0 ]; then
-	printf "\n%b❌ ERRO: Latência de inicialização excedeu o teto de tolerância de %sms (2^n).%b\n" "${_c_bold}${_c_red}" "${_max_tolerance}" "${_c_reset}" >&2
+	printf "\n%b❌ ERRO: Latência de inicialização excedeu o teto de tolerância de %sms (2^n).%b\n" "${_ui_color_bold}${_ui_color_red}" "${_max_tolerance}" "${_ui_color_reset}" >&2
 	exit 1
 fi
 
-printf "\n%b✨ Benchmark completed successfully.%b\n" "${_c_green}" "${_c_reset}"
+printf "\n%b✨ Benchmark completed successfully.%b\n" "${_ui_color_green}" "${_ui_color_reset}"

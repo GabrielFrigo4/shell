@@ -43,7 +43,7 @@ Sempre que ler, editar ou inspecionar qualquer script `.sh`, valide silenciosame
 
 ### C. Prompts e Largura de Coluna (libedit / readline)
 
-- [ ] **Delimitadores `\[` e `\]`:** Em prompts de `sh` ([theme/sh.sh](file:///usr/local/share/shell/theme/sh.sh)) e `bash` ([theme/bash.sh](file:///usr/local/share/shell/theme/bash.sh)), todo e qualquer código ANSI DEVE estar delimitado por `\[` e `\]` (`_c_color="\[\e[1;91m\]"`).
+- [ ] **Delimitadores `\[` e `\]`:** Em prompts de `sh` ([theme/sh.sh](file:///usr/local/share/shell/theme/sh.sh)) e `bash` ([theme/bash.sh](file:///usr/local/share/shell/theme/bash.sh)), todo e qualquer código ANSI DEVE estar delimitado por `\[` e `\]` (`_ui_color_color="\[\e[1;91m\]"`).
 - [ ] Prompts sem `\[` e `\]` provocam quebra de cálculo de colunas no `libedit` do FreeBSD, causando sobreposição de linhas e cursor deslocado. Corrija na hora.
 
 ### D. Taxonomia Estrita de Nomenclatura & Clean Code

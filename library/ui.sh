@@ -6,15 +6,15 @@
 ### ANSI ESCAPE SEQUENCES
 ### ================================
 _ui_esc="$(printf '\033')"
-_c_reset="${_ui_esc}[0m"
-_c_bold="${_ui_esc}[1m"
-_c_cyan="${_ui_esc}[1;36m"
-_c_green="${_ui_esc}[1;32m"
-_c_yellow="${_ui_esc}[1;33m"
-_c_red="${_ui_esc}[1;31m"
-_c_blue="${_ui_esc}[1;34m"
-_c_magenta="${_ui_esc}[1;35m"
-_c_dim="${_ui_esc}[2m"
+_ui_color_reset="${_ui_esc}[0m"
+_ui_color_bold="${_ui_esc}[1m"
+_ui_color_cyan="${_ui_esc}[1;36m"
+_ui_color_green="${_ui_esc}[1;32m"
+_ui_color_yellow="${_ui_esc}[1;33m"
+_ui_color_red="${_ui_esc}[1;31m"
+_ui_color_blue="${_ui_esc}[1;34m"
+_ui_color_magenta="${_ui_esc}[1;35m"
+_ui_color_dim="${_ui_esc}[2m"
 
 _ui_has_color() {
 	[ -t 1 ] || return 1
@@ -29,7 +29,7 @@ _ui_has_color() {
 ### ================================
 _ui_step() {
 	if _ui_has_color; then
-		echo -n "${_c_cyan}==>${_c_reset} "
+		echo -n "${_ui_color_cyan}==>${_ui_color_reset} "
 	else
 		printf "==> "
 	fi
@@ -38,7 +38,7 @@ _ui_step() {
 
 _ui_sub() {
 	if _ui_has_color; then
-		echo -n "${_c_blue}  ↳${_c_reset} "
+		echo -n "${_ui_color_blue}  ↳${_ui_color_reset} "
 	else
 		printf "  -> "
 	fi
@@ -47,7 +47,7 @@ _ui_sub() {
 
 _ui_ok() {
 	if _ui_has_color; then
-		echo -n "${_c_green}  ✅${_c_reset} "
+		echo -n "${_ui_color_green}  ✅${_ui_color_reset} "
 	else
 		printf "  OK "
 	fi
@@ -56,7 +56,7 @@ _ui_ok() {
 
 _ui_warn() {
 	if _ui_has_color; then
-		echo -n "${_c_yellow}  ⚠️ ${_c_reset} "
+		echo -n "${_ui_color_yellow}  ⚠️ ${_ui_color_reset} "
 	else
 		printf "  WARN "
 	fi
@@ -65,7 +65,7 @@ _ui_warn() {
 
 _ui_err() {
 	if [ -t 2 ]; then
-		echo -n "${_c_red}  ❌${_c_reset} " >&2
+		echo -n "${_ui_color_red}  ❌${_ui_color_reset} " >&2
 	else
 		printf "  FAIL " >&2
 	fi
@@ -74,7 +74,7 @@ _ui_err() {
 
 _ui_info() {
 	if _ui_has_color; then
-		echo -n "${_c_magenta}  ℹ️ ${_c_reset} "
+		echo -n "${_ui_color_magenta}  ℹ️ ${_ui_color_reset} "
 	else
 		printf "  INFO "
 	fi
@@ -86,9 +86,9 @@ _ui_banner() {
 	local _sep="================================================================"
 	echo ""
 	if _ui_has_color; then
-		echo "${_c_bold}${_c_cyan}${_sep}${_c_reset}"
-		echo "${_c_bold}  ${_title}${_c_reset}"
-		echo "${_c_bold}${_c_cyan}${_sep}${_c_reset}"
+		echo "${_ui_color_bold}${_ui_color_cyan}${_sep}${_ui_color_reset}"
+		echo "${_ui_color_bold}  ${_title}${_ui_color_reset}"
+		echo "${_ui_color_bold}${_ui_color_cyan}${_sep}${_ui_color_reset}"
 	else
 		echo "${_sep}"
 		echo "  ${_title}"

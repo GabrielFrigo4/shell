@@ -17,7 +17,7 @@ _trim_str() {
 	fi
 }
 
-_calc_c_len() {
+_calc_theme_color_len() {
 	local _s="$1"
 	local _raw="${#_s}"
 
@@ -47,7 +47,7 @@ _calc_c_len() {
 		esac
 	done
 
-	_c_bytes=$(( _raw - _n_open - _n_close - _n_esc ))
+	_theme_color_bytes=$(( _raw - _n_open - _n_close - _n_esc ))
 }
 
 _update_prompt() {
@@ -92,12 +92,12 @@ _update_prompt() {
 		fi
 	fi
 
-	local _u_color="${_c_green}" _term_color="${_c_blue}" _sym="\$" _sym_color="${_c_cyan}"
+	local _u_color="${_theme_color_green}" _term_color="${_theme_color_blue}" _sym="\$" _sym_color="${_theme_color_cyan}"
 	if [ "${EUID:-$(command id -u)}" -eq 0 ]; then
-		_u_color="${_c_red}"
-		_term_color="${_c_red}"
+		_u_color="${_theme_color_red}"
+		_term_color="${_theme_color_red}"
 		_sym="#"
-		_sym_color="${_c_red}"
+		_sym_color="${_theme_color_red}"
 	fi
 
 	local _host="${HOSTNAME%%.*}"
@@ -111,16 +111,16 @@ _update_prompt() {
 	local _os_color
 
 	case "${PROMPT_OS_COLOR:-red}" in
-		red)  _os_color="${_c_b_red}" ;;
-		blue) _os_color="${_c_b_blue}" ;;
-		*)    _os_color="${_c_b_blue}" ;;
+		red)  _os_color="${_theme_color_b_red}" ;;
+		blue) _os_color="${_theme_color_b_blue}" ;;
+		*)    _os_color="${_theme_color_b_blue}" ;;
 	esac
 
 	local _fixed_str=""
 	_theme_layout
 
-	_calc_c_len "${_fixed_str}"
-	_budget=$(( _prompt_limit - 2 - _c_bytes ))
+	_calc_theme_color_len "${_fixed_str}"
+	_budget=$(( _prompt_limit - 2 - _theme_color_bytes ))
 	[ "${_budget}" -lt 4 ] && _budget=4
 
 	if [ -n "${_branch}" ]; then

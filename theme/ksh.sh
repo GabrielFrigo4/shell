@@ -24,15 +24,15 @@ _ksh_prompt() {
 	_git_branch
 
 	local _user="${USER:-${LOGNAME:-$(command id -un 2> "/dev/null" || echo "user")}}"
-	local _u_color="${_c_green}"
-	local _term_color="${_c_blue}"
+	local _u_color="${_theme_color_green}"
+	local _term_color="${_theme_color_blue}"
 	local _sym="\$"
-	local _sym_color="${_c_cyan}"
+	local _sym_color="${_theme_color_cyan}"
 	if [ "${EUID:-$(id -u 2> "/dev/null")}" -eq 0 ]; then
-		_u_color="${_c_red}"
-		_term_color="${_c_red}"
+		_u_color="${_theme_color_red}"
+		_term_color="${_theme_color_red}"
 		_sym="#"
-		_sym_color="${_c_red}"
+		_sym_color="${_theme_color_red}"
 	fi
 
 	local _host="${HOSTNAME%%.*}"
@@ -42,12 +42,12 @@ _ksh_prompt() {
 	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(uname -r 2> "/dev/null" || echo "OpenBSD")}}"
 	_os_name="${_os_name%%-*}"
 
-	local _os_color="${_c_yellow}"
+	local _os_color="${_theme_color_yellow}"
 	case "${PROMPT_OS_COLOR:-yellow}" in
-		red)    _os_color="${_c_red}" ;;
-		blue)   _os_color="${_c_blue}" ;;
-		yellow) _os_color="${_c_yellow}" ;;
-		*)      _os_color="${_c_yellow}" ;;
+		red)    _os_color="${_theme_color_red}" ;;
+		blue)   _os_color="${_theme_color_blue}" ;;
+		yellow) _os_color="${_theme_color_yellow}" ;;
+		*)      _os_color="${_theme_color_yellow}" ;;
 	esac
 
 	local _mode="pty"
