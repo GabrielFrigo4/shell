@@ -5,6 +5,8 @@
 ### --------------------------------
 ### Path
 ### --------------------------------
+path-front "/usr/bin"
+[ -n "${MINGW_PREFIX}" ] && path-front "${MINGW_PREFIX}/bin"
 path-front "${HOME}/.local/bin"
 path-back "$(cygpath -u "${LOCALAPPDATA}")/Coursier/data/bin"
 path-dedup

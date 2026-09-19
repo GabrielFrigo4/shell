@@ -124,8 +124,15 @@ _format_ms() {
 ### --------------------------------
 _resolve_shell_bin() {
 	local _target="${1}"
-	local _bin
-	_bin="$(command -v "${_target}" 2> "/dev/null" || echo "${_target}")"
+	local _bin=""
+	if [ "${_os}" = "windows" ]; then
+		if [ -x "/usr/bin/${_target}.exe" ]; then
+			_bin="/usr/bin/${_target}.exe"
+		elif [ -x "/usr/bin/${_target}" ]; then
+			_bin="/usr/bin/${_target}"
+		fi
+	fi
+	[ -z "${_bin}" ] && _bin="$(command -v "${_target}" 2> "/dev/null" || echo "${_target}")"
 	if [ "${_os}" = "windows" ] && command -v cygpath > "/dev/null" 2>&1; then
 		_bin="$(cygpath -m "${_bin}" 2> "/dev/null" || echo "${_bin}")"
 	fi
