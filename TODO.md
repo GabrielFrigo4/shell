@@ -25,15 +25,12 @@
 
 ---
 
-## 🔮 Visão de Futuro & Próximas Frentes
+## 🎯 Próximas Frentes & Backlog
 
-Novas frentes e refinamentos mapeados para futuras iterações do ecossistema:
-
-### 🐚 Shells & Desempenho
-
-### 🧪 Testes & Integração Contínua
-
-### 🌐 Conectividade & Ferramentas
+- [x] Unificação da biblioteca semântica `_ui_*` em 100% dos utilitários interativos e de rede.
+- [ ] Monitoramento contínuo de latência de boot em matrizes virtuais (meta permanente < 16ms).
+- [ ] Otimizações incrementais nos parsers de status Git e Got sob repositórios monólitos.
+- [ ] Avaliação contínua de novas versões de shells (Zsh 5.10+, Bash 5.3+, ksh93u+m).
 
 ---
 

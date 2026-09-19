@@ -15,7 +15,7 @@ _as_root() {
 			command "${_escalator}" "$@"
 			;;
 		*)
-			echo "❌ ERROR: Neither 'doas' nor 'sudo' was found to execute command with root privileges." >&2
+			_ui_err "Neither 'doas' nor 'sudo' was found to execute command with root privileges."
 			return 1
 			;;
 	esac
@@ -373,14 +373,14 @@ update-git() {
 ### --------------------------------
 reinstall-shell() {
 	if [ -z "${SHELL_REPO_DIR}" ] || [ ! -d "${SHELL_REPO_DIR}" ]; then
-		echo "❌ ERROR: SHELL_REPO_DIR is not set or invalid."
-		echo "Please re-run the install.sh script from your shell repository."
+		_ui_err "SHELL_REPO_DIR is not set or invalid."
+		_ui_info "Please re-run the install.sh script from your shell repository."
 		return 1
 	fi
 
-	echo "🔄 Updating shell repository at ${SHELL_REPO_DIR}..."
+	_ui_step "Atualizando repositório do Universal Shell em ${SHELL_REPO_DIR}..."
 	command git -C "${SHELL_REPO_DIR}" pull || {
-		echo "❌ ERROR: git pull failed."
+		_ui_err "git pull failed."
 		return 1
 	}
 
@@ -394,13 +394,13 @@ reinstall-shell() {
 	local _cur_bin="$(_detect_enabled_shell)"
 	local _cur_shell="$(_detect_enabled_shell --name)"
 
-	echo "🔧 Re-running install.sh with context '${SHELL_CONTEXT:-desktop}' using ${_cur_shell}..."
+	_ui_sub "Reinstalando via install.sh com contexto '${SHELL_CONTEXT:-desktop}' (${_cur_shell})..."
 	"${_cur_bin}" "${SHELL_REPO_DIR}/install.sh" ${_args} "$@"
 
-	echo "♻️ Reloading shell environment..."
+	_ui_info "Recarregando ambiente do shell..."
 	. "${HOME}/.${_cur_shell}rc" 2> "/dev/null" || true
 
-	echo "✅ Shell fully reinstalled and reloaded!"
+	_ui_ok "Universal Shell totalmente reinstalado e recarregado!"
 }
 
 ### --------------------------------
@@ -411,7 +411,7 @@ bench-shell() {
 		local _cur_bin="$(_detect_enabled_shell)"
 		"${_cur_bin}" "${SHELL_REPO_DIR}/benchmark.sh" "$@"
 	else
-		echo "❌ ERROR: Benchmark script not found in ${SHELL_REPO_DIR}/benchmark.sh."
+		_ui_err "Script de benchmark não encontrado em ${SHELL_REPO_DIR}/benchmark.sh."
 		return 1
 	fi
 }
@@ -420,15 +420,15 @@ bench-shell() {
 ### Update Wi-Fi
 ### --------------------------------
 update-wifi() {
-	echo "📡 Updating Wi-Fi configurations..."
+	_ui_step "Atualizando configurações de Wi-Fi..."
 
 	if ! env | grep -q "^WIFI_SSID_"; then
-		echo "⚠️ No Wi-Fi credentials found in the environment."
+		_ui_warn "Nenhuma credencial de Wi-Fi encontrada nas variáveis de ambiente."
 		return 1
 	fi
 
 	if command -v nmcli > "/dev/null" 2>&1; then
-		echo "🐧 Network Manager (nmcli) detected. Applying Wi-Fi configurations..."
+		_ui_info "Network Manager (nmcli) detectado. Aplicando perfis..."
 
 		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r _name _ssid; do
 			_suffix="${_name#WIFI_SSID_}"
@@ -437,18 +437,18 @@ update-wifi() {
 
 			if [ -n "${_ssid}" ] && [ -n "${_password}" ]; then
 				if nmcli connection show "${_ssid}" > "/dev/null" 2>&1; then
-					echo "   🔄 Updating network: '${_ssid}'"
+					_ui_sub "Atualizando rede: '${_ssid}'"
 					nmcli connection modify "${_ssid}" wifi-sec.psk "${_password}" > "/dev/null" 2>&1
 				else
-					echo "   ➕ Adding network: '${_ssid}'"
+					_ui_sub "Adicionando rede: '${_ssid}'"
 					nmcli connection add type wifi con-name "${_ssid}" ssid "${_ssid}" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${_password}" > "/dev/null" 2>&1
 				fi
 			fi
 		done
-		echo "✅ Linux Wi-Fi configs applied!"
+		_ui_ok "Configurações de Wi-Fi aplicadas no Linux!"
 
 	elif [ "$(command uname -s 2> "/dev/null")" = "FreeBSD" ] || [ -f "/etc/wpa_supplicant.conf" ]; then
-		echo "😈 FreeBSD/wpa_supplicant detected. Syncing Wi-Fi configurations..."
+		_ui_info "FreeBSD/wpa_supplicant detectado. Sincronizando perfis..."
 
 		_temporary_config=$(command mktemp)
 		cat <<-EOF >| "${_temporary_config}"
@@ -464,7 +464,7 @@ update-wifi() {
 			eval _password="\$${_password_var}"
 
 			if [ -n "${_ssid}" ] && [ -n "${_password}" ]; then
-				echo "   ➕ Mapping network: '${_ssid}'"
+				_ui_sub "Mapeando rede: '${_ssid}'"
 				cat <<-EOF >> "${_temporary_config}"
 					network={
 					    ssid="${_ssid}"
@@ -479,12 +479,12 @@ update-wifi() {
 		_wifi_target="${_wifi_dir}/wpa_supplicant.conf"
 
 		if _as_root cmp -s "${_temporary_config}" "${_wifi_target}" 2> "/dev/null"; then
-			echo "   👉 FreeBSD ${_wifi_target} is already up-to-date."
+			_ui_info "FreeBSD ${_wifi_target} já está atualizado."
 		else
-			echo "   🔄 Changes detected! Overwriting ${_wifi_target}..."
+			_ui_sub "Alterações detectadas! Sobrescrevendo ${_wifi_target}..."
 			_as_root cp "${_temporary_config}" "${_wifi_target}"
 
-			echo "   ⚡ Restarting network stack (netif)..."
+			_ui_sub "Reiniciando stack de rede (netif)..."
 			_as_root service netif restart > "/dev/null" 2>&1 || true
 		fi
 
@@ -492,17 +492,17 @@ update-wifi() {
 		_wifibox_target="${_wifibox_dir}/wpa_supplicant/wpa_supplicant.conf"
 
 		if [ -d "${_wifibox_dir}" ] || command -v wifibox > "/dev/null" 2>&1 || [ -f "${_wifibox_target}" ]; then
-			echo "   📦 Wifibox detected. Syncing Wifibox Wi-Fi configuration..."
+			_ui_info "Wifibox detectado. Sincronizando configuração..."
 			_as_root mkdir -p "${_wifibox_dir}/wpa_supplicant"
 
 			if _as_root cmp -s "${_temporary_config}" "${_wifibox_target}" 2> "/dev/null"; then
-				echo "   👉 Wifibox configuration is already up-to-date."
+				_ui_info "Configuração do Wifibox já está atualizada."
 			else
-				echo "   🔄 Changes detected! Overwriting ${_wifibox_target}..."
+				_ui_sub "Alterações detectadas! Sobrescrevendo ${_wifibox_target}..."
 				_as_root cp "${_temporary_config}" "${_wifibox_target}"
 
 				if _as_root service wifibox status > "/dev/null" 2>&1; then
-					echo "   ⚡ Restarting wifibox service..."
+					_ui_sub "Reiniciando serviço wifibox..."
 					_as_root service wifibox restart > "/dev/null" 2>&1 || true
 				fi
 			fi
@@ -510,10 +510,10 @@ update-wifi() {
 
 		command rm -f "${_temporary_config}"
 
-		echo "✅ FreeBSD Wi-Fi configs applied!"
+		_ui_ok "Configurações de Wi-Fi aplicadas no FreeBSD!"
 
 	elif command -v netsh > "/dev/null" 2>&1; then
-		echo "🪟 Windows Network Shell (netsh) detected. Syncing Wi-Fi profiles..."
+		_ui_info "Windows Network Shell (netsh) detectado. Sincronizando perfis..."
 
 		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r _name _ssid; do
 			_suffix="${_name#WIFI_SSID_}"
@@ -521,7 +521,7 @@ update-wifi() {
 			eval _password="\$${_password_var}"
 
 			if [ -n "${_ssid}" ] && [ -n "${_password}" ]; then
-				echo "   ➕ Injecting profile: '${_ssid}'"
+				_ui_sub "Injetando perfil: '${_ssid}'"
 				_xml_file=$(command mktemp)
 
 				cat <<-EOF >| "${_xml_file}"
@@ -559,10 +559,10 @@ update-wifi() {
 				command rm -f "${_xml_file}"
 			fi
 		done
-		echo "✅ Windows Wi-Fi configs applied!"
+		_ui_ok "Configurações de Wi-Fi aplicadas no Windows!"
 
 	else
-		echo "❌ No supported Wi-Fi manager (nmcli/wpa_supplicant/netsh) found."
+		_ui_err "Nenhum gerenciador de Wi-Fi suportado (nmcli/wpa_supplicant/netsh) encontrado."
 	fi
 
 	unset _name _ssid _suffix _password_var _password _temporary_config _xml_file _windows_path _wifi_dir _wifi_target _wifibox_dir _wifibox_target 2> "/dev/null" || true
@@ -816,7 +816,7 @@ vcs-status() {
 	elif [ -d ".git" ] || git rev-parse --git-dir > "/dev/null" 2>&1; then
 		git status --short "$@"
 	else
-		echo "⚠️  Não é um repositório Git ou Work Tree Got." >&2
+		_ui_warn "Não é um repositório Git ou Work Tree Got."
 		return 1
 	fi
 }
@@ -827,28 +827,28 @@ vcs-diff() {
 	elif [ -d ".git" ] || git rev-parse --git-dir > "/dev/null" 2>&1; then
 		git diff "$@"
 	else
-		echo "⚠️  Não é um repositório Git ou Work Tree Got." >&2
+		_ui_warn "Não é um repositório Git ou Work Tree Got."
 		return 1
 	fi
 }
 
 got-init() {
 	if [ "$#" -lt 2 ]; then
-		echo "Uso: got-init <url-do-repositorio> <diretorio-destino>" >&2
-		echo "Exemplo: got-init https://github.com/usuario/repo.git meu-projeto" >&2
+		_ui_err "Uso: got-init <url-do-repositorio> <diretorio-destino>"
+		_ui_info "Exemplo: got-init https://github.com/usuario/repo.git meu-projeto"
 		return 1
 	fi
 	_got_url="$1"
 	_got_dir="$2"
 	_got_bare="${_got_dir}.git"
 
-	echo "📦 [Got]: Clonando repositório bare..."
+	_ui_step "[Got]: Clonando repositório bare..."
 	got clone "${_got_url}" "${_got_bare}" || return 1
 
-	echo "🌳 [Got]: Criando work tree em ${_got_dir}..."
+	_ui_sub "[Got]: Criando work tree em ${_got_dir}..."
 	got checkout "${_got_bare}" "${_got_dir}" || return 1
 
-	echo "✅ [Got]: Inicializado com sucesso! Acesse: cd ${_got_dir}"
+	_ui_ok "[Got]: Inicializado com sucesso! Acesse: cd ${_got_dir}"
 	unset _got_url _got_dir _got_bare
 }
 
@@ -869,7 +869,7 @@ take-dir() {
 cd-git-root() {
 	local _root
 	_root="$(command git rev-parse --show-toplevel 2> "/dev/null")" || {
-		echo "❌ Não está dentro de um repositório git." >&2
+		_ui_err "Não está dentro de um repositório git."
 		return 1
 	}
 	cd "${_root}"
@@ -907,7 +907,7 @@ extract-archive() {
 		return 1
 	fi
 	if [ ! -f "$1" ]; then
-		echo "❌ Arquivo '$1' não encontrado." >&2
+		_ui_err "Arquivo '$1' não encontrado."
 		return 1
 	fi
 	case "$1" in
@@ -923,6 +923,6 @@ extract-archive() {
 		*.7z)               command 7z x "$1" ;;
 		*.rar)              command unrar x "$1" ;;
 		*.Z)                command uncompress "$1" ;;
-		*)                  echo "❌ Formato não suportado para extração: '$1'" >&2; return 1 ;;
+		*)                  _ui_err "Formato não suportado para extração: '$1'"; return 1 ;;
 	esac
 }

@@ -24,6 +24,9 @@ O **Shell** é o **motor interativo de terminal** do ecossistema. Fornece prompt
 6. **Prompts com `\[...\]`:** Códigos ANSI em `PS1` DEVEM estar entre delimitadores de largura zero.
 7. **Hermetismo de Produção & Invariante `rm -rf .agents`:** Repositório 100% autônomo. Zero acoplamento de código de produção, carregadores ou aliases a `.agents/` ou `skills/` (o Shell funciona plenamente se `.agents/` for deletado).
 8. **Bancada de Desenvolvimento vs. Runtimes de Produção:** Em produção, o Universal Shell reside e opera soberanamente em `/usr/local/share/shell` (ou `~/.local/share/shell` rootless). NUNCA configure o sistema operacional ou crie symlinks que apontem para o clone de desenvolvimento (`~/Documents/Environment/Shell`). O provisionamento oficial é realizado via `install.sh` do próprio Shell ou via `make install` no Environment.
+9. **Emissão Semântica de UI (`_ui_*`):** Toda saída interativa de status, rotinas de rede, instaladores e funções utilitárias DEVE utilizar a biblioteca semântica `_ui_*` (`_ui_step`, `_ui_sub`, `_ui_ok`, `_ui_warn`, `_ui_err`, `_ui_info`, `_ui_banner`), banindo `echo` ad-hoc com emojis soltos.
+10. **Invariante de Clonagem "Out-of-the-Box" (Zero-Tweaks Git Invariant):** O Shell deve funcionar imediatamente após um simples `git clone`. Modos octais no Git Index DEVEM ser rigorosamente `0755` para executáveis/scripts/hooks e `0644` para configurações e documentação.
+11. **Governança de Roadmap (Opção C):** O repositório mantém seu [TODO.md](TODO.md) atualizado com a Matriz de Status e Backlog de Frentes, sincronizado com o badge no `README.md`.
 
 ---
 
@@ -40,10 +43,13 @@ Se durante a execução de qualquer tarefa (seja criação de novas features, co
     - **Banners Estruturais:** Ajustar réguas para exatamente 64 hífens no topo ou 32 caracteres com `### ` no corpo.
     - **Portabilidade POSIX:** Substituir bashismos (`[[ ]]`, `&>`, arrays, `source`) por sintaxe estrita POSIX `/bin/sh`.
     - **Shebang Universal:** Garantir sempre `#!/usr/bin/env sh` ou `#!/usr/bin/env python3`.
-    - **Sequências ANSI:** Substituir octais crípticos (` `) e `printf` desnecessário por `[ -t 1 ] && echo -n $'\e...'`.
+    - **Sequências ANSI:** Substituir octais crípticos (`\033`) e `printf` desnecessário por `[ -t 1 ] && echo -n $'\e...'`.
     - **Redirecionamento Seguro:** Envolver destinos em aspas duplas (ex: `> "/dev/null" 2>&1`).
     - **Makefiles:** Assegurar cabeçalho `.POSIX: .SILENT:`, `MAKEFLAGS += --no-print-directory -s`, alinhamento estético de variáveis e zero `@` redundante.
     - **Permissões Canônicas:** Aplicar 4 dígitos octais (`chmod 0755`, `chmod 0644`, `chmod 0700`, `chmod 0600`).
+    - **Invariante Out-of-the-Box:** Garantir modos octais corretos no Git Index e auto-cura em tempo de execução sem requerer intervenção manual pós-clone.
+    - **Emissão Semântica de UI:** Substituir imediatamente `echo` avulsos com emojis ou texto ad-hoc pelas rotinas canônicas `_ui_*`.
+    - **Curadoria Cognitiva:** Capturar decisões estruturais e regras tácitas em skills locais compactas (`.agents/skills/`), mantendo-as atualizadas e expurgando runbooks obsoletos para evitar débito cognitivo, preservando sempre o hermetismo de produção (`rm -rf .agents`).
 
 ## 📖 Referências Obrigatórias
 
@@ -51,5 +57,6 @@ Antes de qualquer modificação neste ecossistema, consulte:
 
 - **[ENVIRONMENT.md](ENVIRONMENT.md)**: Arquitetura do Quarteto de Produtividade
 - **[PRINCIPLES.md](PRINCIPLES.md)**: Os 22 Princípios de Engenharia UNIX + Clean Code
+- **[TODO.md](TODO.md)**: Planejamento estratégico e matriz de status operacional
 - **[.agents/rules/principles.md](.agents/rules/principles.md)**: Regras específicas do Shell
 - **[.agents/skills/](.agents/skills/)**: Runbooks operacionais (`universal-shell`, `posix-shell`, `proactive-guardian`, `deep-investigation`) e runbooks por SO (`freebsd-shell`, `linux-shell`, `macos-shell`, `windows-shell`, `openbsd-shell`, `netbsd-shell`, `illumos-shell`)
