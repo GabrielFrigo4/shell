@@ -99,13 +99,13 @@ jobs:
                   bash -n target/linux/bash/prompt.sh
 
                   ### --------------------------------
-                  ### Linux Zsh (Interactive boot with installed dotfiles)
+                  ### Linux Zsh Interactive Boot
                   ### --------------------------------
                   test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                   zsh -i -c 'echo "Linux Zsh boot with dotfiles OK: ${PROMPT}"'
 
                   ### --------------------------------
-                  ### Linux Bash (Interactive boot with installed dotfiles)
+                  ### Linux Bash Interactive Boot
                   ### --------------------------------
                   test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                   bash -i -c 'echo "Linux Bash boot with dotfiles OK: ${PS1}"'
@@ -164,19 +164,19 @@ jobs:
                       sh -n theme/sh.sh
 
                       ### --------------------------------
-                      ### FreeBSD Zsh (Interactive with installed dotfiles)
+                      ### FreeBSD Zsh Interactive
                       ### --------------------------------
                       test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                       zsh -i -c 'echo "FreeBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
-                      ### FreeBSD Bash (Interactive with installed dotfiles via PTY)
+                      ### FreeBSD Bash Interactive PTY
                       ### --------------------------------
                       test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                       script -q /dev/null bash -i -c 'echo "FreeBSD Bash prompt: ${PS1}"'
 
                       ### --------------------------------
-                      ### FreeBSD /bin/sh (Interactive with installed dotfiles via PTY)
+                      ### FreeBSD /bin/sh Interactive PTY
                       ### --------------------------------
                       test -f "${HOME}/.shrc" || { echo "Missing .shrc"; exit 1; }
                       ENV="${HOME}/.shrc" script -q /dev/null sh -i -c 'echo "FreeBSD /bin/sh prompt: ${PS1}"'
@@ -224,13 +224,13 @@ jobs:
                   bash -n target/windows/bash/prompt.sh
 
                   ### --------------------------------
-                  ### MSYS2 Zsh (Interactive with installed dotfiles)
+                  ### MSYS2 Zsh Interactive
                   ### --------------------------------
                   test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                   zsh -i -c 'echo "Windows MSYS2 Zsh OK: ${PROMPT}"'
 
                   ### --------------------------------
-                  ### MSYS2 Bash (Interactive with installed dotfiles)
+                  ### MSYS2 Bash Interactive
                   ### --------------------------------
                   test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                   bash -i -c 'echo "Windows MSYS2 Bash OK: ${PS1}"'
@@ -274,13 +274,13 @@ jobs:
                   bash -n target/macos/bash/prompt.sh
 
                   ### --------------------------------
-                  ### macOS Zsh (Interactive with installed dotfiles)
+                  ### macOS Zsh Interactive
                   ### --------------------------------
                   test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                   zsh -i -c 'echo "macOS Zsh prompt OK: ${PROMPT}"'
 
                   ### --------------------------------
-                  ### macOS Bash (Interactive with installed dotfiles)
+                  ### macOS Bash Interactive
                   ### --------------------------------
                   test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                   bash -i -c 'echo "macOS Bash prompt OK: ${PS1}"'
@@ -335,19 +335,19 @@ jobs:
                       sh -n target/openbsd/environment.sh
 
                       ### --------------------------------
-                      ### OpenBSD Zsh (Interactive with installed dotfiles)
+                      ### OpenBSD Zsh Interactive
                       ### --------------------------------
                       test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                       zsh -i -c 'echo "OpenBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
-                      ### OpenBSD Bash (Interactive with installed dotfiles)
+                      ### OpenBSD Bash Interactive
                       ### --------------------------------
                       test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                       bash -i -c 'echo "OpenBSD Bash prompt: ${PS1}"'
 
                       ### --------------------------------
-                      ### OpenBSD Native Ksh (Interactive with installed dotfiles)
+                      ### OpenBSD Native Ksh Interactive
                       ### --------------------------------
                       test -f "${HOME}/.kshrc" || { echo "Missing .kshrc"; exit 1; }
                       ENV="${HOME}/.kshrc" ksh -i -c 'echo "OpenBSD ksh prompt: ${PS1}"'
@@ -409,13 +409,13 @@ jobs:
                       sh -n target/netbsd/environment.sh
 
                       ### --------------------------------
-                      ### NetBSD Zsh (Interactive with installed dotfiles)
+                      ### NetBSD Zsh Interactive
                       ### --------------------------------
                       test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                       zsh -i -c 'echo "NetBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
-                      ### NetBSD Bash (Interactive with installed dotfiles)
+                      ### NetBSD Bash Interactive
                       ### --------------------------------
                       test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                       bash -i -c 'echo "NetBSD Bash prompt: ${PS1}"'
@@ -449,7 +449,7 @@ jobs:
                   bash -n target/illumos/environment.sh
 
                   ### --------------------------------
-                  ### illumos Mock Boot Simulation (Zsh)
+                  ### illumos Mock Boot (Zsh)
                   ### --------------------------------
                   zsh -c '
                     export SHELL_REPO_DIR="${PWD}"
@@ -464,7 +464,7 @@ jobs:
                   '
 
                   ### --------------------------------
-                  ### illumos Mock Boot Simulation (Bash)
+                  ### illumos Mock Boot (Bash)
                   ### --------------------------------
                   bash -c '
                     export SHELL_REPO_DIR="${PWD}"
