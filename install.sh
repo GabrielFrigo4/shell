@@ -265,15 +265,15 @@ _install_shell_target() {
 	if [ "${_target_shell}" = "zsh" ]; then
 		local _zshenv="${HOME}/.zshenv"
 		local _root_zshenv="/root/.zshenv"
-		if [ ! -f "${_zshenv}" ] || ! grep -qF "unsetopt GLOBAL_RCS" "${_zshenv}" 2> "/dev/null"; then
-			cat <<- 'EOF' >| "${_zshenv}"
-				### ================================
-				### ZSH ENVIRONMENT
-				### ================================
-				unsetopt GLOBAL_RCS
-			EOF
-		fi
 		if [ "${OS_NAME}" != "windows" ]; then
+			if [ ! -f "${_zshenv}" ] || ! grep -qF "unsetopt GLOBAL_RCS" "${_zshenv}" 2> "/dev/null"; then
+				cat <<- 'EOF' >| "${_zshenv}"
+					### ================================
+					### ZSH ENVIRONMENT
+					### ================================
+					unsetopt GLOBAL_RCS
+				EOF
+			fi
 			if ! _as_root test -f "${_root_zshenv}" 2> "/dev/null" || ! _as_root grep -qF "unsetopt GLOBAL_RCS" "${_root_zshenv}" 2> "/dev/null"; then
 				cat <<- 'EOF' | _as_root tee "${_root_zshenv}" > "/dev/null" 2>&1 || true
 					### ================================
@@ -281,6 +281,10 @@ _install_shell_target() {
 					### ================================
 					unsetopt GLOBAL_RCS
 				EOF
+			fi
+		else
+			if [ -f "${_zshenv}" ] && grep -qF "unsetopt GLOBAL_RCS" "${_zshenv}" 2> "/dev/null"; then
+				sed -i.bak '/unsetopt GLOBAL_RCS/s/^/# /' "${_zshenv}" 2> "/dev/null" && rm -f "${_zshenv}.bak"
 			fi
 		fi
 	fi
@@ -309,6 +313,27 @@ _install_shell_target() {
 	fi
 
 	if [ "${SHELL_FRAMEWORK}" -eq 0 ] || [ "${_target_shell}" = "sh" ] || [ "${_target_shell}" = "ksh" ]; then
+		case "${_target_shell}" in
+			zsh)
+				if [ -d "${HOME}/.oh-my-zsh" ]; then
+					echo "🗑️  Removing existing Oh-My-Zsh (--pure mode)..."
+					rm -rf "${HOME}/.oh-my-zsh"
+				fi
+				if [ "${OS_NAME}" != "windows" ]; then
+					_as_root rm -rf "/root/.oh-my-zsh" 2> "/dev/null" || true
+				fi
+				;;
+			bash)
+				if [ -d "${HOME}/.oh-my-bash" ]; then
+					echo "🗑️  Removing existing Oh-My-Bash (--pure mode)..."
+					rm -rf "${HOME}/.oh-my-bash" "${HOME}/.osh-update"
+				fi
+				if [ "${OS_NAME}" != "windows" ]; then
+					_as_root rm -rf "/root/.oh-my-bash" "/root/.osh-update" 2> "/dev/null" || true
+				fi
+				;;
+		esac
+
 		_generate_rc_pure "${_target_shell}" >| "${_rc_file}"
 		if [ "${OS_NAME}" != "windows" ]; then
 			_generate_rc_pure "${_target_shell}" | _as_root tee "${_root_rc_file}" > "/dev/null" 2>&1 || true

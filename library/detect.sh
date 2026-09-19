@@ -69,14 +69,14 @@ _detect_os() {
 	fi
 
 	case "$(uname -s)" in
-		Linux*)               _DETECTED_OS="linux" ;;
-		FreeBSD*)             _DETECTED_OS="freebsd" ;;
-		OpenBSD*)             _DETECTED_OS="openbsd" ;;
-		NetBSD*)              _DETECTED_OS="netbsd" ;;
-		SunOS*)               _DETECTED_OS="illumos" ;;
-		Darwin*)              _DETECTED_OS="macos" ;;
-		MINGW*|CYGWIN*|MSYS*) _DETECTED_OS="windows" ;;
-		*)                    _DETECTED_OS="unknown" ;;
+		Linux*)                        _DETECTED_OS="linux" ;;
+		FreeBSD*)                      _DETECTED_OS="freebsd" ;;
+		OpenBSD*)                      _DETECTED_OS="openbsd" ;;
+		NetBSD*)                       _DETECTED_OS="netbsd" ;;
+		SunOS*)                        _DETECTED_OS="illumos" ;;
+		Darwin*)                       _DETECTED_OS="macos" ;;
+		MINGW*|CYGWIN*|MSYS*|Windows*) _DETECTED_OS="windows" ;;
+		*)                             _DETECTED_OS="unknown" ;;
 	esac
 	_cache_write "os" "${_DETECTED_OS}"
 	echo "${_DETECTED_OS}"
