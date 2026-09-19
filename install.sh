@@ -289,6 +289,15 @@ _install_shell_target() {
 		fi
 	fi
 
+	if [ "${_target_shell}" = "bash" ] && [ "${OS_NAME}" = "windows" ]; then
+		local _bash_profile="${HOME}/.bash_profile"
+		if [ -f "${_bash_profile}" ]; then
+			if ! grep -qF "CYG_SYS_BASHRC" "${_bash_profile}" 2> "/dev/null"; then
+				echo 'export CYG_SYS_BASHRC="1"' >> "${_bash_profile}"
+			fi
+		fi
+	fi
+
 	if [ "${_target_shell}" = "ksh" ] || [ "${_target_shell}" = "sh" ]; then
 		local _profile="${HOME}/.profile"
 		local _root_profile="/root/.profile"
