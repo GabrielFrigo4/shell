@@ -316,7 +316,7 @@ jobs:
                       ### --------------------------------
                       ### Dependencies
                       ### --------------------------------
-                      pkg_add -I zsh bash python3
+                      pkg_add -I zsh bash python
 
                       ### --------------------------------
                       ### Run Universal Shell Installer
