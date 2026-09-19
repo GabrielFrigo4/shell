@@ -77,7 +77,7 @@ printf "%b⚡ Shell Startup Latency Benchmark%b (iters: %s, standard: 2^n)\n\n" 
 ### --------------------------------
 _measure_cmd() {
 	_cmd="${1}"
-	"${_python_bin}" -c "
+	_raw_ms="$("${_python_bin}" -c "
 import sys, time, subprocess, shlex
 cmd_str = sys.argv[1]
 iters = max(1, int(sys.argv[2]))
@@ -99,7 +99,8 @@ for _ in range(iters):
     times.append((time.perf_counter() - t0) * 1000)
 avg = sum(times) / len(times)
 print(f'{avg:.1f}')
-" "${_cmd}" "${_iterations}" 2> "/dev/null" || echo "0.0"
+" "${_cmd}" "${_iterations}" 2> "/dev/null" || echo "0.0")"
+	printf "%s\n" "${_raw_ms}" | tr -d '\r'
 }
 
 _format_ms() {
@@ -116,6 +117,26 @@ _format_ms() {
 	else
 		printf "%b%sms%b" "${_ui_color_red}" "${_value}" "${_ui_color_reset}"
 	fi
+}
+
+### --------------------------------
+### Binary Resolver
+### --------------------------------
+_resolve_shell_bin() {
+	local _target="${1}"
+	local _bin=""
+	if [ "${_os}" = "windows" ]; then
+		if [ -x "/usr/bin/${_target}.exe" ]; then
+			_bin="/usr/bin/${_target}.exe"
+		elif [ -x "/usr/bin/${_target}" ]; then
+			_bin="/usr/bin/${_target}"
+		fi
+	fi
+	[ -z "${_bin}" ] && _bin="$(command -v "${_target}" 2> "/dev/null" || echo "${_target}")"
+	if [ "${_os}" = "windows" ] && command -v cygpath > "/dev/null" 2>&1; then
+		_bin="$(cygpath -m "${_bin}" 2> "/dev/null" || echo "${_bin}")"
+	fi
+	echo "${_bin}"
 }
 
 ### --------------------------------
@@ -163,12 +184,13 @@ _has_failure=0
 
 for _shell in "$@"; do
 	if command -v "${_shell}" > "/dev/null" 2>&1; then
+		_shell_bin="$(_resolve_shell_bin "${_shell}")"
 		_target="< ${_target_limit}ms (U < ${_ultra_limit}ms, W < ${_max_tolerance}ms)"
-		_cmd_bench="${_shell} -i -c exit"
+		_cmd_bench="${_shell_bin} -i -c exit"
 		if [ "${_shell}" = "sh" ] && [ -f "${HOME}/.shrc" ]; then
-			_cmd_bench="env ENV=\"${HOME}/.shrc\" SHELL_INIT=1 ${_shell} -i -c exit"
+			_cmd_bench="env ENV=\"${HOME}/.shrc\" SHELL_INIT=1 ${_shell_bin} -i -c exit"
 		elif [ "${_shell}" = "ksh" ] && [ -f "${HOME}/.kshrc" ]; then
-			_cmd_bench="env ENV=\"${HOME}/.kshrc\" SHELL_INIT=1 ${_shell} -i -c exit"
+			_cmd_bench="env ENV=\"${HOME}/.kshrc\" SHELL_INIT=1 ${_shell_bin} -i -c exit"
 		fi
 		_latency_ms="$(_measure_cmd "${_cmd_bench}")"
 		_latency_ms_int="${_latency_ms%.*}"
@@ -207,7 +229,8 @@ printf "%s\n" "----------------------------------------------------------------"
 if _is_shell_selected zsh && command -v zsh > "/dev/null" 2>&1; then
 	_prompt_zsh="${_repo_dir}/target/${_os}/zsh/prompt.sh"
 	if [ -f "${_prompt_zsh}" ]; then
-		_shell_zsh_ms="$(_measure_cmd "zsh -c 'export SHELL_REPO_DIR=${_repo_dir}; for _file in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$_file\"; done; . \"${_prompt_zsh}\"'")"
+		_zsh_bin="$(_resolve_shell_bin "zsh")"
+		_shell_zsh_ms="$(_measure_cmd "${_zsh_bin} -c 'export SHELL_REPO_DIR=${_repo_dir}; for _file in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$_file\"; done; . \"${_prompt_zsh}\"'")"
 		printf "%-24s %b\n" "Shell Stack (zsh)" "$(_format_ms "${_shell_zsh_ms}" "${_target_limit}")"
 	fi
 fi
@@ -215,7 +238,8 @@ fi
 if _is_shell_selected bash && command -v bash > "/dev/null" 2>&1; then
 	_prompt_bash="${_repo_dir}/target/${_os}/bash/prompt.sh"
 	if [ -f "${_prompt_bash}" ]; then
-		_shell_bash_ms="$(_measure_cmd "bash -c 'export SHELL_REPO_DIR=${_repo_dir}; for _file in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$_file\"; done; . \"${_prompt_bash}\"'")"
+		_bash_bin="$(_resolve_shell_bin "bash")"
+		_shell_bash_ms="$(_measure_cmd "${_bash_bin} -c 'export SHELL_REPO_DIR=${_repo_dir}; for _file in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$_file\"; done; . \"${_prompt_bash}\"'")"
 		printf "%-24s %b\n" "Shell Stack (bash)" "$(_format_ms "${_shell_bash_ms}" "${_target_limit}")"
 	fi
 fi
@@ -223,13 +247,15 @@ fi
 if [ "${_os}" = "freebsd" ] && _is_shell_selected sh && command -v sh > "/dev/null" 2>&1; then
 	_prompt_sh="${_repo_dir}/target/freebsd/sh/prompt.sh"
 	if [ -f "${_prompt_sh}" ]; then
-		_shell_sh_ms="$(_measure_cmd "sh -c 'export SHELL_REPO_DIR=${_repo_dir}; export SHELL_INIT=1; for _file in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$_file\"; done; . \"${_prompt_sh}\"'")"
+		_sh_bin="$(_resolve_shell_bin "sh")"
+		_shell_sh_ms="$(_measure_cmd "${_sh_bin} -c 'export SHELL_REPO_DIR=${_repo_dir}; export SHELL_INIT=1; for _file in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$_file\"; done; . \"${_prompt_sh}\"'")"
 		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" "${_target_limit}")"
 	fi
 fi
 
 if [ "${_os}" = "freebsd" ] && _is_shell_selected sh; then
-	_shell_core_ms="$(_measure_cmd "sh -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
+	_sh_bin="$(_resolve_shell_bin "sh")"
+	_shell_core_ms="$(_measure_cmd "${_sh_bin} -c '. ${_repo_dir}/library/detect.sh; . ${_repo_dir}/library/functions.sh; . ${_repo_dir}/core/environment.sh'")"
 	printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" "${_target_limit}")"
 fi
 
@@ -240,7 +266,8 @@ if [ "${_os}" = "openbsd" ]; then
 	if [ -n "${_ksh_bin}" ] && _is_shell_selected "${_ksh_bin}"; then
 		_prompt_ksh="${_repo_dir}/target/openbsd/ksh/prompt.sh"
 		if [ -f "${_prompt_ksh}" ]; then
-			_shell_ksh_ms="$(_measure_cmd "${_ksh_bin} -c 'export SHELL_REPO_DIR=${_repo_dir}; for _file in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$_file\"; done; . \"${_prompt_ksh}\"'")"
+			_resolved_ksh="$(_resolve_shell_bin "${_ksh_bin}")"
+			_shell_ksh_ms="$(_measure_cmd "${_resolved_ksh} -c 'export SHELL_REPO_DIR=${_repo_dir}; for _file in ${_repo_dir}/library/*.sh ${_repo_dir}/core/*.sh; do . \"\$_file\"; done; . \"${_prompt_ksh}\"'")"
 			printf "%-24s %b\n" "Shell Stack (${_ksh_bin})" "$(_format_ms "${_shell_ksh_ms}" "${_target_limit}")"
 		fi
 	fi

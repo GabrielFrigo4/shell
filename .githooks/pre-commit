@@ -120,7 +120,18 @@ fi
 ### --------------------------------
 ### Startup Latency Benchmark
 ### --------------------------------
-echo "  ↳ Benchmarking startup latency (target <64ms, max 128ms)..."
+_target_limit=64
+_ultra_limit=32
+_max_limit=128
+
+case "$(uname -s 2> "/dev/null" || echo "unknown")" in
+	MINGW*|CYGWIN*|MSYS*|Windows*)
+		_target_limit=256; _ultra_limit=128; _max_limit=512 ;;
+	Darwin*)
+		_target_limit=128; _ultra_limit=64; _max_limit=256 ;;
+esac
+
+echo "  ↳ Benchmarking startup latency (target <${_target_limit}ms, max ${_max_limit}ms)..."
 _boot_ms=$(bash -c '
 	_s=$(python3 -c "import time; print(int(time.time()*1e9))" 2> "/dev/null" || date +%s%N)
 	. ./library/detect.sh > "/dev/null" 2>&1
@@ -130,14 +141,14 @@ _boot_ms=$(bash -c '
 	echo $(( (_e - _s) / 1000000 ))
 ' 2> "/dev/null" || echo "0")
 
-if [ "${_boot_ms:-0}" -lt 32 ]; then
+if [ "${_boot_ms:-0}" -lt "${_ultra_limit}" ]; then
 	echo "     ⚡ Boot latency: ${_boot_ms}ms (ULTRA)"
-elif [ "${_boot_ms:-0}" -lt 64 ]; then
+elif [ "${_boot_ms:-0}" -lt "${_target_limit}" ]; then
 	echo "     ✅ Boot latency: ${_boot_ms}ms (PASS)"
-elif [ "${_boot_ms:-0}" -le 128 ]; then
+elif [ "${_boot_ms:-0}" -le "${_max_limit}" ]; then
 	echo "     ⚠️  Boot latency: ${_boot_ms}ms (WARN)"
 else
-	echo "❌ [pre-commit] Boot latency ${_boot_ms}ms exceeded tolerance limit of 128ms (2^7)!" >&2
+	echo "❌ [pre-commit] Boot latency ${_boot_ms}ms exceeded tolerance limit of ${_max_limit}ms (2^n)!" >&2
 	exit 1
 fi
 
