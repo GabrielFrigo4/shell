@@ -193,8 +193,8 @@ _generate_rc_pure() {
 		### INTERACTIVE GUARD
 		### ================================
 		case "$-" in
-			*i*) ;;
-			*) return ;;
+		    *i*) ;;
+		    *) return ;;
 		esac
 	EOF
 
@@ -211,7 +211,7 @@ _generate_rc_pure() {
 			[ -n "${YASH_VERSION:-}" ] && return 0
 
 			case "${0##*/}" in
-				*zsh*|*bash*|*dash*|*busybox*|*ash*|*hush*|*ksh*|*mksh*|*pdksh*|*oksh*|*yash*|*posh*) return 0 ;;
+			    *zsh*|*bash*|*dash*|*busybox*|*ash*|*hush*|*ksh*|*mksh*|*pdksh*|*oksh*|*yash*|*posh*) return 0 ;;
 			esac
 
 			builtin : 2> "/dev/null" || return 0
@@ -228,7 +228,7 @@ _generate_rc_pure() {
 			[ -n "${YASH_VERSION:-}" ] && return 0
 
 			case "${0##*/}" in
-				*zsh*|*bash*|*dash*|*busybox*|*ash*|*hush*|*yash*|*posh*) return 0 ;;
+			    *zsh*|*bash*|*dash*|*busybox*|*ash*|*hush*|*yash*|*posh*) return 0 ;;
 			esac
 		EOF
 	fi
