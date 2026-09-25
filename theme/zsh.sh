@@ -75,4 +75,6 @@ else
 	precmd_functions+=(_update_prompt)
 fi
 
-_update_prompt
+if [ -t 1 ]; then
+	_update_prompt
+fi
