@@ -48,7 +48,7 @@ _cache_clean() {
 	unset _DETECTED_OS _DETECTED_SHELL _DETECTED_ENABLED_SHELL _DETECTED_DISTRO _DETECTED_DISTRO_FAMILY \
 		_DETECTED_DESKTOP_ENV _DETECTED_COLOR_SCHEME _DETECTED_GTK_THEME \
 		_DETECTED_QT_THEME _DETECTED_QT_PLATFORM_THEME _DETECTED_EZA \
-		_DETECTED_BAT _DETECTED_RG _DETECTED_FD _DETECTED_ESCALATOR \
+		_DETECTED_BAT _DETECTED_RG _DETECTED_FD _DETECTED_ZOXIDE _DETECTED_ESCALATOR \
 		_DETECTED_KERNEL_RELEASE 2> "/dev/null" || true
 }
 
@@ -679,6 +679,30 @@ _detect_bottom() {
 	fi
 	_cache_write "bottom" "${_DETECTED_BOTTOM}"
 	echo "${_DETECTED_BOTTOM}"
+}
+
+### --------------------------------
+### Detect Zoxide Binary
+### --------------------------------
+_detect_zoxide() {
+	[ -n "${_DETECTED_ZOXIDE+x}" ] && echo "${_DETECTED_ZOXIDE}" && return 0
+	if [ -f "${_SHELL_CACHE_DIR}/zoxide" ]; then
+		_DETECTED_ZOXIDE="$(_cache_read "zoxide")"
+		echo "${_DETECTED_ZOXIDE}"
+		return 0
+	fi
+
+	if command -v zoxide > "/dev/null" 2>&1; then
+		_DETECTED_ZOXIDE="zoxide"
+	elif [ -x "${HOME}/.cargo/bin/zoxide" ]; then
+		_DETECTED_ZOXIDE="${HOME}/.cargo/bin/zoxide"
+	elif [ -x "/usr/local/bin/zoxide" ]; then
+		_DETECTED_ZOXIDE="/usr/local/bin/zoxide"
+	else
+		_DETECTED_ZOXIDE=""
+	fi
+	_cache_write "zoxide" "${_DETECTED_ZOXIDE}"
+	echo "${_DETECTED_ZOXIDE}"
 }
 
 ### --------------------------------

@@ -269,6 +269,23 @@ fi
 unset _btm_bin
 
 ### --------------------------------
+### Zoxide Smart Navigation
+### --------------------------------
+_zoxide_bin="${_DETECTED_ZOXIDE:-$(_detect_zoxide)}"
+if [ -n "${_zoxide_bin}" ]; then
+	_ZO_DOCTOR=0
+	export _ZO_DOCTOR
+	case "${_DETECTED_SHELL:-$(_detect_shell)}" in
+		zsh)  eval "$("${_zoxide_bin}" init zsh)" ;;
+		bash) eval "$("${_zoxide_bin}" init bash)" ;;
+		*)    eval "$("${_zoxide_bin}" init posix --hook prompt)" ;;
+	esac
+else
+	alias z="cd"
+fi
+unset _zoxide_bin
+
+### --------------------------------
 ### Navigation Aliases
 ### --------------------------------
 if command -v shopt > "/dev/null" 2>&1; then

@@ -191,6 +191,7 @@ _create_trigger() {
 		${_command}() {
 			command ${_command} \"\$@\"
 			local _exit_code=\$?
+			[ \"${_command}\" = \"cd\" ] && [ -n \"\${_DETECTED_ZOXIDE:-$(_detect_zoxide)}\" ] && command zoxide add -- \"\$(command pwd -L)\" 2> \"/dev/null\" || true
 			_update_prompt
 			return \${_exit_code}
 		}

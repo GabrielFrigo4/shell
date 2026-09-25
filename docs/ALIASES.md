@@ -141,6 +141,7 @@ flowchart TD
 | `du` / `dust`                         | Análise moderna e interativa de consumo de disco.          | `dust` > `ncdu` > `du`                                      |
 | `procs` / `pst`                       | Inspeção avançada de processos com visão em árvore.        | `procs` / `procs --tree` > `ps aux`                         |
 | `top` / `btm`                         | Monitoramento moderno de sistema em TUI Rust.              | `btm` > `btop` > `htop` > `top`                             |
+| `z [termo]` / `zi`                    | Navegação inteligente rápida por frequência e recência.    | `zoxide` (fallback: `cd`)                                   |
 | `take <dir>` / `mkcd`                 | Cria o diretório (incluindo intermediários) e entra nele.  | `take-dir` (`mkdir -p && cd`)                               |
 | `cdb`                                 | Retorna para o diretório raiz do repositório Git atual.    | `cd-git-root` (`git rev-parse --show-toplevel`)             |
 | `hist [termo]` / `hg`                 | Busca interativa no histórico por palavra-chave.           | `hist-search` (com suporte unificado a `zsh`, `bash`, `sh`) |
