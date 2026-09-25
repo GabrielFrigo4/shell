@@ -5,7 +5,7 @@
 ### ================================
 ### ANSI ESCAPE SEQUENCES
 ### ================================
-_ui_escape="$(printf '\033')"
+_ui_escape=$'\e'
 _ui_color_reset="${_ui_escape}[0m"
 _ui_color_bold="${_ui_escape}[1m"
 _ui_color_cyan="${_ui_escape}[1;36m"

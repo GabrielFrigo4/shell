@@ -11,7 +11,7 @@ _theme_layout() {
 	_git_frame_string=""
 	local _indicator=""
 	if [ -n "${_branch}" ]; then
-		[ -n "${_is_dirty}" ] && _indicator="${_theme_color_yellow}*"
+		[ -n "${_is_dirty}" ] && _indicator="*"
 		_git_frame_string=" ${_theme_color_red}󰊢 ${_theme_color_magenta}${_indicator}"
 	fi
 
@@ -22,7 +22,7 @@ _theme_render() {
 	local _git_info=""
 	if [ -n "${_branch}" ]; then
 		local _indicator=""
-		[ -n "${_is_dirty}" ] && _indicator="${_theme_color_yellow}*"
+		[ -n "${_is_dirty}" ] && _indicator="*"
 		_git_info=" ${_theme_color_red}󰊢 ${_theme_color_magenta}${_branch}${_indicator}"
 	fi
 
