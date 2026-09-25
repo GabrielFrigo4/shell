@@ -16,7 +16,7 @@ user@hostname:~/projects/myapp (main ✗) $
 
 1. **Identificador de Usuário e Host:**
     - Usuário comum: Exibido em tom suave (verde nos temas gráficos / ciano no TTY).
-    - Usuário `root`: Destacado em vermelho no console puro TTY (`root@host #`) para alertar sobre privilégios de superusuário; em emuladores PTY, o nome preserva a paleta suave harmônica enquanto o chevron final (``) assume o tom vermelho de alerta.
+    - Usuário `root`: Destacado em vermelho no console puro TTY (`root@host #`) e no tema multilinha PTY `multi` (`❮ root❯`), servindo como alerta evidente de privilégios; nos temas compactos PTY de 1 linha (`pill` e `micro`), o nome preserva o tom verde harmônico da pílula enquanto o chevron final (``) assume o tom vermelho de alerta.
 2. **Diretório Atual (`PWD`):**
     - Diretórios abreviados com base no `$HOME` (`~`).
     - Cores de contraste para rápida localização do caminho.

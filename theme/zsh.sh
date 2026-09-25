@@ -24,6 +24,14 @@ _update_prompt() {
 		_mode="tty"
 	fi
 
+	local _style="${PROMPT_STYLE:-multi}"
+	[ "${_mode}" = "tty" ] && _style="${PROMPT_STYLE:-pill}"
+	case "${_style}" in
+		micro|pill) ;;
+		multi) [ "${_mode}" = "tty" ] && _style="pill" ;;
+		*) _style="pill" ;;
+	esac
+
 	local _os_color
 	case "${PROMPT_OS_COLOR:-blue}" in
 		red)  _os_color="${_theme_color_red}" ;;
@@ -33,7 +41,9 @@ _update_prompt() {
 
 	local _user_color="${_theme_color_green}" _prompt_symbol="\$" _prompt_symbol_color="${_theme_color_cyan}" _terminal_color="${_theme_color_blue}"
 	if [ "${EUID:-$(id -u)}" -eq 0 ]; then
-		[ "${_mode}" = "tty" ] && _user_color="${_theme_color_red}"
+		if [ "${_mode}" = "tty" ] || [ "${_style}" = "multi" ]; then
+			_user_color="${_theme_color_red}"
+		fi
 		_prompt_symbol="#"
 		_prompt_symbol_color="${_theme_color_red}"
 		_terminal_color="${_theme_color_red}"
@@ -41,14 +51,6 @@ _update_prompt() {
 
 	local _branch _is_dirty
 	_git_branch
-
-	local _style="${PROMPT_STYLE:-multi}"
-	[ "${_mode}" = "tty" ] && _style="${PROMPT_STYLE:-pill}"
-	case "${_style}" in
-		micro|pill) ;;
-		multi) [ "${_mode}" = "tty" ] && _style="pill" ;;
-		*) _style="pill" ;;
-	esac
 
 	local _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
 	if [ "${_mode}_${_style}" != "${_LOADED_PROMPT_STYLE_ZSH:-}" ]; then

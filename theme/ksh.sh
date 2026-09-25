@@ -28,13 +28,22 @@ _ksh_prompt() {
 		_mode="tty"
 	fi
 
+	local _style="${PROMPT_STYLE:-pill}"
+	case "${_style}" in
+		micro|pill) ;;
+		multi) [ "${_mode}" = "tty" ] && _style="pill" ;;
+		*) _style="pill" ;;
+	esac
+
 	local _user="${USER:-${LOGNAME:-$(command id -un 2> "/dev/null" || echo "user")}}"
 	local _user_color="${_theme_color_green}"
 	local _terminal_color="${_theme_color_blue}"
 	local _prompt_symbol="\$"
 	local _prompt_symbol_color="${_theme_color_cyan}"
 	if [ "${EUID:-$(id -u 2> "/dev/null")}" -eq 0 ]; then
-		[ "${_mode}" = "tty" ] && _user_color="${_theme_color_red}"
+		if [ "${_mode}" = "tty" ] || [ "${_style}" = "multi" ]; then
+			_user_color="${_theme_color_red}"
+		fi
 		_terminal_color="${_theme_color_red}"
 		_prompt_symbol="#"
 		_prompt_symbol_color="${_theme_color_red}"
@@ -53,13 +62,6 @@ _ksh_prompt() {
 		blue)   _os_color="${_theme_color_blue}" ;;
 		yellow) _os_color="${_theme_color_yellow}" ;;
 		*)      _os_color="${_theme_color_yellow}" ;;
-	esac
-
-	local _style="${PROMPT_STYLE:-pill}"
-	case "${_style}" in
-		micro|pill) ;;
-		multi) [ "${_mode}" = "tty" ] && _style="pill" ;;
-		*) _style="pill" ;;
 	esac
 
 	local _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
