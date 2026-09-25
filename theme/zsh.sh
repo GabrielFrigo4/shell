@@ -39,14 +39,17 @@ _update_prompt() {
 		*)    _os_color="${_theme_color_blue}" ;;
 	esac
 
-	local _user_color="${_theme_color_green}" _prompt_symbol="\$" _prompt_symbol_color="${_theme_color_cyan}" _terminal_color="${_theme_color_blue}"
+	local _user_color="${_theme_color_green}" _user_icon_color="${_theme_color_blue}" _prompt_symbol="\$" _prompt_symbol_color="${_theme_color_cyan}" _terminal_color="${_theme_color_blue}"
 	if [ "${EUID:-$(id -u)}" -eq 0 ]; then
-		if [ "${_mode}" = "tty" ] || [ "${_style}" = "multi" ]; then
+		_user_icon_color="${_theme_color_red}"
+		if [ "${_mode}" = "tty" ]; then
 			_user_color="${_theme_color_red}"
+			_terminal_color="${_theme_color_red}"
+		else
+			_user_color="${_theme_color_magenta}"
 		fi
 		_prompt_symbol="#"
 		_prompt_symbol_color="${_theme_color_red}"
-		_terminal_color="${_theme_color_red}"
 	fi
 
 	local _branch _is_dirty

@@ -37,14 +37,18 @@ _ksh_prompt() {
 
 	local _user="${USER:-${LOGNAME:-$(command id -un 2> "/dev/null" || echo "user")}}"
 	local _user_color="${_theme_color_green}"
+	local _user_icon_color="${_theme_color_blue}"
 	local _terminal_color="${_theme_color_blue}"
 	local _prompt_symbol="\$"
 	local _prompt_symbol_color="${_theme_color_cyan}"
 	if [ "${EUID:-$(id -u 2> "/dev/null")}" -eq 0 ]; then
-		if [ "${_mode}" = "tty" ] || [ "${_style}" = "multi" ]; then
+		_user_icon_color="${_theme_color_red}"
+		if [ "${_mode}" = "tty" ]; then
 			_user_color="${_theme_color_red}"
+			_terminal_color="${_theme_color_red}"
+		else
+			_user_color="${_theme_color_magenta}"
 		fi
-		_terminal_color="${_theme_color_red}"
 		_prompt_symbol="#"
 		_prompt_symbol_color="${_theme_color_red}"
 	fi

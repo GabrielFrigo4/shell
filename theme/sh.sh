@@ -113,10 +113,15 @@ _update_prompt() {
 		fi
 	fi
 
-	local _user_color="${_theme_color_green}" _terminal_color="${_theme_color_blue}" _prompt_symbol="\$" _prompt_symbol_color="${_theme_color_cyan}"
+	local _user_color="${_theme_color_green}" _user_icon_color="${_theme_color_blue}" _terminal_color="${_theme_color_blue}" _prompt_symbol="\$" _prompt_symbol_color="${_theme_color_cyan}"
 	if [ "${EUID:-$(command id -u)}" -eq 0 ]; then
-		[ "${_mode}" = "tty" ] && _user_color="${_theme_color_red}"
-		_terminal_color="${_theme_color_red}"
+		_user_icon_color="${_theme_color_red}"
+		if [ "${_mode}" = "tty" ]; then
+			_user_color="${_theme_color_red}"
+			_terminal_color="${_theme_color_red}"
+		else
+			_user_color="${_theme_color_magenta}"
+		fi
 		_prompt_symbol="#"
 		_prompt_symbol_color="${_theme_color_red}"
 	fi

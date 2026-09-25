@@ -15,7 +15,7 @@ _theme_layout() {
 		_git_frame_string=" ${_theme_color_red}󰊢 ${_theme_color_magenta}${_indicator}"
 	fi
 
-	_fixed_string="${_os_color}${_os_icon}${_theme_color_magenta}${_os_name} ${_theme_color_yellow} ${_theme_color_cyan} ${_theme_color_blue} ${_user_color}${_user}${_git_frame_string} ${_terminal_color}${_theme_color_reset} "
+	_fixed_string="${_os_color}${_os_icon}${_theme_color_magenta}${_os_name} ${_theme_color_yellow} ${_theme_color_cyan} ${_user_icon_color:-${_theme_color_blue}} ${_user_color}${_user}${_git_frame_string} ${_terminal_color}${_theme_color_reset} "
 }
 
 _theme_render() {
@@ -26,7 +26,7 @@ _theme_render() {
 		_git_info=" ${_theme_color_red}󰊢 ${_theme_color_magenta}${_branch}${_indicator}"
 	fi
 
-	PS1="${_os_color}${_os_icon}${_theme_color_magenta}${_os_name} ${_theme_color_yellow} ${_theme_color_cyan}${_pwd} ${_theme_color_blue} ${_user_color}${_user}${_git_info} ${_terminal_color}${_theme_color_reset} "
+	PS1="${_os_color}${_os_icon}${_theme_color_magenta}${_os_name} ${_theme_color_yellow} ${_theme_color_cyan}${_pwd} ${_user_icon_color:-${_theme_color_blue}} ${_user_color}${_user}${_git_info} ${_terminal_color}${_theme_color_reset} "
 	[ -n "${ZSH_VERSION:-}" ] && export PROMPT="${PS1}"
 	return 0
 }
