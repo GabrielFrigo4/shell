@@ -3,7 +3,7 @@
 ### ================================
 
 _theme_render() {
-	local _delimiter="${_theme_color_gray}"
+	local _delimiter="${_theme_color_delimiter}"
 	local _git_info=""
 	if [ -n "${_branch}" ]; then
 		local _indicator=""
@@ -28,7 +28,7 @@ _theme_render() {
 "
 
 	PS1="${_newline}${_delimiter}${_os_color}${_os_icon}${_theme_color_magenta}${_os_name}${_delimiter}─${_theme_color_blue} ${_theme_color_magenta}${_shell_name}${_delimiter}"
-	PS1="${PS1}${_newline}${_delimiter}┌──❮ ${_theme_color_green} ${_time}${_delimiter} ❯─❮ ${_theme_color_green} ${_date}${_delimiter} ❯─❮ ${_theme_color_yellow} ${_theme_color_cyan}${_pwd}${_delimiter} ❯─ ❮${_theme_color_blue} ${_user_color}${_user}${_delimiter}❯${_git_info}"
+	PS1="${PS1}${_newline}${_delimiter}┌──❮${_theme_color_cyan} ${_theme_color_green}${_time}${_delimiter}❯─❮${_theme_color_magenta} ${_theme_color_green}${_date}${_delimiter}❯─❮${_theme_color_yellow} ${_theme_color_cyan}${_pwd}${_delimiter}❯─ ❮${_theme_color_blue} ${_user_color}${_user}${_delimiter}❯${_git_info}"
 	PS1="${PS1}${_newline}${_delimiter}└─${_terminal_color}${_theme_color_reset} "
 
 	[ -n "${ZSH_VERSION:-}" ] && export PROMPT="${PS1}"

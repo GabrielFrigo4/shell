@@ -50,7 +50,7 @@ O Universal Shell oferece **5 variações visuais** distribuídas entre os modos
 - **Visual:**
     ```text
      15.1─ zsh
-    ┌──❮  22:30:15 ❯─❮  17/09/26 ❯─❮  shell ❯─ ❮ gabrielf❯ ❮󰊢 main*❯
+    ┌──❮ 22:30:15❯─❮ 17/09/26❯─❮ shell❯─ ❮ gabrielf❯ ❮󰊢 main*❯
     └─
     ```
 - **Descrição:** Prompt de 3 linhas com linhas guia de árvore, relógio, calendário, pasta, usuário e controle de versão, deixando a linha inferior limpa para comandos longos.

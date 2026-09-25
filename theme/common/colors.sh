@@ -16,7 +16,7 @@ _setup_colors() {
 	_theme_color_reset="${_theme_color_open}${_escape}[0m${_theme_color_close}"
 	_theme_color_bold="${_theme_color_open}${_escape}[1m${_theme_color_close}"
 
-	_theme_color_delimiter="${_theme_color_open}${_escape}[0;33m${_theme_color_close}"
+	_theme_color_delimiter="${_theme_color_open}${_escape}[1;90m${_theme_color_close}"
 	_theme_color_red="${_theme_color_open}${_escape}[0;31m${_theme_color_close}"
 	_theme_color_green="${_theme_color_open}${_escape}[0;32m${_theme_color_close}"
 	_theme_color_yellow="${_theme_color_open}${_escape}[0;33m${_theme_color_close}"
