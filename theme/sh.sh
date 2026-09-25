@@ -47,7 +47,26 @@ _calc_c_len() {
 		esac
 	done
 
-	_c_bytes=$(( _raw_length - _open_delimiter_count - _close_delimiter_count - _escape_count ))
+	local _utf8_extra=0
+	for _glyph in "" "" "" "" "" "" "󰊢" "" "🐡" "" "" "" "" "󰖨"; do
+		local _scan="${_string}"
+		local _weight=2
+		case "${_glyph}" in
+			"󰊢"|"🐡"|"󰖨") _weight=3 ;;
+			*) _weight=2 ;;
+		esac
+		while :; do
+			case "${_scan}" in
+				*"${_glyph}"*)
+					_utf8_extra=$(( _utf8_extra + _weight ))
+					_scan="${_scan#*"${_glyph}"}"
+					;;
+				*) break ;;
+			esac
+		done
+	done
+
+	_c_bytes=$(( _raw_length + _utf8_extra - _open_delimiter_count - _close_delimiter_count - _escape_count ))
 }
 
 _update_prompt() {
