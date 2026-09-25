@@ -160,7 +160,33 @@ emacs-restart() {
 }
 emacs-client() {
 	command -v emacsclient > "/dev/null" 2>&1 || { echo "❌ emacsclient not found." >&2; return 127; }
-	command emacsclient --create-frame --alternate-editor "" "$@"
+	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+		if [ "$#" -eq 0 ]; then
+			command emacsclient --create-frame --alternate-editor "" -n
+		else
+			command emacsclient --create-frame --alternate-editor "" "$@"
+		fi
+	else
+		command emacsclient -t --alternate-editor "" "$@"
+	fi
+}
+emacsclient() {
+	if [ "$#" -eq 0 ]; then
+		emacs-client
+	else
+		command emacsclient "$@"
+	fi
+}
+emacs() {
+	case "${1:-}" in
+		client)
+			shift
+			emacs-client "$@"
+			;;
+		*)
+			command emacs "$@"
+			;;
+	esac
 }
 emacs-open() {
 	command -v emacsclient > "/dev/null" 2>&1 || { echo "❌ emacsclient not found." >&2; return 127; }
