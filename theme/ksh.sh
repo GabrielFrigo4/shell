@@ -23,13 +23,18 @@ _ksh_prompt() {
 	local _branch _is_dirty
 	_git_branch
 
+	local _mode="pty"
+	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		_mode="tty"
+	fi
+
 	local _user="${USER:-${LOGNAME:-$(command id -un 2> "/dev/null" || echo "user")}}"
 	local _user_color="${_theme_color_green}"
 	local _terminal_color="${_theme_color_blue}"
 	local _prompt_symbol="\$"
 	local _prompt_symbol_color="${_theme_color_cyan}"
 	if [ "${EUID:-$(id -u 2> "/dev/null")}" -eq 0 ]; then
-		_user_color="${_theme_color_red}"
+		[ "${_mode}" = "tty" ] && _user_color="${_theme_color_red}"
 		_terminal_color="${_theme_color_red}"
 		_prompt_symbol="#"
 		_prompt_symbol_color="${_theme_color_red}"
@@ -49,11 +54,6 @@ _ksh_prompt() {
 		yellow) _os_color="${_theme_color_yellow}" ;;
 		*)      _os_color="${_theme_color_yellow}" ;;
 	esac
-
-	local _mode="pty"
-	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
-		_mode="tty"
-	fi
 
 	local _style="${PROMPT_STYLE:-pill}"
 	case "${_style}" in

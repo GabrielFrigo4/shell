@@ -19,6 +19,11 @@ _update_prompt() {
 	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "Linux")}}"
 	_os_name="${_os_name%%-*}"
 
+	local _mode="pty"
+	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		_mode="tty"
+	fi
+
 	local _os_color
 	case "${PROMPT_OS_COLOR:-blue}" in
 		red)  _os_color="${_theme_color_red}" ;;
@@ -28,7 +33,7 @@ _update_prompt() {
 
 	local _user_color="${_theme_color_green}" _prompt_symbol="\$" _prompt_symbol_color="${_theme_color_cyan}" _terminal_color="${_theme_color_blue}"
 	if [ "${EUID:-$(id -u)}" -eq 0 ]; then
-		_user_color="${_theme_color_red}"
+		[ "${_mode}" = "tty" ] && _user_color="${_theme_color_red}"
 		_prompt_symbol="#"
 		_prompt_symbol_color="${_theme_color_red}"
 		_terminal_color="${_theme_color_red}"
@@ -36,11 +41,6 @@ _update_prompt() {
 
 	local _branch _is_dirty
 	_git_branch
-
-	local _mode="pty"
-	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
-		_mode="tty"
-	fi
 
 	local _style="${PROMPT_STYLE:-multi}"
 	[ "${_mode}" = "tty" ] && _style="${PROMPT_STYLE:-pill}"
