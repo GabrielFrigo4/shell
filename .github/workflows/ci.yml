@@ -384,11 +384,19 @@ jobs:
                       ### --------------------------------
                       ### Dependencies
                       ### --------------------------------
-                      if command -v pkg_add > "/dev/null" 2>&1; then
-                        pkg_add -I zsh bash python312
-                      elif command -v pkgin > "/dev/null" 2>&1; then
-                        pkgin -y update || true
-                        pkgin -y install zsh bash python312
+                      _pkgs=""
+                      command -v zsh > "/dev/null" 2>&1 || _pkgs="${_pkgs} zsh"
+                      command -v bash > "/dev/null" 2>&1 || _pkgs="${_pkgs} bash"
+                      if ! command -v python3 > "/dev/null" 2>&1 && [ ! -x "/usr/pkg/bin/python3.12" ]; then
+                        _pkgs="${_pkgs} python312"
+                      fi
+                      if [ -n "${_pkgs}" ]; then
+                        if command -v pkg_add > "/dev/null" 2>&1; then
+                          pkg_add -u ${_pkgs} || pkg_add -I ${_pkgs} || pkg_add ${_pkgs} || true
+                        elif command -v pkgin > "/dev/null" 2>&1; then
+                          pkgin -y update || true
+                          pkgin -y install ${_pkgs}
+                        fi
                       fi
 
                       if [ -x "/usr/pkg/bin/python3.12" ] && [ ! -x "/usr/pkg/bin/python3" ]; then

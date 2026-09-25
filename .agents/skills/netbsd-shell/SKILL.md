@@ -42,12 +42,21 @@ O ecossistema de software de terceiros no NetBSD gira em torno do **`pkgsrc`**:
 1. **`pkgsrc`:** O sistema de compilação a partir dos fontes mais portável do mundo UNIX (roda em NetBSD, Linux, macOS, Solaris, illumos e BSDs).
 2. **`pkg_add` vs. `pkgin` em Ambientes Base & CI:**
     - O utilitário nativo embutido no sistema base para manipulação direta de pacotes binários compactados (`.tgz`) é o **`pkg_add`** (`/usr/sbin/pkg_add`).
-    - Em imagens mínimas de VMs e instâncias de CI, o `pkgin` frequentemente não vem instalado por padrão. Portanto, a automação canônica deve checar e priorizar `pkg_add -I` com fallback para `pkgin`:
+    - Em imagens mínimas de VMs e instâncias de CI, o `pkgin` frequentemente não vem instalado por padrão. Além disso, se pacotes como `bash` já estiverem pré-instalados na imagem, um simples `pkg_add -I` falha caso o repositório remoto contenha uma versão minor mais nova (`A different version is already installed`). Portanto, a automação canônica deve filtrar apenas pacotes ausentes e usar `pkg_add -u`:
     ```sh
-    if command -v pkg_add > "/dev/null" 2>&1; then
-        pkg_add -I zsh bash python312
-    elif command -v pkgin > "/dev/null" 2>&1; then
-        pkgin -y install zsh bash python312
+    _pkgs=""
+    command -v zsh > "/dev/null" 2>&1 || _pkgs="${_pkgs} zsh"
+    command -v bash > "/dev/null" 2>&1 || _pkgs="${_pkgs} bash"
+    if ! command -v python3 > "/dev/null" 2>&1 && [ ! -x "/usr/pkg/bin/python3.12" ]; then
+        _pkgs="${_pkgs} python312"
+    fi
+    if [ -n "${_pkgs}" ]; then
+        if command -v pkg_add > "/dev/null" 2>&1; then
+            pkg_add -u ${_pkgs} || pkg_add -I ${_pkgs} || pkg_add ${_pkgs} || true
+        elif command -v pkgin > "/dev/null" 2>&1; then
+            pkgin -y update || true
+            pkgin -y install ${_pkgs}
+        fi
     fi
     ```
 3. **Nomenclatura de Pacotes no pkgsrc (O Caso do Python):**
