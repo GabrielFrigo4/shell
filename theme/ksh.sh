@@ -43,9 +43,9 @@ _ksh_prompt() {
 	local _prompt_symbol_color="${_theme_color_cyan}"
 	if [ "${EUID:-$(id -u 2> "/dev/null")}" -eq 0 ]; then
 		_user_icon_color="${_theme_color_red}"
+		_terminal_color="${_theme_color_red}"
 		if [ "${_mode}" = "tty" ]; then
 			_user_color="${_theme_color_red}"
-			_terminal_color="${_theme_color_red}"
 		else
 			_user_color="${_theme_color_magenta}"
 		fi
