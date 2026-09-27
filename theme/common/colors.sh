@@ -10,6 +10,9 @@ _setup_colors() {
 	if [ -n "${ZSH_VERSION:-}" ]; then
 		_theme_color_open="%{"
 		_theme_color_close="%}"
+	elif [ -n "${KSH_VERSION:-}" ]; then
+		_theme_color_open=$'\001'
+		_theme_color_close=$'\001'
 	fi
 
 	_theme_color_reset="${_theme_color_open}${_escape}[0m${_theme_color_close}"
