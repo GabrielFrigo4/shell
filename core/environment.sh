@@ -276,7 +276,17 @@ if [ -n "${_zoxide_bin}" ]; then
 	_ZO_DOCTOR=0
 	export _ZO_DOCTOR
 	case "${_DETECTED_SHELL:-$(_detect_shell)}" in
-		zsh)  eval "$("${_zoxide_bin}" init zsh)" ;;
+		zsh)
+			eval "$("${_zoxide_bin}" init zsh --hook prompt)"
+			__zoxide_oldpwd="$(__zoxide_pwd)"
+			__zoxide_hook() {
+				local _pwd_tmp="$(__zoxide_pwd)"
+				if [ "${__zoxide_oldpwd}" != "${_pwd_tmp}" ]; then
+					__zoxide_oldpwd="${_pwd_tmp}"
+					command zoxide add -- "${__zoxide_oldpwd}" 2> "/dev/null"
+				fi
+			}
+			;;
 		bash) eval "$("${_zoxide_bin}" init bash)" ;;
 		*)    eval "$("${_zoxide_bin}" init posix --hook prompt)" ;;
 	esac

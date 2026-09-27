@@ -28,8 +28,9 @@
 ## 🎯 Próximas Frentes & Backlog
 
 - [x] Unificação da biblioteca semântica `_ui_*` em 100% dos utilitários interativos e de rede.
+- [x] Otimizações incrementais nos parsers de status Git e Got (resolução de gitdir em subpastas de submódulos e proteção contra falsos positivos em repositórios sem commits).
+- [x] Monitoramento contínuo de latência de navegação (`cd`) e renderização de prompt no `benchmark.sh`.
 - [ ] Monitoramento contínuo de latência de boot em matrizes virtuais (meta permanente < 16ms).
-- [ ] Otimizações incrementais nos parsers de status Git e Got sob repositórios monólitos.
 - [ ] Avaliação contínua de novas versões de shells (Zsh 5.10+, Bash 5.3+, ksh93u+m).
 
 ---

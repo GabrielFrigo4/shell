@@ -17,6 +17,10 @@ _git_branch() {
 			case "${_gitdir}" in
 				gitdir:\ *) _git_root="${_gitdir#gitdir: }" ;;
 			esac
+			case "${_git_root}" in
+				/*) ;;
+				*)  _git_root="${_dir}/${_git_root}" ;;
+			esac
 			break
 		fi
 		case "${_dir}" in
@@ -32,12 +36,17 @@ _git_branch() {
 			case "${_head}" in
 				"ref: refs/heads/"*) _branch="${_head#ref: refs/heads/}" ;;
 				"ref: "*)            _branch="${_head#ref: }" ;;
-				*)                   _branch="$(command git rev-parse --short HEAD 2> "/dev/null" || true)" ;;
+				*)
+					_branch="${_head%${_head#???????}}"
+					[ -z "${_branch}" ] && _branch="$(command git rev-parse --short HEAD 2> "/dev/null" || true)"
+					;;
 			esac
 		fi
 		if [ -n "${_branch}" ]; then
-			if ! command git diff-index --quiet --ignore-submodules=dirty HEAD -- 2> "/dev/null"; then
-				_is_dirty="*"
+			if command git rev-parse --verify --quiet HEAD > "/dev/null" 2>&1; then
+				if ! command git diff-index --quiet --ignore-submodules=dirty HEAD -- 2> "/dev/null"; then
+					_is_dirty="*"
+				fi
 			fi
 		fi
 	elif [ -d ".got" ] && command -v got > "/dev/null" 2>&1; then

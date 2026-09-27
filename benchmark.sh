@@ -119,6 +119,68 @@ _format_ms() {
 	fi
 }
 
+_measure_nav_latency() {
+	_sh="${1}"
+	_sh_bin="${2}"
+	_nav_ms="$("${_python_bin}" -c "
+import sys, time, subprocess
+shell_bin = sys.argv[1]
+repo = sys.argv[2]
+sh = sys.argv[3]
+base = f'export SHELL_REPO_DIR={repo}; for _f in {repo}/library/*.sh {repo}/core/*.sh; do . \"\$_f\"; done; [ -f {repo}/theme/{sh}.sh ] && . {repo}/theme/{sh}.sh;'
+cmd_base = [shell_bin, '-c', base]
+cmd_loop = [shell_bin, '-c', base + ' for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25; do cd /tmp && cd \"\$OLDPWD\"; done;']
+try:
+    subprocess.run(cmd_base, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+    tb = []
+    for _ in range(3):
+        t0 = time.perf_counter()
+        subprocess.run(cmd_base, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+        tb.append(time.perf_counter() - t0)
+    tl = []
+    for _ in range(3):
+        t0 = time.perf_counter()
+        subprocess.run(cmd_loop, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+        tl.append(time.perf_counter() - t0)
+    diff = max(0.0, ((sum(tl)/len(tl)) - (sum(tb)/len(tb))) / 50) * 1000
+    print(f'{diff:.2f}')
+except Exception:
+    print('0.00')
+" "${_sh_bin}" "${_repo_dir}" "${_sh}" 2> "/dev/null" || echo "0.00")"
+	printf "%s\n" "${_nav_ms}" | tr -d '\r'
+}
+
+_measure_prompt_latency() {
+	_sh="${1}"
+	_sh_bin="${2}"
+	_prompt_ms="$("${_python_bin}" -c "
+import sys, time, subprocess
+shell_bin = sys.argv[1]
+repo = sys.argv[2]
+sh = sys.argv[3]
+base = f'export SHELL_REPO_DIR={repo}; for _f in {repo}/library/*.sh {repo}/core/*.sh; do . \"\$_f\"; done; [ -f {repo}/theme/{sh}.sh ] && . {repo}/theme/{sh}.sh;'
+cmd_base = [shell_bin, '-c', base]
+cmd_prompt = [shell_bin, '-c', base + ' for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do _update_prompt; done;']
+try:
+    subprocess.run(cmd_base, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+    tb = []
+    for _ in range(3):
+        t0 = time.perf_counter()
+        subprocess.run(cmd_base, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+        tb.append(time.perf_counter() - t0)
+    tp = []
+    for _ in range(3):
+        t0 = time.perf_counter()
+        subprocess.run(cmd_prompt, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+        tp.append(time.perf_counter() - t0)
+    diff = max(0.0, ((sum(tp)/len(tp)) - (sum(tb)/len(tb))) / 20) * 1000
+    print(f'{diff:.2f}')
+except Exception:
+    print('0.00')
+" "${_sh_bin}" "${_repo_dir}" "${_sh}" 2> "/dev/null" || echo "0.00")"
+	printf "%s\n" "${_prompt_ms}" | tr -d '\r'
+}
+
 ### --------------------------------
 ### Binary Resolver
 ### --------------------------------
@@ -272,6 +334,34 @@ if [ "${_os}" = "openbsd" ]; then
 		fi
 	fi
 fi
+
+### --------------------------------
+### Benchmark Navigation
+### --------------------------------
+printf "\n%b🧭 Interactive Navigation Latency (cd)%b\n" "${_ui_color_bold}${_ui_color_cyan}" "${_ui_color_reset}"
+printf "%s\n" "----------------------------------------------------------------"
+
+for _nav_shell in zsh bash; do
+	if _is_shell_selected "${_nav_shell}" && command -v "${_nav_shell}" > "/dev/null" 2>&1; then
+		_nav_bin="$(_resolve_shell_bin "${_nav_shell}")"
+		_nav_ms="$(_measure_nav_latency "${_nav_shell}" "${_nav_bin}")"
+		printf "%-24s %b\n" "Navigation (${_nav_shell})" "$(_format_ms "${_nav_ms}" "2")"
+	fi
+done
+
+### --------------------------------
+### Benchmark Prompt Render
+### --------------------------------
+printf "\n%b🎨 Prompt & VCS Render Latency%b\n" "${_ui_color_bold}${_ui_color_cyan}" "${_ui_color_reset}"
+printf "%s\n" "----------------------------------------------------------------"
+
+for _prompt_sh in zsh bash; do
+	if _is_shell_selected "${_prompt_sh}" && command -v "${_prompt_sh}" > "/dev/null" 2>&1; then
+		_p_bin="$(_resolve_shell_bin "${_prompt_sh}")"
+		_p_ms="$(_measure_prompt_latency "${_prompt_sh}" "${_p_bin}")"
+		printf "%-24s %b\n" "Prompt Render (${_prompt_sh})" "$(_format_ms "${_p_ms}" "16")"
+	fi
+done
 
 if [ "${_has_failure}" -ne 0 ]; then
 	printf "\n%b❌ ERRO: Latência de inicialização excedeu o teto de tolerância de %sms (2^n).%b\n" "${_ui_color_bold}${_ui_color_red}" "${_max_tolerance}" "${_ui_color_reset}" >&2
