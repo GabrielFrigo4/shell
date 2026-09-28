@@ -14,6 +14,7 @@
 > 📖 **Arquitetura Unificada do Ecossistema:** Conheça a matriz completa de responsabilidades, ciclo de boot e segregação de privilégios em [ENVIRONMENT.md](ENVIRONMENT.md).
 > 📜 **Princípios de Engenharia:** Conheça os 18 princípios UNIX e boas práticas Clean Code em [PRINCIPLES.md](PRINCIPLES.md).
 > 🗺️ **Roadmap & Status do Projeto:** Acompanhe o planejamento e a matriz de status em [TODO.md](TODO.md).
+> 🤝 **Guia de Contribuição & Setup:** Instruções de bancada, ganchos Git e quality gates em [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
@@ -21,6 +22,7 @@
 
 [![CI](https://github.com/GabrielFrigo4/shell/actions/workflows/ci.yml/badge.svg)](https://github.com/GabrielFrigo4/shell/actions/workflows/ci.yml)
 [![Roadmap](https://img.shields.io/badge/🗺️_Roadmap-TODO.md-teal)](TODO.md)
+[![Contributing](https://img.shields.io/badge/🤝_Contributing-CONTRIBUTING.md-orange)](CONTRIBUTING.md)
 
 **Plataformas Homologadas:**<br>
 ![FreeBSD](https://img.shields.io/badge/FreeBSD-Supported-red?logo=freebsd&logoColor=white)
@@ -228,17 +230,16 @@ flowchart TD
 
 ---
 
-## 🧪 Quality Gates & Ganchos Git (.githooks)
+## 🚀 Setup do Projeto & Ganchos Git
 
-Para habilitar a validação multi-shell, benchmark de latência e verificação de Markdown antes de cada commit:
-
-```sh
-chmod 0755 .githooks/pre-commit
-git config core.hooksPath .githooks
-```
-
-Para executar o pre-commit hook manualmente:
+Para configurar o ambiente de desenvolvimento local, ativar os quality gates automáticos e validar a integridade do repositório:
 
 ```sh
-./.githooks/pre-commit
+make hooks   # Configura .githooks e permissões canônicas
+make test    # Valida sintaxe de todos os scripts (POSIX, Bash, Zsh)
+make audit   # Executa auditoria estática e conformidade arquitetural
+make bench   # Mede latência de inicialização dos prompts (< 64ms)
+make ci      # Bateria completa de validação local
 ```
+
+> 🤝 **Instruções Detalhadas:** Consulte o [CONTRIBUTING.md](CONTRIBUTING.md) para convenções de commits, orçamentos de latência, regras de compatibilidade multi-shell e diretrizes de desenvolvimento.

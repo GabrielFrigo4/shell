@@ -197,7 +197,7 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
     6. Escopo global do sistema (`/usr/local/share/<componente>/...`).
     7. Agente de chaves em memória (`ssh-agent` / `ssh-add -l`).
 - **Auto-Cura de Permissões em Tempo de Voo (In-flight Permission Self-Healing):** Se um arquivo de segurança crítica (chave SSH `*.key`, certificado ou arquivo `.env`) for localizado com permissões permissivas demais (ex: `0644`), os utilitários realizam a auto-cura imediata (`chmod 0600 "${key}" 2> "/dev/null" || true`) antes de invocar comandos sensíveis como `ssh`, impedindo que o cliente remoto rejeite a chave com avisos ou recusas de autenticação.
-- **Auto-Correção da Sessão (Session Self-Correction):** Ao identificar a localização real e validada de um recurso através da cascata de descoberta, as funções interativas exportam imediatamente a variável corrigida para a sessão ativa (`export FRIGO_SERVER_KEY="${_key}"`), curando o ambiente do usuário para invocações subsequentes e processos-filhos.
+- **Auto-Correção da Sessão (Session Self-Correction):** Ao identificar a localização real e validada de um recurso através da cascata de descoberta, as funções interativas exportam imediatamente a variável corrigida para a sessão ativa (`export PERSONAL_SERVER_KEY="${_key}"`), curando o ambiente do usuário para invocações subsequentes e processos-filhos.
 - **Zero Falha Cega & Argument Forwarding:** Utilitários e wrappers antifrágeis nunca omitem falhas silenciosamente nem engolem argumentos:
     - Se a chave física não for encontrada no disco, tentam conexão delegada para o agente SSH em execução em vez de passar `-i <caminho_inexistente>`.
     - Encaminham transparentemente todos os parâmetros adicionais (`"$@"`) para o comando subjacente, permitindo execução remota de comandos, flags de porta e modo batch sem atrito.
@@ -290,11 +290,3 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 
 - Todas as funções utilitárias do motor interativo (`Shell`) adotam estritamente a convenção **kebab-case** (`reinstall-shell`, `update-editors`, `update-git`, `open-neovim`).
 - O interpretador `dash` é formalmente descartado como shell interativo por incompatibilidade com essa convenção, focando a experiência do usuário nos shells suportados (`bash`, `zsh` e FreeBSD `/bin/sh`).
-
-### 13. Nomenclatura Expressiva & Proibição de Abreviações Crípticas (_Expressive Naming & Zero Cryptic Abbreviations_)
-
-- Variáveis, argumentos e funções DEVEM possuir nomes explícitos, autodescritivos e semânticos. É expressamente vedado o uso de abreviações crípticas de uma única letra ou contrações truncadas que ocultem a intenção do código (ex: proibido `_c` para cor, `_u` para usuário, `_sym` para símbolo, `_ind` para indicador, `_del` para delimitador, `_b` para brilho, `_mod` para módulo, `_ed` para editor, `_f` para arquivo).
-- **Exceções Técnicas Formais:** Siglas e designações canônicas consagradas na ciência da computação são válidas quando expressam a entidade exata e não uma contração preguiçosa:
-    - Referências a linguagens de programação, como a linguagem `C` em buffers de baixo nível (`_calc_c_len`, `_c_bytes`), referindo-se diretamente ao array de caracteres `char ps[]` do parser C do FreeBSD `/bin/sh` (`parser.c`).
-    - Acrônimos padronizados da indústria de sistemas e redes (`_os`, `_ip`, `_pid`, `_ppid`, `_tty`, `_ssh`, `_uri`, `_url`, `_eof`, `_xdg`).
-- Nomes longos e expressivos previnem colisões acidentais no escopo global do interpretador, isolam efeitos colaterais em shells aninhados e eliminam a necessidade de comentários narrativos.

@@ -259,26 +259,26 @@ _resolve_vault_ssh_key() {
 	return 1
 }
 
-frigo-server() {
-	_ip="${FRIGO_SERVER_IP:-144.22.210.65}"
-	_user="${FRIGO_SERVER_USER:-ubuntu}"
-	_key="$(_resolve_vault_ssh_key "${FRIGO_SERVER_KEY:-}" "ssh-key-frigo-server.key")"
+personal-server() {
+	_ip="${PERSONAL_SERVER_IP:-144.22.210.65}"
+	_user="${PERSONAL_SERVER_USER:-ubuntu}"
+	_key="$(_resolve_vault_ssh_key "${PERSONAL_SERVER_KEY:-}" "ssh-key-personal-server.key")"
 
 	if [ -n "${_key}" ]; then
-		export FRIGO_SERVER_KEY="${_key}"
+		export PERSONAL_SERVER_KEY="${_key}"
 		ssh -i "${_key}" "${_user}@${_ip}" "$@"
 	else
 		ssh "${_user}@${_ip}" "$@"
 	fi
 }
 
-orbs-server() {
-	_ip="${ORBS_SERVER_IP:-137.131.238.161}"
-	_user="${ORBS_SERVER_USER:-ubuntu}"
-	_key="$(_resolve_vault_ssh_key "${ORBS_SERVER_KEY:-}" "ssh-key-orbs-server.key")"
+venture-server() {
+	_ip="${VENTURE_SERVER_IP:-137.131.238.161}"
+	_user="${VENTURE_SERVER_USER:-ubuntu}"
+	_key="$(_resolve_vault_ssh_key "${VENTURE_SERVER_KEY:-}" "ssh-key-venture-server.key")"
 
 	if [ -n "${_key}" ]; then
-		export ORBS_SERVER_KEY="${_key}"
+		export VENTURE_SERVER_KEY="${_key}"
 		ssh -i "${_key}" "${_user}@${_ip}" "$@"
 	else
 		ssh "${_user}@${_ip}" "$@"

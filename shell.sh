@@ -25,10 +25,23 @@ _shell_is_sourced() {
 	esac
 }
 
+_self_heal_perms() {
+	if [ -d "${_SHELL_ROOT}/.git" ] && command -v git > "/dev/null" 2>&1; then
+		git -C "${_SHELL_ROOT}" config core.hooksPath .githooks 2> "/dev/null" || true
+	fi
+	if [ -d "${_SHELL_ROOT}/.githooks" ]; then
+		chmod 0755 "${_SHELL_ROOT}/.githooks/"* 2> "/dev/null" || true
+	fi
+	[ -f "${_SHELL_ROOT}/shell.sh" ] && chmod 0755 "${_SHELL_ROOT}/shell.sh" 2> "/dev/null" || true
+	[ -f "${_SHELL_ROOT}/install.sh" ] && chmod 0755 "${_SHELL_ROOT}/install.sh" 2> "/dev/null" || true
+	[ -f "${_SHELL_ROOT}/benchmark.sh" ] && chmod 0755 "${_SHELL_ROOT}/benchmark.sh" 2> "/dev/null" || true
+}
+
 ### ================================
 ### BOOTSTRAP DE RUNTIME
 ### ================================
 _shell_bootstrap() {
+	_self_heal_perms
 	for _module in "${_SHELL_ROOT}/library/"*.sh; do
 		[ -f "${_module}" ] && . "${_module}"
 	done

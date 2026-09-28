@@ -7,7 +7,7 @@ MAKEFLAGS += --no-print-directory -s
 # Makefile: Shell Runtime Engine
 # ----------------------------------------------------------------
 
-.PHONY: help bench test format install ci
+.PHONY: help hooks bench test format install ci
 
 ### ================================
 ### HELP & DOCUMENTATION
@@ -19,6 +19,8 @@ help:
 	sub() { printf "  $${_e}[1;34m  ── %s ──$${_e}[0m\n" "$$1"; }; \
 	printf "\n  $${_e}[1;37mUniversal Shell — Motor Interativo de Terminal & Ergonomia$${_e}[0m\n"; \
 	printf "  ============================================================\n"; \
+	sec "Setup & Ganchos:"; \
+	cmd "hooks"          "Configura e aplica permissões canônicas em .githooks"; \
 	sec "Instalação & Runtime:"; \
 	cmd "install"        "Instala e sincroniza o runtime do Shell"; \
 	sec "Desempenho & Benchmark:"; \
@@ -63,6 +65,12 @@ bench:
 
 install:
 	sh install.sh
+
+hooks:
+	echo "🪝 Configurando ganchos Git (.githooks)..."
+	chmod 0755 .githooks/pre-commit .githooks/commit-msg 2> "/dev/null" || true
+	git config core.hooksPath .githooks 2> "/dev/null" || true
+	echo "  ✅ Shell: core.hooksPath -> .githooks"
 
 ci: test
 	sh .githooks/pre-commit
