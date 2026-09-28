@@ -355,7 +355,7 @@ jobs:
                       ### --------------------------------
                       ### Startup Latency Benchmark (bsh)
                       ### --------------------------------
-                      ./benchmark.sh
+                      ./benchmark.sh -i 3
 
     netbsd:
         name: 🚩 NetBSD (11.x) Matrix
