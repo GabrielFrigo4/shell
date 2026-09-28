@@ -43,10 +43,8 @@ _git_branch() {
 			esac
 		fi
 		if [ -n "${_branch}" ]; then
-			if command git rev-parse --verify --quiet HEAD > "/dev/null" 2>&1; then
-				if ! command git diff-index --quiet --ignore-submodules=dirty HEAD -- 2> "/dev/null"; then
-					_is_dirty="*"
-				fi
+			if [ -n "$(GIT_OPTIONAL_LOCKS=0 command git status --porcelain=v1 -uno --ignore-submodules=dirty 2> "/dev/null")" ]; then
+				_is_dirty="*"
 			fi
 		fi
 	elif [ -d ".got" ] && command -v got > "/dev/null" 2>&1; then
