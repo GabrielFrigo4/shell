@@ -21,4 +21,4 @@ Bem-vindo ao índice da documentação técnica e arquitetural do **Universal Sh
 Para entender a governança compartilhada entre os 4 repositórios, consulte:
 
 - **[ENVIRONMENT.md](../ENVIRONMENT.md)**: Manifesto de papéis, privilégios, ciclo de boot e links federados.
-- **[PRINCIPLES.md](../PRINCIPLES.md)**: Os 18 princípios de engenharia de software e diretrizes Clean Code aplicados ao shell.
+- **[PRINCIPLES.md](../PRINCIPLES.md)**: Os 22 princípios de engenharia UNIX + Clean Code aplicados ao shell.

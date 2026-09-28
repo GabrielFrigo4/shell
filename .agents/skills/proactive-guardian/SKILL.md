@@ -2,7 +2,7 @@
 name: proactive-guardian
 description: >-
     Proactive code health guardian and autonomous quality enforcement.
-    Use to continuously audit code against the 18 UNIX Principles, Clean Code rules,
+    Use to continuously audit code against the 22 UNIX Principles, Clean Code rules,
     defensive guards, naming taxonomies, and actively suggest or apply fixes.
 ---
 

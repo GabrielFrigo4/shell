@@ -17,11 +17,7 @@ Toda alteração de código, adição de alias, refatoração ou otimização no
 ## 1. Linha de Base de Portabilidade & Alvos Exclusivos (`sh` e `ksh`)
 
 - O shell nativo do FreeBSD (`/bin/sh`) é a régua máxima e baseline de portabilidade para scripts compartilhados em `library/`, `core/` e `install.sh`.
-- **Exclusividade e Não-Coexistência:** No ecossistema de targets interativos (`target/`):
-    - O alvo `sh` existe **EXCLUSIVAMENTE para o FreeBSD** (`target/freebsd/sh`).
-    - O alvo `ksh` existe **EXCLUSIVAMENTE para o OpenBSD** (`target/openbsd/ksh`).
-    - `ksh` e `sh` NUNCA coexistem no mesmo sistema operacional.
-    - Todos os demais sistemas operacionais (Linux, macOS, Windows/MSYS2, NetBSD, illumos) suportam estritamente `zsh` e `bash`.
+- **Exclusividade e Não-Coexistência:** Nos targets interativos (`target/`), o alvo `sh` existe exclusivamente para o FreeBSD e o alvo `ksh` exclusivamente para o OpenBSD (`ksh` e `sh` nunca coexistem no mesmo SO). Todos os demais sistemas suportam estritamente `zsh` e `bash`.
 - **Adoção Universal de `$'\e...'` e `echo -n`:** O formato `echo -n $'\e...'` é suportado em todos os shells do ecossistema (FreeBSD `/bin/sh`, Zsh, Bash, OpenBSD ksh moderno e Dash moderno, além de formalizado no POSIX Issue 8). É o padrão canônico preferido para sequências de controle de terminal (`alias clear="echo -n $'\e[2J\e[3J\e[H'"`), eliminando a necessidade de notação críptica em octal (`\033`) do `printf`.
 - **Delimitadores de Largura Zero em Prompts (`\[...\]`):** No FreeBSD `/bin/sh` (`libedit`), OpenBSD `ksh` e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar entre `\[` e `\]` (ex: `_color_red="\[\e[1;91m\]"`). Sem isso, o editor conta bytes ANSI como colunas visíveis, quebrando o cálculo de linhas e o cursor.
 - Recursos do Zsh e Bash permanecem estritamente em `zsh/` e `bash/`.
@@ -124,10 +120,6 @@ Antes de finalizar qualquer alteração:
 1. `git diff --check` (deve retornar 0 erros).
 2. `./.githooks/pre-commit` (deve passar 100%).
 3. Matriz Multi-Shell (sempre na ordem `zsh` -> `bash` -> `sh`/`ksh`):
-    - Linux: `zsh -n` e `bash -n`.
+    - Linux, NetBSD, macOS, Windows (MSYS2), illumos: `zsh -n` e `bash -n`.
     - FreeBSD: `zsh -n`, `bash -n` e `sh -n`.
     - OpenBSD: `zsh -n`, `bash -n` e `ksh -n`.
-    - NetBSD: `zsh -n` e `bash -n`.
-    - macOS: `zsh -n` e `bash -n`.
-    - Windows (MSYS2): `zsh -n` e `bash -n`.
-    - illumos: `zsh -n` e `bash -n`.

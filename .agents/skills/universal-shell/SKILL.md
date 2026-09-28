@@ -8,7 +8,7 @@ description: >-
 
 # Universal Shell — Development & Architecture Runbook
 
-Este guia detalha o fluxo operacional para estender, refatorar e auditar o repositório **Universal Shell Environment** (`/usr/local/share/shell`), garantindo aderência rigorosa aos 18 Princípios UNIX e às regras de Clean Code.
+Este guia detalha o fluxo operacional para estender, refatorar e auditar o repositório **Universal Shell Environment** (`/usr/local/share/shell`), garantindo aderência rigorosa aos 22 Princípios de Engenharia UNIX + Clean Code.
 
 ---
 
