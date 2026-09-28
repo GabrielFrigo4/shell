@@ -28,7 +28,8 @@
 ## 🎯 Próximas Frentes & Backlog
 
 - [x] Unificação da biblioteca semântica `_ui_*` em 100% dos utilitários interativos e de rede.
-- [x] Otimizações incrementais nos parsers de status Git e Got (resolução de gitdir em subpastas de submódulos, transição de diff-index para git status porcelain com GIT_OPTIONAL_LOCKS=0 imune a stat-dirty/mtime, e proteção contra falsos positivos em repositórios sem commits).
+- [x] Otimizações incrementais nos parsers de status Git e Got (resolução de gitdir em subpastas de submódulos e proteção contra falsos positivos em repositórios sem commits).
+- [x] Erradicação definitiva de falsos positivos de stat-cache no indicador Git (`git diff-index` ➔ `git status --porcelain=v1 -uno` com `GIT_OPTIONAL_LOCKS=0`), tornando o prompt imune a descompassos de `mtime`/`ctime` e acelerando a renderização para ~4.1ms.
 - [x] Monitoramento contínuo de latência de navegação (`cd`) e renderização de prompt no `benchmark.sh`.
 - [ ] Monitoramento contínuo de latência de boot em matrizes virtuais (meta permanente < 16ms).
 - [ ] Avaliação contínua de novas versões de shells (Zsh 5.10+, Bash 5.3+, ksh93u+m).
