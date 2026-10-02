@@ -7,7 +7,7 @@ MAKEFLAGS += --no-print-directory -s
 # Makefile: Shell Runtime Engine
 # ----------------------------------------------------------------
 
-.PHONY: help hooks bench test format install ci
+.PHONY: help hooks bench test format prettier install ci
 
 ### ================================
 ### HELP & DOCUMENTATION
@@ -28,6 +28,7 @@ help:
 	sec "Qualidade & Testes:"; \
 	cmd "test"           "Valida sintaxe Zsh, Bash, POSIX sh e ksh em todos os módulos"; \
 	cmd "format"         "Formata arquivos Markdown com Prettier"; \
+	cmd "prettier"       "Formata arquivos Markdown com Prettier"; \
 	cmd "ci"             "Executa suíte completa de testes e quality gate local"; \
 	echo ""
 
@@ -50,6 +51,8 @@ test:
 		find target/openbsd/ksh target/common/ksh.sh theme/ksh.sh -name "*.sh" -exec oksh -n {} +; \
 	fi
 	echo "✅ Sintaxe de todos os módulos de shell validada com sucesso!"
+
+prettier: format
 
 format:
 	if command -v prettier > "/dev/null" 2>&1; then \

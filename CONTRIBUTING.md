@@ -45,7 +45,7 @@ make bench
 
 3. **Padronização Semântica de UI (`_ui_*`):**
     - Toda emissão interativa de status ou progresso deve utilizar a biblioteca semântica `_ui_*` (`_ui_step`, `_ui_sub`, `_ui_ok`, `_ui_warn`, `_ui_err`, `_ui_info`, `_ui_banner`).
-    - Escapes ANSI usam a notação canônica `[ -t 1 ] && echo -n $'\e...'` ou notação hexadecimal (`\x01`, `\x1b`) para bytes de controle. Octais como `\033` são terminantemente proibidos.
+    - Escapes ANSI usam a notação canônica `[ -t 1 ] && echo -n $'\e...'` ou notação hexadecimal (`\x01`, `\x1b`) para bytes de controle. Octais como `\033` não devem ser utilizados.
 
 4. **Multi-Shell & Multi-OS:**
     - Compatibilidade verificada em Linux, FreeBSD (14/15), Windows (MSYS2), macOS, OpenBSD, NetBSD e illumos.
