@@ -167,6 +167,11 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
     - `NeoVim`: `~/.config/nvim`.
     - `Vim`: `~/.vim`.
 - **Zero Symlinks para a Bancada de Desenvolvimento:** É estritamente proibido criar links simbólicos de sistema, configurações de shell (`.bashrc`, `.zshrc`) ou dotfiles que apontem para a pasta de desenvolvimento `~/Documents/Environment`. O provisionamento no SO deve ser feito exclusivamente clonando cada repositório em sua localização canônica via `make install`.
+- **Ciclo Obrigatório de Propagação (Dev-Hub -> Git Push -> Git Pull em Produção):** O fluxo de atualização entre a bancada e os ambientes de produção do sistema operacional obedece a um pipeline estrito, rastreado e auditável:
+    1. **Edição Estrita na Bancada:** Toda e qualquer alteração de código, scripts, módulos ou dotfiles é implementada, testada e validada no clone de desenvolvimento sob o Environment (`~/Documents/Environment/<Componente>`).
+    2. **Integração no Git:** As alterações são commitadas e enviadas ao repositório remoto oficial (`git push`).
+    3. **Atualização Soberana em Produção:** Os clones de produção (`/usr/local/share/shell`, `~/.local/share/profile`, `~/.emacs.d`, `~/.config/nvim`, etc.) são atualizados exclusivamente via `git pull` (ou rotinas e aliases como `upsh`, `uprc`, `uped`, `make pull`, `make install`).
+    4. **Proibição de `cp` Avulso e Árvores Sujas em Runtime:** É terminantemente proibido copiar arquivos manualmente (`cp`) da bancada para os clones de produção de maneira a deixar a árvore de trabalho de produção com alterações não rastreadas (`unstaged/uncommitted changes`). Os repositórios de produção devem permanecer com working tree 100% limpa (`clean working tree`) e sincronizados via histórico do Git.
 - **Hierarquia de Resolução de Caminhos (XDG vs. FHS):**
     - **Universal Shell:**
         1. `/usr/local/share/shell` — Padrão prático para o par `root` + administrador do host.

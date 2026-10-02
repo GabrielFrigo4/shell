@@ -27,7 +27,12 @@ _as_root() {
 path-front() {
 	case ":${PATH}:" in
 		*":${1}:"*) ;;
-		*) [ -d "${1}" ] && export PATH="${1}:${PATH}" ;;
+		*)
+			case "${1}" in
+				"${HOME}/"*) mkdir -p "${1}" 2> "/dev/null" || true ;;
+			esac
+			[ -d "${1}" ] && export PATH="${1}:${PATH}"
+			;;
 	esac
 }
 
@@ -37,7 +42,12 @@ path-front() {
 path-back() {
 	case ":${PATH}:" in
 		*":${1}:"*) ;;
-		*) [ -d "${1}" ] && export PATH="${PATH}:${1}" ;;
+		*)
+			case "${1}" in
+				"${HOME}/"*) mkdir -p "${1}" 2> "/dev/null" || true ;;
+			esac
+			[ -d "${1}" ] && export PATH="${PATH}:${1}"
+			;;
 	esac
 }
 

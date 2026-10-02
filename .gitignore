@@ -1,0 +1,5 @@
+# Temporary files and compiled zsh scripts
+*~
+*.swp
+*.zwc
+.DS_Store

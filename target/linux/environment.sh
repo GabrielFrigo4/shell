@@ -6,7 +6,7 @@
 ### Path
 ### --------------------------------
 path-front "${HOME}/.local/bin"
-path-back  "${HOME}/.cargo/bin"
+path-front "${HOME}/.cargo/bin"
 path-back  "${HOME}/.platformio/penv/bin"
 path-dedup
 
