@@ -332,15 +332,6 @@ update-profile() {
 		if [ -f "${_target}/profile.sh" ]; then
 			_ui_sub "Executando sincronização via profile.sh..."
 			sh "${_target}/profile.sh" sync 2> "/dev/null" || true
-		else
-			if [ -f "${_target}/scripts/sync/sync-dotfiles.sh" ]; then
-				_ui_sub "Sincronizando dotfiles declarativos..."
-				sh "${_target}/scripts/sync/sync-dotfiles.sh" 2> "/dev/null" || true
-			fi
-			if [ -f "${_target}/scripts/sync/sync-skills.sh" ]; then
-				_ui_sub "Sincronizando skills de IA..."
-				sh "${_target}/scripts/sync/sync-skills.sh" 2> "/dev/null" || true
-			fi
 		fi
 		_ui_ok "Universal Profile atualizado e sincronizado com sucesso!"
 	else

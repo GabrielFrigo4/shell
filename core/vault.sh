@@ -60,12 +60,6 @@ update-vault() {
 		_ui_sub "Sincronizando com o upstream com autoproteção..."
 		if command -v _git_pull_resilient > "/dev/null" 2>&1; then
 			_git_pull_resilient "${_target}" || _ui_warn "Falha ao sincronizar ${_target}"
-		else
-			if [ -w "${_target}" ]; then
-				command git -C "${_target}" pull
-			else
-				_as_root git -C "${_target}" pull
-			fi
 		fi
 		_ui_ok "Universal Vault atualizado com sucesso!"
 		_ui_info "Recarregando ambiente do shell..."
