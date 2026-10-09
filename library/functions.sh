@@ -545,9 +545,18 @@ update-git() {
 				_branch="$(git -C "${_repo_dir}" branch --show-current 2> "/dev/null" || echo "detached")"
 				_st="$(git -C "${_repo_dir}" status -s 2> "/dev/null" || true)"
 				_ahead_behind="$(git -C "${_repo_dir}" rev-list --left-right --count HEAD...@{upstream} 2> "/dev/null" || true)"
-				if [ -n "${_st}" ] || [ -n "${_ahead_behind}" ]; then
+				_diverged=0
+				if [ -n "${_st}" ]; then
+					_diverged=1
+				elif [ -n "${_ahead_behind}" ] && [ "${_ahead_behind}" != "0	0" ] && [ "${_ahead_behind}" != "0 0" ]; then
+					_diverged=1
+				fi
+
+				if [ "${_diverged}" -eq 1 ]; then
 					_ui_warn "${_repo_dir} [${_branch}]: divergências locais ou remotas"
-					[ -n "${_ahead_behind}" ] && _ui_sub "  ↳ Commits (local/remote): ${_ahead_behind}"
+					if [ -n "${_ahead_behind}" ] && [ "${_ahead_behind}" != "0	0" ] && [ "${_ahead_behind}" != "0 0" ]; then
+						_ui_sub "  ↳ Commits (local/remote): ${_ahead_behind}"
+					fi
 					[ -n "${_st}" ] && git -C "${_repo_dir}" status -s | head -n 5 | while read -r _s; do _ui_sub "    ${_s}"; done
 				else
 					_ui_ok "${_repo_dir} [${_branch}]: sincronizado e limpo"
