@@ -162,6 +162,44 @@ _git_pull_resilient() {
 	return 1
 }
 
+_git_push_resilient() {
+	local _dir="$1"
+	if [ ! -d "${_dir}/.git" ] && [ ! -f "${_dir}/.git" ]; then
+		return 0
+	fi
+
+	local _cmd="git -C \"${_dir}\""
+	local _has_remote
+	_has_remote="$(eval "${_cmd} remote" 2> "/dev/null" || true)"
+	if [ -z "${_has_remote}" ]; then
+		_ui_info "${_dir}: sem remote configurado, pulando."
+		return 0
+	fi
+
+	local _branch
+	_branch="$(eval "${_cmd} branch --show-current" 2> "/dev/null" || true)"
+	if [ -z "${_branch}" ]; then
+		_ui_info "${_dir}: branch indefinida (detached HEAD), pulando."
+		return 0
+	fi
+
+	local _unpushed
+	_unpushed="$(eval "${_cmd} cherry -v" 2> "/dev/null" || true)"
+	if [ -z "${_unpushed}" ]; then
+		_ui_ok "${_dir}: já atualizado com o remote (${_branch})."
+		return 0
+	fi
+
+	_ui_sub "Enviando ${_dir} (${_branch})..."
+	if eval "${_cmd} push" > "/dev/null" 2>&1 || eval "${_cmd} push origin \"${_branch}\"" > "/dev/null" 2>&1; then
+		_ui_ok "${_dir}: push concluído com sucesso!"
+		return 0
+	else
+		_ui_err "${_dir}: falha ao enviar commits para o remote."
+		return 1
+	fi
+}
+
 ### --------------------------------
 ### Update Shell
 ### --------------------------------
@@ -358,14 +396,47 @@ update-git() {
 	_ui_step "Buscando e atualizando repositórios Git em: ${_target_root}"
 	echo ""
 
-	find "${_target_root}" -maxdepth 3 -name ".git" 2> "/dev/null" | while read -r _git_entry; do
-		_repo_dir="$(dirname "${_git_entry}")"
-		_ui_sub "Atualizando ${_repo_dir}..."
-		_git_pull_resilient "${_repo_dir}" || _ui_warn "Falha ao atualizar ${_repo_dir}"
-	done
+	find "${_target_root}" -maxdepth 3 -name ".git" 2> "/dev/null" | \
+		awk '{ n=split($0, a, "/"); print n, $0 }' | \
+		sort -n -k1,1 | \
+		cut -d' ' -f2- | while read -r _git_entry; do
+			_repo_dir="$(dirname "${_git_entry}")"
+			_ui_sub "Atualizando ${_repo_dir}..."
+			_git_pull_resilient "${_repo_dir}" || _ui_warn "Falha ao atualizar ${_repo_dir}"
+		done
 
 	echo ""
 	_ui_ok "Varredura e atualização de repositórios Git concluída!"
+	unset _target_root _git_entry _repo_dir
+}
+
+pull-git() {
+	update-git "$@"
+}
+
+### --------------------------------
+### Push Git Repositories
+### --------------------------------
+push-git() {
+	_target_root="${1:-${PWD}}"
+	if [ ! -d "${_target_root}" ]; then
+		_ui_err "Diretório não encontrado: ${_target_root}"
+		return 1
+	fi
+
+	_ui_step "Buscando e enviando repositórios Git em: ${_target_root}"
+	echo ""
+
+	find "${_target_root}" -maxdepth 3 -name ".git" 2> "/dev/null" | \
+		awk '{ n=split($0, a, "/"); print n, $0 }' | \
+		sort -nr -k1,1 | \
+		cut -d' ' -f2- | while read -r _git_entry; do
+			_repo_dir="$(dirname "${_git_entry}")"
+			_git_push_resilient "${_repo_dir}" || _ui_warn "Falha ao enviar ${_repo_dir}"
+		done
+
+	echo ""
+	_ui_ok "Varredura e envio de repositórios Git concluídos!"
 	unset _target_root _git_entry _repo_dir
 }
 

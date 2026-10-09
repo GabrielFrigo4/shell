@@ -64,3 +64,65 @@ Em conformidade com a filosofia UNIX:
     - **Bash (`theme/bash.sh`):** Utiliza escape sequences nativas do Bash com suporte a cores 256/TrueColor e status Git.
     - **POSIX Sh (`theme/sh.sh`):** Prompt atômico, leve e sem dependências, exclusivo para o FreeBSD `/bin/sh`.
     - **KornShell (`theme/ksh.sh`):** Prompt ultra-leve calibrado para `/bin/ksh` no OpenBSD com controle defensivo `\x01` (0x01) e ANSI nativo.
+
+---
+
+## 🧭 Matriz de Shells Padrão & Política de Login (chsh vs. Nativo)
+
+Cada sistema operacional no ecossistema possui uma política canônica para seu shell de login padrão, governada por princípios de resiliência, segurança e arquitetura de kernel:
+
+```mermaid
+flowchart TD
+    subgraph UNIX_STANDARDS ["🧭 Matriz Soberana de Shells Padrão"]
+        LINUX["🐧 Linux: Zsh<br/>• Login via chsh -s $(which zsh)<br/>• Suporte nativo PAM e /etc/shells"]
+        MACOS["🍎 macOS: Zsh<br/>• Padrão nativo Apple desde Catalina<br/>• /bin/zsh de fábrica"]
+        FREEBSD["😈 FreeBSD: /bin/sh<br/>• Padrão soberano da base<br/>• NÃO usar chsh para /usr/local/bin/zsh<br/>• Previne lock out em single-user mode"]
+        OPENBSD["🐡 OpenBSD: /bin/ksh<br/>• PD-KSH auditado da base<br/>• Segurança radical (pledge/unveil)"]
+        ILLUMOS["☀️ illumos: /bin/ksh<br/>• Ksh93 padrão System V Solaris<br/>• Integração nativa pfexec"]
+        MSYS2["🪟 Windows MSYS2: Zsh<br/>• chsh NÃO funciona (sem PAM/libc UNIX)<br/>• Configuração via .ini (SHELL=/usr/bin/zsh)"]
+    end
+```
+
+### 1. 🐧 Linux (Desktop / Servidor)
+
+- **Shell Padrão:** `zsh`.
+- **Mecanismo:** `chsh -s "$(command -v zsh)"` (altera o campo 7 em `/etc/passwd`).
+- **Justificativa:** O Linux possui suporte pleno a PAM (`pam_shells.so`), registros consolidados em `/etc/shells` e ecossistema robusto. É perfeitamente seguro e desejável definir o Zsh como shell de login interativo principal.
+
+### 2. 🍎 macOS (Darwin / Mach)
+
+- **Shell Padrão:** `zsh`.
+- **Mecanismo:** Nativo de fábrica pela Apple (`/bin/zsh`) desde o macOS Catalina (10.15).
+- **Justificativa:** O Zsh já é o shell padrão configurado no Open Directory (`dscl . -read /Users/$USER UserShell`), dispensando comandos manuais.
+
+### 3. 😈 FreeBSD (Workstation & Server)
+
+- **Shell Padrão:** `/bin/sh` (com `libedit`).
+- **Por que NÃO usar `chsh` para `/usr/local/bin/zsh`?**
+    - No FreeBSD, o sistema base é estritamente segregado dos pacotes externos. A base reside em `/bin` e `/sbin`, enquanto pacotes adicionais (`pkg`) vão para `/usr/local/bin`.
+    - Frequentemente, `/usr` ou `/usr/local` residem em datasets ZFS ou partições que podem não estar montadas durante uma recuperação ou modo monousuário (_single-user mode_ / emergência).
+    - Se a conta do usuário ou do `root` tiver seu shell de login configurado para `/usr/local/bin/zsh` no `/etc/passwd` e o `/usr/local` falhar ao montar, **o sistema entra em bloqueio imediato (_lock out_), impedindo qualquer login**.
+    - O `/bin/sh` do FreeBSD é moderno, ultrarrápido e integra edição de linha e histórico via `libedit`. Ele é a âncora de segurança e estabilidade da máquina. O Zsh pode ser lançado sob demanda ou como sessão interativa do terminal gráfico, mas o shell de login na base permanece `/bin/sh`.
+
+### 4. 🐡 OpenBSD (Segurança Pragmática)
+
+- **Shell Padrão:** `/bin/ksh` (Public Domain Korn Shell).
+- **Justificativa:** Segue a mesma filosofia de robustez do FreeBSD: o `/bin/ksh` faz parte da base auditada e imutável sob `pledge(2)` e `unveil(2)`. Pacotes em `/usr/local/bin` não devem ser requisitos para entrar no sistema em caso de falha de disco.
+
+### 5. ☀️ illumos (OpenIndiana / SmartOS / OmniOS)
+
+- **Shell Padrão:** `/bin/ksh` (Ksh93).
+- **Justificativa:** Herança direta do Unix System V e Solaris. O ecossistema administrativo, scripts de inicialização SMF e wrappers de privilégios (`pfexec`) operam nativamente ao redor do Ksh.
+
+### 6. 🪟 Windows MSYS2 (UCRT64)
+
+- **Shell Padrão:** `zsh` (ou `bash`).
+- **Por que o `chsh` NÃO funciona?**
+    - O MSYS2 é uma camada de emulação POSIX rodando sobre as APIs do Windows NT Win32. Ele não possui daemon `login`, autenticação PAM, nem `/etc/passwd` nativo do kernel.
+    - O utilitário `chsh` não existe no subsistema ou não surte efeito sobre novos processos de console instanciados pelo Windows.
+- **Como configurar:** A definição do shell padrão no MSYS2 é declarativa:
+    - Nos arquivos `.ini` da raiz do MSYS2 (`/ucrt64.ini`, `/clang64.ini`, `/msys2.ini`):
+        ```ini
+        SHELL=/usr/bin/zsh
+        ```
+    - Nas configurações do Windows Terminal ou Mintty, passando o argumento `-shell /usr/bin/zsh`.

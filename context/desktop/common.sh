@@ -488,6 +488,54 @@ if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 
 	export ELECTRON_OZONE_PLATFORM_HINT="auto"
 	export _JAVA_AWT_WM_NONREPARENTING=1
+
+	_default_cursor_paths="${HOME}/.local/share/icons:${HOME}/.icons:/usr/local/share/icons:/usr/share/icons"
+	case ":${XCURSOR_PATH:-}:" in
+		*":/usr/local/share/icons:"*) ;;
+		*) export XCURSOR_PATH="${XCURSOR_PATH:+${XCURSOR_PATH}:}${_default_cursor_paths}" ;;
+	esac
+	unset _default_cursor_paths
+
+	if [ -z "${XCURSOR_THEME:-}" ] || [ -z "${XCURSOR_SIZE:-}" ]; then
+		_cursor_theme=""
+		_cursor_size=""
+
+		if [ -z "${_cursor_theme}" ] && [ -f "${HOME}/.icons/default/index.theme" ]; then
+			_cursor_theme=$(awk -F= '/^[[:space:]]*Inherits[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.icons/default/index.theme" 2> "/dev/null")
+		fi
+
+		if [ -z "${_cursor_theme}" ] && [ -f "${HOME}/.config/kcminputrc" ]; then
+			_cursor_theme=$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")
+			[ -z "${_cursor_size}" ] && _cursor_size=$(awk -F= '/^[[:space:]]*cursorSize[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")
+		fi
+		if [ -z "${_cursor_theme}" ] && [ -f "${HOME}/.config/kdedefaults/kcminputrc" ]; then
+			_cursor_theme=$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kdedefaults/kcminputrc" 2> "/dev/null")
+		fi
+
+		if [ -z "${_cursor_theme}" ] && [ -f "${HOME}/.config/gtk-4.0/settings.ini" ]; then
+			_cursor_theme=$(awk -F= '/^[[:space:]]*gtk-cursor-theme-name[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/gtk-4.0/settings.ini" 2> "/dev/null")
+			[ -z "${_cursor_size}" ] && _cursor_size=$(awk -F= '/^[[:space:]]*gtk-cursor-theme-size[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/gtk-4.0/settings.ini" 2> "/dev/null")
+		fi
+
+		if [ -z "${_cursor_theme}" ] && command -v gsettings > "/dev/null" 2>&1; then
+			_cursor_theme=$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")
+			[ -z "${_cursor_size}" ] && _cursor_size=$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")
+		fi
+
+		if [ -z "${_cursor_theme}" ]; then
+			case "${XDG_CURRENT_DESKTOP:-}" in
+				*KDE*)   _cursor_theme="breeze_cursors" ;;
+				*GNOME*) _cursor_theme="Adwaita" ;;
+				*)       _cursor_theme="default" ;;
+			esac
+		fi
+
+		[ -z "${_cursor_size}" ] && _cursor_size="24"
+
+		[ -z "${XCURSOR_THEME:-}" ] && export XCURSOR_THEME="${_cursor_theme}"
+		[ -z "${XCURSOR_SIZE:-}" ] && export XCURSOR_SIZE="${_cursor_size}"
+		unset _cursor_theme _cursor_size
+	fi
 fi
 
 ### --------------------------------

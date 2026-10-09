@@ -97,7 +97,7 @@ _rg_bin="${_DETECTED_RG:-$(_detect_rg)}"
 ### --------------------------------
 unalias ls 2> "/dev/null" || true
 eval 'ls() {
-	if [ -t 1 ] && ! _is_raw_tty; then
+	if [ -t 0 ] && [ -t 1 ] && ! _is_raw_tty; then
 		local _eza_cmd="${_DETECTED_EZA:-$(_detect_eza)}"
 		case "${_eza_cmd}" in
 			*eza)
@@ -156,9 +156,12 @@ unset _ls_l _ls_ll _ls_la _eza_bin
 ### --------------------------------
 unalias grep 2> "/dev/null" || true
 eval 'grep() {
-	if [ -t 1 ] && ! _is_raw_tty; then
+	if [ -t 0 ] && [ -t 1 ] && ! _is_raw_tty; then
 		local _rg_cmd="${_DETECTED_RG:-$(_detect_rg)}"
 		if [ -n "${_rg_cmd}" ]; then
+			case "$*" in
+				*"-E "*|*"-E") command grep --color=auto "$@" ; return $? ;;
+			esac
 			command "${_rg_cmd}" --smart-case "$@"
 			return $?
 		fi
@@ -184,7 +187,7 @@ unset _rg_bin
 ### --------------------------------
 unalias cat 2> "/dev/null" || true
 eval 'cat() {
-	if [ -t 1 ] && ! _is_raw_tty; then
+	if [ -t 0 ] && [ -t 1 ] && ! _is_raw_tty; then
 		local _bat_cmd="${_DETECTED_BAT:-$(_detect_bat)}"
 		if [ -n "${_bat_cmd}" ]; then
 			command "${_bat_cmd}" --paging=never "$@"
@@ -339,6 +342,8 @@ alias upmodes="update-emacs-modes"
 alias uprc="update-profile"
 alias upprofile="update-profile"
 alias upgit="update-git"
+alias plgit="pull-git"
+alias psgit="push-git"
 alias resh="reinstall-shell"
 alias ccache="clean-cache"
 alias cleancache="clean-cache"
