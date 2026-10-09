@@ -16,6 +16,7 @@ O **Universal Shell Environment** adota uma convenção estrita de nomenclatura 
 | `update-editors` / `uped`             | Atualiza as configurações residentes ativas dos editores (`~/.emacs.d`, `~/.config/nvim`, etc.).                | Universal             |
 | `update-emacs-modes` / `upmodes`      | Sincroniza diretamente os submódulos Elisp locais (`~/.emacs.d/usr/local/*`) com o upstream remoto.             | Universal             |
 | `update-profile` / `uprc`             | Atualiza o repositório do profile (`~/.config/profile`), reaplica dotfiles/skills e recarrega `~/.profile`.     | Universal             |
+| `sync-extensions` / `upext`           | Sincroniza em lote ou exporta extensões declaradas de IDE (VS Code, Antigravity, VSCodium).                     | Universal             |
 | `reinstall-shell` / `resh`            | Reexecuta o instalador `install.sh` preservando o contexto ativo (`desktop`, `server`, etc.).                   | Universal             |
 | `update-vault` / `upvt`               | Sincroniza o repositório do cofre (`~/.vault`) e recarrega chaves e variáveis.                                  | Linux, FreeBSD, macOS |
 | `bench-shell` / `bsh` / `shell-bench` | Mede a latência de inicialização dos shells (`zsh`, `bash`, `sh`) e módulos isolados.                           | Universal             |

@@ -55,20 +55,53 @@ update-vault() {
 		_target="/usr/local/share/vault"
 	fi
 
-	if [ -n "${_target}" ]; then
-		_ui_step "Atualizando Universal Vault em ${_target}..."
-		_ui_sub "Sincronizando com o upstream com autoproteção..."
-		if command -v _git_pull_resilient > "/dev/null" 2>&1; then
-			_git_pull_resilient "${_target}" || _ui_warn "Falha ao sincronizar ${_target}"
-		fi
-		_ui_ok "Universal Vault atualizado com sucesso!"
-		_ui_info "Recarregando ambiente do shell..."
-		_rc_name="$(_detect_enabled_shell --name 2> "/dev/null" || echo "sh")"
-		[ -f "${HOME}/.${_rc_name}rc" ] && . "${HOME}/.${_rc_name}rc" 2> "/dev/null" || true
-		unset _rc_name
-	else
+	if [ -z "${_target}" ]; then
 		_ui_info "Nenhum repositório de Vault encontrado em ~/.local/share/vault, ~/.config/vault ou ~/.vault."
+		return 1
 	fi
-	unset _target
+
+	_v_mode="update"
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--status|-s)  _v_mode="status" ;;
+			--keys|-k)    _v_mode="keys" ;;
+			--perms|-p)   _v_mode="perms" ;;
+			--dry-run|-n) _v_mode="dry-run" ;;
+		esac
+	done
+
+	if [ "${_v_mode}" = "status" ]; then
+		_ui_step "Auditando Universal Vault em ${_target}..."
+		command -v vault-status > "/dev/null" 2>&1 && vault-status || git -C "${_target}" status -s
+		return 0
+	elif [ "${_v_mode}" = "keys" ]; then
+		_ui_step "Recarregando chaves SSH do Vault..."
+		command -v vault-keys > "/dev/null" 2>&1 && vault-keys || _ui_warn "vault-keys indisponível"
+		return 0
+	elif [ "${_v_mode}" = "perms" ]; then
+		_ui_step "Auto-curando permissões do Vault (0700/0600)..."
+		command -v vault-perms > "/dev/null" 2>&1 && vault-perms || _ui_warn "vault-perms indisponível"
+		return 0
+	elif [ "${_v_mode}" = "dry-run" ]; then
+		_ui_sub "[DRY-RUN PULL] ${_target}"
+		return 0
+	fi
+
+	_ui_step "Atualizando Universal Vault em ${_target}..."
+	_ui_sub "Sincronizando com o upstream com autoproteção..."
+	if command -v _git_pull_resilient > "/dev/null" 2>&1; then
+		_git_pull_resilient "${_target}" || _ui_warn "Falha ao sincronizar ${_target}"
+	else
+		git -C "${_target}" pull || _ui_warn "Falha ao sincronizar ${_target}"
+	fi
+
+	command -v vault-perms > "/dev/null" 2>&1 && vault-perms > "/dev/null" 2>&1 || true
+	command -v vault-keys > "/dev/null" 2>&1 && vault-keys > "/dev/null" 2>&1 || true
+
+	_ui_ok "Universal Vault atualizado com sucesso!"
+	_ui_info "Recarregando ambiente do shell..."
+	_rc_name="$(_detect_enabled_shell --name 2> "/dev/null" || echo "sh")"
+	[ -f "${HOME}/.${_rc_name}rc" ] && . "${HOME}/.${_rc_name}rc" 2> "/dev/null" || true
+	unset _target _v_mode _arg _rc_name
 }
 alias upvt="update-vault"

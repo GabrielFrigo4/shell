@@ -219,33 +219,57 @@ update-shell() {
 		_target="${SHELL_REPO_DIR}"
 	fi
 
-	if [ -n "${_target}" ] && [ -d "${_target}" ]; then
-		_ui_step "Atualizando repositório do Universal Shell em ${_target}..."
-		_ui_sub "Sincronizando com o upstream com autoproteção contra conflitos..."
-		_git_pull_resilient "${_target}" || _ui_warn "Falha ao sincronizar ${_target}"
-
-		if [ -d "${OSH:-${HOME}/.oh-my-bash}" ]; then
-			_ui_sub "Atualizando Oh-My-Bash..."
-			_git_pull_resilient "${OSH:-${HOME}/.oh-my-bash}" 2> "/dev/null" || true
-		fi
-		if [ -d "${ZSH:-${HOME}/.oh-my-zsh}" ]; then
-			_ui_sub "Atualizando Oh-My-Zsh..."
-			_git_pull_resilient "${ZSH:-${HOME}/.oh-my-zsh}" 2> "/dev/null" || true
-		fi
-		command -v _cache_clean > "/dev/null" 2>&1 && _cache_clean || true
-		_ui_ok "Universal Shell atualizado com sucesso!"
-		_ui_info "Recarregando ambiente do shell..."
-		if [ -n "${ZSH_VERSION:-}" ] && [ -f "${HOME}/.zshrc" ]; then
-			. "${HOME}/.zshrc" 2> "/dev/null" || true
-		elif [ -n "${BASH_VERSION:-}" ] && [ -f "${HOME}/.bashrc" ]; then
-			. "${HOME}/.bashrc" 2> "/dev/null" || true
-		elif [ -f "${HOME}/.$(_detect_enabled_shell --name 2> "/dev/null")rc" ]; then
-			. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
-		fi
-	else
+	if [ -z "${_target}" ] || [ ! -d "${_target}" ]; then
 		_ui_info "Nenhum repositório de shell encontrado em /usr/local/share/shell, ~/.local/share/shell, ~/.config/shell ou ~/.shell."
+		return 1
 	fi
-	unset _target
+
+	_sh_mode="update"
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--status|-s)  _sh_mode="status" ;;
+			--dry-run|-n) _sh_mode="dry-run" ;;
+		esac
+	done
+
+	if [ "${_sh_mode}" = "status" ]; then
+		_ui_step "Auditando repositório do Universal Shell em ${_target}..."
+		_br="$(git -C "${_target}" branch --show-current 2> "/dev/null" || echo "detached")"
+		_st="$(git -C "${_target}" status -s 2> "/dev/null" || true)"
+		if [ -n "${_st}" ]; then
+			_ui_warn "Universal Shell [${_br}]: alterações pendentes em ${_target}"
+		else
+			_ui_ok "Universal Shell [${_br}]: limpo e sincronizado"
+		fi
+		return 0
+	elif [ "${_sh_mode}" = "dry-run" ]; then
+		_ui_sub "[DRY-RUN PULL] ${_target}"
+		return 0
+	fi
+
+	_ui_step "Atualizando repositório do Universal Shell em ${_target}..."
+	_ui_sub "Sincronizando com o upstream com autoproteção contra conflitos..."
+	_git_pull_resilient "${_target}" || _ui_warn "Falha ao sincronizar ${_target}"
+
+	if [ -d "${OSH:-${HOME}/.oh-my-bash}" ]; then
+		_ui_sub "Atualizando Oh-My-Bash..."
+		_git_pull_resilient "${OSH:-${HOME}/.oh-my-bash}" 2> "/dev/null" || true
+	fi
+	if [ -d "${ZSH:-${HOME}/.oh-my-zsh}" ]; then
+		_ui_sub "Atualizando Oh-My-Zsh..."
+		_git_pull_resilient "${ZSH:-${HOME}/.oh-my-zsh}" 2> "/dev/null" || true
+	fi
+	command -v _cache_clean > "/dev/null" 2>&1 && _cache_clean || true
+	_ui_ok "Universal Shell atualizado com sucesso!"
+	_ui_info "Recarregando ambiente do shell..."
+	if [ -n "${ZSH_VERSION:-}" ] && [ -f "${HOME}/.zshrc" ]; then
+		. "${HOME}/.zshrc" 2> "/dev/null" || true
+	elif [ -n "${BASH_VERSION:-}" ] && [ -f "${HOME}/.bashrc" ]; then
+		. "${HOME}/.bashrc" 2> "/dev/null" || true
+	elif [ -f "${HOME}/.$(_detect_enabled_shell --name 2> "/dev/null")rc" ]; then
+		. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
+	fi
+	unset _target _sh_mode _arg _br _st
 }
 
 ### --------------------------------
@@ -253,7 +277,23 @@ update-shell() {
 ### --------------------------------
 update-editors() {
 	_found=0
-	_ui_step "Atualizando a Suíte de Editores..."
+	_ed_mode="update"
+	_with_ext=0
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--status|-s)     _ed_mode="status" ;;
+			--dry-run|-n)    _ed_mode="dry-run" ;;
+			--extensions|-e) _with_ext=1 ;;
+		esac
+	done
+
+	if [ "${_ed_mode}" = "status" ]; then
+		_ui_step "Auditando Suíte de Editores..."
+	elif [ "${_ed_mode}" = "dry-run" ]; then
+		_ui_step "Simulando atualização da Suíte de Editores..."
+	else
+		_ui_step "Atualizando a Suíte de Editores..."
+	fi
 
 	for _editor in Emacs Helix NeoVim Vim; do
 		_target=""
@@ -289,30 +329,47 @@ update-editors() {
 		esac
 
 		if [ -n "${_target}" ]; then
-			_ui_sub "Atualizando ${_editor} em ${_target}..."
-			if _git_pull_resilient "${_target}"; then
-				_ui_ok "${_editor} atualizado com sucesso!"
-			else
-				_ui_warn "${_editor}: sincronização falhou."
-			fi
-			if [ "${_editor}" = "Emacs" ] && [ -f "${_target}/.gitmodules" ]; then
-				_ui_sub "Sincronizando submódulos Elisp locais em ${_target}..."
-				if git -C "${_target}" submodule update --init --recursive --remote --merge > "/dev/null" 2>&1; then
-					_ui_ok "Submódulos Elisp atualizados com sucesso!"
+			if [ "${_ed_mode}" = "status" ]; then
+				_br="$(git -C "${_target}" branch --show-current 2> "/dev/null" || echo "detached")"
+				_st="$(git -C "${_target}" status -s 2> "/dev/null" || true)"
+				if [ -n "${_st}" ]; then
+					_ui_warn "${_editor} em ${_target} [${_br}]: alterações pendentes"
 				else
-					_ui_warn "Falha na sincronização dos submódulos Elisp com upstream."
+					_ui_ok "${_editor} em ${_target} [${_br}]: limpo"
+				fi
+			elif [ "${_ed_mode}" = "dry-run" ]; then
+				_ui_sub "[DRY-RUN PULL] ${_editor} -> ${_target}"
+			else
+				_ui_sub "Atualizando ${_editor} em ${_target}..."
+				if _git_pull_resilient "${_target}"; then
+					_ui_ok "${_editor} atualizado com sucesso!"
+				else
+					_ui_warn "${_editor}: sincronização falhou."
+				fi
+				if [ "${_editor}" = "Emacs" ] && [ -f "${_target}/.gitmodules" ]; then
+					_ui_sub "Sincronizando submódulos Elisp locais em ${_target}..."
+					if git -C "${_target}" submodule update --init --recursive --remote --merge > "/dev/null" 2>&1; then
+						_ui_ok "Submódulos Elisp atualizados com sucesso!"
+					else
+						_ui_warn "Falha na sincronização dos submódulos Elisp com upstream."
+					fi
 				fi
 			fi
 			_found=1
 		fi
 	done
 
+	if [ "${_with_ext}" -eq 1 ] && command -v sync-extensions > "/dev/null" 2>&1; then
+		echo ""
+		sync-extensions "$@"
+	fi
+
 	if [ "${_found}" -eq 0 ]; then
 		_ui_info "Nenhum repositório de editor encontrado nos caminhos canônicos (~/.emacs.d, ~/.config/nvim, ~/.config/helix, ~/.vim, ~/vimfiles)."
 	else
-		_ui_ok "Suíte de Editores sincronizada!"
+		_ui_ok "Suíte de Editores finalizada (${_ed_mode})!"
 	fi
-	unset _found _editor _target
+	unset _found _ed_mode _with_ext _editor _target _br _st _arg
 }
 
 ### --------------------------------
@@ -359,19 +416,30 @@ update-profile() {
 	fi
 
 	if [ -n "${_target}" ]; then
-		_ui_step "Atualizando Universal Profile em ${_target}..."
-		_ui_sub "Sincronizando com o upstream com autoproteção..."
-		if _git_pull_resilient "${_target}"; then
-			_ui_ok "Repositório Profile atualizado!"
-		else
-			_ui_warn "Profile: sincronização falhou."
+		_is_dry=0
+		_is_status=0
+		for _arg in "$@"; do
+			case "${_arg}" in
+				--dry-run|-n) _is_dry=1 ;;
+				--status|-s)  _is_status=1 ;;
+			esac
+		done
+
+		if [ "${_is_dry}" -eq 0 ] && [ "${_is_status}" -eq 0 ]; then
+			_ui_step "Atualizando Universal Profile em ${_target}..."
+			_ui_sub "Sincronizando com o upstream com autoproteção..."
+			if _git_pull_resilient "${_target}"; then
+				_ui_ok "Repositório Profile atualizado!"
+			else
+				_ui_warn "Profile: sincronização falhou."
+			fi
 		fi
 
 		if [ -f "${_target}/profile.sh" ]; then
 			_ui_sub "Executando sincronização via profile.sh..."
-			sh "${_target}/profile.sh" sync 2> "/dev/null" || true
+			sh "${_target}/profile.sh" sync "$@" || true
 		fi
-		_ui_ok "Universal Profile atualizado e sincronizado com sucesso!"
+		_ui_ok "Universal Profile finalizado com sucesso!"
 	else
 		_ui_info "Nenhum repositório Profile encontrado em ~/.local/share/profile, ~/.config/profile ou \$PROFILE_DIR."
 	fi
@@ -380,34 +448,121 @@ update-profile() {
 		_ui_info "Recarregando ${HOME}/.profile..."
 		. "${HOME}/.profile" > "/dev/null" 2>&1 || true
 	fi
-	unset _target
+	unset _target _is_dry _is_status _arg
 }
+
+### --------------------------------
+### Synchronize IDE Extensions
+### --------------------------------
+sync-extensions() {
+	_target_editor="auto"
+	_action="install"
+	_ext_flags=""
+
+	for _arg in "$@"; do
+		case "${_arg}" in
+			vscode|antigravity|vscodium) _target_editor="${_arg}" ;;
+			install|export|dump|status)  _action="${_arg}" ;;
+			--dry-run|-n)                _ext_flags="${_ext_flags} --dry-run" ;;
+			--force|-f)                  _ext_flags="${_ext_flags} --force" ;;
+		esac
+	done
+
+	_sync_script=""
+	if [ -n "${PROFILE_DIR:-}" ] && [ -f "${PROFILE_DIR}/profile.sh" ]; then
+		sh "${PROFILE_DIR}/profile.sh" extensions "${_action}" "${_target_editor}" ${_ext_flags}
+		return $?
+	fi
+
+	for _cand in \
+		"${HOME}/.local/share/profile/profile.sh" \
+		"${HOME}/.config/profile/profile.sh" \
+		"${SHELL_REPO_DIR:-}/../Profile/profile.sh" \
+		"${HOME}/Documents/Environment/Profile/profile.sh"; do
+		if [ -f "${_cand}" ]; then
+			_sync_script="${_cand}"
+			break
+		fi
+	done
+
+	if [ -n "${_sync_script}" ]; then
+		sh "${_sync_script}" extensions "${_action}" "${_target_editor}" ${_ext_flags}
+	elif [ -f "${SHELL_REPO_DIR:-}/../Setup/common/editors/sync-extensions.sh" ]; then
+		sh "${SHELL_REPO_DIR}/../Setup/common/editors/sync-extensions.sh" "${_target_editor}" "${_action}"
+	elif [ -f "${HOME}/.local/share/setup/common/editors/sync-extensions.sh" ]; then
+		sh "${HOME}/.local/share/setup/common/editors/sync-extensions.sh" "${_target_editor}" "${_action}"
+	else
+		_ui_warn "Mecanismo de sincronização de extensões não encontrado no Profile ou Setup."
+		return 1
+	fi
+	unset _target_editor _action _ext_flags _sync_script _cand _arg
+}
+alias update-extensions="sync-extensions"
+alias upext="sync-extensions"
 
 ### --------------------------------
 ### Update Git Repositories
 ### --------------------------------
 update-git() {
-	_target_root="${1:-${PWD}}"
+	_target_root="${PWD}"
+	_git_mode="pull"
+	_max_depth=3
+
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--status|-s)   _git_mode="status" ;;
+			--dry-run|-n)  _git_mode="dry-run" ;;
+			--depth=*)     _max_depth="${_arg#*=}" ;;
+			-*) ;;
+			*)
+				if [ -d "${_arg}" ]; then
+					_target_root="${_arg}"
+				fi
+				;;
+		esac
+	done
+
 	if [ ! -d "${_target_root}" ]; then
 		_ui_err "Diretório não encontrado: ${_target_root}"
 		return 1
 	fi
 
-	_ui_step "Buscando e atualizando repositórios Git em: ${_target_root}"
+	if [ "${_git_mode}" = "status" ]; then
+		_ui_step "Auditando status Git em: ${_target_root} (profundidade: ${_max_depth})"
+	elif [ "${_git_mode}" = "dry-run" ]; then
+		_ui_step "Simulando atualização Git em: ${_target_root} (profundidade: ${_max_depth})"
+	else
+		_ui_step "Buscando e atualizando repositórios Git em: ${_target_root}"
+	fi
 	echo ""
 
-	find "${_target_root}" -maxdepth 3 -name ".git" 2> "/dev/null" | \
+	find "${_target_root}" -maxdepth "${_max_depth}" -name ".git" 2> "/dev/null" | \
 		awk '{ n=split($0, a, "/"); print n, $0 }' | \
 		sort -n -k1,1 | \
 		cut -d' ' -f2- | while read -r _git_entry; do
 			_repo_dir="$(dirname "${_git_entry}")"
-			_ui_sub "Atualizando ${_repo_dir}..."
-			_git_pull_resilient "${_repo_dir}" || _ui_warn "Falha ao atualizar ${_repo_dir}"
+			if [ "${_git_mode}" = "status" ]; then
+				_branch="$(git -C "${_repo_dir}" branch --show-current 2> "/dev/null" || echo "detached")"
+				_st="$(git -C "${_repo_dir}" status -s 2> "/dev/null" || true)"
+				_ahead_behind="$(git -C "${_repo_dir}" rev-list --left-right --count HEAD...@{upstream} 2> "/dev/null" || true)"
+				if [ -n "${_st}" ] || [ -n "${_ahead_behind}" ]; then
+					_ui_warn "${_repo_dir} [${_branch}]: divergências locais ou remotas"
+					[ -n "${_ahead_behind}" ] && _ui_sub "  ↳ Commits (local/remote): ${_ahead_behind}"
+					[ -n "${_st}" ] && git -C "${_repo_dir}" status -s | head -n 5 | while read -r _s; do _ui_sub "    ${_s}"; done
+				else
+					_ui_ok "${_repo_dir} [${_branch}]: sincronizado e limpo"
+				fi
+			elif [ "${_git_mode}" = "dry-run" ]; then
+				_ui_sub "[DRY-RUN PULL] ${_repo_dir}"
+			else
+				_ui_sub "Atualizando ${_repo_dir}..."
+				_git_pull_resilient "${_repo_dir}" || _ui_warn "Falha ao atualizar ${_repo_dir}"
+			fi
 		done
 
 	echo ""
-	_ui_ok "Varredura e atualização de repositórios Git concluída!"
-	unset _target_root _git_entry _repo_dir
+	_ui_ok "Operação Git (${_git_mode}) concluída!"
+	unset _target_root _git_mode _max_depth _arg _git_entry _repo_dir _branch _st _ahead_behind
 }
 
 pull-git() {
@@ -418,26 +573,63 @@ pull-git() {
 ### Push Git Repositories
 ### --------------------------------
 push-git() {
-	_target_root="${1:-${PWD}}"
+	_target_root="${PWD}"
+	_git_mode="push"
+	_max_depth=3
+
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--status|-s)  _git_mode="status" ;;
+			--dry-run|-n) _git_mode="dry-run" ;;
+			--depth=*)    _max_depth="${_arg#*=}" ;;
+			-*) ;;
+			*)
+				if [ -d "${_arg}" ]; then
+					_target_root="${_arg}"
+				fi
+				;;
+		esac
+	done
+
 	if [ ! -d "${_target_root}" ]; then
 		_ui_err "Diretório não encontrado: ${_target_root}"
 		return 1
 	fi
 
-	_ui_step "Buscando e enviando repositórios Git em: ${_target_root}"
+	if [ "${_git_mode}" = "status" ]; then
+		_ui_step "Auditando commits pendentes de envio em: ${_target_root}"
+	elif [ "${_git_mode}" = "dry-run" ]; then
+		_ui_step "Simulando push de repositórios Git em: ${_target_root}"
+	else
+		_ui_step "Buscando e enviando repositórios Git em: ${_target_root}"
+	fi
 	echo ""
 
-	find "${_target_root}" -maxdepth 3 -name ".git" 2> "/dev/null" | \
+	find "${_target_root}" -maxdepth "${_max_depth}" -name ".git" 2> "/dev/null" | \
 		awk '{ n=split($0, a, "/"); print n, $0 }' | \
 		sort -nr -k1,1 | \
 		cut -d' ' -f2- | while read -r _git_entry; do
 			_repo_dir="$(dirname "${_git_entry}")"
-			_git_push_resilient "${_repo_dir}" || _ui_warn "Falha ao enviar ${_repo_dir}"
+			_unpushed="$(git -C "${_repo_dir}" cherry -v 2> "/dev/null" || true)"
+			_branch="$(git -C "${_repo_dir}" branch --show-current 2> "/dev/null" || echo "detached")"
+			if [ -n "${_unpushed}" ]; then
+				if [ "${_git_mode}" = "status" ]; then
+					_ui_warn "${_repo_dir} [${_branch}]: commits pendentes de envio"
+					echo "${_unpushed}" | while read -r _c; do _ui_sub "  ↳ ${_c}"; done
+				elif [ "${_git_mode}" = "dry-run" ]; then
+					_ui_sub "[DRY-RUN PUSH] ${_repo_dir} (${_branch})"
+				else
+					_ui_sub "Enviando ${_repo_dir} (${_branch})..."
+					_git_push_resilient "${_repo_dir}" || _ui_warn "Falha ao enviar ${_repo_dir}"
+				fi
+			else
+				[ "${_git_mode}" = "status" ] && _ui_ok "${_repo_dir} [${_branch}]: nada a enviar"
+			fi
 		done
 
 	echo ""
-	_ui_ok "Varredura e envio de repositórios Git concluídos!"
-	unset _target_root _git_entry _repo_dir
+	_ui_ok "Operação Push Git (${_git_mode}) concluída!"
+	unset _target_root _git_mode _max_depth _arg _git_entry _repo_dir _unpushed _branch _c
 }
 
 ### --------------------------------
@@ -792,32 +984,43 @@ update-system() {
 ### Update All Packages
 ### --------------------------------
 update-all() {
-	_ui_banner "Iniciando Atualização Geral do Ecossistema"
-	update-system "$@"
+	_is_query=0
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--status|-s|--dry-run|-n) _is_query=1 ;;
+		esac
+	done
 
-	if command -v paru > "/dev/null" 2>&1 || command -v yay > "/dev/null" 2>&1; then
-		echo ""
-		update-aur "$@" && _ui_ok "Pacotes AUR atualizados!"
-	fi
+	if [ "${_is_query}" -eq 1 ]; then
+		_ui_banner "Diagnóstico & Auditoria Global do Ecossistema"
+	else
+		_ui_banner "Iniciando Atualização Geral do Ecossistema"
+		update-system "$@"
 
-	if [ "$(_detect_os)" != "macos" ] && command -v brew > "/dev/null" 2>&1; then
-		echo ""
-		update-brew "$@" && _ui_ok "Pacotes Linuxbrew atualizados!"
-	fi
+		if command -v paru > "/dev/null" 2>&1 || command -v yay > "/dev/null" 2>&1; then
+			echo ""
+			update-aur "$@" && _ui_ok "Pacotes AUR atualizados!"
+		fi
 
-	if command -v flatpak > "/dev/null" 2>&1; then
-		echo ""
-		update-flatpak "$@" && _ui_ok "Pacotes Flatpak atualizados!"
-	fi
+		if [ "$(_detect_os)" != "macos" ] && command -v brew > "/dev/null" 2>&1; then
+			echo ""
+			update-brew "$@" && _ui_ok "Pacotes Linuxbrew atualizados!"
+		fi
 
-	if command -v snap > "/dev/null" 2>&1; then
-		echo ""
-		update-snap "$@" && _ui_ok "Pacotes Snap atualizados!"
-	fi
+		if command -v flatpak > "/dev/null" 2>&1; then
+			echo ""
+			update-flatpak "$@" && _ui_ok "Pacotes Flatpak atualizados!"
+		fi
 
-	if command -v mas > "/dev/null" 2>&1; then
-		echo ""
-		update-mas "$@" && _ui_ok "Pacotes Mac App Store atualizados!"
+		if command -v snap > "/dev/null" 2>&1; then
+			echo ""
+			update-snap "$@" && _ui_ok "Pacotes Snap atualizados!"
+		fi
+
+		if command -v mas > "/dev/null" 2>&1; then
+			echo ""
+			update-mas "$@" && _ui_ok "Pacotes Mac App Store atualizados!"
+		fi
 	fi
 
 	if [ -e "${HOME}/.local/share/shell/.git" ] || [ -e "${HOME}/.config/shell/.git" ] || [ -e "/usr/local/share/shell/.git" ] || [ -e "${HOME}/.shell/.git" ]; then
@@ -840,7 +1043,12 @@ update-all() {
 		update-profile "$@"
 	fi
 
-	_ui_banner "Atualização Geral Concluída com Sucesso!"
+	if [ "${_is_query}" -eq 1 ]; then
+		_ui_banner "Diagnóstico & Auditoria Global Concluídos!"
+	else
+		_ui_banner "Atualização Geral Concluída com Sucesso!"
+	fi
+	unset _is_query _arg
 }
 
 ### --------------------------------
