@@ -415,9 +415,17 @@ _detect_gtk_theme() {
 	case "${_desktop_env}" in
 		kde)
 			if [ "${_color_scheme}" = "dark" ]; then
-				_DETECTED_GTK_THEME="Breeze-Dark"
+				if [ -d "/usr/local/share/themes/Breeze-Dark" ] || [ -d "/usr/share/themes/Breeze-Dark" ] || [ -d "${HOME}/.themes/Breeze-Dark" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/Breeze-Dark" ]; then
+					_DETECTED_GTK_THEME="Breeze-Dark"
+				else
+					_DETECTED_GTK_THEME="Adwaita:dark"
+				fi
 			else
-				_DETECTED_GTK_THEME="Breeze"
+				if [ -d "/usr/local/share/themes/Breeze" ] || [ -d "/usr/share/themes/Breeze" ] || [ -d "${HOME}/.themes/Breeze" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/Breeze" ]; then
+					_DETECTED_GTK_THEME="Breeze"
+				else
+					_DETECTED_GTK_THEME="Adwaita"
+				fi
 			fi
 			;;
 		gnome)
@@ -425,13 +433,13 @@ _detect_gtk_theme() {
 			;;
 		*)
 			if [ "${_color_scheme}" = "dark" ]; then
-				if [ -d "/usr/share/themes/adw-gtk3-dark" ] || [ -d "${HOME}/.themes/adw-gtk3-dark" ]; then
+				if [ -d "/usr/local/share/themes/adw-gtk3-dark" ] || [ -d "/usr/share/themes/adw-gtk3-dark" ] || [ -d "${HOME}/.themes/adw-gtk3-dark" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/adw-gtk3-dark" ]; then
 					_DETECTED_GTK_THEME="adw-gtk3-dark"
 				else
 					_DETECTED_GTK_THEME="Adwaita:dark"
 				fi
 			else
-				if [ -d "/usr/share/themes/adw-gtk3" ] || [ -d "${HOME}/.themes/adw-gtk3" ]; then
+				if [ -d "/usr/local/share/themes/adw-gtk3" ] || [ -d "/usr/share/themes/adw-gtk3" ] || [ -d "${HOME}/.themes/adw-gtk3" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/adw-gtk3" ]; then
 					_DETECTED_GTK_THEME="adw-gtk3"
 				else
 					_DETECTED_GTK_THEME="Adwaita"
