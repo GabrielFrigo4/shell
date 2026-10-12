@@ -42,6 +42,26 @@ unset _ssh_cache
 ### Update Vault
 ### --------------------------------
 update-vault() {
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--help|-h)
+				cat <<- 'EOF'
+				Uso: update-vault [opções] (alias: upvt)
+
+				Atualiza o repositório Universal Vault e mantém permissões e chaves seguras.
+
+				Opções:
+				  -s, --status    Audita o status Git do cofre ou executa vault-status
+				  -k, --keys      Recarrega as chaves SSH do Vault no ssh-agent
+				  -p, --perms     Auto-cura permissões restritas (0700/0600)
+				  -n, --dry-run   Simula o pull sem aplicar alterações
+				  -h, --help      Exibe esta ajuda
+				EOF
+				return 0
+				;;
+		esac
+	done
+
 	_target=""
 	if [ -n "${VAULT_DIR:-}" ] && [ -d "${VAULT_DIR}/.git" ]; then
 		_target="${VAULT_DIR}"

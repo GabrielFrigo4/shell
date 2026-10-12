@@ -204,6 +204,24 @@ _git_push_resilient() {
 ### Update Shell
 ### --------------------------------
 update-shell() {
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--help|-h)
+				cat <<- 'EOF'
+				Uso: update-shell [opções] (alias: upsh)
+
+				Atualiza o repositório Universal Shell via git pull resiliente e recarrega o ambiente.
+
+				Opções:
+				  -s, --status    Audita o status do repositório Git local sem puxar
+				  -n, --dry-run   Simula a sincronização sem efetuar pull
+				  -h, --help      Exibe esta ajuda
+				EOF
+				return 0
+				;;
+		esac
+	done
+
 	_target=""
 	if [ -n "${SHELL_REPO_DIR:-}" ] && [ -e "${SHELL_REPO_DIR}/.git" ]; then
 		_target="${SHELL_REPO_DIR}"
@@ -276,6 +294,25 @@ update-shell() {
 ### Update Editors
 ### --------------------------------
 update-editors() {
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--help|-h)
+				cat <<- 'EOF'
+				Uso: update-editors [opções] (alias: uped)
+
+				Atualiza os repositórios da Suíte de Editores (Emacs, Helix, NeoVim, Vim).
+
+				Opções:
+				  -s, --status        Audita o status Git de cada editor instalado
+				  -n, --dry-run       Simula a sincronização sem puxar alterações
+				  -e, --extensions    Sincroniza também as extensões declarativas de IDE
+				  -h, --help          Exibe esta ajuda
+				EOF
+				return 0
+				;;
+		esac
+	done
+
 	_found=0
 	_ed_mode="update"
 	_with_ext=0
@@ -402,6 +439,27 @@ update-emacs-modes() {
 ### Update Profile
 ### --------------------------------
 update-profile() {
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--help|-h)
+				cat <<- 'EOF'
+				Uso: update-profile [opções] [argumentos-do-profile.sh] (alias: uprc, upprofile)
+
+				Atualiza o repositório Universal Profile e executa sincronização de dotfiles.
+
+				Opções:
+				  -s, --status        Audita o status e compara divergências (drift)
+				  -n, --dry-run       Simula a sincronização sem alterar arquivos
+				  -b, --backup        Cria backup (.bak) antes de substituir arquivos
+				  -e, --extensions    Sincroniza extensões declarativas de IDE
+				  --pull              Reconcilia alterações do sistema de volta ao Git
+				  -h, --help          Exibe esta ajuda
+				EOF
+				return 0
+				;;
+		esac
+	done
+
 	_target=""
 	if [ -n "${PROFILE_DIR:-}" ] && [ -e "${PROFILE_DIR}/.git" ]; then
 		_target="${PROFILE_DIR}"
@@ -455,6 +513,32 @@ update-profile() {
 ### Synchronize IDE Extensions
 ### --------------------------------
 sync-extensions() {
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--help|-h)
+				cat <<- 'EOF'
+				Uso: sync-extensions [editor] [ação] [opções] (alias: upext, update-extensions)
+
+				Sincroniza extensões declarativas de IDE (VS Code, VSCodium, Antigravity).
+
+				Editores:
+				  auto (padrão), vscode, vscodium, antigravity
+
+				Ações:
+				  install (padrão)    Instala extensões listadas no manifesto declarativo
+				  export, dump        Exporta extensões instaladas para o manifesto
+				  status              Audita e compara extensões instaladas com o manifesto
+
+				Opções:
+				  -n, --dry-run       Simula a ação sem modificar nada
+				  -f, --force         Força reinstalação de extensões já presentes
+				  -h, --help          Exibe esta ajuda
+				EOF
+				return 0
+				;;
+		esac
+	done
+
 	_target_editor="auto"
 	_action="install"
 	_ext_flags=""
@@ -504,6 +588,28 @@ alias upext="sync-extensions"
 ### Update Git Repositories
 ### --------------------------------
 update-git() {
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--help|-h)
+				cat <<- 'EOF'
+				Uso: update-git [diretório] [opções] (alias: upgit, plgit, pull-git)
+
+				Localiza e atualiza repositórios Git recursivamente com proteção resiliente.
+
+				Argumentos:
+				  diretório           Diretório raiz da busca (padrão: diretório atual)
+
+				Opções:
+				  -s, --status        Audita status de branches, commits divergentes e alterações
+				  -n, --dry-run       Simula a sincronização sem efetuar git pull
+				  --depth=N           Profundidade máxima de busca no diretório (padrão: 3)
+				  -h, --help          Exibe esta ajuda
+				EOF
+				return 0
+				;;
+		esac
+	done
+
 	_target_root="${PWD}"
 	_git_mode="pull"
 	_max_depth=3
@@ -577,11 +683,36 @@ update-git() {
 pull-git() {
 	update-git "$@"
 }
+alias plgit="update-git"
+alias upgit="update-git"
+alias pull-git="update-git"
 
 ### --------------------------------
 ### Push Git Repositories
 ### --------------------------------
 push-git() {
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--help|-h)
+				cat <<- 'EOF'
+				Uso: push-git [diretório] [opções] (alias: psgit)
+
+				Localiza repositórios Git recursivamente e envia commits pendentes upstream.
+
+				Argumentos:
+				  diretório           Diretório raiz da busca (padrão: diretório atual)
+
+				Opções:
+				  -s, --status        Audita commits locais pendentes de envio (cherry -v)
+				  -n, --dry-run       Simula o push sem enviar commits
+				  --depth=N           Profundidade máxima de busca no diretório (padrão: 3)
+				  -h, --help          Exibe esta ajuda
+				EOF
+				return 0
+				;;
+		esac
+	done
+
 	_target_root="${PWD}"
 	_git_mode="push"
 	_max_depth=3
@@ -640,6 +771,7 @@ push-git() {
 	_ui_ok "Operação Push Git (${_git_mode}) concluída!"
 	unset _target_root _git_mode _max_depth _arg _git_entry _repo_dir _unpushed _branch _c
 }
+alias psgit="push-git"
 
 ### --------------------------------
 ### Reinstall Shell
@@ -993,6 +1125,31 @@ update-system() {
 ### Update All Packages
 ### --------------------------------
 update-all() {
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--help|-h)
+				cat <<- 'EOF'
+				Uso: update-all [opções] (alias: upall)
+
+				Atualização geral e coordenada de todo o ecossistema e pacotes do sistema.
+
+				Componentes sincronizados:
+				  1. Gerenciadores de pacotes do SO (pacman, apt, dnf, pkg, brew, etc.)
+				  2. Universal Shell (~/.local/share/shell)
+				  3. Universal Vault (~/.local/share/vault)
+				  4. Suíte de Editores (Emacs, Helix, NeoVim, Vim)
+				  5. Universal Profile (~/.local/share/profile)
+
+				Opções:
+				  -s, --status        Executa auditoria e diagnóstico geral sem atualizar
+				  -n, --dry-run       Simula a atualização de todos os componentes
+				  -h, --help          Exibe esta ajuda
+				EOF
+				return 0
+				;;
+		esac
+	done
+
 	_is_query=0
 	for _arg in "$@"; do
 		case "${_arg}" in
