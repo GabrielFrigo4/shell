@@ -1186,13 +1186,14 @@ update-ports() {
 		case "${_arg}" in
 			--help|-h)
 				cat <<- 'EOF'
-				Uso: update-ports [branch] (alias: upports, uparts)
+				Uso: update-ports [branch] (alias: upp, upport)
 
-				Atualização rápida e rasa da árvore do FreeBSD Ports (/usr/ports) via Git.
-				Suporta sincronização automática da branch quarterly atual ou branch main.
+				Sincronização rasa e rápida da árvore do FreeBSD Ports (/usr/ports) via Git.
+				Atualiza simultaneamente a branch main e a branch trimestral corrente,
+				expurgando automaticamente branches trimestrais legadas sem histórico redundante.
 
 				Argumentos:
-				  [branch]      Branch alvo (ex: main, 2026Q1). Se omitido, usa a branch atual ou quarterly.
+				  [branch]      Branch alvo para checkout final (main ou quarterly).
 
 				Opções:
 				  -h, --help    Exibe esta ajuda
@@ -1214,23 +1215,48 @@ update-ports() {
 	_ports_quarter="$(date +%Y)Q$(date +%m | awk '{print int(($1-1)/3)+1}')"
 
 	if [ ! -d "${_ports_dir}/.git" ]; then
-		_ports_target="${_ports_branch:-${_ports_quarter}}"
-		_ui_step "Clonagem rasa inicial da árvore de Ports (${_ports_target})..."
+		_ui_step "Clonagem rasa inicial da árvore de Ports..."
 		_as_root git clone --branch main --single-branch --depth 1 https://git.FreeBSD.org/ports.git "${_ports_dir}" || return 1
-		_as_root git -C "${_ports_dir}" config --unset-all remote.origin.fetch 2> "/dev/null" || true
-		_as_root git -C "${_ports_dir}" config --add remote.origin.fetch "+refs/heads/main:refs/remotes/origin/main"
-		_as_root git -C "${_ports_dir}" config --add remote.origin.fetch "+refs/heads/${_ports_quarter}:refs/remotes/origin/${_ports_quarter}"
-	else
-		_current_branch="$(git -C "${_ports_dir}" branch --show-current 2> "/dev/null" || true)"
-		_ports_target="${_ports_branch:-${_current_branch:-${_ports_quarter}}}"
 	fi
 
-	_ui_step "Atualizando árvore do FreeBSD Ports (${_ports_dir} ➔ ${_ports_target})..."
-	_as_root git -C "${_ports_dir}" fetch --depth 1 origin "${_ports_target}" && \
-	_as_root git -C "${_ports_dir}" checkout "${_ports_target}" && \
-	_as_root git -C "${_ports_dir}" reset --hard "origin/${_ports_target}" && \
-	_ui_ok "FreeBSD Ports atualizado com sucesso (${_ports_target})!"
+	_ui_step "Configurando referências de busca rasa (main e ${_ports_quarter})..."
+	_as_root git -C "${_ports_dir}" config --unset-all remote.origin.fetch 2> "/dev/null" || true
+	_as_root git -C "${_ports_dir}" config --add remote.origin.fetch "+refs/heads/main:refs/remotes/origin/main"
+	_as_root git -C "${_ports_dir}" config --add remote.origin.fetch "+refs/heads/${_ports_quarter}:refs/remotes/origin/${_ports_quarter}"
+
+	_ui_step "Buscando atualizações rasas do FreeBSD Ports..."
+	_as_root git -C "${_ports_dir}" fetch --depth 1 --prune origin || return 1
+
+	_ui_step "Sincronizando branch main..."
+	_as_root git -C "${_ports_dir}" checkout -B main origin/main > "/dev/null" 2>&1
+	_as_root git -C "${_ports_dir}" reset --hard origin/main > "/dev/null" 2>&1
+
+	_ui_step "Sincronizando branch trimestral corrente (${_ports_quarter})..."
+	_as_root git -C "${_ports_dir}" checkout -B "${_ports_quarter}" "origin/${_ports_quarter}" > "/dev/null" 2>&1
+	_as_root git -C "${_ports_dir}" reset --hard "origin/${_ports_quarter}" > "/dev/null" 2>&1
+
+	for _b in $(git -C "${_ports_dir}" for-each-ref --format='%(refname:short)' refs/heads/ 2> "/dev/null"); do
+		case "${_b}" in
+			[1-2][0-9][0-9][0-9]Q[1-4])
+				if [ "${_b}" != "${_ports_quarter}" ]; then
+					_ui_info "Expurgando branch trimestral obsoleta: ${_b}..."
+					_as_root git -C "${_ports_dir}" branch -D "${_b}" > "/dev/null" 2>&1 || true
+				fi
+				;;
+		esac
+	done
+
+	if [ "${_ports_branch}" = "main" ]; then
+		_as_root git -C "${_ports_dir}" checkout main > "/dev/null" 2>&1
+		_ui_ok "FreeBSD Ports atualizado com sucesso em branch main!"
+	else
+		_as_root git -C "${_ports_dir}" checkout "${_ports_quarter}" > "/dev/null" 2>&1
+		_ui_ok "FreeBSD Ports atualizado com sucesso em branch ${_ports_quarter}!"
+	fi
 }
+
+alias upp="update-ports"
+alias upport="update-ports"
 
 ### --------------------------------
 ### Update All Packages
