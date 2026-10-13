@@ -29,7 +29,7 @@ _ensure_debian_running() {
 linux-host() {
 	_ensure_debian_running
 
-	_target_dir="/home/gabrielf"
+	_target_dir=""
 	case "${PWD}" in
 		/home/gabrielf|/home/gabrielf/*)
 			_target_dir="${PWD}"
@@ -40,18 +40,24 @@ linux-host() {
 	[ -t 0 ] && [ -t 1 ] && _tty="-t"
 
 	if [ $# -gt 0 ]; then
-		ssh ${_tty} gabriel@192.168.8.2 \
-			"cd \"${_target_dir}\" 2> \"/dev/null\" || cd /home/gabrielf; export HOME=/home/gabrielf; $*"
+		if [ -n "${_target_dir}" ]; then
+			ssh ${_tty} gabriel@192.168.8.2 "cd \"${_target_dir}\" 2> \"/dev/null\" || true; $*"
+		else
+			ssh ${_tty} gabriel@192.168.8.2 "$*"
+		fi
 	else
-		ssh -t gabriel@192.168.8.2 \
-			"cd \"${_target_dir}\" 2> \"/dev/null\" || cd /home/gabrielf; export HOME=/home/gabrielf; exec \${SHELL:-/bin/bash} -l"
+		if [ -n "${_target_dir}" ]; then
+			ssh -t gabriel@192.168.8.2 "cd \"${_target_dir}\" 2> \"/dev/null\" || true; exec \${SHELL:-/bin/zsh} -l"
+		else
+			ssh -t gabriel@192.168.8.2 "exec \${SHELL:-/bin/zsh} -l"
+		fi
 	fi
 }
 
 agy-lx() {
 	_ensure_debian_running
 
-	_target_dir="/home/gabrielf"
+	_target_dir=""
 	case "${PWD}" in
 		/home/gabrielf|/home/gabrielf/*)
 			_target_dir="${PWD}"
@@ -61,8 +67,11 @@ agy-lx() {
 	_tty=""
 	[ -t 0 ] && [ -t 1 ] && _tty="-t"
 
-	ssh ${_tty} gabriel@192.168.8.2 \
-		"cd \"${_target_dir}\" 2> \"/dev/null\" || cd /home/gabrielf; export HOME=/home/gabrielf; agy $*"
+	if [ -n "${_target_dir}" ]; then
+		ssh ${_tty} gabriel@192.168.8.2 "cd \"${_target_dir}\" 2> \"/dev/null\" || true; agy $*"
+	else
+		ssh ${_tty} gabriel@192.168.8.2 "agy $*"
+	fi
 }
 
 ### --------------------------------
