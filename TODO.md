@@ -37,7 +37,7 @@
 
 ### 3. 🖥️ Bhyve Linux Runtime & FreeBSD Compat Layer
 
-- [x] Implementação modular em `target/freebsd/bhyve.sh` (`linux-host`, `agy-lx`, aliases `linux`, `lx`, `debian`, `deb`, `agy`, `agy-bh`).
+- [x] Implementação modular em `target/freebsd/bhyve.sh` (`linux-host`, `agy-lx`, aliases `linux`, `lx`, `debian`, `deb`, `agy`).
 - [x] Desacoplamento da camada de emulação em `target/freebsd/compat.sh` (`agy-compat`, alias `agy-cp`, tunings de runtime Go `COMPAT_*`).
 - [x] Função `update-linux` (aliases `uplx`, `updeb`) com snapshot ZFS pré-update e delegação transparente ao `update-all` no guest via SSH.
 - [x] Função `update-ports` (aliases `upp`, `upport`) com sincronização dual-branch, expurgo trimestral e integração ao `update-all` no FreeBSD.
