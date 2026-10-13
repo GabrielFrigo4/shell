@@ -1211,7 +1211,14 @@ update-ports() {
 		return 0
 	fi
 
-	_ports_dir="/usr/ports"
+	_ports_dir="${PORTSDIR:-}"
+	if [ -z "${_ports_dir}" ]; then
+		if [ -d "/usr/local/ports/.git" ] && [ ! -d "/usr/ports/.git" ]; then
+			_ports_dir="/usr/local/ports"
+		else
+			_ports_dir="/usr/ports"
+		fi
+	fi
 	_ports_quarter="$(date +%Y)Q$(date +%m | awk '{print int(($1-1)/3)+1}')"
 
 	if [ ! -d "${_ports_dir}/.git" ]; then
@@ -1238,7 +1245,7 @@ update-ports() {
 	for _b in $(git -C "${_ports_dir}" for-each-ref --format='%(refname:short)' refs/heads/ 2> "/dev/null"); do
 		case "${_b}" in
 			[1-2][0-9][0-9][0-9]Q[1-4])
-				if [ "${_b}" != "${_ports_quarter}" ]; then
+				if [ "${_b}" != "${_ports_quarter}" ] && [ "${_b}" != "${_ports_branch}" ]; then
 					_ui_info "Expurgando branch trimestral obsoleta: ${_b}..."
 					_as_root git -C "${_ports_dir}" branch -D "${_b}" > "/dev/null" 2>&1 || true
 				fi
@@ -1249,6 +1256,9 @@ update-ports() {
 	if [ "${_ports_branch}" = "main" ]; then
 		_as_root git -C "${_ports_dir}" checkout main > "/dev/null" 2>&1
 		_ui_ok "FreeBSD Ports atualizado com sucesso em branch main!"
+	elif [ -n "${_ports_branch}" ] && [ "${_ports_branch}" != "${_ports_quarter}" ]; then
+		_as_root git -C "${_ports_dir}" checkout "${_ports_branch}" > "/dev/null" 2>&1 || true
+		_ui_ok "FreeBSD Ports atualizado com sucesso em branch ${_ports_branch}!"
 	else
 		_as_root git -C "${_ports_dir}" checkout "${_ports_quarter}" > "/dev/null" 2>&1
 		_ui_ok "FreeBSD Ports atualizado com sucesso em branch ${_ports_quarter}!"
@@ -1326,7 +1336,11 @@ update-all() {
 		fi
 
 		if [ "$(_detect_os)" = "freebsd" ]; then
-			if [ -d "/usr/ports/.git" ]; then
+			_has_ports="0"
+			[ -d "/usr/ports/.git" ] && _has_ports="1"
+			[ -d "/usr/local/ports/.git" ] && _has_ports="1"
+			[ -n "${PORTSDIR:-}" ] && [ -d "${PORTSDIR:-}/.git" ] && _has_ports="1"
+			if [ "${_has_ports}" = "1" ]; then
 				echo ""
 				update-ports "$@"
 			fi
