@@ -23,3 +23,9 @@ path-dedup
 ### Bhyve Linux Runtime
 ### --------------------------------
 [ -f "${SHELL_REPO_DIR}/target/freebsd/bhyve.sh" ] && . "${SHELL_REPO_DIR}/target/freebsd/bhyve.sh"
+
+### --------------------------------
+### ZFS Diagnostics
+### --------------------------------
+alias zarcstat="arcstat"
+alias arcstats="arcstat"
