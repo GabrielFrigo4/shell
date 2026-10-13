@@ -1122,6 +1122,117 @@ update-system() {
 }
 
 ### --------------------------------
+### Update Linux Host Bhyve
+### --------------------------------
+update-linux() {
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--help|-h)
+				cat <<- 'EOF'
+				Uso: update-linux [opções] (alias: uplx, updeb)
+
+				Atualização de pacotes e distribuição da máquina virtual Linux-host (Bhyve Debian).
+
+				Opções:
+				  -h, --help    Exibe esta ajuda
+				EOF
+				return 0
+				;;
+		esac
+	done
+
+	if [ "$(_detect_os)" != "freebsd" ] && ! command -v vm > "/dev/null" 2>&1; then
+		_ui_warn "update-linux é exclusivo para estações FreeBSD com virtualização Bhyve."
+		return 0
+	fi
+
+	_ui_step "Preparando atualização da máquina virtual Linux-host (Bhyve)..."
+	if command -v _ensure_debian_running > "/dev/null" 2>&1; then
+		_ensure_debian_running
+	elif ! vm list 2> "/dev/null" | grep -q "debian.*Running"; then
+		_ui_step "Iniciando máquina virtual Debian no Bhyve..."
+		if command -v _as_root > "/dev/null" 2>&1; then
+			_as_root vm start debian
+		else
+			sudo vm start debian
+		fi
+		sleep 2
+	fi
+
+	# Snapshot de proteção atômico no ZFS antes de atualizar
+	if command -v zfs > "/dev/null" 2>&1; then
+		_ui_sub "Criando snapshot de proteção ZFS (pre-update)..."
+		_as_root zfs destroy zroot/vm/debian@pre-update-old 2> "/dev/null" || true
+		_as_root zfs rename zroot/vm/debian@pre-update zroot/vm/debian@pre-update-old 2> "/dev/null" || true
+		_as_root zfs snapshot zroot/vm/debian@pre-update 2> "/dev/null" || true
+	fi
+
+	_ui_step "Disparando atualização completa no linux-host via Universal Shell..."
+	if ssh -q gabriel@192.168.8.2 "command -v zsh > '/dev/null' 2>&1 && [ -f \"\${HOME}/.zshrc\" ]"; then
+		ssh -t gabriel@192.168.8.2 "zsh -ic 'update-all'" && \
+			_ui_ok "Máquina virtual Linux-host atualizada com sucesso via Universal Shell!"
+	else
+		_ui_warn "Universal Shell (~/.zshrc) não encontrado no linux-host. Instale o Universal Shell no guest para suportar 'update-all'."
+		return 1
+	fi
+}
+
+### --------------------------------
+### Update FreeBSD Ports Tree
+### --------------------------------
+update-ports() {
+	_ports_branch=""
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--help|-h)
+				cat <<- 'EOF'
+				Uso: update-ports [branch] (alias: upports, uparts)
+
+				Atualização rápida e rasa da árvore do FreeBSD Ports (/usr/ports) via Git.
+				Suporta sincronização automática da branch quarterly atual ou branch main.
+
+				Argumentos:
+				  [branch]      Branch alvo (ex: main, 2026Q1). Se omitido, usa a branch atual ou quarterly.
+
+				Opções:
+				  -h, --help    Exibe esta ajuda
+				EOF
+				return 0
+				;;
+			*)
+				_ports_branch="${_arg}"
+				;;
+		esac
+	done
+
+	if [ "$(_detect_os)" != "freebsd" ]; then
+		_ui_warn "update-ports é exclusivo para estações FreeBSD."
+		return 0
+	fi
+
+	_ports_dir="/usr/ports"
+	_ports_quarter="$(date +%Y)Q$(date +%m | awk '{print int(($1-1)/3)+1}')"
+
+	if [ ! -d "${_ports_dir}/.git" ]; then
+		_ports_target="${_ports_branch:-${_ports_quarter}}"
+		_ui_step "Clonagem rasa inicial da árvore de Ports (${_ports_target})..."
+		_as_root git clone --branch main --single-branch --depth 1 https://git.FreeBSD.org/ports.git "${_ports_dir}" || return 1
+		_as_root git -C "${_ports_dir}" config --unset-all remote.origin.fetch 2> "/dev/null" || true
+		_as_root git -C "${_ports_dir}" config --add remote.origin.fetch "+refs/heads/main:refs/remotes/origin/main"
+		_as_root git -C "${_ports_dir}" config --add remote.origin.fetch "+refs/heads/${_ports_quarter}:refs/remotes/origin/${_ports_quarter}"
+	else
+		_current_branch="$(git -C "${_ports_dir}" branch --show-current 2> "/dev/null" || true)"
+		_ports_target="${_ports_branch:-${_current_branch:-${_ports_quarter}}}"
+	fi
+
+	_ui_step "Atualizando árvore do FreeBSD Ports (${_ports_dir} ➔ ${_ports_target})..."
+	_as_root git -C "${_ports_dir}" fetch --depth 1 origin "${_ports_target}" && \
+	_as_root git -C "${_ports_dir}" checkout "${_ports_target}" && \
+	_as_root git -C "${_ports_dir}" reset --hard "origin/${_ports_target}" && \
+	_ui_ok "FreeBSD Ports atualizado com sucesso (${_ports_target})!"
+}
+
+### --------------------------------
 ### Update All Packages
 ### --------------------------------
 update-all() {
@@ -1186,6 +1297,17 @@ update-all() {
 		if command -v mas > "/dev/null" 2>&1; then
 			echo ""
 			update-mas "$@" && _ui_ok "Pacotes Mac App Store atualizados!"
+		fi
+
+		if [ "$(_detect_os)" = "freebsd" ]; then
+			if [ -d "/usr/ports/.git" ]; then
+				echo ""
+				update-ports "$@"
+			fi
+			if command -v vm > "/dev/null" 2>&1 && vm list 2> "/dev/null" | grep -q "debian"; then
+				echo ""
+				update-linux "$@"
+			fi
 		fi
 	fi
 

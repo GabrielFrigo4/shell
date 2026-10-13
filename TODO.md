@@ -25,14 +25,22 @@
 
 ---
 
-## 🎯 Próximas Frentes & Backlog
+## 🎯 Grandes Épicos & Backlog
+
+### 1. ⚡ Latência, Prompts & Performance
 
 - [x] Unificação da biblioteca semântica `_ui_*` em 100% dos utilitários interativos e de rede.
 - [x] Otimizações incrementais nos parsers de status Git e Got (resolução de gitdir em subpastas de submódulos e proteção contra falsos positivos em repositórios sem commits).
 - [x] Erradicação definitiva de falsos positivos de stat-cache no indicador Git (`git diff-index` ➔ `git status --porcelain=v1 -uno` com `GIT_OPTIONAL_LOCKS=0`), tornando o prompt imune a descompassos de `mtime`/`ctime` e acelerando a renderização para ~4.1ms.
 - [x] Monitoramento contínuo de latência de navegação (`cd`) e renderização de prompt no `benchmark.sh`.
 - [ ] Monitoramento contínuo de latência de boot em matrizes virtuais (meta permanente < 16ms).
-- [ ] Avaliação contínua de novas versões de shells (Zsh 5.10+, Bash 5.3+, ksh93u+m).
+
+### 3. 🖥️ Bhyve Linux Runtime & FreeBSD Compat Layer
+
+- [x] Implementação modular em `target/freebsd/bhyve.sh` (`linux-host`, `agy-lx`, aliases `linux`, `lx`, `debian`, `deb`, `agy`, `agy-bh`).
+- [x] Desacoplamento da camada de emulação em `target/freebsd/compat.sh` (`agy-compat`, alias `agy-cp`, tunings de runtime Go `COMPAT_*`).
+- [x] Função `update-linux` (aliases `uplx`, `updeb`) com snapshot ZFS pré-update e delegação transparente ao `update-all` no guest via SSH.
+- [x] Função `update-ports` (aliases `upports`, `uparts`) integrada ao `update-all` no FreeBSD.
 
 ---
 

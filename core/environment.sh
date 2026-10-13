@@ -351,6 +351,8 @@ alias ccache="clean-cache"
 alias cleancache="clean-cache"
 alias upwf="update-wifi"
 alias upnet="update-network"
+alias uplx="update-linux"
+alias updeb="update-linux"
 
 ### --------------------------------
 ### Package Managers
