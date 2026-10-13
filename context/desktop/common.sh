@@ -268,11 +268,16 @@ personal-server() {
 	_user="${PERSONAL_SERVER_USER:-ubuntu}"
 	_key="$(_resolve_vault_ssh_key "${PERSONAL_SERVER_KEY:-}" "ssh-key-personal-server.key")"
 
+	_ssh_opts=""
+	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		_ssh_opts="-o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
+	fi
+
 	if [ -n "${_key}" ]; then
 		export PERSONAL_SERVER_KEY="${_key}"
-		ssh -i "${_key}" "${_user}@${_ip}" "$@"
+		ssh ${_ssh_opts} -i "${_key}" "${_user}@${_ip}" "$@"
 	else
-		ssh "${_user}@${_ip}" "$@"
+		ssh ${_ssh_opts} "${_user}@${_ip}" "$@"
 	fi
 }
 
@@ -281,11 +286,16 @@ venture-server() {
 	_user="${VENTURE_SERVER_USER:-ubuntu}"
 	_key="$(_resolve_vault_ssh_key "${VENTURE_SERVER_KEY:-}" "ssh-key-venture-server.key")"
 
+	_ssh_opts=""
+	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		_ssh_opts="-o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
+	fi
+
 	if [ -n "${_key}" ]; then
 		export VENTURE_SERVER_KEY="${_key}"
-		ssh -i "${_key}" "${_user}@${_ip}" "$@"
+		ssh ${_ssh_opts} -i "${_key}" "${_user}@${_ip}" "$@"
 	else
-		ssh "${_user}@${_ip}" "$@"
+		ssh ${_ssh_opts} "${_user}@${_ip}" "$@"
 	fi
 }
 

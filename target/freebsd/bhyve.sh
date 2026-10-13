@@ -39,18 +39,25 @@ linux-host() {
 	_tty=""
 	[ -t 0 ] && [ -t 1 ] && _tty="-t"
 
+	_tty_env=""
+	_ssh_opts=""
+	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		_tty_env="export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; "
+		_ssh_opts="-o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
+	fi
+
 	if [ $# -gt 0 ]; then
-		_prefix="export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"
+		_prefix="${_tty_env}export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"
 		if [ -n "${_target_dir}" ]; then
-			ssh ${_tty} gabriel@192.168.8.2 "${_prefix} cd \"${_target_dir}\" 2> \"/dev/null\" || true; $*"
+			ssh ${_ssh_opts} ${_tty} gabriel@192.168.8.2 "${_prefix} cd \"${_target_dir}\" 2> \"/dev/null\" || true; $*"
 		else
-			ssh ${_tty} gabriel@192.168.8.2 "${_prefix} $*"
+			ssh ${_ssh_opts} ${_tty} gabriel@192.168.8.2 "${_prefix} $*"
 		fi
 	else
 		if [ -n "${_target_dir}" ]; then
-			ssh -t gabriel@192.168.8.2 "cd \"${_target_dir}\" 2> \"/dev/null\" || true; exec \${SHELL:-/bin/zsh} -l"
+			ssh ${_ssh_opts} -t gabriel@192.168.8.2 "${_tty_env}cd \"${_target_dir}\" 2> \"/dev/null\" || true; exec \${SHELL:-/bin/zsh} -l"
 		else
-			ssh -t gabriel@192.168.8.2 "exec \${SHELL:-/bin/zsh} -l"
+			ssh ${_ssh_opts} -t gabriel@192.168.8.2 "${_tty_env}exec \${SHELL:-/bin/zsh} -l"
 		fi
 	fi
 }
@@ -68,12 +75,19 @@ agy-lx() {
 	_tty=""
 	[ -t 0 ] && [ -t 1 ] && _tty="-t"
 
-	_prefix="export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"
+	_tty_env=""
+	_ssh_opts=""
+	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		_tty_env="export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; "
+		_ssh_opts="-o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
+	fi
+
+	_prefix="${_tty_env}export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"
 
 	if [ -n "${_target_dir}" ]; then
-		ssh ${_tty} gabriel@192.168.8.2 "${_prefix} cd \"${_target_dir}\" 2> \"/dev/null\" || true; exec agy $*"
+		ssh ${_ssh_opts} ${_tty} gabriel@192.168.8.2 "${_prefix} cd \"${_target_dir}\" 2> \"/dev/null\" || true; exec agy $*"
 	else
-		ssh ${_tty} gabriel@192.168.8.2 "${_prefix} exec agy $*"
+		ssh ${_ssh_opts} ${_tty} gabriel@192.168.8.2 "${_prefix} exec agy $*"
 	fi
 }
 

@@ -743,6 +743,17 @@ _detect_privilege_escalator() {
 _is_raw_tty() {
 	[ -n "${_IS_RAW_TTY_CACHED+x}" ] && return "${_IS_RAW_TTY_CACHED}"
 
+	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
+		1|true|yes)
+			_IS_RAW_TTY_CACHED=0
+			return 0
+			;;
+		0|false|no)
+			_IS_RAW_TTY_CACHED=1
+			return 1
+			;;
+	esac
+
 	case "${TERM:-}" in
 		linux|dumb|vt100|cons25*|wvt25*)
 			_IS_RAW_TTY_CACHED=0

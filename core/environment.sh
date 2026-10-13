@@ -9,6 +9,12 @@ export COLORTERM="truecolor"
 export MICRO_TRUECOLOR=1
 unset CDPATH
 
+if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+	export RAW_TTY=1
+	export LC_RAW_TTY=1
+	export UNIVERSAL_RAW_TTY=1
+fi
+
 ### --------------------------------
 ### Auto-Correct SHELL
 ### --------------------------------
@@ -236,6 +242,21 @@ else
 	alias ff="find"
 fi
 unset _fd_bin _env_os
+
+### --------------------------------
+### SSH Client TTY Propagation
+### --------------------------------
+unalias ssh 2> "/dev/null" || true
+eval 'ssh() {
+	if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		export LC_RAW_TTY=1
+		export RAW_TTY=1
+		export UNIVERSAL_RAW_TTY=1
+		command ssh -o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1 "$@"
+	else
+		command ssh "$@"
+	fi
+}'
 
 ### --------------------------------
 ### Dust Disk Usage
