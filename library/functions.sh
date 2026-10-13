@@ -1237,10 +1237,12 @@ update-ports() {
 	_ui_step "Sincronizando branch main..."
 	_as_root git -C "${_ports_dir}" checkout -B main origin/main > "/dev/null" 2>&1
 	_as_root git -C "${_ports_dir}" reset --hard origin/main > "/dev/null" 2>&1
+	_as_root git -C "${_ports_dir}" clean -fd > "/dev/null" 2>&1 || true
 
 	_ui_step "Sincronizando branch trimestral corrente (${_ports_quarter})..."
 	_as_root git -C "${_ports_dir}" checkout -B "${_ports_quarter}" "origin/${_ports_quarter}" > "/dev/null" 2>&1
 	_as_root git -C "${_ports_dir}" reset --hard "origin/${_ports_quarter}" > "/dev/null" 2>&1
+	_as_root git -C "${_ports_dir}" clean -fd > "/dev/null" 2>&1 || true
 
 	for _b in $(git -C "${_ports_dir}" for-each-ref --format='%(refname:short)' refs/heads/ 2> "/dev/null"); do
 		case "${_b}" in
