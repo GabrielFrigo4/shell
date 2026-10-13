@@ -40,10 +40,11 @@ linux-host() {
 	[ -t 0 ] && [ -t 1 ] && _tty="-t"
 
 	if [ $# -gt 0 ]; then
+		_prefix="export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"
 		if [ -n "${_target_dir}" ]; then
-			ssh ${_tty} gabriel@192.168.8.2 "cd \"${_target_dir}\" 2> \"/dev/null\" || true; $*"
+			ssh ${_tty} gabriel@192.168.8.2 "${_prefix} cd \"${_target_dir}\" 2> \"/dev/null\" || true; $*"
 		else
-			ssh ${_tty} gabriel@192.168.8.2 "$*"
+			ssh ${_tty} gabriel@192.168.8.2 "${_prefix} $*"
 		fi
 	else
 		if [ -n "${_target_dir}" ]; then
@@ -67,11 +68,17 @@ agy-lx() {
 	_tty=""
 	[ -t 0 ] && [ -t 1 ] && _tty="-t"
 
+	_prefix="export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"
+
 	if [ -n "${_target_dir}" ]; then
-		ssh ${_tty} gabriel@192.168.8.2 "cd \"${_target_dir}\" 2> \"/dev/null\" || true; agy $*"
+		ssh ${_tty} gabriel@192.168.8.2 "${_prefix} cd \"${_target_dir}\" 2> \"/dev/null\" || true; exec agy $*"
 	else
-		ssh ${_tty} gabriel@192.168.8.2 "agy $*"
+		ssh ${_tty} gabriel@192.168.8.2 "${_prefix} exec agy $*"
 	fi
+}
+
+agy() {
+	agy-lx "$@"
 }
 
 ### --------------------------------

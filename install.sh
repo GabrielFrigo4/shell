@@ -273,6 +273,13 @@ _install_shell_target() {
 					### ZSH ENVIRONMENT
 					### ================================
 					unsetopt GLOBAL_RCS
+
+					export PATH="${HOME}/.local/bin:${HOME}/.gemini/antigravity-cli/bin:${HOME}/.cargo/bin:${PATH}"
+				EOF
+			elif ! grep -qF ".local/bin" "${_zshenv}" 2> "/dev/null"; then
+				cat <<- 'EOF' >> "${_zshenv}"
+
+					export PATH="${HOME}/.local/bin:${HOME}/.gemini/antigravity-cli/bin:${HOME}/.cargo/bin:${PATH}"
 				EOF
 			fi
 			if ! _as_root test -f "${_root_zshenv}" 2> "/dev/null" || ! _as_root grep -qF "unsetopt GLOBAL_RCS" "${_root_zshenv}" 2> "/dev/null"; then
