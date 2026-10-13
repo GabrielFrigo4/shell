@@ -17,7 +17,11 @@ _shell_is_sourced() {
 		esac
 	fi
 	if [ -n "${BASH_VERSION:-}" ]; then
-		[ "${BASH_SOURCE[0]}" != "$0" ] && return 0 || return 1
+		if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+			return 0
+		else
+			return 1
+		fi
 	fi
 	case "${0##*/}" in
 		shell.sh) return 1 ;;

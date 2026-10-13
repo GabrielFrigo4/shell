@@ -193,8 +193,9 @@ _resolve_shell_bin() {
 		elif [ -x "/usr/bin/${_target}" ]; then
 			_bin="/usr/bin/${_target}"
 		fi
+	if [ -z "${_bin}" ]; then
+		_bin="$(command -v "${_target}" 2> "/dev/null" || echo "${_target}")"
 	fi
-	[ -z "${_bin}" ] && _bin="$(command -v "${_target}" 2> "/dev/null" || echo "${_target}")"
 	if [ "${_os}" = "windows" ] && command -v cygpath > "/dev/null" 2>&1; then
 		_bin="$(cygpath -m "${_bin}" 2> "/dev/null" || echo "${_bin}")"
 	fi

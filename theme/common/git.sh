@@ -38,7 +38,9 @@ _git_branch() {
 				"ref: "*)            _branch="${_head#ref: }" ;;
 				*)
 					_branch="${_head%${_head#???????}}"
-					[ -z "${_branch}" ] && _branch="$(command git rev-parse --short HEAD 2> "/dev/null" || true)"
+					if [ -z "${_branch}" ]; then
+						_branch="$(command git rev-parse --short HEAD 2> "/dev/null" || true)"
+					fi
 					;;
 			esac
 		fi

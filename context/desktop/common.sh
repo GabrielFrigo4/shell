@@ -203,7 +203,11 @@ emacs-eshell() {
 	}
 
 	local _dir="${1:-.}"
-	[ -d "${_dir}" ] && _dir="$(cd "${_dir}" && pwd)" || _dir="${PWD}"
+	if [ -d "${_dir}" ]; then
+		_dir="$(cd "${_dir}" && pwd)"
+	else
+		_dir="${PWD}"
+	fi
 
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if command -v emacsclient > "/dev/null" 2>&1; then

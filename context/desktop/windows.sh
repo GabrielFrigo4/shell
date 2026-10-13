@@ -35,7 +35,11 @@ emacs-eshell() {
 	}
 
 	local _dir="${1:-.}"
-	[ -d "${_dir}" ] && _dir="$(cd "${_dir}" && pwd)" || _dir="${PWD}"
+	if [ -d "${_dir}" ]; then
+		_dir="$(cd "${_dir}" && pwd)"
+	else
+		_dir="${PWD}"
+	fi
 
 	if command -v emacsclientw > "/dev/null" 2>&1; then
 		emacsclientw --create-frame --alternate-editor "" --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
