@@ -1149,14 +1149,23 @@ update-linux() {
 	_ui_step "Preparando atualização da máquina virtual Linux-host (Bhyve)..."
 	if command -v _ensure_debian_running > "/dev/null" 2>&1; then
 		_ensure_debian_running
-	elif ! vm list 2> "/dev/null" | grep -q "debian.*Running"; then
-		_ui_step "Iniciando máquina virtual Debian no Bhyve..."
-		if command -v _as_root > "/dev/null" 2>&1; then
-			_as_root vm start debian
-		else
-			sudo vm start debian
+	elif ! nc -z -w 1 192.168.8.2 22 > "/dev/null" 2>&1; then
+		if ! pgrep -f "bhyve.*debian" > "/dev/null" 2>&1; then
+			_ui_step "Iniciando máquina virtual Debian no Bhyve..."
+			if command -v _as_root > "/dev/null" 2>&1; then
+				_as_root vm start debian > "/dev/null" 2>&1 || true
+			else
+				sudo vm start debian > "/dev/null" 2>&1 || true
+			fi
 		fi
-		sleep 2
+		_wait_count=0
+		while [ "${_wait_count}" -lt 10 ]; do
+			if nc -z -w 1 192.168.8.2 22 > "/dev/null" 2>&1; then
+				break
+			fi
+			sleep 1
+			_wait_count=$(( _wait_count + 1 ))
+		done
 	fi
 
 	# Snapshot de proteção atômico no ZFS antes de atualizar
