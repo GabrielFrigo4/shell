@@ -430,3 +430,28 @@ if command -v tog > "/dev/null" 2>&1; then
 	alias tgb="tog blame"
 	alias tgt="tog tree"
 fi
+
+### ================================
+### Google Antigravity CLI & Aliases
+### ================================
+alias agy-continue="agy -c"
+alias agyc="agy -c"
+
+alias agy-auto="agy --dangerously-skip-permissions"
+alias agy-danger="agy --dangerously-skip-permissions"
+alias agya="agy --dangerously-skip-permissions"
+alias agyd="agy --dangerously-skip-permissions"
+
+alias agy-continue-auto="agy -c --dangerously-skip-permissions"
+alias agy-continue-danger="agy -c --dangerously-skip-permissions"
+alias agyca="agy -c --dangerously-skip-permissions"
+alias agycd="agy -c --dangerously-skip-permissions"
+
+unalias agy 2> "/dev/null" || true
+eval 'agy() {
+	if [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		COLORTERM="" TERM="${TERM:-linux}" command agy "$@"
+	else
+		command agy "$@"
+	fi
+}'
