@@ -248,7 +248,11 @@ unset _fd_bin _env_os
 ### --------------------------------
 unalias ssh 2> "/dev/null" || true
 eval 'ssh() {
-	if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+	_is_raw=0
+	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
+		*1*|*true*|*yes*) _is_raw=1 ;;
+	esac
+	if [ -t 0 ] && [ -t 1 ] && { [ "${_is_raw}" -eq 1 ] || { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; }; then
 		export LC_RAW_TTY=1
 		export RAW_TTY=1
 		export UNIVERSAL_RAW_TTY=1
