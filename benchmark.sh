@@ -55,12 +55,17 @@ case "${_iterations}" in
 esac
 
 if [ -t 1 ]; then
-	_ui_color_reset=$'\e[0m'
-	_ui_color_bold=$'\e[1m'
-	_ui_color_green=$'\e[32m'
-	_ui_color_yellow=$'\e[33m'
-	_ui_color_red=$'\e[31m'
-	_ui_color_cyan=$'\e[36m'
+	if [ -n "${BASH_VERSION:-}" ] || [ -n "${ZSH_VERSION:-}" ]; then
+		_ui_escape=$'\e'
+	else
+		_ui_escape="$(printf '\033')"
+	fi
+	_ui_color_reset="${_ui_escape}[0m"
+	_ui_color_bold="${_ui_escape}[1m"
+	_ui_color_green="${_ui_escape}[32m"
+	_ui_color_yellow="${_ui_escape}[33m"
+	_ui_color_red="${_ui_escape}[31m"
+	_ui_color_cyan="${_ui_escape}[36m"
 else
 	_ui_color_reset=""
 	_ui_color_bold=""

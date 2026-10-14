@@ -1,7 +1,174 @@
 # ----------------------------------------------------------------
-# Module: Universal Shell Fish Updates & Orchestration
+# Module: Fish Shell Universal Runtime Configuration
 # ----------------------------------------------------------------
 
+# ----------------------------------------------------------------
+# Environment & PATH
+# ----------------------------------------------------------------
+if not set -q SHELL_REPO_DIR
+    set -l repo_candidates "$HOME/.local/share/shell" "/usr/local/share/shell" "$HOME/.config/shell" "$HOME/.shell" (dirname (dirname (dirname (status filename))))
+    for cand in $repo_candidates
+        if test -f "$cand/shell.sh"
+            set -gx SHELL_REPO_DIR "$cand"
+            break
+        end
+    end
+end
+
+for p in "$HOME/.local/bin" "$HOME/.cargo/bin"
+    if test -d "$p"; and not contains "$p" $PATH
+        set -gx PATH "$p" $PATH
+    end
+end
+
+# ----------------------------------------------------------------
+# Semantic UI Emission Helpers
+# ----------------------------------------------------------------
+function _ui_has_color
+    test -t 1; or return 1
+    switch "$TERM"
+        case 'dumb' ''
+            return 1
+        case '*'
+            return 0
+    end
+end
+
+function _ui_step
+    if _ui_has_color
+        set_color -o cyan
+        echo -n "==> "
+        set_color normal
+    else
+        printf "==> "
+    end
+    echo $argv
+end
+
+function _ui_sub
+    if _ui_has_color
+        set_color -o blue
+        echo -n "  ↳ "
+        set_color normal
+    else
+        printf "  -> "
+    end
+    echo $argv
+end
+
+function _ui_ok
+    if _ui_has_color
+        set_color -o green
+        echo -n "  ✅ "
+        set_color normal
+    else
+        printf "  OK "
+    end
+    echo $argv
+end
+
+function _ui_warn
+    if _ui_has_color
+        set_color -o yellow
+        echo -n "  ⚠️  "
+        set_color normal
+    else
+        printf "  WARN "
+    end
+    echo $argv
+end
+
+function _ui_err
+    if test -t 2
+        set_color -o red
+        echo -n "  ❌ " >&2
+        set_color normal
+    else
+        printf "  FAIL " >&2
+    end
+    echo $argv >&2
+end
+
+function _ui_info
+    if _ui_has_color
+        set_color -o magenta
+        echo -n "  ℹ️  "
+        set_color normal
+    else
+        printf "  INFO "
+    end
+    echo $argv
+end
+
+function _ui_banner
+    set -l sep "================================================================"
+    echo ""
+    if _ui_has_color
+        set_color -o cyan
+        echo $sep
+        echo "  $argv[1]"
+        echo $sep
+        set_color normal
+    else
+        echo $sep
+        echo "  $argv[1]"
+        echo $sep
+    end
+    echo ""
+end
+
+# ----------------------------------------------------------------
+# Prompt Configuration
+# ----------------------------------------------------------------
+function fish_mode_prompt; end
+
+function fish_prompt
+    set -l last_status $status
+    set -l time (date "+%H:%M:%S")
+    set -l c_date (date "+%d/%m/%y")
+    set -l user (whoami 2>/dev/null; or echo "user")
+    set -l pwd_segment (prompt_pwd)
+
+    set -l git_info ""
+    set -l branch (git symbolic-ref --short HEAD 2>/dev/null)
+    if test -n "$branch"
+        set -l dirty ""
+        set -l st (git status --porcelain=v1 -uno --ignore-submodules=dirty 2>/dev/null)
+        test -n "$st"; and set dirty "*"
+        set git_info (set_color -o red)"󰊢 "(set_color -o magenta)"$branch"(set_color -o yellow)"$dirty"
+        set git_info (set_color -o brblack)"❮"$git_info(set_color -o brblack)"❯"
+    end
+
+    set -l os_name (uname -s 2>/dev/null; or echo "UNIX")
+    set -l os_icon ""
+    switch "$os_name"
+        case 'Linux'
+            set os_icon "󰌽"
+        case 'FreeBSD'
+            set os_icon ""
+        case 'Darwin'
+            set os_icon "󰀵"
+        case 'OpenBSD'
+            set os_icon "󰈺"
+        case 'MINGW*' 'MSYS*' 'CYGWIN*'
+            set os_icon "󰍲"
+            set os_name "Windows"
+    end
+
+    set -l sep (set_color -o brblack)
+    set -l l1 "$sep"(set_color -o blue)"$os_icon "(set_color -o magenta)"$os_name"$sep"─"(set_color -o blue)" "(set_color -o magenta)"fish"$sep""
+    set -l l2 "$sep┌──❮"(set_color -o blue)" "(set_color -o green)"$time"$sep"❯─❮"(set_color -o blue)" "(set_color -o green)"$c_date"$sep"❯─❮"(set_color -o yellow)" "(set_color -o cyan)"$pwd_segment"$sep"❯─ ❮"(set_color -o blue)" "(set_color -o green)"$user"$sep"❯ $git_info"
+    set -l l3 "$sep└─"(set_color -o blue)""(set_color normal)" "
+
+    echo ""
+    echo $l1
+    echo $l2
+    echo -n $l3
+end
+
+# ----------------------------------------------------------------
+# Ecosystem Orchestration & Update Functions
+# ----------------------------------------------------------------
 function update-shell -d "Atualiza o repositório Universal Shell via git pull"
     for arg in $argv
         switch $arg

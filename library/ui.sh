@@ -5,7 +5,11 @@
 ### ================================
 ### ANSI ESCAPE SEQUENCES
 ### ================================
-_ui_escape=$'\e'
+if [ -n "${BASH_VERSION:-}" ] || [ -n "${ZSH_VERSION:-}" ]; then
+	_ui_escape=$'\e'
+else
+	_ui_escape="$(printf '\033')"
+fi
 _ui_color_reset="${_ui_escape}[0m"
 _ui_color_bold="${_ui_escape}[1m"
 _ui_color_cyan="${_ui_escape}[1;36m"
@@ -29,56 +33,50 @@ _ui_has_color() {
 ### ================================
 _ui_step() {
 	if _ui_has_color; then
-		echo -n "${_ui_color_cyan}==>${_ui_color_reset} "
+		printf "%s==>%s %s\n" "${_ui_color_cyan}" "${_ui_color_reset}" "$*"
 	else
-		printf "==> "
+		printf "==> %s\n" "$*"
 	fi
-	echo "$@"
 }
 
 _ui_sub() {
 	if _ui_has_color; then
-		echo -n "${_ui_color_blue}  ↳${_ui_color_reset} "
+		printf "%s  ↳%s %s\n" "${_ui_color_blue}" "${_ui_color_reset}" "$*"
 	else
-		printf "  -> "
+		printf "  -> %s\n" "$*"
 	fi
-	echo "$@"
 }
 
 _ui_ok() {
 	if _ui_has_color; then
-		echo -n "${_ui_color_green}  ✅${_ui_color_reset} "
+		printf "%s  ✅%s %s\n" "${_ui_color_green}" "${_ui_color_reset}" "$*"
 	else
-		printf "  OK "
+		printf "  OK %s\n" "$*"
 	fi
-	echo "$@"
 }
 
 _ui_warn() {
 	if _ui_has_color; then
-		echo -n "${_ui_color_yellow}  ⚠️ ${_ui_color_reset} "
+		printf "%s  ⚠️ %s %s\n" "${_ui_yellow}" "${_ui_reset:-${_ui_color_reset}}" "$*"
 	else
-		printf "  WARN "
+		printf "  WARN %s\n" "$*"
 	fi
-	echo "$@"
 }
 
 _ui_err() {
 	if [ -t 2 ]; then
-		echo -n "${_ui_color_red}  ❌${_ui_color_reset} " >&2
+		printf "%s  ❌%s %s\n" "${_ui_color_red}" "${_ui_color_reset}" "$*" >&2
 	else
-		printf "  FAIL " >&2
+		printf "  FAIL %s\n" "$*" >&2
 	fi
-	echo "$@" >&2
 }
 
 _ui_info() {
 	if _ui_has_color; then
-		echo -n "${_ui_color_magenta}  ℹ️ ${_ui_color_reset} "
+		printf "%s  ℹ️ %s %s\n" "${_ui_color_magenta}" "${_ui_color_reset}" "$*"
 	else
-		printf "  INFO "
+		printf "  INFO %s\n" "$*"
 	fi
-	echo "$@"
 }
 
 _ui_banner() {
