@@ -443,7 +443,7 @@ update-profile() {
 		case "${_arg}" in
 			--help|-h)
 				cat <<- 'EOF'
-				Uso: update-profile [opções] [argumentos-do-profile.sh] (alias: uprc, upprofile)
+				Uso: update-profile [opções] [argumentos-do-profile.sh] (alias: uprc, upprofile, sync-profile)
 
 				Atualiza o repositório Universal Profile e executa sincronização de dotfiles.
 
