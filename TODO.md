@@ -10,6 +10,7 @@
 | :----------------------------- | :--------: | :------------------------------------------------------------------------------------------ |
 | **🖥️ Plataformas Base**        | 🟢 Estável | Linux, FreeBSD, OpenBSD, NetBSD, illumos, macOS, Windows (MSYS2)                            |
 | **🐚 Shells Nativos**          | 🟢 Estável | Zsh, Bash (todos os SOs), POSIX sh (exclusivo FreeBSD) e KornShell ksh (exclusivo OpenBSD)  |
+| **🐚 Shells Alternativos**     | 🟢 Estável | PowerShell 7+, NuShell, CMD (Clink) e Fish Shell com prompts temáticos e biblioteca _ui_*   |
 | **🎯 Contextos**               | 🟢 Estável | Desktop, Server, Container (com auto-detecção WSL sob demanda)                              |
 | **🎨 Temas Puros & TTY**       | 🟢 Estável | Motores em `theme/` dedicados à renderização visual e adaptação dinâmica PTY / Raw TTY      |
 | **⚙️ Shell Configs Comuns**    | 🟢 Estável | Centralização em `target/common/` (`zsh.sh`, `bash.sh`, `sh.sh`, `ksh.sh`)                  |
@@ -41,6 +42,12 @@
 - [x] Desacoplamento da camada de emulação em `target/freebsd/compat.sh` (`agy-compat`, alias `agy-cp`, tunings de runtime Go `COMPAT_*`).
 - [x] Função `update-linux` (aliases `uplx`, `updeb`) com snapshot ZFS pré-update e delegação transparente ao `update-all` no guest via SSH.
 - [x] Função `update-ports` (aliases `upp`, `upport`) com sincronização dual-branch, expurgo trimestral e integração ao `update-all` no FreeBSD.
+
+### 4. 🐚 Shells Alternativos & Desacoplamento Profile ➔ Shell (Épico 10)
+
+- [x] Acolhimento de perfis corporativos e prompts de shells alternativos em `target/windows/` (PowerShell 7+, NuShell, CMD com Clink).
+- [x] Adição de suporte ao Fish Shell em `target/common/fish/` com prompt temático, funções `up*` e biblioteca semântica `_ui_*`.
+- [x] Motor de deploy declarativo em `library/deploy.sh` com integração no `install.sh` para linking idempotente e auto-cura de permissões.
 
 ---
 

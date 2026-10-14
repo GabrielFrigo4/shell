@@ -33,7 +33,7 @@ _show_help() {
 
 		Options:
 		  -c, --context <CTX>      Context profile: desktop, server, container (default: desktop)
-		  -s, --shell <SHELL>      Target shell: all, zsh, bash, sh, ksh (default: all)
+		  -s, --shell <SHELL>      Target shell: all, zsh, bash, sh, ksh, fish, pwsh, nu, cmd (default: all)
 		      --pure               Native standalone templates, zero overhead (default)
 		      --no-framework       Alias for --pure
 		      --framework          Enable external frameworks (Oh-My-Zsh, Oh-My-Bash)
@@ -49,6 +49,7 @@ _show_help() {
 		  install.sh                         # Default pure install for all detected shells
 		  install.sh -c server               # Pure install configured for server environment
 		  install.sh -s zsh                  # Configure only Zsh
+		  install.sh -s fish                 # Configure only Fish
 		  install.sh --framework             # Install with Oh-My-Zsh and Oh-My-Bash enabled
 		  install.sh -c container -s bash    # Minimal container setup for Bash
 	EOF
@@ -105,9 +106,9 @@ case "${SHELL_CONTEXT}" in
 esac
 
 case "${SHELL_TARGET}" in
-	all|zsh|bash|sh|ksh) ;;
+	all|zsh|bash|sh|ksh|fish|pwsh|powershell|nu|nushell|cmd) ;;
 	*)
-		echo "❌ ERROR: Invalid shell '${SHELL_TARGET}'. Use 'all', 'zsh', 'bash', 'sh' or 'ksh'." >&2
+		echo "❌ ERROR: Invalid shell '${SHELL_TARGET}'. Use 'all', 'zsh', 'bash', 'sh', 'ksh', 'fish', 'pwsh', 'nu' or 'cmd'." >&2
 		echo "   Run '$0 --help' for usage instructions." >&2
 		exit 1
 		;;
@@ -118,6 +119,7 @@ esac
 ### --------------------------------
 . "${SHELL_REPO_DIR}/library/detect.sh"
 . "${SHELL_REPO_DIR}/library/functions.sh"
+. "${SHELL_REPO_DIR}/library/deploy.sh"
 _cache_clean
 OS_NAME="$(_detect_os)"
 SHELL_NAME="$(_detect_shell)"
@@ -148,6 +150,15 @@ else
 			TARGET_SHELLS="${SHELL_NAME}"
 			;;
 	esac
+
+	command -v fish > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} fish"
+	if command -v pwsh > "/dev/null" 2>&1 || command -v powershell > "/dev/null" 2>&1; then
+		TARGET_SHELLS="${TARGET_SHELLS} pwsh"
+	fi
+	command -v nu > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} nu"
+	if [ "${OS_NAME}" = "windows" ]; then
+		TARGET_SHELLS="${TARGET_SHELLS} cmd"
+	fi
 
 	if [ -z "${TARGET_SHELLS}" ]; then
 		TARGET_SHELLS="${SHELL_NAME}"
@@ -477,7 +488,17 @@ _install_shell_target() {
 for _target in ${TARGET_SHELLS}; do
 	echo ""
 	echo "🔧 Configuring for shell: ${_target}"
-	_install_shell_target "${_target}"
+	case "${_target}" in
+		zsh|bash|sh|ksh)
+			_install_shell_target "${_target}"
+			;;
+		fish|pwsh|powershell|nu|nushell|cmd)
+			_install_extended_shell "${_target}"
+			;;
+		*)
+			_install_shell_target "${_target}"
+			;;
+	esac
 done
 
 echo ""

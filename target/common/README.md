@@ -22,3 +22,8 @@ Esta pasta contém as configurações de comportamento, histórico, navegação,
     - Gerenciamento de histórico unificado (`HISTFILE="${HOME}/.sh_history"`, `HISTSIZE=10000`).
     - Opção de segurança e rigor de escrita (`set -C`) e line editing (`set -o emacs`).
     - Aliases padrão POSIX (`h`, `j`, `m`, `history`).
+- **`fish/`**:
+    - Suporte nativo ao Fish Shell (`fish`).
+    - Prompt temático com renderização multiplataforma e indicador Git.
+    - Biblioteca semântica de interface (`_ui_*`).
+    - Orquestrador de atualizações da família `up*` (`upsh`, `upvt`, `uped`, `uprc`, `upgit`, `upall`).
