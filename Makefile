@@ -57,9 +57,9 @@ prettier: format
 format:
 	echo "🎨 Formatando arquivos com Prettier..."
 	if command -v prettier > "/dev/null" 2>&1; then \
-		prettier --write "**/*.{md,json,yml,yaml}"; \
+		prettier --write "**/*.{md,json,jsonc,yml,yaml,html,css}"; \
 	elif command -v npx > "/dev/null" 2>&1; then \
-		npx prettier --write "**/*.{md,json,yml,yaml}"; \
+		npx --yes prettier --write "**/*.{md,json,jsonc,yml,yaml,html,css}"; \
 	else \
 		echo "⚠️ Prettier não encontrado para formatação."; \
 	fi
