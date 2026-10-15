@@ -7,6 +7,7 @@
 ### --------------------------------
 export COLORTERM="truecolor"
 export MICRO_TRUECOLOR=1
+export PYTHONDONTWRITEBYTECODE=1
 unset CDPATH
 
 if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
