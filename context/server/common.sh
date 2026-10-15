@@ -90,3 +90,9 @@ if _is_ssh; then
 	}
 	alias myip="who-remote"
 fi
+
+### --------------------------------
+### Python Performance Cache
+### --------------------------------
+unset PYTHONDONTWRITEBYTECODE
+export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/cpython"

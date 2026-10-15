@@ -686,3 +686,9 @@ alias way="start-session way"
 alias wayland="start-session way"
 alias xorg="start-session xorg"
 alias x11="start-session xorg"
+
+### --------------------------------
+### Python Zero-Cruft Policy
+### --------------------------------
+export PYTHONDONTWRITEBYTECODE=1
+unset PYTHONPYCACHEPREFIX

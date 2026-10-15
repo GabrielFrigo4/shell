@@ -7,8 +7,21 @@
 ### --------------------------------
 export COLORTERM="truecolor"
 export MICRO_TRUECOLOR=1
-export PYTHONDONTWRITEBYTECODE=1
 unset CDPATH
+
+### --------------------------------
+### Python Bytecode & Cache Policy
+### --------------------------------
+case "${SHELL_CONTEXT:-desktop}" in
+	server)
+		unset PYTHONDONTWRITEBYTECODE
+		export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/cpython"
+		;;
+	*)
+		export PYTHONDONTWRITEBYTECODE=1
+		unset PYTHONPYCACHEPREFIX
+		;;
+esac
 
 if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 	export RAW_TTY=1

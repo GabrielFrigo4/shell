@@ -48,3 +48,9 @@ chost() {
 		echo "unknown"
 	fi
 }
+
+### --------------------------------
+### Python Ephemeral Policy
+### --------------------------------
+export PYTHONDONTWRITEBYTECODE=1
+unset PYTHONPYCACHEPREFIX

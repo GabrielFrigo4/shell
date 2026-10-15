@@ -31,6 +31,7 @@ Projetado para estações de trabalho de desenvolvimento:
 - **Dispositivos Móveis:** Comandos `mount-device` (`mntdev`) e `umount-device` (`umdev`) para montagem FUSE automática de smartphones Android via MTP (GNOME GVfs, KDE KIO-FUSE, GSConnect ou ADB).
 - **Gerenciadores de Janelas:** Funções `start-session`, `start-way` e `start-xorg` para inicialização direta de ambientes gráficos (GNOME, Plasma, Hyprland, Sway) a partir de TTYs.
 - **Extensão WSL (`wsl.sh`):** Se executado sob WSL (`_is_wsl`), incorpora automaticamente atalhos do Windows (`explorer`, `pwsh`, `powershell`, `cmd`), sincronização de clipboard (`clip`, `paste`), navegação rápida (`cd-win`), tradução de caminhos (`win-path`, `wsl-path`) e inicialização de arquivos (`open-win`).
+- **Política Python Zero-Cruft:** Exporta `PYTHONDONTWRITEBYTECODE=1` para manter o código dos projetos, árvores Git e a home 100% limpos de pastas `__pycache__` durante desenvolvimento.
 
 ---
 
@@ -43,6 +44,7 @@ Projetado para máquinas de produção e servidores residenciais:
 - Desativação de verificações de ambiente gráfico e temas de GUI.
 - **Sessões Remotas SSH (`_is_ssh`):** Detecção transparente de conexões remotas via `SSH_CLIENT` / `SSH_TTY`, ativando exportação de `REMOTE_SESSION=1`, atalho de inspeção de IP de conexão (`who-remote` / `myip`) e preservação estrita de largura de banda.
 - **Extensão WSL (`wsl.sh`):** Se executado sob WSL (`_is_wsl`), incorpora resolução de rede do host Windows (`WSL_HOST_IP`), liberação de memória RAM da VM para o host (`wsl-drop-caches`) e consulta de IP (`wsl-ip`).
+- **Cache Centralizado Python:** Define `PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-$HOME/.cache}/cpython"` para que daemons e serviços de produção (Django, FastAPI, workers Gunicorn/Celery) tenham boot instantâneo com zero sobrecarga de CPU, mantendo os diretórios das aplicações 100% livres de `__pycache__`.
 
 ---
 
@@ -53,3 +55,4 @@ Projetado para instâncias efêmeras e contêineres de compilação:
 - Elimina qualquer dependência de utilitários ausentes em imagens mínimas (como `sudo`, `ip`, `systemd`).
 - Shell imediato com suporte a `l`, `ll` e detecção de pacotes base (`apk`, `apt`, `dnf`, `pkg`).
 - Isolamento estrito e portabilidade absoluta: agnóstico ao sistema hospedeiro (não acoplado ao Windows, macOS ou nuvem).
+- **Política Python Efêmera:** Exporta `PYTHONDONTWRITEBYTECODE=1` para prevenir escrita de bytecode na camada mutável (_overlayfs_) do contêiner.

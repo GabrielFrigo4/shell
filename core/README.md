@@ -9,6 +9,7 @@ Esta pasta contém a base invariante de inicialização de qualquer sessão do *
 - **`environment.sh`**:
     - Sanitização e priorização do `$PATH`.
     - Habilitação universal de 24-bit TrueColor (`COLORTERM="truecolor"`, `MICRO_TRUECOLOR=1`).
+    - Política contextual de cache de bytecode Python (`PYTHONDONTWRITEBYTECODE=1` em desktop/container e `PYTHONPYCACHEPREFIX` em server).
     - Configuração de `$HISTFILE`, `$HISTSIZE` e variáveis de histórico resiliente.
     - Cascata de seleção de editor de texto padrão (`$VISUAL` e `$EDITOR`).
 - **`vault.sh`**:
