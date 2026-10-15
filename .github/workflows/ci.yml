@@ -331,7 +331,7 @@ jobs:
                       bash -n target/openbsd/bash/prompt.sh
                       ksh -n target/openbsd/ksh/prompt.sh
                       ksh -n theme/ksh.sh
-                      ksh -n target/common/ksh.sh
+                      ksh -n target/common/ksh/ksh.sh
                       sh -n target/openbsd/environment.sh
 
                       ### --------------------------------

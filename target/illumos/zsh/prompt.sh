@@ -20,5 +20,5 @@ SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
 ### SHELL CONFIGURATION
 ### ================================
 
-[ -f "${SHELL_REPO_DIR}/target/common/zsh.sh" ] && \
-	. "${SHELL_REPO_DIR}/target/common/zsh.sh"
+[ -f "${SHELL_REPO_DIR}/target/common/zsh/zsh.sh" ] && \
+	. "${SHELL_REPO_DIR}/target/common/zsh/zsh.sh"

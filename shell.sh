@@ -3,7 +3,24 @@
 # Interface: Universal Shell Component & Runtime Entrypoint
 # ----------------------------------------------------------------
 
-_SHELL_ROOT="$(cd "$(dirname "$0")" && pwd)"
+if [ -n "${SHELL_REPO_DIR:-}" ] && [ -d "${SHELL_REPO_DIR}" ]; then
+	_SHELL_ROOT="${SHELL_REPO_DIR}"
+elif [ -d "/usr/local/share/shell" ]; then
+	_SHELL_ROOT="/usr/local/share/shell"
+elif [ -d "${HOME}/.local/share/shell" ]; then
+	_SHELL_ROOT="${HOME}/.local/share/shell"
+else
+	case "${0}" in
+		-*|"") _script_dir="" ;;
+		*/*)  _script_dir="${0%/*}" ;;
+		*)    _script_dir="." ;;
+	esac
+	if [ -n "${_script_dir}" ] && [ -d "${_script_dir}" ]; then
+		_SHELL_ROOT="$(cd "${_script_dir}" && pwd)"
+	else
+		_SHELL_ROOT="${PWD}"
+	fi
+fi
 export SHELL_REPO_DIR="${_SHELL_ROOT}"
 
 ### ================================

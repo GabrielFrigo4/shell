@@ -13,8 +13,8 @@ for _trash in "${HOME}"/:\*; do
 	[ -e "${_trash}" ] && rm -f "${_trash}"
 done
 
-[ -f "${SHELL_REPO_DIR}/target/common/ksh.sh" ] && \
-	. "${SHELL_REPO_DIR}/target/common/ksh.sh"
+[ -f "${SHELL_REPO_DIR}/target/common/ksh/ksh.sh" ] && \
+	. "${SHELL_REPO_DIR}/target/common/ksh/ksh.sh"
 
 ### ================================
 ### SHELL APPEARANCE

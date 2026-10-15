@@ -1,29 +1,15 @@
 # ⚙️ target/common/ — Configurações Comuns de Shell
 
-Esta pasta contém as configurações de comportamento, histórico, navegação, interação, segurança e autocompletamento específicas de cada família de shell (`zsh`, `bash`, `sh`), independentemente do sistema operacional hospedeiro.
+> Configurações de comportamento, histórico, navegação, interação, segurança e autocompletamento comuns a cada família de interpretador, organizadas em diretórios soberanos.
 
 ---
 
-## 📁 Arquivos de Configuração
+## 📁 Catálogo de Shells Comuns
 
-- **`zsh.sh`**:
-    - Gerenciamento de histórico compartilhado e deduplicação (`SHARE_HISTORY`, `HIST_IGNORE_DUPS`, etc.).
-    - Opções de navegação avançada (`AUTO_CD`, `AUTO_PUSHD`, `COMPLETE_IN_WORD`).
-    - Opções de interação & segurança (`NO_CLOBBER`, `CORRECT`, `RM_STAR_WAIT`, `unsetopt BEEP`).
-    - Expansão e globbing (`EXTENDED_GLOB`, `GLOB_DOTS`).
-    - Engine de completamento compilado (`compinit -C` com compilação em background `.zcompdump.zwc`).
-- **`bash.sh`**:
-    - Gerenciamento de histórico (`HISTCONTROL`, `HISTSIZE`, `shopt -s histappend`).
-    - Opções de interação & segurança (`checkwinsize`, `set -o noclobber`).
-    - Navegação amigável (`autocd`, `cdspell`, `dirspell`).
-    - Integração com `bash_completion` nativo do sistema operacional.
-- **`sh.sh`**:
-    - Configurações universais para shells estritamente POSIX (FreeBSD `/bin/sh`).
-    - Gerenciamento de histórico unificado (`HISTFILE="${HOME}/.sh_history"`, `HISTSIZE=10000`).
-    - Opção de segurança e rigor de escrita (`set -C`) e line editing (`set -o emacs`).
-    - Aliases padrão POSIX (`h`, `j`, `m`, `history`).
-- **`fish/`**:
-    - Suporte nativo ao Fish Shell (`fish`).
-    - Prompt temático com renderização multiplataforma e indicador Git.
-    - Biblioteca semântica de interface (`_ui_*`).
-    - Orquestrador de atualizações da família `up*` (`upsh`, `upvt`, `uped`, `uprc`, `upgit`, `upall`).
+| Diretório   | Shell                       | Domínio Principal                                                                         |
+| :---------- | :-------------------------- | :---------------------------------------------------------------------------------------- |
+| **`sh/`**   | POSIX `/bin/sh`             | Configuração estrita POSIX, edição Emacs, histórico em `~/.sh_history`, `set -C`          |
+| **`bash/`** | GNU Bash (`bash`)           | Histórico compartilhado (`histappend`), `checkwinsize`, navegação (`autocd`), completions |
+| **`zsh/`**  | Z Shell (`zsh`)             | `SHARE_HISTORY`, navegação avançada (`AUTO_CD`), segurança e cache `.zcompdump.zwc`       |
+| **`fish/`** | Fish Shell (`fish`)         | Arquitetura modular (`config.fish`, `prompt.fish`, `ui.fish`, `aliases.fish`)             |
+| **`ksh/`**  | Korn Shell (`ksh` / `oksh`) | Histórico, edição de linha e compatibilidade BSD                                          |

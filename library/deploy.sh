@@ -81,7 +81,7 @@ _install_extended_shell() {
 	case "${_target_shell}" in
 		fish)
 			_ui_step "Implantando perfil Fish Shell..."
-			_fish_src="${SHELL_REPO_DIR}/target/common/fish.fish"
+			_fish_src="${SHELL_REPO_DIR}/target/common/fish/config.fish"
 			_fish_dst="${_cfg}/fish/config.fish"
 			_deploy_item "${_fish_src}" "${_fish_dst}"
 			;;

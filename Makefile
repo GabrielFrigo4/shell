@@ -46,21 +46,22 @@ test:
 		find . -name "*.sh" -not -path "*/.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec sh -n {} +; \
 	fi
 	if command -v ksh > "/dev/null" 2>&1; then \
-		find target/openbsd/ksh target/common/ksh.sh theme/ksh.sh -name "*.sh" -exec ksh -n {} +; \
+		find target/openbsd/ksh target/common/ksh theme/ksh.sh -name "*.sh" -exec ksh -n {} +; \
 	elif command -v oksh > "/dev/null" 2>&1; then \
-		find target/openbsd/ksh target/common/ksh.sh theme/ksh.sh -name "*.sh" -exec oksh -n {} +; \
+		find target/openbsd/ksh target/common/ksh theme/ksh.sh -name "*.sh" -exec oksh -n {} +; \
 	fi
 	echo "✅ Sintaxe de todos os módulos de shell validada com sucesso!"
 
 prettier: format
 
 format:
+	echo "🎨 Formatando arquivos com Prettier..."
 	if command -v prettier > "/dev/null" 2>&1; then \
-		prettier --write "**/*.md"; \
+		prettier --write "**/*.{md,json,yml,yaml}"; \
 	elif command -v npx > "/dev/null" 2>&1; then \
-		npx prettier --write "**/*.md"; \
+		npx prettier --write "**/*.{md,json,yml,yaml}"; \
 	else \
-		echo "⚠️ Prettier não encontrado para formatação de Markdown."; \
+		echo "⚠️ Prettier não encontrado para formatação."; \
 	fi
 
 bench:
