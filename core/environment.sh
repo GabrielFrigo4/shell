@@ -460,7 +460,6 @@ alias agy-continue-danger="agy -c --dangerously-skip-permissions"
 alias agyca="agy -c --dangerously-skip-permissions"
 alias agycd="agy -c --dangerously-skip-permissions"
 
-
 eval 'agy() {
 	if [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 		COLORTERM="" TERM="${TERM:-linux}" command agy "$@"

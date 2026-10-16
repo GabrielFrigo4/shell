@@ -107,14 +107,14 @@ _git_pull_resilient() {
 	local _cmd="command git -C \"${_dir}\""
 	if [ ! -w "${_dir}" ]; then
 		_as_root true || return 1
-		local _esc="$(_detect_privilege_escalator)"
-		case "${_esc}" in
-			sudo|doas) _cmd="${_esc} git -C \"${_dir}\"" ;;
+		local _escalator="$(_detect_privilege_escalator)"
+		case "${_escalator}" in
+			sudo|doas) _cmd="${_escalator} git -C \"${_dir}\"" ;;
 		esac
 	fi
 
-	eval "${_cmd} diff --numstat" 2> "/dev/null" | while IFS="$(printf '\t')" read -r _add _del _file; do
-		if [ "${_add}" = "0" ] && [ "${_del}" = "0" ] && [ -n "${_file}" ]; then
+	eval "${_cmd} diff --numstat" 2> "/dev/null" | while IFS="$(printf '\t')" read -r _additions _deletions _file; do
+		if [ "${_additions}" = "0" ] && [ "${_deletions}" = "0" ] && [ -n "${_file}" ]; then
 			eval "${_cmd} checkout -- \"${_file}\"" > "/dev/null" 2>&1 || true
 		fi
 	done
@@ -137,12 +137,12 @@ _git_pull_resilient() {
 	local _current_branch
 	_current_branch="$(eval "${_cmd} branch --show-current" 2> "/dev/null" || true)"
 	if [ -z "${_current_branch}" ]; then
-		local _def_branch
-		_def_branch="$(eval "${_cmd} symbolic-ref --short refs/remotes/origin/HEAD" 2> "/dev/null" | sed 's|^origin/||' || true)"
-		[ -z "${_def_branch}" ] && _def_branch="main"
-		if eval "${_cmd} show-ref --verify --quiet refs/heads/${_def_branch}" 2> "/dev/null"; then
-			if eval "${_cmd} checkout \"${_def_branch}\"" > "/dev/null" 2>&1; then
-				_current_branch="${_def_branch}"
+		local _default_branch
+		_default_branch="$(eval "${_cmd} symbolic-ref --short refs/remotes/origin/HEAD" 2> "/dev/null" | sed 's|^origin/||' || true)"
+		[ -z "${_default_branch}" ] && _default_branch="main"
+		if eval "${_cmd} show-ref --verify --quiet refs/heads/${_default_branch}" 2> "/dev/null"; then
+			if eval "${_cmd} checkout \"${_default_branch}\"" > "/dev/null" 2>&1; then
+				_current_branch="${_default_branch}"
 			fi
 		fi
 	fi
@@ -169,8 +169,8 @@ _git_pull_resilient() {
 				_ui_warn "Conflito detectado ao restaurar alterações locais em ${_dir}."
 				_ui_info "Sua versão local foi preservada com segurança em 'git stash list'."
 			fi
-			eval "${_cmd} diff --numstat" 2> "/dev/null" | while IFS="$(printf '\t')" read -r _add _del _file; do
-				if [ "${_add}" = "0" ] && [ "${_del}" = "0" ] && [ -n "${_file}" ]; then
+			eval "${_cmd} diff --numstat" 2> "/dev/null" | while IFS="$(printf '\t')" read -r _additions _deletions _file; do
+				if [ "${_additions}" = "0" ] && [ "${_deletions}" = "0" ] && [ -n "${_file}" ]; then
 					eval "${_cmd} checkout -- \"${_file}\"" > "/dev/null" 2>&1 || true
 				fi
 			done
@@ -280,12 +280,13 @@ update-shell() {
 
 	if [ "${_sh_mode}" = "status" ]; then
 		_ui_step "Auditando repositório do Universal Shell em ${_target}..."
-		_br="$(git -C "${_target}" branch --show-current 2> "/dev/null" || echo "detached")"
-		_st="$(git -C "${_target}" status -s 2> "/dev/null" || true)"
-		if [ -n "${_st}" ]; then
-			_ui_warn "Universal Shell [${_br}]: alterações pendentes em ${_target}"
+		_branch="$(git -C "${_target}" branch --show-current 2> "/dev/null" || true)"
+		[ -z "${_branch}" ] && _branch="detached"
+		_status="$(git -C "${_target}" status -s 2> "/dev/null" || true)"
+		if [ -n "${_status}" ]; then
+			_ui_warn "Universal Shell [${_branch}]: alterações pendentes em ${_target}"
 		else
-			_ui_ok "Universal Shell [${_br}]: limpo e sincronizado"
+			_ui_ok "Universal Shell [${_branch}]: limpo e sincronizado"
 		fi
 		return 0
 	elif [ "${_sh_mode}" = "dry-run" ]; then
@@ -315,7 +316,7 @@ update-shell() {
 	elif [ -f "${HOME}/.$(_detect_enabled_shell --name 2> "/dev/null")rc" ]; then
 		. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
 	fi
-	unset _target _sh_mode _arg _br _st
+	unset _target _sh_mode _arg _branch _status
 }
 
 ### --------------------------------
@@ -342,19 +343,19 @@ update-editors() {
 	done
 
 	_found=0
-	_ed_mode="update"
-	_with_ext=0
+	_editor_mode="update"
+	_with_extensions=0
 	for _arg in "$@"; do
 		case "${_arg}" in
-			--status|-s)     _ed_mode="status" ;;
-			--dry-run|-n)    _ed_mode="dry-run" ;;
-			--extensions|-e) _with_ext=1 ;;
+			--status|-s)     _editor_mode="status" ;;
+			--dry-run|-n)    _editor_mode="dry-run" ;;
+			--extensions|-e) _with_extensions=1 ;;
 		esac
 	done
 
-	if [ "${_ed_mode}" = "status" ]; then
+	if [ "${_editor_mode}" = "status" ]; then
 		_ui_step "Auditando Suíte de Editores..."
-	elif [ "${_ed_mode}" = "dry-run" ]; then
+	elif [ "${_editor_mode}" = "dry-run" ]; then
 		_ui_step "Simulando atualização da Suíte de Editores..."
 	else
 		_ui_step "Atualizando a Suíte de Editores..."
@@ -394,15 +395,16 @@ update-editors() {
 		esac
 
 		if [ -n "${_target}" ]; then
-			if [ "${_ed_mode}" = "status" ]; then
-				_br="$(git -C "${_target}" branch --show-current 2> "/dev/null" || echo "detached")"
-				_st="$(git -C "${_target}" status -s 2> "/dev/null" || true)"
-				if [ -n "${_st}" ]; then
-					_ui_warn "${_editor} em ${_target} [${_br}]: alterações pendentes"
+			if [ "${_editor_mode}" = "status" ]; then
+				_branch="$(git -C "${_target}" branch --show-current 2> "/dev/null" || true)"
+				[ -z "${_branch}" ] && _branch="detached"
+				_status="$(git -C "${_target}" status -s 2> "/dev/null" || true)"
+				if [ -n "${_status}" ]; then
+					_ui_warn "${_editor} em ${_target} [${_branch}]: alterações pendentes"
 				else
-					_ui_ok "${_editor} em ${_target} [${_br}]: limpo"
+					_ui_ok "${_editor} em ${_target} [${_branch}]: limpo"
 				fi
-			elif [ "${_ed_mode}" = "dry-run" ]; then
+			elif [ "${_editor_mode}" = "dry-run" ]; then
 				_ui_sub "[DRY-RUN PULL] ${_editor} -> ${_target}"
 			else
 				_ui_sub "Atualizando ${_editor} em ${_target}..."
@@ -424,7 +426,7 @@ update-editors() {
 		fi
 	done
 
-	if [ "${_with_ext}" -eq 1 ] && command -v sync-extensions > "/dev/null" 2>&1; then
+	if [ "${_with_extensions}" -eq 1 ] && command -v sync-extensions > "/dev/null" 2>&1; then
 		echo ""
 		sync-extensions "$@"
 	fi
@@ -432,9 +434,9 @@ update-editors() {
 	if [ "${_found}" -eq 0 ]; then
 		_ui_info "Nenhum repositório de editor encontrado nos caminhos canônicos (~/.emacs.d, ~/.config/nvim, ~/.config/helix, ~/.vim, ~/vimfiles)."
 	else
-		_ui_ok "Suíte de Editores finalizada (${_ed_mode})!"
+		_ui_ok "Suíte de Editores finalizada (${_editor_mode})!"
 	fi
-	unset _found _ed_mode _with_ext _editor _target _br _st _arg
+	unset _found _editor_mode _with_extensions _editor _target _branch _status _arg
 }
 
 ### --------------------------------
@@ -682,10 +684,10 @@ update-git() {
 			if [ "${_git_mode}" = "status" ]; then
 				_branch="$(git -C "${_repo_dir}" branch --show-current 2> "/dev/null" || true)"
 				[ -z "${_branch}" ] && _branch="detached"
-				_st="$(git -C "${_repo_dir}" status -s 2> "/dev/null" || true)"
+				_status="$(git -C "${_repo_dir}" status -s 2> "/dev/null" || true)"
 				_ahead_behind="$(git -C "${_repo_dir}" rev-list --left-right --count HEAD...@{upstream} 2> "/dev/null" || true)"
 				_diverged=0
-				if [ -n "${_st}" ]; then
+				if [ -n "${_status}" ]; then
 					_diverged=1
 				elif [ -n "${_ahead_behind}" ] && [ "${_ahead_behind}" != "0	0" ] && [ "${_ahead_behind}" != "0 0" ]; then
 					_diverged=1
@@ -696,7 +698,7 @@ update-git() {
 					if [ -n "${_ahead_behind}" ] && [ "${_ahead_behind}" != "0	0" ] && [ "${_ahead_behind}" != "0 0" ]; then
 						_ui_sub "  ↳ Commits (local/remote): ${_ahead_behind}"
 					fi
-					[ -n "${_st}" ] && git -C "${_repo_dir}" status -s | head -n 5 | while read -r _s; do _ui_sub "    ${_s}"; done
+					[ -n "${_status}" ] && git -C "${_repo_dir}" status -s | head -n 5 | while read -r _status_line; do _ui_sub "    ${_status_line}"; done
 				else
 					_ui_ok "${_repo_dir} [${_branch}]: sincronizado e limpo"
 				fi
@@ -710,7 +712,7 @@ update-git() {
 
 	echo ""
 	_ui_ok "Operação Git (${_git_mode}) concluída!"
-	unset _target_root _git_mode _max_depth _arg _git_entry _repo_dir _branch _st _ahead_behind
+	unset _target_root _git_mode _max_depth _arg _git_entry _repo_dir _branch _status _ahead_behind
 }
 
 alias plgit="update-git"
@@ -781,11 +783,12 @@ push-git() {
 		cut -d' ' -f2- | while read -r _git_entry; do
 			_repo_dir="$(dirname "${_git_entry}")"
 			_unpushed="$(git -C "${_repo_dir}" cherry -v 2> "/dev/null" || true)"
-			_branch="$(git -C "${_repo_dir}" branch --show-current 2> "/dev/null" || echo "detached")"
+			_branch="$(git -C "${_repo_dir}" branch --show-current 2> "/dev/null" || true)"
+			[ -z "${_branch}" ] && _branch="detached"
 			if [ -n "${_unpushed}" ]; then
 				if [ "${_git_mode}" = "status" ]; then
 					_ui_warn "${_repo_dir} [${_branch}]: commits pendentes de envio"
-					echo "${_unpushed}" | while read -r _c; do _ui_sub "  ↳ ${_c}"; done
+					echo "${_unpushed}" | while read -r _commit_line; do _ui_sub "  ↳ ${_commit_line}"; done
 				elif [ "${_git_mode}" = "dry-run" ]; then
 					_ui_sub "[DRY-RUN PUSH] ${_repo_dir} (${_branch})"
 				else
@@ -799,7 +802,7 @@ push-git() {
 
 	echo ""
 	_ui_ok "Operação Push Git (${_git_mode}) concluída!"
-	unset _target_root _git_mode _max_depth _arg _git_entry _repo_dir _unpushed _branch _c
+	unset _target_root _git_mode _max_depth _arg _git_entry _repo_dir _unpushed _branch _commit_line
 }
 alias psgit="push-git"
 
@@ -1443,12 +1446,12 @@ update-ports() {
 	_as_root git -C "${_ports_dir}" reset --hard "origin/${_ports_quarter}" > "/dev/null" 2>&1
 	_as_root git -C "${_ports_dir}" clean -fd > "/dev/null" 2>&1 || true
 
-	for _b in $(git -C "${_ports_dir}" for-each-ref --format='%(refname:short)' refs/heads/ 2> "/dev/null"); do
-		case "${_b}" in
+	for _existing_branch in $(git -C "${_ports_dir}" for-each-ref --format='%(refname:short)' refs/heads/ 2> "/dev/null"); do
+		case "${_existing_branch}" in
 			[1-2][0-9][0-9][0-9]Q[1-4])
-				if [ "${_b}" != "${_ports_quarter}" ] && [ "${_b}" != "${_ports_branch}" ]; then
-					_ui_info "Expurgando branch trimestral obsoleta: ${_b}..."
-					_as_root git -C "${_ports_dir}" branch -D "${_b}" > "/dev/null" 2>&1 || true
+				if [ "${_existing_branch}" != "${_ports_quarter}" ] && [ "${_existing_branch}" != "${_ports_branch}" ]; then
+					_ui_info "Expurgando branch trimestral obsoleta: ${_existing_branch}..."
+					_as_root git -C "${_ports_dir}" branch -D "${_existing_branch}" > "/dev/null" 2>&1 || true
 				fi
 				;;
 		esac
@@ -1464,6 +1467,7 @@ update-ports() {
 		_as_root git -C "${_ports_dir}" checkout "${_ports_quarter}" > "/dev/null" 2>&1
 		_ui_ok "FreeBSD Ports atualizado com sucesso em branch ${_ports_quarter}!"
 	fi
+	unset _arg _ports_branch _ports_dir _ports_quarter _existing_branch
 }
 
 alias upp="update-ports"
