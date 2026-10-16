@@ -102,11 +102,11 @@ _git_pull_resilient() {
 
 	local _cmd="command git -C \"${_dir}\""
 	if [ ! -w "${_dir}" ]; then
-		if command -v sudo > "/dev/null" 2>&1; then
-			_cmd="sudo git -C \"${_dir}\""
-		elif command -v doas > "/dev/null" 2>&1; then
-			_cmd="doas git -C \"${_dir}\""
-		fi
+		_as_root true || return 1
+		local _esc="$(_detect_privilege_escalator)"
+		case "${_esc}" in
+			sudo|doas) _cmd="${_esc} git -C \"${_dir}\"" ;;
+		esac
 	fi
 
 	eval "${_cmd} diff --numstat" 2> "/dev/null" | while IFS="$(printf '\t')" read -r _add _del _file; do
@@ -502,9 +502,13 @@ update-profile() {
 		_ui_info "Nenhum repositório Profile encontrado em ~/.local/share/profile, ~/.config/profile ou \$PROFILE_DIR."
 	fi
 
-	if [ -f "${HOME}/.profile" ]; then
-		_ui_info "Recarregando ${HOME}/.profile..."
-		. "${HOME}/.profile" > "/dev/null" 2>&1 || true
+	_ui_info "Recarregando ambiente do shell..."
+	if [ -n "${ZSH_VERSION:-}" ] && [ -f "${HOME}/.zshrc" ]; then
+		. "${HOME}/.zshrc" 2> "/dev/null" || true
+	elif [ -n "${BASH_VERSION:-}" ] && [ -f "${HOME}/.bashrc" ]; then
+		. "${HOME}/.bashrc" 2> "/dev/null" || true
+	elif [ -f "${HOME}/.$(_detect_enabled_shell --name 2> "/dev/null")rc" ]; then
+		. "${HOME}/.$(_detect_enabled_shell --name)rc" 2> "/dev/null" || true
 	fi
 	unset _target _is_dry _is_status _arg
 }
@@ -680,9 +684,6 @@ update-git() {
 	unset _target_root _git_mode _max_depth _arg _git_entry _repo_dir _branch _st _ahead_behind
 }
 
-pull-git() {
-	update-git "$@"
-}
 alias plgit="update-git"
 alias upgit="update-git"
 alias pull-git="update-git"

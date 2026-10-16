@@ -57,7 +57,7 @@ _ui_ok() {
 
 _ui_warn() {
 	if _ui_has_color; then
-		printf "%s  ⚠️ %s %s\n" "${_ui_yellow}" "${_ui_reset:-${_ui_color_reset}}" "$*"
+		printf "%s  ⚠️ %s %s\n" "${_ui_color_yellow}" "${_ui_color_reset}" "$*"
 	else
 		printf "  WARN %s\n" "$*"
 	fi
@@ -82,15 +82,13 @@ _ui_info() {
 _ui_banner() {
 	local _title="$1"
 	local _separator="================================================================"
-	echo ""
+	printf "\n"
 	if _ui_has_color; then
-		echo "${_ui_color_bold}${_ui_color_cyan}${_separator}${_ui_color_reset}"
-		echo "${_ui_color_bold}  ${_title}${_ui_color_reset}"
-		echo "${_ui_color_bold}${_ui_color_cyan}${_separator}${_ui_color_reset}"
+		printf "%s%s%s\n" "${_ui_color_bold}${_ui_color_cyan}" "${_separator}" "${_ui_color_reset}"
+		printf "%s  %s%s\n" "${_ui_color_bold}" "${_title}" "${_ui_color_reset}"
+		printf "%s%s%s\n" "${_ui_color_bold}${_ui_color_cyan}" "${_separator}" "${_ui_color_reset}"
 	else
-		echo "${_separator}"
-		echo "  ${_title}"
-		echo "${_separator}"
+		printf "%s\n  %s\n%s\n" "${_separator}" "${_title}" "${_separator}"
 	fi
-	echo ""
+	printf "\n"
 }
