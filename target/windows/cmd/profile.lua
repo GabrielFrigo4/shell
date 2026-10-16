@@ -1416,6 +1416,7 @@ local function cmd_clean_system(args)
 	_ui_step("Executando limpeza de pacotes e caches do sistema...")
 	os.execute([[scoop cache rm * >nul 2>nul]])
 	os.execute([[scoop cleanup * >nul 2>nul]])
+	os.execute([[powershell -NoProfile -Command "if (Get-Command choco -ErrorAction SilentlyContinue) { Start-Process choco -ArgumentList 'cache remove' -Verb RunAs -Wait }" >nul 2>nul]])
 	_ui_ok("Limpeza do sistema concluída!")
 end
 

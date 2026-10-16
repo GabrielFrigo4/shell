@@ -45,4 +45,5 @@ reg import setup-profile.reg
 | `upall`                     | Orquestra atualização de sistema (`upsys`), Profile, Vault e Editores          |
 | `upget` / `upscp` / `upcho` | Atualizadores de pacotes (Winget, Scoop e Chocolatey)                          |
 | `upsys`                     | Atualiza Winget, Scoop e Chocolatey em lote                                    |
+| `clean-system` / `cleansys` | Limpeza de caches de pacotes e dependências obsoletas (Scoop, Chocolatey)      |
 | `upwin`                     | Executa a atualização do Windows Update                                        |

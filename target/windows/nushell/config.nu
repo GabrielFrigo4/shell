@@ -275,6 +275,10 @@ def clean-system [...args: string] {
 		do -i { scoop cache rm * }
 		do -i { scoop cleanup * }
 	}
+	if (which choco | is-not-empty) {
+		_ui_sub "Limpando cache do Chocolatey..."
+		do -i { ^powershell -NoProfile -Command "Start-Process choco -ArgumentList 'cache remove' -Verb RunAs -Wait" }
+	}
 	_ui_ok "Limpeza do sistema concluída!"
 }
 
