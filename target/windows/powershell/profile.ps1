@@ -875,6 +875,31 @@ function Update-System {
 	_ui_ok "Atualização de pacotes do sistema concluída!"
 }
 
+function Clean-System {
+	param(
+		[alias("h")][switch]$Help
+	)
+	if ($Help) {
+		Write-Host @"
+Uso: Clean-System [-Help] (alias: cleansys, sysclean, syscls)
+
+Limpeza de caches de pacotes e dependências obsoletas no Windows.
+"@
+		return
+	}
+	_ui_step "Executando limpeza de pacotes e caches do sistema..."
+	if (Get-Command scoop -ErrorAction SilentlyContinue) {
+		_ui_sub "Limpando cache de instaladores do Scoop..."
+		scoop cache rm * 2>$null
+		scoop cleanup * 2>$null
+	}
+	if (Get-Command choco -ErrorAction SilentlyContinue) {
+		_ui_sub "Limpando cache temporário do Chocolatey..."
+		powershell -NoProfile -Command "Start-Process choco -ArgumentList 'cache remove' -Verb RunAs -Wait" 2>$null
+	}
+	_ui_ok "Limpeza do sistema concluída!"
+}
+
 function Update-All {
 	param(
 		[alias("s")][switch]$Status,
@@ -918,6 +943,7 @@ Parâmetros:
 	Update-Vault
 	Update-Shell
 	Update-Editors
+	Clean-System
 	_ui_banner "Atualização Global Concluída com Sucesso"
 }
 
@@ -975,6 +1001,10 @@ New-Alias "upprofile" "Update-Profile"
 New-Alias "sync-profile" "Update-Profile"
 New-Alias "upvt" "Update-Vault"
 New-Alias "upall" "Update-All"
+New-Alias "cleansys" "Clean-System"
+New-Alias "sysclean" "Clean-System"
+New-Alias "syscls" "Clean-System"
+New-Alias "clean-system" "Clean-System"
 
 New-Alias "brw" "Browser-Search"
 New-Alias "win-man" "Windows-Manual"

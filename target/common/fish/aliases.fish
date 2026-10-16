@@ -228,12 +228,50 @@ function update-git -d "Varre e atualiza recursivamente repositórios Git"
 end
 alias upgit="update-git"
 
+function clean-system -d "Limpeza de pacotes órfãos, dependências obsoletas e caches do sistema"
+    _ui_step "Executando limpeza de pacotes órfãos e caches do sistema..."
+    if type -q apt
+        _ui_sub "Removendo pacotes órfãos via apt autoremove..."
+        sudo apt autoremove --yes; or doas apt autoremove --yes
+        _ui_sub "Limpando cache de pacotes baixados pelo apt..."
+        sudo apt clean 2>/dev/null; or doas apt clean 2>/dev/null
+    else if type -q dnf
+        _ui_sub "Removendo pacotes órfãos via dnf autoremove..."
+        sudo dnf autoremove --assumeyes; or doas dnf autoremove --assumeyes
+    else if type -q pacman
+        set -l orphans (pacman -Qtdq 2>/dev/null)
+        if test -n "$orphans"
+            _ui_sub "Removendo pacotes órfãos via pacman..."
+            sudo pacman -Rns --noconfirm $orphans; or doas pacman -Rns --noconfirm $orphans
+        end
+    else if type -q pkg
+        _ui_sub "Removendo pacotes órfãos via pkg autoremove..."
+        sudo pkg autoremove --yes; or doas pkg autoremove --yes
+        _ui_sub "Limpando cache de pacotes via pkg clean..."
+        sudo pkg clean --yes 2>/dev/null; or doas pkg clean --yes 2>/dev/null
+    else if type -q brew
+        _ui_sub "Executando limpeza de dependências obsoletas via Homebrew..."
+        brew cleanup --prune=all
+    end
+
+    if type -q flatpak
+        _ui_sub "Removendo runtimes órfãos do Flatpak..."
+        command flatpak uninstall --unused --assumeyes 2>/dev/null
+    end
+
+    _ui_ok "Limpeza do sistema concluída com sucesso!"
+end
+alias cleansys="clean-system"
+alias sysclean="clean-system"
+alias syscls="clean-system"
+
 function update-all -d "Orquestra atualização completa do sistema e ecossistema"
     _ui_banner "Atualização Global do Ecossistema e Sistema"
     update-shell $argv
     update-profile $argv
     update-vault $argv
     update-editors $argv
+    clean-system $argv
     _ui_banner "Atualização Global Concluída com Sucesso"
 end
 alias upall="update-all"

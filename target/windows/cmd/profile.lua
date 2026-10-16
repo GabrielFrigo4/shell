@@ -1401,7 +1401,22 @@ local function cmd_upall(args)
 	cmd_upvt()
 	cmd_upsh()
 	cmd_uped()
+	cmd_clean_system()
 	_ui_banner("Atualização Global Concluída com Sucesso")
+end
+
+local function cmd_clean_system(args)
+	local flags = args and trim(args) or ""
+	if flags:find("%-%-help") or flags:find("%-h") then
+		print("Uso: clean-system [opções] (alias: cleansys, sysclean, syscls)")
+		print("")
+		print("Limpeza de pacotes órfãos e caches no Windows.")
+		return
+	end
+	_ui_step("Executando limpeza de pacotes e caches do sistema...")
+	os.execute([[scoop cache rm * >nul 2>nul]])
+	os.execute([[scoop cleanup * >nul 2>nul]])
+	_ui_ok("Limpeza do sistema concluída!")
 end
 
 local updater_commands = {
@@ -1426,6 +1441,10 @@ local updater_commands = {
 	["update-shell"] = cmd_upsh,
 	["upall"] = cmd_upall,
 	["update-all"] = cmd_upall,
+	["clean-system"] = cmd_clean_system,
+	["cleansys"] = cmd_clean_system,
+	["sysclean"] = cmd_clean_system,
+	["syscls"] = cmd_clean_system,
 }
 
 local updater_parser = clink.arg.new_parser()

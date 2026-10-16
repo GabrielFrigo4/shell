@@ -66,3 +66,7 @@ doskey upvt=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFI
 doskey vault-perms=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; vault-perms $* }"
 doskey upsh=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Update-Shell }"
 doskey upall=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Update-All }"
+doskey cleansys=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Clean-System }"
+doskey sysclean=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Clean-System }"
+doskey syscls=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Clean-System }"
+doskey clean-system=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Clean-System }"

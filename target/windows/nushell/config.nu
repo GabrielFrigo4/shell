@@ -261,6 +261,23 @@ def upsys [] {
 	_ui_ok "Atualização de pacotes do sistema concluída!"
 }
 
+def clean-system [...args: string] {
+	let sub_args = ($args | str join " ")
+	if ($sub_args | str contains "--help") or ($sub_args | str contains "-h") {
+		print "Uso: clean-system [opções] (alias: cleansys, sysclean, syscls)"
+		print ""
+		print "Limpeza de pacotes órfãos e caches no Windows."
+		return
+	}
+	_ui_step "Executando limpeza de pacotes e caches do sistema..."
+	if (which scoop | is-not-empty) {
+		_ui_sub "Limpando cache do Scoop..."
+		do -i { scoop cache rm * }
+		do -i { scoop cleanup * }
+	}
+	_ui_ok "Limpeza do sistema concluída!"
+}
+
 def upgit [...args: string] {
 	let sub_args = ($args | str join " ")
 	if ($sub_args | str contains "--help") or ($sub_args | str contains "-h") {
@@ -781,6 +798,7 @@ def upall [...args: string] {
 	upvt
 	upsh
 	uped
+	clean-system
 	_ui_banner "Atualização Global Concluída com Sucesso"
 }
 
@@ -799,6 +817,9 @@ alias update-vault = upvt;
 alias update-shell = upsh;
 alias update-system = upsys;
 alias update-all = upall;
+alias cleansys = clean-system;
+alias sysclean = clean-system;
+alias syscls = clean-system;
 def er [] { ek; es };
 def oa [...args: string] {
 	let app = "antigravity-ide"

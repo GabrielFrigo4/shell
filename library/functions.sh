@@ -1123,6 +1123,166 @@ update-system() {
 }
 
 ### --------------------------------
+### Clean System
+### --------------------------------
+clean-system() {
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--dry-run|-n)
+				_ui_info "Simulação: pacotes órfãos e caches de sistema seriam limpos."
+				return 0
+				;;
+			--help|-h)
+				cat <<- 'EOF'
+				Uso: clean-system [opções] (alias: cleansys, sysclean, syscls)
+
+				Limpeza de pacotes órfãos, dependências obsoletas e caches do sistema operacional.
+
+				Ações por plataforma:
+				  - Debian / Ubuntu:   apt autoremove --yes && apt clean
+				  - Fedora / RHEL:     dnf autoremove --assumeyes && dnf clean packages
+				  - Arch Linux:        pacman -Rns (órfãos) && paccache -r
+				  - Void Linux:        xbps-remove -o && xbps-remove -O
+				  - Alpine Linux:      apk cache clean
+				  - openSUSE:          zypper clean --all
+				  - FreeBSD:           pkg autoremove --yes && pkg clean --yes
+				  - OpenBSD:           pkg_delete -a
+				  - NetBSD:            pkgin autoremove && pkgin clean
+				  - macOS:             brew cleanup --prune=all
+				  - Flatpak:           flatpak uninstall --unused --assumeyes
+
+				Opções:
+				  -n, --dry-run        Simula a limpeza sem remover pacotes
+				  -h, --help           Exibe esta ajuda
+				EOF
+				return 0
+				;;
+		esac
+	done
+
+	_ui_step "Executando limpeza de pacotes órfãos e caches do sistema..."
+
+	case "$(_detect_distro_family)" in
+		arch)
+			if command -v pacman > "/dev/null" 2>&1; then
+				_orphans="$(pacman -Qtdq 2> "/dev/null" || true)"
+				if [ -n "${_orphans}" ]; then
+					_ui_sub "Removendo pacotes órfãos via pacman..."
+					if [ "$(_detect_os)" = "windows" ]; then
+						# shellcheck disable=SC2086
+						command pacman -Rns --noconfirm ${_orphans}
+					else
+						# shellcheck disable=SC2086
+						_as_root pacman -Rns --noconfirm ${_orphans}
+					fi
+				fi
+				if command -v paccache > "/dev/null" 2>&1; then
+					_ui_sub "Limpando cache de pacotes antigos via paccache..."
+					_as_root paccache -r > "/dev/null" 2>&1 || true
+				fi
+			fi
+			;;
+		debian)
+			if command -v apt > "/dev/null" 2>&1; then
+				_ui_sub "Removendo pacotes órfãos via apt autoremove..."
+				_as_root apt autoremove --yes
+				_ui_sub "Limpando cache de pacotes baixados pelo apt..."
+				_as_root apt clean > "/dev/null" 2>&1 || true
+			elif command -v apt-get > "/dev/null" 2>&1; then
+				_ui_sub "Removendo pacotes órfãos via apt-get autoremove..."
+				_as_root apt-get autoremove --yes
+				_ui_sub "Limpando cache de pacotes baixados pelo apt-get..."
+				_as_root apt-get clean > "/dev/null" 2>&1 || true
+			fi
+			;;
+		fedora)
+			if command -v dnf > "/dev/null" 2>&1; then
+				_ui_sub "Removendo pacotes órfãos via dnf autoremove..."
+				_as_root dnf autoremove --assumeyes
+				_ui_sub "Limpando cache de pacotes baixados pelo dnf..."
+				_as_root dnf clean packages > "/dev/null" 2>&1 || true
+			fi
+			;;
+		suse)
+			if command -v zypper > "/dev/null" 2>&1; then
+				_ui_sub "Limpando cache de pacotes via zypper..."
+				_as_root zypper clean --all > "/dev/null" 2>&1 || true
+			fi
+			;;
+		void)
+			if command -v xbps-remove > "/dev/null" 2>&1; then
+				_ui_sub "Removendo pacotes órfãos via xbps-remove..."
+				_as_root xbps-remove --yes --remove-orphans > "/dev/null" 2>&1 || true
+				_ui_sub "Limpando cache de pacotes do xbps..."
+				_as_root xbps-remove --yes --clean-cache > "/dev/null" 2>&1 || true
+			fi
+			;;
+		alpine)
+			if command -v apk > "/dev/null" 2>&1; then
+				_ui_sub "Limpando cache de pacotes do apk..."
+				_as_root apk cache clean > "/dev/null" 2>&1 || true
+			fi
+			;;
+		*)
+			case "$(_detect_os)" in
+				freebsd)
+					if command -v pkg > "/dev/null" 2>&1; then
+						_ui_sub "Removendo pacotes órfãos via pkg autoremove..."
+						_as_root pkg autoremove --yes
+						_ui_sub "Limpando cache de pacotes via pkg clean..."
+						_as_root pkg clean --yes > "/dev/null" 2>&1 || true
+					fi
+					;;
+				openbsd)
+					if command -v pkg_delete > "/dev/null" 2>&1; then
+						_ui_sub "Removendo dependências órfãs via pkg_delete..."
+						_as_root pkg_delete -a > "/dev/null" 2>&1 || true
+					fi
+					;;
+				netbsd)
+					if command -v pkgin > "/dev/null" 2>&1; then
+						_ui_sub "Removendo pacotes órfãos via pkgin autoremove..."
+						_as_root pkgin -y autoremove > "/dev/null" 2>&1 || true
+						_as_root pkgin -y clean > "/dev/null" 2>&1 || true
+					fi
+					;;
+				macos)
+					if command -v brew > "/dev/null" 2>&1; then
+						_ui_sub "Executando limpeza de dependências obsoletas via Homebrew..."
+						brew cleanup --prune=all
+					fi
+					;;
+				windows)
+					if command -v pacman > "/dev/null" 2>&1; then
+						_orphans="$(pacman -Qtdq 2> "/dev/null" || true)"
+						if [ -n "${_orphans}" ]; then
+							# shellcheck disable=SC2086
+							command pacman -Rns --noconfirm ${_orphans}
+						fi
+					fi
+					;;
+			esac
+			;;
+	esac
+
+	if [ "$(_detect_os)" != "macos" ] && command -v brew > "/dev/null" 2>&1; then
+		_ui_sub "Executando limpeza de dependências obsoletas via Linuxbrew..."
+		brew cleanup --prune=all > "/dev/null" 2>&1 || true
+	fi
+
+	if command -v flatpak > "/dev/null" 2>&1; then
+		_ui_sub "Removendo runtimes órfãos do Flatpak..."
+		command flatpak uninstall --unused --assumeyes 2> "/dev/null" || true
+	fi
+
+	_ui_ok "Limpeza do sistema concluída com sucesso!"
+}
+
+alias cleansys="clean-system"
+alias sysclean="clean-system"
+alias syscls="clean-system"
+
+### --------------------------------
 ### Update Linux Host Bhyve
 ### --------------------------------
 update-linux() {
@@ -1361,6 +1521,9 @@ update-all() {
 				update-linux "$@"
 			fi
 		fi
+
+		echo ""
+		clean-system
 	fi
 
 	if [ -e "${HOME}/.local/share/shell/.git" ] || [ -e "${HOME}/.config/shell/.git" ] || [ -e "/usr/local/share/shell/.git" ] || [ -e "${HOME}/.shell/.git" ]; then
