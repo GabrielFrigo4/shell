@@ -115,27 +115,51 @@ _git_pull_resilient() {
 		fi
 	done
 
-	local _has_dirty=0
+	local _has_stash=0
 	local _status
 	_status="$(eval "${_cmd} status --porcelain" 2> "/dev/null" || true)"
 	if [ -n "${_status}" ]; then
-		_has_dirty=1
+		local _stash_before _stash_after
+		_stash_before="$(eval "${_cmd} rev-parse -q --verify refs/stash" 2> "/dev/null" || true)"
 		_ui_warn "Alterações locais ou arquivos novos detectados em ${_dir}."
 		_ui_sub "Criando auto-stash defensivo antes da sincronização..."
 		eval "${_cmd} stash push -u -m 'autostash-before-update-$(date +%s)'" > "/dev/null" 2>&1 || true
+		_stash_after="$(eval "${_cmd} rev-parse -q --verify refs/stash" 2> "/dev/null" || true)"
+		if [ -n "${_stash_after}" ] && [ "${_stash_before}" != "${_stash_after}" ]; then
+			_has_stash=1
+		fi
+	fi
+
+	local _current_branch
+	_current_branch="$(eval "${_cmd} branch --show-current" 2> "/dev/null" || true)"
+	if [ -z "${_current_branch}" ]; then
+		local _def_branch
+		_def_branch="$(eval "${_cmd} symbolic-ref --short refs/remotes/origin/HEAD" 2> "/dev/null" | sed 's|^origin/||' || true)"
+		[ -z "${_def_branch}" ] && _def_branch="main"
+		if eval "${_cmd} show-ref --verify --quiet refs/heads/${_def_branch}" 2> "/dev/null"; then
+			if eval "${_cmd} checkout \"${_def_branch}\"" > "/dev/null" 2>&1; then
+				_current_branch="${_def_branch}"
+			fi
+		fi
 	fi
 
 	local _pull_ok=0
-	if eval "${_cmd} pull --ff-only" > "/dev/null" 2>&1; then
-		_pull_ok=1
-	elif eval "${_cmd} pull --rebase" > "/dev/null" 2>&1; then
-		_pull_ok=1
-	elif eval "${_cmd} pull" > "/dev/null" 2>&1; then
-		_pull_ok=1
+	if [ -n "${_current_branch}" ]; then
+		if eval "${_cmd} pull --ff-only" > "/dev/null" 2>&1; then
+			_pull_ok=1
+		elif eval "${_cmd} pull --rebase" > "/dev/null" 2>&1; then
+			_pull_ok=1
+		elif eval "${_cmd} pull" > "/dev/null" 2>&1; then
+			_pull_ok=1
+		fi
+	else
+		if eval "${_cmd} fetch" > "/dev/null" 2>&1; then
+			_pull_ok=1
+		fi
 	fi
 
 	if [ "${_pull_ok}" -eq 1 ]; then
-		if [ "${_has_dirty}" -eq 1 ]; then
+		if [ "${_has_stash}" -eq 1 ]; then
 			if ! eval "${_cmd} stash pop" > "/dev/null" 2>&1; then
 				eval "${_cmd} reset --merge" > "/dev/null" 2>&1 || eval "${_cmd} checkout -f" > "/dev/null" 2>&1 || true
 				_ui_warn "Conflito detectado ao restaurar alterações locais em ${_dir}."
@@ -652,7 +676,8 @@ update-git() {
 		cut -d' ' -f2- | while read -r _git_entry; do
 			_repo_dir="$(dirname "${_git_entry}")"
 			if [ "${_git_mode}" = "status" ]; then
-				_branch="$(git -C "${_repo_dir}" branch --show-current 2> "/dev/null" || echo "detached")"
+				_branch="$(git -C "${_repo_dir}" branch --show-current 2> "/dev/null" || true)"
+				[ -z "${_branch}" ] && _branch="detached"
 				_st="$(git -C "${_repo_dir}" status -s 2> "/dev/null" || true)"
 				_ahead_behind="$(git -C "${_repo_dir}" rev-list --left-right --count HEAD...@{upstream} 2> "/dev/null" || true)"
 				_diverged=0
