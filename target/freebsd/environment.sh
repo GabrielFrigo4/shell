@@ -12,7 +12,10 @@ path-dedup
 ### --------------------------------
 ### Housekeeping
 ### --------------------------------
-[ -e "${HOME}/:0" ] && rm -f "${HOME}/:0" 2> "/dev/null"
+for _sock in 0 1 2 3 4 5 6 7 8 9; do
+	[ -e "${HOME}/:${_sock}" ] && rm -f "${HOME}/:${_sock}" 2> "/dev/null"
+done
+unset -v _sock
 
 ### --------------------------------
 ### FreeBSD Compat Layer

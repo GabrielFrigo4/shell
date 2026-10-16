@@ -3,9 +3,6 @@
 ### ================================
 
 export SHELL_INIT=1
-for _trash in "${HOME}"/:\*; do
-	[ -e "${_trash}" ] && rm -f "${_trash}"
-done
 
 ### ================================
 ### SHELL APPEARANCE
