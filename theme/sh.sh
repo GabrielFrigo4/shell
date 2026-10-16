@@ -8,9 +8,10 @@ _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
 
 _trim_string() {
 	_trimmed="$1"
+	[ "${2:-0}" -le 0 ] && _trimmed="" && return 0
 	if [ "${#_trimmed}" -gt "$2" ]; then
 		local _target_length=$(( $2 - 1 ))
-		while [ "${#_trimmed}" -gt "${_target_length}" ]; do
+		while [ "${#_trimmed}" -gt "${_target_length}" ] && [ -n "${_trimmed}" ]; do
 			_trimmed="${_trimmed%?}"
 		done
 		_trimmed="${_trimmed}$3"
@@ -22,7 +23,7 @@ _calc_c_len() {
 	local _raw_length="${#_string}"
 
 	local _remaining_string="${_string}" _open_delimiter_count=0
-	while :; do
+	while true; do
 		case "${_remaining_string}" in
 			*"\\["*) _open_delimiter_count=$(( _open_delimiter_count + 1 )); _remaining_string="${_remaining_string#*"\\["}" ;;
 			*) break ;;
@@ -31,7 +32,7 @@ _calc_c_len() {
 
 	_remaining_string="${_string}"
 	local _close_delimiter_count=0
-	while :; do
+	while true; do
 		case "${_remaining_string}" in
 			*"\\]"*) _close_delimiter_count=$(( _close_delimiter_count + 1 )); _remaining_string="${_remaining_string#*"\\]"}" ;;
 			*) break ;;
@@ -40,7 +41,7 @@ _calc_c_len() {
 
 	_remaining_string="${_string}"
 	local _escape_count=0
-	while :; do
+	while true; do
 		case "${_remaining_string}" in
 			*"\\e"*) _escape_count=$(( _escape_count + 1 )); _remaining_string="${_remaining_string#*"\\e"}" ;;
 			*) break ;;
@@ -55,7 +56,7 @@ _calc_c_len() {
 			"󰊢"|"🐡"|"󰖨") _weight=3 ;;
 			*) _weight=2 ;;
 		esac
-		while :; do
+		while true; do
 			case "${_scan}" in
 				*"${_glyph}"*)
 					_utf8_extra=$(( _utf8_extra + _weight ))
@@ -206,8 +207,7 @@ _create_trigger() {
 }
 
 _create_trigger cd git got
-
-alias :="_update_prompt; command :"
+unalias : 2> "/dev/null" || true
 
 case "$-" in
 	*i*)
