@@ -28,9 +28,11 @@ path-front() {
 	case ":${PATH}:" in
 		*":${1}:"*) ;;
 		*)
-			case "${1}" in
-				"${HOME}/"*) mkdir -p "${1}" 2> "/dev/null" || true ;;
-			esac
+			if [ ! -d "${1}" ]; then
+				case "${1}" in
+					"${HOME}/"*) mkdir -p "${1}" 2> "/dev/null" || true ;;
+				esac
+			fi
 			[ -d "${1}" ] && export PATH="${1}:${PATH}"
 			;;
 	esac
@@ -43,9 +45,11 @@ path-back() {
 	case ":${PATH}:" in
 		*":${1}:"*) ;;
 		*)
-			case "${1}" in
-				"${HOME}/"*) mkdir -p "${1}" 2> "/dev/null" || true ;;
-			esac
+			if [ ! -d "${1}" ]; then
+				case "${1}" in
+					"${HOME}/"*) mkdir -p "${1}" 2> "/dev/null" || true ;;
+				esac
+			fi
 			[ -d "${1}" ] && export PATH="${PATH}:${1}"
 			;;
 	esac

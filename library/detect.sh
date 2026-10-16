@@ -10,6 +10,20 @@ _SHELL_CACHE_FILE="${_SHELL_CACHE_DIR}/cache.env"
 
 [ -f "${_SHELL_CACHE_FILE}" ] && . "${_SHELL_CACHE_FILE}" 2> "/dev/null"
 
+if [ -z "${_DETECTED_SHELL:-}" ]; then
+	if [ -n "${ZSH_VERSION:-}" ]; then
+		_DETECTED_SHELL="zsh"
+	elif [ -n "${BASH_VERSION:-}" ]; then
+		_DETECTED_SHELL="bash"
+	elif [ -n "${KSH_VERSION:-}" ]; then
+		_DETECTED_SHELL="ksh"
+	elif [ -n "${FISH_VERSION:-}" ]; then
+		_DETECTED_SHELL="fish"
+	elif [ -n "${NU_VERSION:-}" ]; then
+		_DETECTED_SHELL="nu"
+	fi
+fi
+
 ### --------------------------------
 ### Cache Read
 ### --------------------------------
@@ -49,7 +63,7 @@ _cache_clean() {
 		_DETECTED_DESKTOP_ENV _DETECTED_COLOR_SCHEME _DETECTED_GTK_THEME \
 		_DETECTED_QT_THEME _DETECTED_QT_PLATFORM_THEME _DETECTED_EZA \
 		_DETECTED_BAT _DETECTED_RG _DETECTED_FD _DETECTED_ZOXIDE _DETECTED_ESCALATOR \
-		_DETECTED_KERNEL_RELEASE 2> "/dev/null" || true
+		_DETECTED_KERNEL_RELEASE _DETECTED_XCURSOR_THEME _DETECTED_XCURSOR_SIZE 2> "/dev/null" || true
 }
 
 
@@ -783,6 +797,11 @@ _is_raw_tty() {
 			;;
 	esac
 
+	if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ] || [ -n "${SSH_TTY:-}" ] || [ -n "${TERM_PROGRAM:-}" ] || [ -n "${WT_SESSION:-}" ]; then
+		_IS_RAW_TTY_CACHED=1
+		return 1
+	fi
+
 	case "$(command tty 2> "/dev/null")" in
 		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/ttyC*|/dev/ttyE*|/dev/console)
 			_IS_RAW_TTY_CACHED=0
@@ -806,7 +825,10 @@ _detect_kernel_release() {
 		return 0
 	fi
 
-	_DETECTED_KERNEL_RELEASE="$(uname -r)"
+	if [ -r "/proc/sys/kernel/osrelease" ]; then
+		read -r _DETECTED_KERNEL_RELEASE < "/proc/sys/kernel/osrelease" 2> "/dev/null"
+	fi
+	[ -z "${_DETECTED_KERNEL_RELEASE:-}" ] && _DETECTED_KERNEL_RELEASE="$(uname -r 2> "/dev/null" || echo "unknown")"
 	_cache_write "kernel_release" "${_DETECTED_KERNEL_RELEASE}"
 	echo "${_DETECTED_KERNEL_RELEASE}"
 }

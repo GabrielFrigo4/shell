@@ -102,11 +102,11 @@ alias e="editor"
 ### --------------------------------
 ### Package Compatibility Aliases
 ### --------------------------------
-_env_os="${_DETECTED_OS:-$(_detect_os)}"
-_bat_bin="${_DETECTED_BAT:-$(_detect_bat)}"
-_fd_bin="${_DETECTED_FD:-$(_detect_fd)}"
-_eza_bin="${_DETECTED_EZA:-$(_detect_eza)}"
-_rg_bin="${_DETECTED_RG:-$(_detect_rg)}"
+_env_os="${_DETECTED_OS-$(_detect_os)}"
+_bat_bin="${_DETECTED_BAT-$(_detect_bat)}"
+_fd_bin="${_DETECTED_FD-$(_detect_fd)}"
+_eza_bin="${_DETECTED_EZA-$(_detect_eza)}"
+_rg_bin="${_DETECTED_RG-$(_detect_rg)}"
 
 [ "${_bat_bin}" = "batcat" ] && alias bat="batcat"
 [ "${_fd_bin}" = "fdfind" ] && alias fd="fdfind"
@@ -115,10 +115,10 @@ _rg_bin="${_DETECTED_RG:-$(_detect_rg)}"
 ### --------------------------------
 ### Directory Listing
 ### --------------------------------
-unalias ls 2> "/dev/null" || true
+unalias ls grep cat find ssh agy 2> "/dev/null" || true
 eval 'ls() {
 	if [ -t 0 ] && [ -t 1 ] && ! _is_raw_tty; then
-		local _eza_cmd="${_DETECTED_EZA:-$(_detect_eza)}"
+		local _eza_cmd="${_DETECTED_EZA-$(_detect_eza)}"
 		case "${_eza_cmd}" in
 			*eza)
 				command "${_eza_cmd}" --icons=auto --group-directories-first "$@"
@@ -131,7 +131,7 @@ eval 'ls() {
 		esac
 	fi
 
-	if [ "${_DETECTED_OS:-$(_detect_os)}" = "freebsd" ]; then
+	if [ "${_DETECTED_OS-$(_detect_os)}" = "freebsd" ]; then
 		command ls -G "$@"
 	else
 		command ls --color=auto "$@"
@@ -174,10 +174,9 @@ unset _ls_l _ls_ll _ls_la _eza_bin
 ### --------------------------------
 ### Search in Files
 ### --------------------------------
-unalias grep 2> "/dev/null" || true
 eval 'grep() {
 	if [ -t 0 ] && [ -t 1 ] && ! _is_raw_tty; then
-		local _rg_cmd="${_DETECTED_RG:-$(_detect_rg)}"
+		local _rg_cmd="${_DETECTED_RG-$(_detect_rg)}"
 		if [ -n "${_rg_cmd}" ]; then
 			case "$*" in
 				*"-E "*|*"-E") command grep --color=auto "$@" ; return $? ;;
@@ -186,7 +185,7 @@ eval 'grep() {
 			return $?
 		fi
 	fi
-	if [ "${_DETECTED_OS:-$(_detect_os)}" = "freebsd" ]; then
+	if [ "${_DETECTED_OS-$(_detect_os)}" = "freebsd" ]; then
 		command grep "$@"
 	else
 		command grep --color=auto "$@"
@@ -205,10 +204,9 @@ unset _rg_bin
 ### --------------------------------
 ### File Preview
 ### --------------------------------
-unalias cat 2> "/dev/null" || true
 eval 'cat() {
 	if [ -t 0 ] && [ -t 1 ] && ! _is_raw_tty; then
-		local _bat_cmd="${_DETECTED_BAT:-$(_detect_bat)}"
+		local _bat_cmd="${_DETECTED_BAT-$(_detect_bat)}"
 		if [ -n "${_bat_cmd}" ]; then
 			command "${_bat_cmd}" --paging=never "$@"
 			return $?
@@ -228,10 +226,9 @@ unset _bat_bin
 ### --------------------------------
 ### File & Path Search
 ### --------------------------------
-unalias find 2> "/dev/null" || true
 eval 'find() {
 	if [ -t 1 ] && ! _is_raw_tty; then
-		local _fd_cmd="${_DETECTED_FD:-$(_detect_fd)}"
+		local _fd_cmd="${_DETECTED_FD-$(_detect_fd)}"
 		if [ -n "${_fd_cmd}" ]; then
 			for _arg in "$@"; do
 				case "${_arg}" in
@@ -260,7 +257,6 @@ unset _fd_bin _env_os
 ### --------------------------------
 ### SSH Client TTY Propagation
 ### --------------------------------
-unalias ssh 2> "/dev/null" || true
 eval 'ssh() {
 	_is_raw=0
 	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
@@ -279,7 +275,7 @@ eval 'ssh() {
 ### --------------------------------
 ### Dust Disk Usage
 ### --------------------------------
-_dust_bin="${_DETECTED_DUST:-$(_detect_dust)}"
+_dust_bin="${_DETECTED_DUST-$(_detect_dust)}"
 if [ -n "${_dust_bin}" ]; then
 	alias du="${_dust_bin}"
 	alias dust="${_dust_bin}"
@@ -289,7 +285,7 @@ unset _dust_bin
 ### --------------------------------
 ### Procs Process Inspection
 ### --------------------------------
-_procs_bin="${_DETECTED_PROCS:-$(_detect_procs)}"
+_procs_bin="${_DETECTED_PROCS-$(_detect_procs)}"
 if [ -n "${_procs_bin}" ]; then
 	alias procs="${_procs_bin}"
 	alias pst="${_procs_bin} --tree"
@@ -299,7 +295,7 @@ unset _procs_bin
 ### --------------------------------
 ### Bottom System Monitor
 ### --------------------------------
-_btm_bin="${_DETECTED_BOTTOM:-$(_detect_bottom)}"
+_btm_bin="${_DETECTED_BOTTOM-$(_detect_bottom)}"
 if [ -n "${_btm_bin}" ]; then
 	alias btm="${_btm_bin}"
 	alias top="${_btm_bin}"
@@ -313,11 +309,11 @@ unset _btm_bin
 ### --------------------------------
 ### Zoxide Smart Navigation
 ### --------------------------------
-_zoxide_bin="${_DETECTED_ZOXIDE:-$(_detect_zoxide)}"
+_zoxide_bin="${_DETECTED_ZOXIDE-$(_detect_zoxide)}"
 if [ -n "${_zoxide_bin}" ]; then
 	_ZO_DOCTOR=0
 	export _ZO_DOCTOR
-	case "${_DETECTED_SHELL:-$(_detect_shell)}" in
+	case "${_DETECTED_SHELL-$(_detect_shell)}" in
 		zsh)
 			eval "$("${_zoxide_bin}" init zsh --hook prompt)"
 			__zoxide_oldpwd="$(__zoxide_pwd)"
@@ -464,7 +460,7 @@ alias agy-continue-danger="agy -c --dangerously-skip-permissions"
 alias agyca="agy -c --dangerously-skip-permissions"
 alias agycd="agy -c --dangerously-skip-permissions"
 
-unalias agy 2> "/dev/null" || true
+
 eval 'agy() {
 	if [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 		COLORTERM="" TERM="${TERM:-linux}" command agy "$@"

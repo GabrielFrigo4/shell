@@ -98,7 +98,13 @@ times = []
 for _ in range(iters):
     t0 = time.perf_counter()
     try:
-        subprocess.run(cmd_args, shell=use_shell, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+        p = subprocess.Popen(cmd_args, shell=use_shell, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        endtime = time.perf_counter() + 10
+        while p.poll() is None:
+            if time.perf_counter() > endtime:
+                p.kill()
+                break
+            time.sleep(0.0002)
     except Exception:
         pass
     times.append((time.perf_counter() - t0) * 1000)
