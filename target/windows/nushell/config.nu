@@ -113,22 +113,12 @@ if ($_active_vault | is-not-empty) {
 			let parts = ($line | split row -n 2 '=')
 			let key = ($parts | get 0 | str trim)
 			mut val = ($parts | get 1 | str trim | str replace -r '^"(.*)"$' '$1' | str replace -r "^'(.*)'$" '$1')
-			if ($val | str contains "XXXX") {
-				continue
-			}
 			$val = ($val | str replace -r '\$\{VAULT_DIR:-[^\}]+\}' $_active_vault)
 			$val = ($val | str replace -a '${VAULT_DIR}' $_active_vault | str replace -a '$VAULT_DIR' $_active_vault)
 			$val = ($val | str replace -a '${HOME}' ($env.USERPROFILE? | default ($env.HOME? | default "~")) | str replace -a '$HOME' ($env.USERPROFILE? | default ($env.HOME? | default "~")))
 			load-env { $key: $val }
 		}
 	}
-}
-
-if ($env.GITHUB_TOKEN? | default "" | str contains "XXXX") {
-	hide-env GITHUB_TOKEN
-}
-if ($env.GH_TOKEN? | default "" | str contains "XXXX") {
-	hide-env GH_TOKEN
 }
 
 ### ================================
@@ -783,13 +773,6 @@ def upvt [
 		}
 		_ui_step $"Atualizando Universal Vault em: ($target)..."
 
-		if ($env.GITHUB_TOKEN? | default "" | str contains "XXXX") {
-			hide-env GITHUB_TOKEN
-		}
-		if ($env.GH_TOKEN? | default "" | str contains "XXXX") {
-			hide-env GH_TOKEN
-		}
-
 		# 1. Tentativa primária: pull direto com Git for Windows
 		let pull_res = (do { ^$git_bin -C $target pull --ff-only } | complete)
 		if $pull_res.exit_code == 0 {
@@ -806,7 +789,7 @@ def upvt [
 			(do -i { ^gh auth token } | complete | get stdout | str trim)
 		}
 
-		if ($token | is-not-empty) and not ($token | str contains "XXXX") {
+		if ($token | is-not-empty) {
 			let header_arg = $"http.https://github.com/.extraheader=AUTHORIZATION: bearer ($token)"
 			let token_res = (do { ^$git_bin -C $target -c $header_arg pull --ff-only } | complete)
 			if $token_res.exit_code == 0 {
