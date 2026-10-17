@@ -278,6 +278,10 @@ _detect_distro() {
 		_DETECTED_DISTRO="ol"
 	elif [ -f "/etc/debian_version" ]; then
 		_DETECTED_DISTRO="debian"
+	elif [ -f "/etc/ghostbsd-version" ] || [ -f "/usr/local/etc/ghostbsd-version" ]; then
+		_DETECTED_DISTRO="ghostbsd"
+	elif [ -f "/etc/nomadbsd-version" ]; then
+		_DETECTED_DISTRO="nomadbsd"
 	elif [ -f "/etc/release" ]; then
 		case "$(command cat /etc/release 2> "/dev/null")" in
 			*OmniOS*)      _DETECTED_DISTRO="omnios" ;;
@@ -327,9 +331,9 @@ _detect_distro_family() {
 		solus)                                _DETECTED_DISTRO_FAMILY="solus" ;;
 		slackware)                            _DETECTED_DISTRO_FAMILY="slackware" ;;
 		guix)                                 _DETECTED_DISTRO_FAMILY="guix" ;;
-		openwrt)                              _DETECTED_DISTRO_FAMILY="embedded" ;;
-		freebsd|dragonfly|openbsd|netbsd)     _DETECTED_DISTRO_FAMILY="bsd" ;;
-		omnios|smartos|openindiana|illumos)   _DETECTED_DISTRO_FAMILY="illumos" ;;
+		openwrt)                                           _DETECTED_DISTRO_FAMILY="embedded" ;;
+		freebsd|ghostbsd|nomadbsd|dragonfly|openbsd|netbsd) _DETECTED_DISTRO_FAMILY="bsd" ;;
+		omnios|smartos|openindiana|illumos)                _DETECTED_DISTRO_FAMILY="illumos" ;;
 		macos)                                _DETECTED_DISTRO_FAMILY="darwin" ;;
 		*)
 			case "${_distro_like}" in
@@ -402,12 +406,12 @@ _detect_distro_icon() {
 		alpine)                             _DETECTED_DISTRO_ICON=" " ;;
 		gentoo)                             _DETECTED_DISTRO_ICON=" " ;;
 		nixos)                              _DETECTED_DISTRO_ICON=" " ;;
-		freebsd)                            _DETECTED_DISTRO_ICON=" " ;;
+		freebsd|ghostbsd|nomadbsd)          _DETECTED_DISTRO_ICON=" " ;;
 		dragonfly)                          _DETECTED_DISTRO_ICON=" " ;;
 		openbsd)                            _DETECTED_DISTRO_ICON="󰈺 " ;;
 		netbsd)                             _DETECTED_DISTRO_ICON=" " ;;
-		omnios|smartos|openindiana|illumos) _DETECTED_DISTRO_ICON=" " ;;
-		macos)                              _DETECTED_DISTRO_ICON=" " ;;
+		omnios|smartos|openindiana|illumos) _DETECTED_DISTRO_ICON=" " ;;
+		macos)                              _DETECTED_DISTRO_ICON=" " ;;
 		windows)                            _DETECTED_DISTRO_ICON=" " ;;
 		*)
 			case "$(_detect_os)" in
@@ -416,8 +420,8 @@ _detect_distro_icon() {
 				dragonfly) _DETECTED_DISTRO_ICON=" " ;;
 				openbsd) _DETECTED_DISTRO_ICON="󰈺 " ;;
 				netbsd)  _DETECTED_DISTRO_ICON=" " ;;
-				illumos) _DETECTED_DISTRO_ICON=" " ;;
-				macos)   _DETECTED_DISTRO_ICON=" " ;;
+				illumos) _DETECTED_DISTRO_ICON=" " ;;
+				macos)   _DETECTED_DISTRO_ICON=" " ;;
 				windows) _DETECTED_DISTRO_ICON=" " ;;
 				*)       _DETECTED_DISTRO_ICON=" " ;;
 			esac
