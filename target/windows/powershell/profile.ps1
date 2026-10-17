@@ -755,7 +755,7 @@ Parâmetros:
 					$rest = $targetPosix.Substring(2)
 					$targetPosix = "/$drive$rest"
 				}
-				& $bash -c "MSYS=winsymlinks:nativestrict '$targetPosix/profile.sh' $argStr"
+				& $bash -c "MSYS=winsymlinks:nativestrict bash '$targetPosix/profile.sh' $argStr"
 			} else {
 				_ui_warn "Ambiente MSYS2/Bash não detectado no PATH (excluído WSL em System32)."
 			}

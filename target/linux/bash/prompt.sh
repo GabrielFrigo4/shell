@@ -2,7 +2,7 @@
 ### SHELL APPEARANCE
 ### ================================
 
-PROMPT_OS_ICON=" "
+PROMPT_OS_ICON="${PROMPT_OS_ICON:-$(_detect_distro_icon)}"
 PROMPT_OS_COLOR="blue"
 [ -z "${PROMPT_OS_NAME:-}" ] && export PROMPT_OS_NAME="${_DETECTED_KERNEL_RELEASE-$(_detect_kernel_release)}"
 

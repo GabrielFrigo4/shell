@@ -9,17 +9,17 @@
 ### ================================
 
 $script:winIcon = ""
-$script:winName = "Win 11"
+$script:winName = "11"
 try {
 	$build = [System.Environment]::OSVersion.Version.Build
 	if ($build -ge 22000) {
-		$script:winName = "Win 11"
+		$script:winName = "11"
 		$script:winIcon = ""
 	} elseif ($build -ge 10240) {
-		$script:winName = "Win 10"
+		$script:winName = "10"
 		$script:winIcon = ""
 	} else {
-		$script:winName = "WinNT"
+		$script:winName = "NT"
 		$script:winIcon = ""
 	}
 } catch { }

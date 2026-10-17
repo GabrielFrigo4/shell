@@ -277,19 +277,19 @@ end
 
 local function get_win_info()
 	local handle = io.popen("ver")
-	if handle == nil then return "WinNT" end
+	if handle == nil then return "NT" end
 	local content = handle:read("*a")
 	handle:close()
 
 	local build = content:match("10%.0%.(%d+)")
 	if build then
 		if tonumber(build) >= 22000 then
-			return "Win 11"
+			return "11"
 		else
-			return "Win 10"
+			return "10"
 		end
 	end
-	return "WinNT"
+	return "NT"
 end
 
 local function get_win_icon()

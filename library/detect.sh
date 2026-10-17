@@ -60,7 +60,7 @@ _cache_clean() {
 		command rm -rf "${_SHELL_CACHE_DIR}" 2> "/dev/null" || true
 	fi
 	unset _DETECTED_OS _DETECTED_SHELL _DETECTED_ENABLED_SHELL _DETECTED_DISTRO _DETECTED_DISTRO_FAMILY \
-		_DETECTED_DESKTOP_ENV _DETECTED_COLOR_SCHEME _DETECTED_GTK_THEME \
+		_DETECTED_DISTRO_ICON _DETECTED_DESKTOP_ENV _DETECTED_COLOR_SCHEME _DETECTED_GTK_THEME \
 		_DETECTED_QT_THEME _DETECTED_QT_PLATFORM_THEME _DETECTED_EZA \
 		_DETECTED_BAT _DETECTED_RG _DETECTED_FD _DETECTED_ZOXIDE _DETECTED_ESCALATOR \
 		_DETECTED_KERNEL_RELEASE _DETECTED_XCURSOR_THEME _DETECTED_XCURSOR_SIZE 2> "/dev/null" || true
@@ -326,6 +326,46 @@ _detect_distro_family() {
 	esac
 	_cache_write "distro_family" "${_DETECTED_DISTRO_FAMILY}"
 	echo "${_DETECTED_DISTRO_FAMILY}"
+}
+
+### --------------------------------
+### Detect Distro Icon
+### --------------------------------
+_detect_distro_icon() {
+	[ -n "${_DETECTED_DISTRO_ICON+x}" ] && echo "${_DETECTED_DISTRO_ICON}" && return 0
+	if [ -f "${_SHELL_CACHE_DIR}/distro_icon" ]; then
+		_DETECTED_DISTRO_ICON="$(_cache_read "distro_icon")"
+		echo "${_DETECTED_DISTRO_ICON}"
+		return 0
+	fi
+
+	local _distro="$(_detect_distro)"
+	case "${_distro}" in
+		fedora)                             _DETECTED_DISTRO_ICON=" " ;;
+		arch)                               _DETECTED_DISTRO_ICON="󰣇 " ;;
+		manjaro)                            _DETECTED_DISTRO_ICON=" " ;;
+		endeavouros)                        _DETECTED_DISTRO_ICON=" " ;;
+		debian)                             _DETECTED_DISTRO_ICON=" " ;;
+		ubuntu)                             _DETECTED_DISTRO_ICON=" " ;;
+		linuxmint)                          _DETECTED_DISTRO_ICON=" " ;;
+		pop)                                _DETECTED_DISTRO_ICON=" " ;;
+		raspbian)                           _DETECTED_DISTRO_ICON=" " ;;
+		rhel|centos|rocky|alma)             _DETECTED_DISTRO_ICON=" " ;;
+		opensuse*|sles)                     _DETECTED_DISTRO_ICON=" " ;;
+		void)                               _DETECTED_DISTRO_ICON=" " ;;
+		alpine)                             _DETECTED_DISTRO_ICON=" " ;;
+		gentoo)                             _DETECTED_DISTRO_ICON=" " ;;
+		nixos)                              _DETECTED_DISTRO_ICON=" " ;;
+		freebsd)                            _DETECTED_DISTRO_ICON=" " ;;
+		openbsd)                            _DETECTED_DISTRO_ICON="󰈺 " ;;
+		netbsd)                             _DETECTED_DISTRO_ICON=" " ;;
+		omnios|smartos|openindiana|illumos) _DETECTED_DISTRO_ICON=" " ;;
+		macos)                              _DETECTED_DISTRO_ICON=" " ;;
+		windows)                            _DETECTED_DISTRO_ICON=" " ;;
+		*)                                  _DETECTED_DISTRO_ICON=" " ;;
+	esac
+	_cache_write "distro_icon" "${_DETECTED_DISTRO_ICON}"
+	echo "${_DETECTED_DISTRO_ICON}"
 }
 
 ### --------------------------------
