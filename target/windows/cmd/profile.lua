@@ -1096,6 +1096,9 @@ local function cmd_uped(args)
 				_ui_sub([[git -C "]] .. dir .. [[" pull --ff-only]])
 			else
 				_ui_sub("Atualizando " .. name .. " em " .. dir .. "...")
+				if name == "Emacs" and is_dir(dir .. [[\usr\local]]) then
+					os.execute([[git -C "]] .. dir .. [[" clean -fd usr/local >nul 2>&1]])
+				end
 				os.execute([[git -C "]] .. dir .. [[" pull --ff-only]])
 				if has_submodules and exists(dir .. [[\.gitmodules]]) then
 					_ui_sub("Sincronizando submódulos Elisp...")

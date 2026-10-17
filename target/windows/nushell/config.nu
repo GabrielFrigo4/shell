@@ -502,6 +502,9 @@ def uped [
 			_ui_sub $"git -C ($emacs_dir) pull --ff-only"
 		} else {
 			_ui_sub $"Atualizando Emacs em ($emacs_dir)..."
+			if ([$emacs_dir, "usr", "local"] | path join | path exists) {
+				do -i { ^git -C $emacs_dir clean -fd "usr/local" }
+			}
 			^git -C $emacs_dir pull --ff-only
 			if ([$emacs_dir, ".gitmodules"] | path join | path exists) {
 				_ui_sub "Sincronizando submódulos Elisp..."

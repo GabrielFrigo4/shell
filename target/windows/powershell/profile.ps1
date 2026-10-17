@@ -506,6 +506,9 @@ Parâmetros:
 			_ui_sub "git -C $emacsPath pull --ff-only"
 		} else {
 			_ui_sub "Atualizando Emacs em $emacsPath..."
+			if (Test-Path (Join-Path $emacsPath "usr\local")) {
+				git -C $emacsPath clean -fd "usr/local" 2>$null
+			}
 			git -C $emacsPath pull --ff-only
 			if (Test-Path (Join-Path $emacsPath ".gitmodules")) {
 				_ui_sub "Sincronizando submódulos Elisp..."
@@ -885,7 +888,14 @@ Parâmetros:
 				$isSymlink = (Get-Item $PROFILE).LinkType
 				if (-not $isSymlink) {
 					Copy-Item $pwshScript $PROFILE -Force
-					_ui_sub "Sincronizado perfil estático em: $PROFILE"
+					_ui_sub "Sincronizado perfil físico em: $PROFILE"
+				}
+				$docDir = Split-Path $PROFILE
+				$commonProfile = Join-Path $docDir "profile.ps1"
+				if ((Test-Path $commonProfile) -and ((Get-Item $commonProfile).FullName -ne (Get-Item $pwshScript).FullName)) {
+					if (-not (Get-Item $commonProfile).LinkType) {
+						Copy-Item $pwshScript $commonProfile -Force
+					}
 				}
 			}
 		}
@@ -1005,49 +1015,47 @@ function Wsl-Manual {
 ### ALIASES
 ### ================================
 
-New-Alias "show" "Show-Explorer"
-New-Alias "clr" "clear"
-New-Alias "ip" "Get-IP"
+Set-Alias "show" "Show-Explorer" -Force -Option AllScope
+Set-Alias "clr" "clear" -Force -Option AllScope
+Set-Alias "ip" "Get-IP" -Force -Option AllScope
 
-New-Alias "mkledit" "Edit-MakeLua"
+Set-Alias "mkledit" "Edit-MakeLua" -Force -Option AllScope
 
-New-Alias "admin" "Start-Admin"
-New-Alias "admin-wt" "Start-Windows-Terminal-Admin"
-New-Alias "admin-ch" "Start-Console-Host-Admin"
+Set-Alias "admin" "Start-Admin" -Force -Option AllScope
+Set-Alias "admin-wt" "Start-Windows-Terminal-Admin" -Force -Option AllScope
+Set-Alias "admin-ch" "Start-Console-Host-Admin" -Force -Option AllScope
 
-New-Alias "upget" "Update-Winget"
-New-Alias "upscp" "Update-Scoop"
-New-Alias "upcho" "Update-Choco"
-New-Alias "upsys" "Update-System"
-New-Alias "upsh" "Update-Shell"
-New-Alias "upmod" "Update-Module"
-New-Alias "upwin" "Update-Windows"
-New-Alias "upgit" "Update-Git"
-New-Alias "plgit" "Update-Git"
-New-Alias "psgit" "Push-Git"
-New-Alias "uped" "Update-Editors"
-New-Alias "sync-extensions" "Sync-Extensions"
-New-Alias "update-extensions" "Sync-Extensions"
-New-Alias "upext" "Sync-Extensions"
-New-Alias "uprc" "Update-Profile"
-New-Alias "upprofile" "Update-Profile"
-New-Alias "sync-profile" "Update-Profile"
-New-Alias "upvt" "Update-Vault"
-New-Alias "upall" "Update-All"
-New-Alias "cleansys" "Clean-System"
-New-Alias "clearsys" "Clean-System"
-New-Alias "sysclean" "Clean-System"
-New-Alias "syscls" "Clean-System"
-New-Alias "clean-system" "Clean-System"
-New-Alias "clear-system" "Clean-System"
+Set-Alias "upget" "Update-Winget" -Force -Option AllScope
+Set-Alias "upscp" "Update-Scoop" -Force -Option AllScope
+Set-Alias "upcho" "Update-Choco" -Force -Option AllScope
+Set-Alias "upsys" "Update-System" -Force -Option AllScope
+Set-Alias "upsh" "Update-Shell" -Force -Option AllScope
+Set-Alias "upmod" "Update-Module" -Force -Option AllScope
+Set-Alias "upwin" "Update-Windows" -Force -Option AllScope
+Set-Alias "upgit" "Update-Git" -Force -Option AllScope
+Set-Alias "plgit" "Update-Git" -Force -Option AllScope
+Set-Alias "psgit" "Push-Git" -Force -Option AllScope
+Set-Alias "uped" "Update-Editors" -Force -Option AllScope
+Set-Alias "update-extensions" "Sync-Extensions" -Force -Option AllScope
+Set-Alias "upext" "Sync-Extensions" -Force -Option AllScope
+Set-Alias "uprc" "Update-Profile" -Force -Option AllScope
+Set-Alias "upprofile" "Update-Profile" -Force -Option AllScope
+Set-Alias "sync-profile" "Update-Profile" -Force -Option AllScope
+Set-Alias "upvt" "Update-Vault" -Force -Option AllScope
+Set-Alias "upall" "Update-All" -Force -Option AllScope
+Set-Alias "cleansys" "Clean-System" -Force -Option AllScope
+Set-Alias "clearsys" "Clean-System" -Force -Option AllScope
+Set-Alias "sysclean" "Clean-System" -Force -Option AllScope
+Set-Alias "syscls" "Clean-System" -Force -Option AllScope
+Set-Alias "clear-system" "Clean-System" -Force -Option AllScope
 
-New-Alias "brw" "Browser-Search"
-New-Alias "win-man" "Windows-Manual"
-New-Alias "wman" "Windows-Manual"
-New-Alias "unix-man" "Unix-Manual"
-New-Alias "uman" "Unix-Manual"
-New-Alias "mandoc" "Unix-Manual"
-New-Alias "wsl-man" "Wsl-Manual"
+Set-Alias "brw" "Browser-Search" -Force -Option AllScope
+Set-Alias "win-man" "Windows-Manual" -Force -Option AllScope
+Set-Alias "wman" "Windows-Manual" -Force -Option AllScope
+Set-Alias "unix-man" "Unix-Manual" -Force -Option AllScope
+Set-Alias "uman" "Unix-Manual" -Force -Option AllScope
+Set-Alias "mandoc" "Unix-Manual" -Force -Option AllScope
+Set-Alias "wsl-man" "Wsl-Manual" -Force -Option AllScope
 
 ### ================================
 ### SERVER ALIASES

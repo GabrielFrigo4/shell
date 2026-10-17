@@ -7,11 +7,15 @@ $env.HOME = $"($env.USERPROFILE)";
 $env.PATH = (
 	$env.PATH
 	| split row (char esep)
+	| each { |p| $p | str trim | str trim -c '"' }
 	| prepend ($env.HOME | path join .local bin)
 	| prepend ($env.HOME | path join .cargo bin)
 	| prepend ($env.HOME | path join .platformio penv bin)
+	| prepend ($env.HOME | path join "scoop" "shims")
+	| prepend "C:\\Program Files\\GitHub CLI"
+	| prepend "C:\\Program Files\\Git\\cmd"
+	| where { |p| ($p | is-not-empty) and ($p | path exists) }
 	| uniq
-	| where { |p| $p | path exists }
 )
 
 $env.EMACS_SOCKET_NAME = ($env.HOME | path join ".emacs.d" "var" "server" "auth" "server");
