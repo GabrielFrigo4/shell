@@ -16,13 +16,8 @@ _update_prompt() {
 	local _pwd="${(%):-%c}"
 	local _shell_name="zsh"
 	local _os_icon="${PROMPT_OS_ICON:- }"
-	local _os_name
-	if [ -n "${PROMPT_OS_NAME:-}" ]; then
-		_os_name="${PROMPT_OS_NAME}"
-	else
-		_os_name="${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "Linux")}"
-		_os_name="${_os_name%%-*}"
-	fi
+	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "Linux")}}"
+	_os_name="${_os_name%%-*}"
 
 	local _mode="pty"
 	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
