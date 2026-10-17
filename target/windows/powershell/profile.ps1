@@ -906,7 +906,7 @@ Parâmetros:
 					foreach ($f in @("config.nu", "env.nu")) {
 						$srcF = Join-Path $nuSrc $f
 						$dstF = Join-Path $appNu $f
-						if ((Test-Path $srcF) -and (-not (Get-Item $dstF -ErrorAction SilentlyContinue).LinkType)) {
+						if (Test-Path $srcF) {
 							Copy-Item $srcF $dstF -Force
 						}
 					}
@@ -920,7 +920,7 @@ Parâmetros:
 					foreach ($f in @("profile.lua", "profile.cmd")) {
 						$srcF = Join-Path $cmdSrc $f
 						$dstF = Join-Path $appClink $f
-						if ((Test-Path $srcF) -and (-not (Get-Item $dstF -ErrorAction SilentlyContinue).LinkType)) {
+						if (Test-Path $srcF) {
 							Copy-Item $srcF $dstF -Force
 						}
 					}

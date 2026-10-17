@@ -57,12 +57,15 @@ def get-git-cmd [] {
 	let candidates = [
 		"C:\\Program Files\\Git\\cmd\\git.exe",
 		"C:\\Program Files\\Git\\bin\\git.exe",
+		"C:\\Program Files (x86)\\Git\\cmd\\git.exe",
+		(if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "Programs", "Git", "cmd", "git.exe"] | path join } else { "" }),
+		(if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "Programs", "Git", "bin", "git.exe"] | path join } else { "" }),
 		([$env.USERPROFILE, "scoop", "shims", "git.exe"] | path join)
 	]
 	for c in $candidates {
-		if ($c | path exists) { return $c }
+		if ($c | is-not-empty) and ($c | path exists) { return $c }
 	}
-	let detected = (which git | get -o 0.path | default "git")
+	let detected = (which -a git | where { |it| not ($it.path | str contains "msys64") } | get -o 0.path | default "git")
 	$detected
 }
 
@@ -70,13 +73,13 @@ def get-gh-cmd [] {
 	let candidates = [
 		"C:\\Program Files\\GitHub CLI\\gh.exe",
 		"C:\\Program Files (x86)\\GitHub CLI\\gh.exe",
-		([$env.USERPROFILE, "scoop", "shims", "gh.exe"] | path join),
-		(if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "Programs", "GitHub CLI", "gh.exe"] | path join } else { "" })
+		(if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "Programs", "GitHub CLI", "gh.exe"] | path join } else { "" }),
+		([$env.USERPROFILE, "scoop", "shims", "gh.exe"] | path join)
 	]
 	for c in $candidates {
 		if ($c | is-not-empty) and ($c | path exists) { return $c }
 	}
-	let detected = (which gh | get -o 0.path | default "")
+	let detected = (which -a gh | where { |it| not ($it.path | str contains "msys64") } | get -o 0.path | default "")
 	$detected
 }
 
@@ -742,14 +745,49 @@ def upvt [
 			return
 		}
 		_ui_step $"Atualizando Universal Vault em: ($target)..."
-		if ($gh_bin | is-not-empty) {
-			let helper_arg = $"credential.https://github.com.helper=!\"($gh_bin)\" auth git-credential"
-			^$git_bin -C $target -c $helper_arg pull --ff-only
-		} else {
-			^$git_bin -C $target pull --ff-only
+
+		# 1. Tentativa primária: pull direto com Git for Windows
+		let pull_res = (do { ^$git_bin -C $target pull --ff-only } | complete)
+		if $pull_res.exit_code == 0 {
+			if ($pull_res.stdout | str trim | is-not-empty) { print ($pull_res.stdout | str trim) }
+			vault-perms $target
+			_ui_ok "Universal Vault atualizado com sucesso!"
+			return
 		}
-		vault-perms $target
-		_ui_ok "Universal Vault atualizado com sucesso!"
+
+		# 2. Fallback antifrágil: injeção de token via http.extraheader com GitHub CLI (Bearer)
+		let token = if ($gh_bin | is-not-empty) {
+			(do -i { ^$gh_bin auth token } | complete | get stdout | str trim)
+		} else {
+			(do -i { ^gh auth token } | complete | get stdout | str trim)
+		}
+
+		if ($token | is-not-empty) {
+			let header_arg = $"http.https://github.com/.extraheader=AUTHORIZATION: bearer ($token)"
+			let token_res = (do { ^$git_bin -C $target -c $header_arg pull --ff-only } | complete)
+			if $token_res.exit_code == 0 {
+				if ($token_res.stdout | str trim | is-not-empty) { print ($token_res.stdout | str trim) }
+				vault-perms $target
+				_ui_ok "Universal Vault atualizado com sucesso via GitHub CLI Token!"
+				return
+			}
+		}
+
+		# 3. Fallback: helper explícito com barras normais (POSIX)
+		if ($gh_bin | is-not-empty) {
+			let gh_posix = ($gh_bin | str replace -a '\' '/')
+			let helper_arg = $"credential.https://github.com.helper=!\"($gh_posix)\" auth git-credential"
+			let helper_res = (do { ^$git_bin -C $target -c $helper_arg pull --ff-only } | complete)
+			if $helper_res.exit_code == 0 {
+				if ($helper_res.stdout | str trim | is-not-empty) { print ($helper_res.stdout | str trim) }
+				vault-perms $target
+				_ui_ok "Universal Vault atualizado com sucesso!"
+				return
+			}
+		}
+
+		if ($pull_res.stderr | str trim | is-not-empty) { print ($pull_res.stderr | str trim) }
+		_ui_err $"Falha ao atualizar o Universal Vault em: ($target)"
 	} else {
 		_ui_info "Repositório do Vault não encontrado."
 	}

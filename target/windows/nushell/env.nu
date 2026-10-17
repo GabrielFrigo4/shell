@@ -31,6 +31,9 @@ let _cleaned_path = (
 	| prepend ($env.HOME | path join "scoop" "shims")
 	| prepend "C:\\Program Files\\GitHub CLI"
 	| prepend "C:\\Program Files\\Git\\cmd"
+	| prepend "C:\\Program Files (x86)\\Git\\cmd"
+	| prepend (if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "Programs", "Git", "cmd"] | path join } else { "" })
+	| prepend (if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "Programs", "GitHub CLI"] | path join } else { "" })
 	| where { |p| ($p | is-not-empty) and ($p | path exists) }
 	| uniq
 )
