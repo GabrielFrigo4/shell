@@ -71,6 +71,38 @@ if case "$-" in *i*) true;; *) false;; esac; then
 	bind '"\e[3;5~": kill-word' 2> "/dev/null" || true
 	bind '"\e\C-?": backward-kill-word' 2> "/dev/null" || true
 	bind '"\e\C-h": backward-kill-word' 2> "/dev/null" || true
+
+	bind '"\e[1;2A": history-search-backward' 2> "/dev/null" || true
+	bind '"\e[1;2B": history-search-forward' 2> "/dev/null" || true
+	bind '"\e[1;2C": forward-word' 2> "/dev/null" || true
+	bind '"\e[1;2D": backward-word' 2> "/dev/null" || true
+	bind '"\e[a": history-search-backward' 2> "/dev/null" || true
+	bind '"\e[b": history-search-forward' 2> "/dev/null" || true
+	bind '"\e[c": forward-word' 2> "/dev/null" || true
+	bind '"\e[d": backward-word' 2> "/dev/null" || true
+
+	bind '"\e[[A": ""' 2> "/dev/null" || true
+	bind '"\e[[B": ""' 2> "/dev/null" || true
+	bind '"\e[[C": ""' 2> "/dev/null" || true
+	bind '"\e[[D": ""' 2> "/dev/null" || true
+
+	bind '"\eOp": "0"' 2> "/dev/null" || true
+	bind '"\eOq": "1"' 2> "/dev/null" || true
+	bind '"\eOr": "2"' 2> "/dev/null" || true
+	bind '"\eOs": "3"' 2> "/dev/null" || true
+	bind '"\eOt": "4"' 2> "/dev/null" || true
+	bind '"\eOu": "5"' 2> "/dev/null" || true
+	bind '"\eOv": "6"' 2> "/dev/null" || true
+	bind '"\eOw": "7"' 2> "/dev/null" || true
+	bind '"\eOx": "8"' 2> "/dev/null" || true
+	bind '"\eOy": "9"' 2> "/dev/null" || true
+	bind '"\eOn": "."' 2> "/dev/null" || true
+	bind '"\eOM": accept-line' 2> "/dev/null" || true
+	bind '"\eOj": "*"' 2> "/dev/null" || true
+	bind '"\eOk": "+"' 2> "/dev/null" || true
+	bind '"\eOl": ","' 2> "/dev/null" || true
+	bind '"\eOm": "-"' 2> "/dev/null" || true
+	bind '"\eOo": "/"' 2> "/dev/null" || true
 fi
 
 ### --------------------------------

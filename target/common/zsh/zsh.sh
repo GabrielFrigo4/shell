@@ -97,6 +97,38 @@ bindkey '^[^[[D' backward-word 2> "/dev/null" || true
 
 bindkey '^[[3;5~' kill-word 2> "/dev/null" || true
 
+bindkey '^[[1;2A' up-line-or-beginning-search 2> "/dev/null" || true
+bindkey '^[[1;2B' down-line-or-beginning-search 2> "/dev/null" || true
+bindkey '^[[1;2C' forward-word 2> "/dev/null" || true
+bindkey '^[[1;2D' backward-word 2> "/dev/null" || true
+bindkey '^[[a' up-line-or-beginning-search 2> "/dev/null" || true
+bindkey '^[[b' down-line-or-beginning-search 2> "/dev/null" || true
+bindkey '^[[c' forward-word 2> "/dev/null" || true
+bindkey '^[[d' backward-word 2> "/dev/null" || true
+
+bindkey '^[[[A' undefined-key 2> "/dev/null" || true
+bindkey '^[[[B' undefined-key 2> "/dev/null" || true
+bindkey '^[[[C' undefined-key 2> "/dev/null" || true
+bindkey '^[[[D' undefined-key 2> "/dev/null" || true
+
+bindkey -s '^[Op' '0' 2> "/dev/null" || true
+bindkey -s '^[Oq' '1' 2> "/dev/null" || true
+bindkey -s '^[Or' '2' 2> "/dev/null" || true
+bindkey -s '^[Os' '3' 2> "/dev/null" || true
+bindkey -s '^[Ot' '4' 2> "/dev/null" || true
+bindkey -s '^[Ou' '5' 2> "/dev/null" || true
+bindkey -s '^[Ov' '6' 2> "/dev/null" || true
+bindkey -s '^[Ow' '7' 2> "/dev/null" || true
+bindkey -s '^[Ox' '8' 2> "/dev/null" || true
+bindkey -s '^[Oy' '9' 2> "/dev/null" || true
+bindkey -s '^[On' '.' 2> "/dev/null" || true
+bindkey '^[OM' accept-line 2> "/dev/null" || true
+bindkey -s '^[Oj' '*' 2> "/dev/null" || true
+bindkey -s '^[Ok' '+' 2> "/dev/null" || true
+bindkey -s '^[Ol' ',' 2> "/dev/null" || true
+bindkey -s '^[Om' '-' 2> "/dev/null" || true
+bindkey -s '^[Oo' '/' 2> "/dev/null" || true
+
 ### --------------------------------
 ### Navigation
 ### --------------------------------

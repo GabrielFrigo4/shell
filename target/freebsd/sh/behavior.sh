@@ -41,6 +41,10 @@ if [ -t 0 ] && [ -t 1 ]; then
 			bind "\e[1;3D" ed-prev-word 2> "/dev/null" || true
 			bind "\e[5C" em-next-word 2> "/dev/null" || true
 			bind "\e[5D" ed-prev-word 2> "/dev/null" || true
+			bind "\e[1;2C" em-next-word 2> "/dev/null" || true
+			bind "\e[1;2D" ed-prev-word 2> "/dev/null" || true
+			bind "\e[1;2A" ed-search-prev-history 2> "/dev/null" || true
+			bind "\e[1;2B" ed-search-next-history 2> "/dev/null" || true
 
 			bind "^U" em-kill-line 2> "/dev/null" || true
 			bind "^K" ed-kill-line 2> "/dev/null" || true
