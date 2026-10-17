@@ -88,7 +88,7 @@ cmd_str = sys.argv[1]
 iters = max(1, int(sys.argv[2]))
 try:
     cmd_args = shlex.split(cmd_str)
-    use_shell = any(tok in ('|', '||', '&&', ';', '&', '>', '>>', '<') for tok in cmd_args) or any('=' in tok for tok in cmd_args)
+    use_shell = any(tok in ('|', '||', '&&', ';', '&', '>', '>>', '<') for tok in cmd_args) or (bool(cmd_args) and '=' in cmd_args[0] and not cmd_args[0].startswith('-'))
     if use_shell:
         cmd_args = cmd_str
 except Exception:
@@ -171,7 +171,7 @@ repo = sys.argv[2]
 sh = sys.argv[3]
 base = f'export SHELL_REPO_DIR={repo}; for _f in {repo}/library/*.sh {repo}/core/*.sh; do . \"\$_f\"; done; [ -f {repo}/theme/{sh}.sh ] && . {repo}/theme/{sh}.sh;'
 cmd_base = [shell_bin, '-c', base]
-cmd_prompt = [shell_bin, '-c', base + ' for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do _update_prompt; done;']
+cmd_prompt = [shell_bin, '-c', base + ' for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50; do _update_prompt; done;']
 try:
     subprocess.run(cmd_base, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
     tb = []
@@ -184,7 +184,7 @@ try:
         t0 = time.perf_counter()
         subprocess.run(cmd_prompt, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
         tp.append(time.perf_counter() - t0)
-    diff = max(0.0, ((sum(tp)/len(tp)) - (sum(tb)/len(tb))) / 20) * 1000
+    diff = max(0.0, ((sum(tp)/len(tp)) - (sum(tb)/len(tb))) / 50) * 1000
     print(f'{diff:.2f}')
 except Exception:
     print('0.00')
