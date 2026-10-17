@@ -283,10 +283,20 @@ local function get_win_info()
 
 	local build = content:match("10%.0%.(%d+)")
 	if build then
-		if tonumber(build) >= 22000 then
-			return "11"
+		local bnum = tonumber(build)
+		local dv = nil
+		local reg = io.popen('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v DisplayVersion 2>nul')
+		if reg then
+			local reg_out = reg:read("*a")
+			reg:close()
+			dv = reg_out:match("DisplayVersion%s+REG_SZ%s+(%S+)")
+		end
+		if bnum >= 22000 then
+			return (dv and dv ~= "") and ("11 " .. dv) or "11"
+		elseif bnum >= 10240 then
+			return (dv and dv ~= "") and ("10 " .. dv) or "10"
 		else
-			return "10"
+			return "NT 10.0"
 		end
 	end
 	return "NT"

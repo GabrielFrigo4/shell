@@ -12,14 +12,15 @@ $script:winIcon = ""
 $script:winName = "11"
 try {
 	$build = [System.Environment]::OSVersion.Version.Build
+	$displayVersion = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name DisplayVersion -ErrorAction SilentlyContinue).DisplayVersion
 	if ($build -ge 22000) {
-		$script:winName = "11"
+		$script:winName = if ($displayVersion) { "11 $displayVersion" } else { "11" }
 		$script:winIcon = ""
 	} elseif ($build -ge 10240) {
-		$script:winName = "10"
+		$script:winName = if ($displayVersion) { "10 $displayVersion" } else { "10" }
 		$script:winIcon = ""
 	} else {
-		$script:winName = "NT"
+		$script:winName = "NT 10.0"
 		$script:winIcon = ""
 	}
 } catch { }

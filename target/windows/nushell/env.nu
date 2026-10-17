@@ -46,7 +46,15 @@ let _win_build = (try {
 	let v = (do -i { ^cmd.exe /c ver } | complete | get stdout)
 	($v | parse -r "10\\.0\\.(?<bld>\\d+)" | get -o 0.bld | default "0" | into int)
 } catch { 0 })
-let _win_name = (if $_win_build >= 22000 { "11" } else if $_win_build >= 10240 { "10" } else { "NT" })
+let _win_dv = (try {
+	let r = (do -i { ^reg.exe query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v DisplayVersion } | complete | get stdout)
+	($r | parse -r "DisplayVersion\\s+REG_SZ\\s+(?<dv>\\S+)" | get -o 0.dv | default "")
+} catch { "" })
+let _win_name = (if $_win_build >= 22000 {
+	if ($_win_dv | is-not-empty) { $"11 ($_win_dv)" } else { "11" }
+} else if $_win_build >= 10240 {
+	if ($_win_dv | is-not-empty) { $"10 ($_win_dv)" } else { "10" }
+} else { "NT 10.0" })
 let _win_icon = (if $_win_build >= 22000 { "" } else { "" })
 $env.PROMPT_OS_NAME = $_win_name
 $env.PROMPT_OS_ICON = $_win_icon
