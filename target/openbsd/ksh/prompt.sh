@@ -17,7 +17,7 @@ export SHELL_INIT=1
 ### SHELL APPEARANCE
 ### ================================
 
-PROMPT_OS_ICON="🐡 "
+PROMPT_OS_ICON=" "
 PROMPT_OS_COLOR="yellow"
 PROMPT_OS_NAME="OpenBSD"
 

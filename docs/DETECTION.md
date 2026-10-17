@@ -8,20 +8,35 @@ O módulo `library/detect.sh` é o cérebro investigativo do **Universal Shell E
 
 ### 1. Sistema Operacional & Shell Ativo
 
-- **`_detect_os`**: Identifica o sistema via `uname -s` e normaliza para: `freebsd`, `linux`, `macos`, `windows`, `openbsd`, `netbsd` ou `illumos`.
-- **`_detect_shell`**: Identifica se a sessão interativa atual é executada por `zsh`, `bash` ou `sh` (POSIX).
+- **`_detect_os`**: Identifica o sistema via `uname -s` e normaliza para: `freebsd`, `dragonfly`, `linux`, `macos`, `windows`, `openbsd`, `netbsd` ou `illumos`.
+- **`_detect_shell`**: Identifica se a sessão interativa atual é executada por `zsh`, `bash`, `ksh` ou `sh` (POSIX).
 - **`_detect_enabled_shell`**: Retorna o primeiro binário de shell válido e instalado respeitando a cascata de preferência `$(_detect_shell) || zsh || bash || sh` (suporta flag `--name`).
 
-### 2. Distribuição Linux & Família de Gerenciador de Pacotes
+### 2. Distribuições, Derivados & Família de Gerenciadores
 
-- **`_detect_distro`**: Lê `/etc/os-release` para identificar a distribuição específica (`fedora`, `arch`, `debian`, `ubuntu`, `opensuse`, `void`, `alpine`).
-- **`_detect_distro_family`**: Agrupa as distros pela sua raiz arquitetural:
-    - `fedora` ➔ Gerenciador `dnf`
+- **`_detect_distro`**: Mapeia distribuições e derivados nativos sem acoplamento a um único SO:
+    - **Linux:** `fedora`, `arch`, `debian`, `ubuntu` (com detecção de sabores `kubuntu`, `xubuntu`, `lubuntu`), `devuan`, `opensuse`, `void`, `alpine`, `gentoo`, `nixos`, `solus`, `slackware`, `guix`, `openwrt`, `ol` (Oracle), `azurelinux`, `qubes`, etc.
+    - **BSD:** `freebsd`, `dragonfly`, `ghostbsd`, `nomadbsd`, `openbsd`, `netbsd`.
+    - **illumos:** `omnios`, `smartos`, `openindiana`, `illumos`.
+- **`_detect_distro_family`**: Agrupa os sistemas por sua raiz arquitetural de pacotes e ferramentas de base:
     - `arch` ➔ Gerenciador `pacman` (com detecção de helpers AUR `paru`/`yay`)
     - `debian` ➔ Gerenciador `apt`
+    - `fedora` ➔ Gerenciadores `dnf` ou `tdnf` (Azure Linux / Photon)
     - `suse` ➔ Gerenciador `zypper`
-    - `freebsd` ➔ Gerenciador `pkg`
-      Esta classificação alimenta dinamicamente comandos universais como `update-system` e `update-all`.
+    - `void` ➔ Gerenciador `xbps`
+    - `alpine` ➔ Gerenciador `apk`
+    - `gentoo` ➔ Gerenciador `emerge`
+    - `nixos` ➔ Gerenciadores `nixos-rebuild` e `nix`
+    - `solus` ➔ Gerenciador `eopkg`
+    - `slackware` ➔ Gerenciador `slackpkg`
+    - `guix` ➔ Gerenciador `guix`
+    - `embedded` ➔ Gerenciador `opkg` (OpenWrt / Entware)
+    - `bsd` ➔ Gerenciadores `pkg` (FreeBSD, DragonFly, GhostBSD, NomadBSD), `pkg_add` (OpenBSD) ou `pkgin` (NetBSD)
+    - `illumos` ➔ Gerenciadores `pkg` (IPS em OmniOS/OpenIndiana) ou `pkgin` (SmartOS)
+    - `darwin` ➔ Gerenciador `brew` (Homebrew)
+- **`_detect_distro_icon`**: Retorna o glifo vetorial oficial Nerd Fonts proporcional em altura (conjunto Font Logos `U+F300`):
+    - ` ` (Linux Tux full-scale), ` ` (FreeBSD / GhostBSD / NomadBSD), ` ` (DragonFly BSD), ` ` (OpenBSD), ` ` (NetBSD), ` ` (illumos), `󰖨 ` (Solaris/SunOS), ` ` (macOS Apple), ` ` (Windows).
+      Esta inteligência alimenta dinamicamente comandos universais como `update-system`, `clean-system` e `update-all`.
 
 ### 3. Ambiente Gráfico & Sessão de Janelas
 

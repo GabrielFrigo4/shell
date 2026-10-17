@@ -9,7 +9,7 @@
 
 | Área                    |   Status    | Cobertura / Estado                                                                       |
 | :---------------------- | :---------: | :--------------------------------------------------------------------------------------- |
-| **Plataformas Base**    | 🟢 Estável  | Linux, FreeBSD, OpenBSD, NetBSD, illumos, macOS, Windows (MSYS2)                         |
+| **Plataformas Base**    | 🟢 Estável  | Linux, FreeBSD, DragonFly BSD, OpenBSD, NetBSD, illumos, macOS, Windows (MSYS2)          |
 | **Shells Nativos**      | 🟢 Estável  | Zsh, Bash, POSIX sh (FreeBSD), KornShell (OpenBSD)                                       |
 | **Shells Alternativos** | 🟢 Estável  | PowerShell 7+, NuShell, CMD (Clink), Fish Shell (`fish.fish`)                            |
 | **Latência & Boot**     | 🟢 Estável  | Latência rigorosamente < 16ms / 64ms em todas as plataformas                             |

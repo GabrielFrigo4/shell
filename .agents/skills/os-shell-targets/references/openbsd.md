@@ -33,3 +33,4 @@ No OpenBSD, tanto usuários comuns quanto o `root` utilizam o **Public Domain Ko
 - **`unveil(2)`:** Oculta áreas do sistema de arquivos para o processo.
 - **`doas`:** Substituto oficial do `sudo` no base system (`/etc/doas.conf`). A função `_as_root` testa prioritariamente `doas` antes de `sudo`.
 - **Gerenciamento de Pacotes:** `pkg_add <pacote>` e `pkg_add -u` para atualização.
+- **Identidade Visual:** Ícone vetorial canônico no Nerd Fonts: ` ` (`U+F328`, `nf-linux-openbsd`).

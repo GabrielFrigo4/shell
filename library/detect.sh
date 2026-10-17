@@ -408,8 +408,9 @@ _detect_distro_icon() {
 		nixos)                              _DETECTED_DISTRO_ICON=" " ;;
 		freebsd|ghostbsd|nomadbsd)          _DETECTED_DISTRO_ICON=" " ;;
 		dragonfly)                          _DETECTED_DISTRO_ICON=" " ;;
-		openbsd)                            _DETECTED_DISTRO_ICON="󰈺 " ;;
+		openbsd)                            _DETECTED_DISTRO_ICON=" " ;;
 		netbsd)                             _DETECTED_DISTRO_ICON=" " ;;
+		solaris|sunos)                      _DETECTED_DISTRO_ICON="󰖨 " ;;
 		omnios|smartos|openindiana|illumos) _DETECTED_DISTRO_ICON=" " ;;
 		macos)                              _DETECTED_DISTRO_ICON=" " ;;
 		windows)                            _DETECTED_DISTRO_ICON=" " ;;
@@ -418,8 +419,9 @@ _detect_distro_icon() {
 				linux)   _DETECTED_DISTRO_ICON=" " ;;
 				freebsd) _DETECTED_DISTRO_ICON=" " ;;
 				dragonfly) _DETECTED_DISTRO_ICON=" " ;;
-				openbsd) _DETECTED_DISTRO_ICON="󰈺 " ;;
+				openbsd) _DETECTED_DISTRO_ICON=" " ;;
 				netbsd)  _DETECTED_DISTRO_ICON=" " ;;
+				solaris|sunos) _DETECTED_DISTRO_ICON="󰖨 " ;;
 				illumos) _DETECTED_DISTRO_ICON=" " ;;
 				macos)   _DETECTED_DISTRO_ICON=" " ;;
 				windows) _DETECTED_DISTRO_ICON=" " ;;

@@ -50,3 +50,10 @@ No kernel do FreeBSD (`sys/kern/kern_tty.c`), quando um shell interativo (`bash 
 ```sh
 script -q /dev/null bash -i -c 'echo "Prompt: ${PS1}"'
 ```
+
+---
+
+## 😈 Derivados & Downstreams
+
+- **GhostBSD & NomadBSD:** Detectados sob a família `bsd`, preservando compatibilidade com `pkg` (`update-pkg`) e glifo ` ` (`U+F30C`, `nf-linux-freebsd`).
+- **DragonFly BSD:** Identificado isoladamente como `dragonfly` (DPorts/pkg) com glifo ` ` (`U+EEF8`).

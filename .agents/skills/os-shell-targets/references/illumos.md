@@ -32,3 +32,10 @@ Isto posiciona as versões GNU à frente no `PATH` sem corromper scripts adminis
 - Controle: `svcadm enable <serviço>`, `svcadm restart <serviço>`.
 - O alias universal `services` aponta nativamente para `svcs` no illumos.
 - **Gerenciamento de Pacotes:** `pkg` (IPS) no OpenIndiana e OmniOS; `pkgin`/`pkgsrc` no SmartOS.
+
+---
+
+## 🎨 Identidade Visual & Ícones
+
+- **illumos (OmniOS, SmartOS, OpenIndiana):** Glifo oficial Nerd Fonts ` ` (`U+F326`, `nf-linux-illumos`).
+- **Solaris / SunOS clássico:** Símbolo solar radiante `󰖨 ` (`U+F05A8`, `nf-md-weather_sunny`) em homenagem à herança histórica da Sun Microsystems.

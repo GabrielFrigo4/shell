@@ -26,6 +26,7 @@
 
 **Plataformas Homologadas:**<br>
 ![FreeBSD](https://img.shields.io/badge/FreeBSD-Supported-red?logo=freebsd&logoColor=white)
+![DragonFly BSD](https://img.shields.io/badge/DragonFly_BSD-Supported-red?logo=freebsd&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-Supported-blue?logo=linux&logoColor=white)
 ![macOS](https://img.shields.io/badge/macOS-Supported-black?logo=apple&logoColor=white)
 ![Windows](<https://img.shields.io/badge/Windows_(MSYS2)-Supported-purple?logo=gitforwindows&logoColor=white>)
@@ -47,6 +48,7 @@
 flowchart TD
     subgraph OS ["🖥️ Plataformas"]
         BSD["😈 FreeBSD"]
+        DFLY[" DragonFly BSD"]
         LNX["🐧 Linux"]
         MAC["🍎 macOS"]
         WIN["🪟 Windows (MSYS2)"]

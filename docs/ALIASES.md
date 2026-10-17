@@ -69,9 +69,10 @@ flowchart TD
     UPALL -.->|se Linux| LBR["📦 update-brew<br/><i>(Linuxbrew)</i>"]
 
     UPSYS --> DNF["update-dnf<br/><i>(Fedora / RHEL)</i>"]
+    UPSYS --> TDNF["update-tdnf<br/><i>(Azure Linux / Photon)</i>"]
     UPSYS --> APT["update-apt<br/><i>(Debian / Ubuntu)</i>"]
     UPSYS --> MAN["update-pacman<br/><i>(Arch / MSYS2)</i>"]
-    UPSYS --> PKG["update-pkg<br/><i>(FreeBSD)</i>"]
+    UPSYS --> PKG["update-pkg<br/><i>(FreeBSD / DragonFly)</i>"]
     UPSYS --> ADD["update-pkg-add<br/><i>(OpenBSD)</i>"]
     UPSYS --> IN["update-pkgin<br/><i>(NetBSD / SmartOS)</i>"]
     UPSYS --> IPS["update-ips<br/><i>(illumos IPS)</i>"]
@@ -79,28 +80,41 @@ flowchart TD
     UPSYS --> ZYP["update-zypper<br/><i>(OpenSUSE)</i>"]
     UPSYS --> XBPS["update-xbps<br/><i>(Void)</i>"]
     UPSYS --> APK["update-apk<br/><i>(Alpine)</i>"]
+    UPSYS --> EMG["update-emerge<br/><i>(Gentoo)</i>"]
+    UPSYS --> NIX["update-nix<br/><i>(NixOS)</i>"]
+    UPSYS --> EOP["update-eopkg<br/><i>(Solus)</i>"]
+    UPSYS --> GUIX["update-guix<br/><i>(GNU Guix)</i>"]
+    UPSYS --> OPK["update-opkg<br/><i>(OpenWrt)</i>"]
+    UPSYS --> SLK["update-slackpkg<br/><i>(Slackware)</i>"]
 ```
 
-| Comando Canônico / Alias                            | Descrição                                                                      | Escopo / Gerenciador          |
-| :-------------------------------------------------- | :----------------------------------------------------------------------------- | :---------------------------- |
-| `update-all` / `upall` / `u`                        | **Orquestrador Global:** Atualiza o sistema base + AUR + Flatpak + Snap + MAS. | Universal                     |
-| `update-system` / `upsys`                           | Atualiza os pacotes do sistema base detectando a distribuição nativa.          | Universal                     |
-| `clean-system` / `cleansys` / `sysclean` / `syscls` | Limpeza de pacotes órfãos (autoremove), dependências obsoletas e caches.       | Universal                     |
-| `update-aur` / `upaur` / `upyay` / `upparu`         | Atualiza pacotes do Arch User Repository (prioriza `paru > yay`).              | Arch Linux                    |
-| `update-pacman` / `upman`                           | Atualiza pacotes via Pacman.                                                   | Arch Linux / Windows (MSYS2)  |
-| `update-apt` / `upapt`                              | Atualiza repositórios e pacotes via APT.                                       | Debian, Ubuntu, Mint, Pop!_OS |
-| `update-dnf` / `updnf`                              | Atualiza pacotes via DNF.                                                      | Fedora, RHEL, Rocky, Alma     |
-| `update-zypper` / `upzyp`                           | Atualiza pacotes via Zypper.                                                   | openSUSE, SLES                |
-| `update-xbps` / `upxbps`                            | Atualiza pacotes via XBPS.                                                     | Void Linux                    |
-| `update-apk` / `upapk`                              | Atualiza pacotes via APK.                                                      | Alpine Linux                  |
-| `update-pkg` / `uppkg`                              | Atualiza pacotes via PKG (`pkg update && pkg upgrade`).                        | FreeBSD                       |
-| `update-pkg-add` / `upadd` / `uppkgadd`             | Aplica errata do kernel (`syspatch`) e atualiza pacotes (`pkg_add -u`).        | OpenBSD                       |
-| `update-pkgin` / `upin` / `uppkgin`                 | Atualiza repositórios e pacotes via pkgin (`pkgin update && pkgin upgrade`).   | NetBSD / illumos (SmartOS)    |
-| `update-ips` / `upips`                              | Atualiza imagem e catálogo do sistema IPS (`pkg refresh && pkg update`).       | illumos (OmniOS, OpenIndiana) |
-| `update-brew` / `upbrew`                            | Atualiza fórmulas e Casks via Homebrew (`brew update && brew upgrade`).        | macOS / Linux (Linuxbrew)     |
-| `update-mas` / `upmas`                              | Atualiza aplicativos instalados via Mac App Store (`mas upgrade`).             | macOS                         |
-| `update-flatpak` / `upflat`                         | Atualiza todos os Flatpaks instalados.                                         | Linux                         |
-| `update-snap` / `upsnap`                            | Atualiza todos os Snaps instalados.                                            | Linux                         |
+| Comando Canônico / Alias                            | Descrição                                                                      | Escopo / Gerenciador                   |
+| :-------------------------------------------------- | :----------------------------------------------------------------------------- | :------------------------------------- |
+| `update-all` / `upall` / `u`                        | **Orquestrador Global:** Atualiza o sistema base + AUR + Flatpak + Snap + MAS. | Universal                              |
+| `update-system` / `upsys`                           | Atualiza os pacotes do sistema base detectando a distribuição nativa.          | Universal                              |
+| `clean-system` / `cleansys` / `sysclean` / `syscls` | Limpeza de pacotes órfãos (autoremove), dependências obsoletas e caches.       | Universal                              |
+| `update-aur` / `upaur` / `upyay` / `upparu`         | Atualiza pacotes do Arch User Repository (prioriza `paru > yay`).              | Arch Linux                             |
+| `update-pacman` / `upman`                           | Atualiza pacotes via Pacman.                                                   | Arch Linux / Windows (MSYS2)           |
+| `update-apt` / `upapt`                              | Atualiza repositórios e pacotes via APT.                                       | Debian, Ubuntu, Mint, Pop!_OS          |
+| `update-dnf` / `updnf`                              | Atualiza pacotes via DNF.                                                      | Fedora, RHEL, Rocky, Alma              |
+| `update-tdnf` / `uptdnf`                            | Atualiza pacotes via Tiny DNF (`tdnf upgrade --refresh -y`).                   | Azure Linux / Photon OS                |
+| `update-zypper` / `upzyp`                           | Atualiza pacotes via Zypper.                                                   | openSUSE, SLES                         |
+| `update-xbps` / `upxbps`                            | Atualiza pacotes via XBPS.                                                     | Void Linux                             |
+| `update-apk` / `upapk`                              | Atualiza pacotes via APK.                                                      | Alpine Linux                           |
+| `update-emerge` / `upemerge`                        | Atualiza árvore Portage e pacotes (`emerge -uDN @world`).                      | Gentoo / Funtoo Linux                  |
+| `update-nix` / `upnix`                              | Atualiza sistema e pacotes (`nixos-rebuild switch --upgrade`).                 | NixOS / Nix                            |
+| `update-eopkg` / `upeopkg`                          | Atualiza pacotes via eopkg.                                                    | Solus Linux                            |
+| `update-slackpkg` / `upslack`                       | Atualiza pacotes via slackpkg (`update && upgrade-all`).                       | Slackware Linux                        |
+| `update-guix` / `upguix`                            | Atualiza canais e pacotes via GNU Guix (`guix pull && package -u`).            | GNU Guix System                        |
+| `update-opkg` / `upopkg`                            | Atualiza listas e pacotes via opkg.                                            | OpenWrt / Entware                      |
+| `update-pkg` / `uppkg`                              | Atualiza pacotes via PKG (`pkg update && pkg upgrade`).                        | FreeBSD, DragonFly, GhostBSD, NomadBSD |
+| `update-pkg-add` / `upadd` / `uppkgadd`             | Aplica errata do kernel (`syspatch`) e atualiza pacotes (`pkg_add -u`).        | OpenBSD                                |
+| `update-pkgin` / `upin` / `uppkgin`                 | Atualiza repositórios e pacotes via pkgin (`pkgin update && pkgin upgrade`).   | NetBSD / illumos (SmartOS)             |
+| `update-ips` / `upips`                              | Atualiza imagem e catálogo do sistema IPS (`pkg refresh && pkg update`).       | illumos (OmniOS, OpenIndiana)          |
+| `update-brew` / `upbrew`                            | Atualiza fórmulas e Casks via Homebrew (`brew update && brew upgrade`).        | macOS / Linux (Linuxbrew)              |
+| `update-mas` / `upmas`                              | Atualiza aplicativos instalados via Mac App Store (`mas upgrade`).             | macOS                                  |
+| `update-flatpak` / `upflat`                         | Atualiza todos os Flatpaks instalados.                                         | Linux                                  |
+| `update-snap` / `upsnap`                            | Atualiza todos os Snaps instalados.                                            | Linux                                  |
 
 ---
 
