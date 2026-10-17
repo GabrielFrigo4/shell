@@ -6,16 +6,16 @@
 
 ## 🎯 Finalidade
 
-Este diretório contém os arquivos de configuração do **NuShell**, definindo variáveis de ambiente, atalhos para o Antigravity CLI (`agy`), temas e integração segura com o Vault (com exclusão automática de arquivos `*template*` e `*example*`).
+Este diretório provê scripts de inicialização, atalhos, funções auxiliares e integração de variáveis de ambiente para o **NuShell** em Windows, Linux e macOS.
 
 ---
 
 ## 📂 Catálogo de Arquivos
 
-| Arquivo                  | Tipo                 | Descrição                                                                               |
-| :----------------------- | :------------------- | :-------------------------------------------------------------------------------------- |
-| [`config.nu`](config.nu) | NuScript Declarativo | Configuração de atalhos, tabelas, temas e carregador seguro do Vault (filtra templates) |
-| [`env.nu`](env.nu)       | NuScript Declarativo | Variáveis de ambiente e carregamento do ecossistema                                     |
+| Arquivo                  | Tipo                 | Descrição                                                       |
+| :----------------------- | :------------------- | :-------------------------------------------------------------- |
+| [`config.nu`](config.nu) | NuScript Declarativo | Configuração de atalhos, tabelas, carregamento do Vault e temas |
+| [`env.nu`](env.nu)       | NuScript Declarativo | Variáveis de ambiente e carregamento do ecossistema             |
 
 ---
 
