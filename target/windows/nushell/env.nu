@@ -17,11 +17,20 @@ $env.PATH = (
 $env.EMACS_SOCKET_NAME = ($env.HOME | path join ".emacs.d" "var" "server" "auth" "server");
 $env.MICRO_TRUECOLOR = 1;
 
+let _msys_root = ($env.MSYS2_ROOT? | default "C:\\msys64")
+let _msys_home_base = ($env.MSYS2_HOME? | default ([$_msys_root, "home"] | path join))
+let _msys_user = ($env.MSYS2_USER? | default ($env.USERNAME? | default ""))
+let _msys_home = ([$_msys_home_base, $_msys_user] | path join)
+let _msys_home_lower = ([$_msys_home_base, ($_msys_user | str lowercase)] | path join)
+let _resolved_msys = if ($_msys_home | path exists) { $_msys_home } else if ($_msys_home_lower | path exists) { $_msys_home_lower } else { "" }
+
 let _shell_candidates = [
 	($env.SHELL_REPO_DIR? | default ""),
 	(($env.USERPROFILE? | default ($env.HOME? | default "~")) | path join ".local" "share" "shell"),
 	(($env.USERPROFILE? | default ($env.HOME? | default "~")) | path join ".config" "shell"),
 	(($env.USERPROFILE? | default ($env.HOME? | default "~")) | path join ".shell"),
+	(if ($_resolved_msys | is-not-empty) { [$_resolved_msys, ".local", "share", "shell"] | path join } else { "" }),
+	(if ($_resolved_msys | is-not-empty) { [$_resolved_msys, ".config", "shell"] | path join } else { "" }),
 	"C:\\Program Files\\Shell"
 ]
 let _active_shell = ($_shell_candidates | where { |p| ($p | is-not-empty) and ([$p, "shell.sh"] | path join | path exists) } | get -o 0)

@@ -62,16 +62,20 @@ _deploy_item() {
 
 	mkdir -p "$(dirname "${_dst}")"
 
-	if [ -L "${_dst}" ] || [ -e "${_dst}" ]; then
-		if [ -L "${_dst}" ] && [ "$(readlink "${_dst}" 2> "/dev/null" || true)" = "${_src}" ]; then
-			_ui_sub "[IN-SYNC] ${_dst}"
-			return 0
-		fi
-		if [ -f "${_dst}" ] && cmp -s "${_src}" "${_dst}" 2> "/dev/null"; then
-			_ui_sub "[IN-SYNC] ${_dst}"
-			return 0
-		fi
-		rm -rf "${_dst}" 2> "/dev/null" || true
+	if [ -L "${_dst}" ] && [ "$(readlink "${_dst}" 2> "/dev/null" || true)" = "${_src}" ]; then
+		_ui_sub "[IN-SYNC] ${_dst}"
+		return 0
+	fi
+	if [ -f "${_dst}" ] && cmp -s "${_src}" "${_dst}" 2> "/dev/null"; then
+		_ui_sub "[IN-SYNC] ${_dst}"
+		return 0
+	fi
+
+	rm -rf "${_dst}" 2> "/dev/null" || true
+	if [ "${_is_win}" -eq 1 ] && command -v cmd.exe > "/dev/null" 2>&1; then
+		_win_dst="$(cygpath -w "${_dst}" 2> "/dev/null" || echo "${_dst}")"
+		cmd.exe /c "del /f /q \"${_win_dst}\"" > "/dev/null" 2>&1 || true
+		cmd.exe /c "rmdir /s /q \"${_win_dst}\"" > "/dev/null" 2>&1 || true
 	fi
 
 	export MSYS="winsymlinks:nativestrict"

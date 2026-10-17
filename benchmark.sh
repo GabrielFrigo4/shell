@@ -138,6 +138,32 @@ import sys, time, subprocess
 shell_bin = sys.argv[1]
 repo = sys.argv[2]
 sh = sys.argv[3]
+
+cmd_direct = [shell_bin, '-c', f'''
+LC_ALL=C
+[ \"{sh}\" = \"zsh\" ] && zmodload zsh/datetime 2> \"/dev/null\"
+export SHELL_REPO_DIR=\"{repo}\"
+for _f in \"{repo}/library/\"*.sh \"{repo}/core/\"*.sh; do [ -f \"\$_f\" ] && . \"\$_f\"; done
+[ -f \"{repo}/theme/{sh}.sh\" ] && . \"{repo}/theme/{sh}.sh\"
+t0=\${{EPOCHREALTIME:-}}
+if [ -n \"\$t0\" ]; then
+    for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25; do cd /tmp && cd \"\$OLDPWD\"; done
+    t1=\${{EPOCHREALTIME:-}}
+    echo \"TIMING:\$t0:\$t1\"
+fi
+''']
+try:
+    res = subprocess.run(cmd_direct, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=10)
+    for line in res.stdout.splitlines():
+        if 'TIMING:' in line:
+            parts = line.split('TIMING:')[1].split(':')
+            t0, t1 = float(parts[0]), float(parts[1])
+            diff = max(0.0, ((t1 - t0) / 50)) * 1000
+            print(f'{diff:.2f}')
+            sys.exit(0)
+except Exception:
+    pass
+
 base = f'export SHELL_REPO_DIR={repo}; for _f in {repo}/library/*.sh {repo}/core/*.sh; do . \"\$_f\"; done; [ -f {repo}/theme/{sh}.sh ] && . {repo}/theme/{sh}.sh;'
 cmd_base = [shell_bin, '-c', base]
 cmd_loop = [shell_bin, '-c', base + ' for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25; do cd /tmp && cd \"\$OLDPWD\"; done;']
@@ -169,6 +195,33 @@ import sys, time, subprocess
 shell_bin = sys.argv[1]
 repo = sys.argv[2]
 sh = sys.argv[3]
+
+cmd_direct = [shell_bin, '-c', f'''
+LC_ALL=C
+[ \"{sh}\" = \"zsh\" ] && zmodload zsh/datetime 2> \"/dev/null\"
+export SHELL_REPO_DIR=\"{repo}\"
+for _f in \"{repo}/library/\"*.sh \"{repo}/core/\"*.sh; do [ -f \"\$_f\" ] && . \"\$_f\"; done
+[ -f \"{repo}/theme/{sh}.sh\" ] && . \"{repo}/theme/{sh}.sh\"
+_update_prompt > \"/dev/null\" 2>&1
+t0=\${{EPOCHREALTIME:-}}
+if [ -n \"\$t0\" ]; then
+    for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50; do _update_prompt > \"/dev/null\" 2>&1; done
+    t1=\${{EPOCHREALTIME:-}}
+    echo \"TIMING:\$t0:\$t1\"
+fi
+''']
+try:
+    res = subprocess.run(cmd_direct, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=10)
+    for line in res.stdout.splitlines():
+        if 'TIMING:' in line:
+            parts = line.split('TIMING:')[1].split(':')
+            t0, t1 = float(parts[0]), float(parts[1])
+            diff = max(0.0, ((t1 - t0) / 50)) * 1000
+            print(f'{diff:.2f}')
+            sys.exit(0)
+except Exception:
+    pass
+
 base = f'export SHELL_REPO_DIR={repo}; for _f in {repo}/library/*.sh {repo}/core/*.sh; do . \"\$_f\"; done; [ -f {repo}/theme/{sh}.sh ] && . {repo}/theme/{sh}.sh;'
 cmd_base = [shell_bin, '-c', base]
 cmd_prompt = [shell_bin, '-c', base + ' for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50; do _update_prompt; done;']
