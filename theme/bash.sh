@@ -76,8 +76,10 @@ _update_prompt() {
 		_theme_render
 	fi
 
-	if [ -n "${RAW_TTY:-}" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ]; then
-		echo -n $'\e[?6c'
+	if [ -n "${RAW_TTY:-}" ]; then
+		[ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e[?6c\e[16;0]'
+	else
+		echo -n $'\e[0 q'
 	fi
 }
 
