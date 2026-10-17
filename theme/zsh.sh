@@ -66,6 +66,10 @@ _update_prompt() {
 	if command -v _theme_render > "/dev/null" 2>&1; then
 		_theme_render
 	fi
+
+	if [ -n "${RAW_TTY:-}" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ]; then
+		echo -n $'\e[?6c'
+	fi
 }
 
 autoload -Uz add-zsh-hook 2> "/dev/null" || true
