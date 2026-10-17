@@ -131,9 +131,9 @@ _format_ms() {
 }
 
 _measure_nav_latency() {
-	_sh="${1}"
-	_sh_bin="${2}"
-	_nav_ms="$("${_python_bin}" -c "
+	local _target_shell="${1}"
+	local _shell_binary="${2}"
+	local _navigation_latency_ms="$("${_python_bin}" -c "
 import sys, time, subprocess
 shell_bin = sys.argv[1]
 repo = sys.argv[2]
@@ -184,14 +184,14 @@ try:
     print(f'{diff:.2f}')
 except Exception:
     print('0.00')
-" "${_sh_bin}" "${_repo_dir}" "${_sh}" 2> "/dev/null" || echo "0.00")"
-	printf "%s\n" "${_nav_ms}" | tr -d '\r'
+" "${_shell_binary}" "${_repo_dir}" "${_target_shell}" 2> "/dev/null" || echo "0.00")"
+	printf "%s\n" "${_navigation_latency_ms}" | tr -d '\r'
 }
 
 _measure_prompt_latency() {
-	_sh="${1}"
-	_sh_bin="${2}"
-	_prompt_ms="$("${_python_bin}" -c "
+	local _target_shell="${1}"
+	local _shell_binary="${2}"
+	local _prompt_latency_ms="$("${_python_bin}" -c "
 import sys, time, subprocess
 shell_bin = sys.argv[1]
 repo = sys.argv[2]
@@ -243,8 +243,8 @@ try:
     print(f'{diff:.2f}')
 except Exception:
     print('0.00')
-" "${_sh_bin}" "${_repo_dir}" "${_sh}" 2> "/dev/null" || echo "0.00")"
-	printf "%s\n" "${_prompt_ms}" | tr -d '\r'
+" "${_shell_binary}" "${_repo_dir}" "${_target_shell}" 2> "/dev/null" || echo "0.00")"
+	printf "%s\n" "${_prompt_latency_ms}" | tr -d '\r'
 }
 
 ### --------------------------------
@@ -416,9 +416,9 @@ printf "%s\n" "----------------------------------------------------------------"
 
 for _nav_shell in zsh bash; do
 	if _is_shell_selected "${_nav_shell}" && command -v "${_nav_shell}" > "/dev/null" 2>&1; then
-		_nav_bin="$(_resolve_shell_bin "${_nav_shell}")"
-		_nav_ms="$(_measure_nav_latency "${_nav_shell}" "${_nav_bin}")"
-		printf "%-24s %b\n" "Navigation (${_nav_shell})" "$(_format_ms "${_nav_ms}" "2")"
+		_nav_binary="$(_resolve_shell_bin "${_nav_shell}")"
+		_navigation_latency_ms="$(_measure_nav_latency "${_nav_shell}" "${_nav_binary}")"
+		printf "%-24s %b\n" "Navigation (${_nav_shell})" "$(_format_ms "${_navigation_latency_ms}" "2")"
 	fi
 done
 
@@ -428,11 +428,11 @@ done
 printf "\n%b🎨 Prompt & VCS Render Latency%b\n" "${_ui_color_bold}${_ui_color_cyan}" "${_ui_color_reset}"
 printf "%s\n" "----------------------------------------------------------------"
 
-for _prompt_sh in zsh bash; do
-	if _is_shell_selected "${_prompt_sh}" && command -v "${_prompt_sh}" > "/dev/null" 2>&1; then
-		_p_bin="$(_resolve_shell_bin "${_prompt_sh}")"
-		_p_ms="$(_measure_prompt_latency "${_prompt_sh}" "${_p_bin}")"
-		printf "%-24s %b\n" "Prompt Render (${_prompt_sh})" "$(_format_ms "${_p_ms}" "${_target_limit}")"
+for _prompt_shell in zsh bash; do
+	if _is_shell_selected "${_prompt_shell}" && command -v "${_prompt_shell}" > "/dev/null" 2>&1; then
+		_prompt_binary="$(_resolve_shell_bin "${_prompt_shell}")"
+		_prompt_latency_ms="$(_measure_prompt_latency "${_prompt_shell}" "${_prompt_binary}")"
+		printf "%-24s %b\n" "Prompt Render (${_prompt_shell})" "$(_format_ms "${_prompt_latency_ms}" "${_target_limit}")"
 	fi
 done
 
