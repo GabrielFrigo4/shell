@@ -264,6 +264,8 @@ _detect_distro() {
 		_DETECTED_DISTRO="${_os_id:-unknown}"
 	elif [ -f "/etc/arch-release" ]; then
 		_DETECTED_DISTRO="arch"
+	elif [ -f "/etc/devuan_version" ]; then
+		_DETECTED_DISTRO="devuan"
 	elif [ -f "/etc/debian_version" ]; then
 		_DETECTED_DISTRO="debian"
 	elif [ -f "/etc/release" ]; then
@@ -303,7 +305,7 @@ _detect_distro_family() {
 
 	case "${_distro_id}" in
 		arch|manjaro|endeavouros|garuda)      _DETECTED_DISTRO_FAMILY="arch" ;;
-		debian|ubuntu|linuxmint|pop|raspbian|kali) _DETECTED_DISTRO_FAMILY="debian" ;;
+		debian|devuan|ubuntu|linuxmint|pop|raspbian|kali) _DETECTED_DISTRO_FAMILY="debian" ;;
 		fedora|rhel|centos|rocky|alma*|nobara) _DETECTED_DISTRO_FAMILY="fedora" ;;
 		opensuse*|sles)                       _DETECTED_DISTRO_FAMILY="suse" ;;
 		void)                                 _DETECTED_DISTRO_FAMILY="void" ;;
@@ -349,6 +351,7 @@ _detect_distro_icon() {
 		endeavouros)                        _DETECTED_DISTRO_ICON=" " ;;
 		garuda)                             _DETECTED_DISTRO_ICON="󰛓 " ;;
 		debian)                             _DETECTED_DISTRO_ICON=" " ;;
+		devuan)                             _DETECTED_DISTRO_ICON=" " ;;
 		ubuntu)                             _DETECTED_DISTRO_ICON=" " ;;
 		linuxmint|mint)                     _DETECTED_DISTRO_ICON=" " ;;
 		pop)                                _DETECTED_DISTRO_ICON=" " ;;
