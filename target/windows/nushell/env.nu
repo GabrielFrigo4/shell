@@ -42,6 +42,15 @@ if ($_active_shell | is-not-empty) and not ($env.SHELL_REPO_DIR? | default "" | 
 ### PROMPT THEME
 ### ================================
 
+let _win_build = (try {
+	let v = (do -i { ^cmd.exe /c ver } | complete | get stdout)
+	($v | parse -r "10\\.0\\.(?<bld>\\d+)" | get -o 0.bld | default "0" | into int)
+} catch { 0 })
+let _win_name = (if $_win_build >= 22000 { "Win 11" } else if $_win_build >= 10240 { "Win 10" } else { "Windows" })
+let _win_icon = (if $_win_build >= 22000 { "" } else { "" })
+$env.PROMPT_OS_NAME = $_win_name
+$env.PROMPT_OS_ICON = $_win_icon
+
 def create_left_prompt [] {
 	let gray = (ansi -e '90m')
 	let blue = (ansi -e '94m')
@@ -67,7 +76,9 @@ def create_left_prompt [] {
 		$git_info = $" ($gray)❮($red)󰊢 ($magenta)($bname)($indicator)($gray)❯"
 	}
 
-	let line1 = $"($gray)($blue)󰍲 ($magenta)Windows($gray)─($blue) ($magenta)nu($gray)"
+	let os_icon = ($env.PROMPT_OS_ICON? | default "")
+	let os_name = ($env.PROMPT_OS_NAME? | default "Win 11")
+	let line1 = $"($gray)($blue)($os_icon) ($magenta)($os_name)($gray)─($blue) ($magenta)nu($gray)"
 	let line2 = $"($gray)┌──❮($blue) ($green)($time)($gray)❯─❮($blue) ($green)($date)($gray)❯─❮($yellow) ($cyan)($dir)($gray)❯─ ❮($blue) ($green)($user)($gray)❯($git_info)"
 	let line3 = $"($gray)└─($blue)($reset) "
 

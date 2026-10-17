@@ -8,6 +8,22 @@
 ### PROMPT THEME
 ### ================================
 
+$script:winIcon = ""
+$script:winName = "Win 11"
+try {
+	$build = [System.Environment]::OSVersion.Version.Build
+	if ($build -ge 22000) {
+		$script:winName = "Win 11"
+		$script:winIcon = ""
+	} elseif ($build -ge 10240) {
+		$script:winName = "Win 10"
+		$script:winIcon = ""
+	} else {
+		$script:winName = "WinNT"
+		$script:winIcon = ""
+	}
+} catch { }
+
 function prompt {
 	$esc = [char]27
 	$reset = "$esc[0m"
@@ -19,8 +35,8 @@ function prompt {
 	$cyan = "$esc[96m"
 	$red = "$esc[91m"
 
-	$osIcon = "󰍲"
-	$osName = "Windows"
+	$osIcon = $script:winIcon
+	$osName = $script:winName
 	$shellName = if ($IsCoreCLR) { "pwsh" } else { "powershell" }
 
 	$time = (Get-Date).ToString("HH:mm:ss")
