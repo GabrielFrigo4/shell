@@ -68,7 +68,7 @@ _update_prompt() {
 	fi
 
 	if [ -n "${RAW_TTY:-}" ]; then
-		[ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e[?6c'
+		[ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?6c'
 	else
 		echo -n $'\e[0 q'
 	fi
