@@ -26,10 +26,17 @@ _deploy_win_paths() {
 			fi
 
 			_win_docs=""
-			for _cand in "${_win_onedrive}/Documents" "${_win_onedrive}/Documentos" "${_win_home}/Documents" "${_win_home}/Documentos"; do
-				[ -d "${_cand}" ] && _win_docs="${_cand}" && break
-			done
-			[ -z "${_win_docs}" ] && _win_docs="${_win_home}/Documents"
+			if [ -n "${_win_onedrive}" ] && [ -d "${_win_onedrive}" ]; then
+				for _cand in "${_win_onedrive}/Documentos" "${_win_onedrive}/Documents"; do
+					[ -d "${_cand}" ] && _win_docs="${_cand}" && break
+				done
+				[ -z "${_win_docs}" ] && _win_docs="${_win_onedrive}/Documentos"
+			else
+				for _cand in "${_win_home}/Documentos" "${_win_home}/Documents"; do
+					[ -d "${_cand}" ] && _win_docs="${_cand}" && break
+				done
+				[ -z "${_win_docs}" ] && _win_docs="${_win_home}/Documents"
+			fi
 			;;
 	esac
 }
@@ -47,18 +54,16 @@ _deploy_item() {
 
 	mkdir -p "$(dirname "${_dst}")"
 
-	if [ -L "${_dst}" ]; then
-		if [ "$(readlink "${_dst}" 2> "/dev/null" || true)" = "${_src}" ]; then
+	if [ -L "${_dst}" ] || [ -e "${_dst}" ]; then
+		if [ -L "${_dst}" ] && [ "$(readlink "${_dst}" 2> "/dev/null" || true)" = "${_src}" ]; then
 			_ui_sub "[IN-SYNC] ${_dst}"
 			return 0
 		fi
-		rm -f "${_dst}"
-	elif [ -e "${_dst}" ]; then
-		if cmp -s "${_src}" "${_dst}" 2> "/dev/null"; then
+		if [ -f "${_dst}" ] && cmp -s "${_src}" "${_dst}" 2> "/dev/null"; then
 			_ui_sub "[IN-SYNC] ${_dst}"
 			return 0
 		fi
-		rm -rf "${_dst}"
+		rm -rf "${_dst}" 2> "/dev/null" || true
 	fi
 
 	export MSYS="winsymlinks:nativestrict"
@@ -93,15 +98,21 @@ _install_extended_shell() {
 				_deploy_item "${_pwsh_dir}/Microsoft.PowerShell_profile.ps1" "${_win_docs}/PowerShell/Microsoft.PowerShell_profile.ps1"
 				_deploy_item "${_pwsh_dir}/profile.ps1" "${_win_docs}/WindowsPowerShell/profile.ps1"
 				_deploy_item "${_pwsh_dir}/Microsoft.PowerShell_profile.ps1" "${_win_docs}/WindowsPowerShell/Microsoft.PowerShell_profile.ps1"
-				if [ -n "${_win_onedrive}" ] && [ -d "${_win_home}/Documents" ] && [ "${_win_docs}" != "${_win_home}/Documents" ]; then
-					_deploy_item "${_pwsh_dir}/profile.ps1" "${_win_home}/Documents/PowerShell/profile.ps1"
-					_deploy_item "${_pwsh_dir}/Microsoft.PowerShell_profile.ps1" "${_win_home}/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
-					_deploy_item "${_pwsh_dir}/profile.ps1" "${_win_home}/Documents/WindowsPowerShell/profile.ps1"
-					_deploy_item "${_pwsh_dir}/Microsoft.PowerShell_profile.ps1" "${_win_home}/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1"
+
+				if [ -n "${_win_onedrive}" ] && [ "${_win_docs}" != "${_win_home}/Documents" ] && [ "${_win_docs}" != "${_win_home}/Documentos" ]; then
+					for _legacy_doc in "${_win_home}/Documents" "${_win_home}/Documentos" "${HOME}/Documents" "${HOME}/Documentos"; do
+						if [ -d "${_legacy_doc}" ] && [ "${_legacy_doc}" != "${_win_docs}" ]; then
+							rm -f "${_legacy_doc}/PowerShell/profile.ps1" "${_legacy_doc}/PowerShell/Microsoft.PowerShell_profile.ps1" 2> "/dev/null" || true
+							rm -f "${_legacy_doc}/WindowsPowerShell/profile.ps1" "${_legacy_doc}/WindowsPowerShell/Microsoft.PowerShell_profile.ps1" 2> "/dev/null" || true
+							rmdir "${_legacy_doc}/PowerShell" 2> "/dev/null" || true
+							rmdir "${_legacy_doc}/WindowsPowerShell" 2> "/dev/null" || true
+						fi
+					done
 				fi
+			else
+				_deploy_item "${_pwsh_dir}/profile.ps1" "${_cfg}/powershell/profile.ps1"
+				_deploy_item "${_pwsh_dir}/Microsoft.PowerShell_profile.ps1" "${_cfg}/powershell/Microsoft.PowerShell_profile.ps1"
 			fi
-			_deploy_item "${_pwsh_dir}/profile.ps1" "${_cfg}/powershell/profile.ps1"
-			_deploy_item "${_pwsh_dir}/Microsoft.PowerShell_profile.ps1" "${_cfg}/powershell/Microsoft.PowerShell_profile.ps1"
 			;;
 		nu|nushell)
 			_ui_step "Implantando perfil NuShell..."
@@ -109,9 +120,10 @@ _install_extended_shell() {
 			if [ "${_is_win}" -eq 1 ]; then
 				_deploy_item "${_nu_dir}/config.nu" "${_win_app}/nushell/config.nu"
 				_deploy_item "${_nu_dir}/env.nu" "${_win_app}/nushell/env.nu"
+			else
+				_deploy_item "${_nu_dir}/config.nu" "${_cfg}/nushell/config.nu"
+				_deploy_item "${_nu_dir}/env.nu" "${_cfg}/nushell/env.nu"
 			fi
-			_deploy_item "${_nu_dir}/config.nu" "${_cfg}/nushell/config.nu"
-			_deploy_item "${_nu_dir}/env.nu" "${_cfg}/nushell/env.nu"
 			;;
 		cmd)
 			_ui_step "Implantando perfis CMD e Clink..."

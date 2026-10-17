@@ -117,6 +117,7 @@ esac
 ### --------------------------------
 ### Detect Environment
 ### --------------------------------
+. "${SHELL_REPO_DIR}/library/ui.sh"
 . "${SHELL_REPO_DIR}/library/detect.sh"
 . "${SHELL_REPO_DIR}/library/functions.sh"
 . "${SHELL_REPO_DIR}/library/deploy.sh"
@@ -155,9 +156,10 @@ else
 	if command -v pwsh > "/dev/null" 2>&1 || command -v powershell > "/dev/null" 2>&1; then
 		TARGET_SHELLS="${TARGET_SHELLS} pwsh"
 	fi
-	command -v nu > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} nu"
 	if [ "${OS_NAME}" = "windows" ]; then
-		TARGET_SHELLS="${TARGET_SHELLS} cmd"
+		TARGET_SHELLS="${TARGET_SHELLS} nu cmd"
+	else
+		command -v nu > "/dev/null" 2>&1 && TARGET_SHELLS="${TARGET_SHELLS} nu"
 	fi
 
 	if [ -z "${TARGET_SHELLS}" ]; then

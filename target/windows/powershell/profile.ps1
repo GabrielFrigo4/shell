@@ -451,16 +451,16 @@ Parâmetros:
 				_ui_sub "Enviando $repoDir ($branch)..."
 				git -C $repoDir push
 				if ($LASTEXITCODE -eq 0) {
-					_ui_ok "$repoDir: push concluído com sucesso!"
+					_ui_ok "${repoDir}: push concluído com sucesso!"
 				} else {
-					_ui_err "$repoDir: falha no push."
+					_ui_err "${repoDir}: falha no push."
 				}
 			}
 		} else {
 			if ($Status) {
 				_ui_ok "$repoDir [$branch]: nada a enviar"
 			} else {
-				_ui_ok "$repoDir: já atualizado com o remote."
+				_ui_ok "${repoDir}: já atualizado com o remote."
 			}
 		}
 	}
