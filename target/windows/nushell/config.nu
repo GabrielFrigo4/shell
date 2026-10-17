@@ -24,7 +24,7 @@ let MsysHome = if ($_msys_target | path exists) {
 	""
 }
 
-def get-msys-bash [] {
+def get-msys-shell [] {
 	let roots = [
 		($env.MSYS2_ROOT? | default ""),
 		"C:\\msys64",
@@ -33,21 +33,22 @@ def get-msys-bash [] {
 		([($env.LOCALAPPDATA? | default ""), "Programs", "msys64"] | path join),
 		"C:\\Program Files\\Git"
 	]
-	for r in $roots {
-		if ($r | is-not-empty) {
-			let bin1 = ([$r, "usr", "bin", "bash.exe"] | path join)
-			if ($bin1 | path exists) { return $bin1 }
-			let bin2 = ([$r, "bin", "bash.exe"] | path join)
-			if ($bin2 | path exists) { return $bin2 }
+	let candidate_shells = ["zsh.exe", "bash.exe", "sh.exe", "ksh.exe"]
+	for sh_name in $candidate_shells {
+		for r in $roots {
+			if ($r | is-not-empty) {
+				let bin1 = ([$r, "usr", "bin", $sh_name] | path join)
+				if ($bin1 | path exists) { return $bin1 }
+				let bin2 = ([$r, "bin", $sh_name] | path join)
+				if ($bin2 | path exists) { return $bin2 }
+			}
 		}
 	}
-	let detected = (which -a bash | where { |it| not ($it.path | str lowercase | str contains "system32") } | get -o 0)
-	if ($detected | is-not-empty) {
-		return $detected.path
-	}
-	let detected_sh = (which -a sh | where { |it| not ($it.path | str lowercase | str contains "system32") } | get -o 0)
-	if ($detected_sh | is-not-empty) {
-		return $detected_sh.path
+	for sh_name in ["zsh", "bash", "sh", "ksh"] {
+		let detected = (which -a $sh_name | where { |it| not ($it.path | str lowercase | str contains "system32") } | get -o 0)
+		if ($detected | is-not-empty) {
+			return $detected.path
+		}
 	}
 	null
 }
@@ -320,35 +321,27 @@ def clean-system [...args: string] {
 	_ui_ok "Limpeza do sistema concluída!"
 }
 
-def upgit [...args: string] {
-	let sub_args = ($args | str join " ")
-	if ($sub_args | str contains "--help") or ($sub_args | str contains "-h") {
-		print "Uso: upgit [diretório] [opções] (alias: plgit, pull-git)"
-		print ""
-		print "Localiza e atualiza repositórios Git recursivamente com proteção resiliente."
-		print ""
-		print "Opções:"
-		print "  -s, --status    Audita status de branches, commits divergentes e alterações"
-		print "  -n, --dry-run   Simula a sincronização sem efetuar git pull"
-		print "  -h, --help      Exibe esta ajuda"
-		return
-	}
-	let is_status = ($sub_args | str contains "--status") or ($sub_args | str contains "-s")
-	let is_dry = ($sub_args | str contains "--dry-run") or ($sub_args | str contains "-n")
-	let non_flags = ($args | where { |a| not ($a | str starts-with "-") })
-	let root = if ($non_flags | is-empty) { "." } else { $non_flags | first }
+def upgit [
+	root?: string      # Diretório raiz para busca (padrão: '.')
+	--status (-s)      # Audita status de branches, commits divergentes e alterações
+	--dry-run (-n)     # Simula a sincronização sem efetuar git pull
+	...args: string
+] {
+	let is_status = $status
+	let is_dry = $dry_run
+	let target_root = if ($root | is-not-empty) { $root } else { "." }
 
 	let action_title = if ($is_status) { "Auditando status de" } else if ($is_dry) { "Simulando atualização de" } else { "Buscando e atualizando" }
-	_ui_step $"($action_title) repositórios Git em: ($root)"
+	_ui_step $"($action_title) repositórios Git em: ($target_root)"
 	print ""
 
-	let g1 = (try { glob $"($root)/.git" } catch { [] })
-	let g2 = (try { glob $"($root)/*/.git" } catch { [] })
-	let g3 = (try { glob $"($root)/*/*/.git" } catch { [] })
+	let g1 = (try { glob $"($target_root)/.git" } catch { [] })
+	let g2 = (try { glob $"($target_root)/*/.git" } catch { [] })
+	let g3 = (try { glob $"($target_root)/*/*/.git" } catch { [] })
 	let repos = ($g1 | append $g2 | append $g3 | uniq)
 
 	if ($repos | is-empty) {
-		_ui_info $"Nenhum repositório Git encontrado em ($root) (profundidade máxima: 3)."
+		_ui_info $"Nenhum repositório Git encontrado em ($target_root) (profundidade máxima: 3)."
 		return
 	}
 
@@ -381,26 +374,18 @@ def upgit [...args: string] {
 	_ui_ok "Operação Git concluída!"
 }
 
-def psgit [...args: string] {
-	let sub_args = ($args | str join " ")
-	if ($sub_args | str contains "--help") or ($sub_args | str contains "-h") {
-		print "Uso: psgit [diretório] [opções] (alias: push-git)"
-		print ""
-		print "Localiza repositórios Git recursivamente e envia commits pendentes upstream."
-		print ""
-		print "Opções:"
-		print "  -s, --status    Audita commits locais pendentes de envio (cherry -v)"
-		print "  -n, --dry-run   Simula o push sem enviar commits"
-		print "  -h, --help      Exibe esta ajuda"
-		return
-	}
-	let is_status = ($sub_args | str contains "--status") or ($sub_args | str contains "-s")
-	let is_dry = ($sub_args | str contains "--dry-run") or ($sub_args | str contains "-n")
-	let non_flags = ($args | where { |a| not ($a | str starts-with "-") })
-	let root = if ($non_flags | is-empty) { "." } else { $non_flags | first }
+def psgit [
+	root?: string      # Diretório raiz para busca (padrão: '.')
+	--status (-s)      # Audita commits locais pendentes de envio (cherry -v)
+	--dry-run (-n)     # Simula o push sem enviar commits
+	...args: string
+] {
+	let is_status = $status
+	let is_dry = $dry_run
+	let target_root = if ($root | is-not-empty) { $root } else { "." }
 
 	let action_title = if ($is_status) { "Auditando commits pendentes em" } else if ($is_dry) { "Simulando push de" } else { "Buscando e enviando" }
-	_ui_step $"($action_title) repositórios Git em: ($root)"
+	_ui_step $"($action_title) repositórios Git em: ($target_root)"
 	print ""
 
 	let g1 = (try { glob $"($root)/.git" } catch { [] })
@@ -446,19 +431,13 @@ def psgit [...args: string] {
 	_ui_ok "Operação Push Git concluída!"
 }
 
-def sync-extensions [...args: string] {
-	let sub_args = ($args | str join " ")
-	if ($sub_args | str contains "--help") or ($sub_args | str contains "-h") {
-		print "Uso: sync-extensions [opções] (alias: upext, update-extensions)"
-		print ""
-		print "Sincroniza extensões declarativas de IDE (VS Code, VSCodium, Antigravity)."
-		print ""
-		print "Opções:"
-		print "  -s, --status    Audita extensões declaradas no manifesto"
-		print "  -n, --dry-run   Simula a sincronização sem modificar o ambiente"
-		print "  -h, --help      Exibe esta ajuda"
-		return
-	}
+def sync-extensions [
+	--export           # Exporta lista declarativa de extensões
+	--status (-s)      # Audita extensões declaradas no manifesto
+	--dry-run (-n)     # Simula a sincronização sem modificar o ambiente
+	target_arg?: string # Editor alvo (auto, code, codium, antigravity)
+	...args: string
+] {
 	_ui_step "Sincronizando extensões de IDE declarativas..."
 	let candidates = [
 		($env.PROFILE_DIR? | default ""),
@@ -474,41 +453,41 @@ def sync-extensions [...args: string] {
 	let target = ($candidates | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
 
 	if ($target | is-not-empty) {
-		let sub_args = ($args | str join " ")
-		let bash = (get-msys-bash)
-		if ($bash | is-not-empty) {
+		mut sub_args_list = []
+		if ($export) { $sub_args_list = ($sub_args_list | append "export") }
+		else if ($status) { $sub_args_list = ($sub_args_list | append "status") }
+		else { $sub_args_list = ($sub_args_list | append "install") }
+		if ($dry_run) { $sub_args_list = ($sub_args_list | append "--dry-run") }
+		if ($target_arg | is-not-empty) { $sub_args_list = ($sub_args_list | append $target_arg) }
+		$sub_args_list = ($sub_args_list | append $args)
+		let sub_args = ($sub_args_list | str join " ")
+
+		let sh = (get-msys-shell)
+		if ($sh | is-not-empty) {
 			mut target_posix = ($target | str replace -a '\' '/')
 			if ($target_posix | str starts-with "C:") or ($target_posix | str starts-with "c:") {
 				$target_posix = ($target_posix | str replace -r '^[Cc]:' '/c')
 			} else if ($target_posix | str starts-with "D:") or ($target_posix | str starts-with "d:") {
 				$target_posix = ($target_posix | str replace -r '^[Dd]:' '/d')
 			}
-			^$bash -c $"MSYS=winsymlinks:nativestrict '($target_posix)/profile.sh' extensions ($sub_args)"
+			^$sh -c $"MSYS=winsymlinks:nativestrict '($target_posix)/profile.sh' extensions ($sub_args)"
 		} else {
-			_ui_warn "Ambiente MSYS2/Bash não detectado no PATH."
+			_ui_warn "Ambiente MSYS2/POSIX shell não detectado no PATH."
 		}
 	} else {
 		_ui_info "Repositório do Profile não encontrado."
 	}
 }
 
-def uped [...args: string] {
-	let sub_args = ($args | str join " ")
-	if ($sub_args | str contains "--help") or ($sub_args | str contains "-h") {
-		print "Uso: uped [opções] (alias: update-editors)"
-		print ""
-		print "Atualiza os repositórios da Suíte de Editores (Emacs, Helix, NeoVim, Vim)."
-		print ""
-		print "Opções:"
-		print "  -s, --status        Audita o status Git de cada editor instalado"
-		print "  -n, --dry-run       Simula a sincronização sem puxar alterações"
-		print "  -e, --extensions    Sincroniza também as extensões declarativas de IDE"
-		print "  -h, --help          Exibe esta ajuda"
-		return
-	}
-	let is_status = ($sub_args | str contains "--status") or ($sub_args | str contains "-s")
-	let is_dry = ($sub_args | str contains "--dry-run") or ($sub_args | str contains "-n")
-	let is_ext = ($sub_args | str contains "--extensions") or ($sub_args | str contains "-e")
+def uped [
+	--status (-s)        # Audita o status Git de cada editor instalado
+	--dry-run (-n)       # Simula a sincronização sem puxar alterações
+	--extensions (-e)    # Sincroniza também as extensões declarativas de IDE
+	...args: string
+] {
+	let is_status = $status
+	let is_dry = $dry_run
+	let is_ext = $extensions
 	let action_title = if ($is_status) { "Auditando status da" } else if ($is_dry) { "Simulando atualização da" } else { "Atualizando a" }
 	_ui_step $"($action_title) Suíte de Editores no Windows..."
 	mut found = false
@@ -612,22 +591,20 @@ def uped [...args: string] {
 	}
 }
 
-def uprc [...args: string] {
-	let sub_args = ($args | str join " ")
-	if ($sub_args | str contains "--help") or ($sub_args | str contains "-h") {
-		print "Uso: uprc [opções] (alias: upprofile, update-profile, sync-profile)"
-		print ""
-		print "Atualiza o repositório Universal Profile e sincroniza dotfiles via profile.sh."
-		print ""
-		print "Opções:"
-		print "  -s, --status        Audita o status do Profile e compara divergências"
-		print "  -n, --dry-run       Simula a sincronização sem alterar arquivos"
-		print "  -b, --backup        Cria backup (.bak) antes de substituir arquivos"
-		print "  -e, --extensions    Sincroniza extensões declarativas de IDE"
-		print "  --pull              Reconcilia alterações do sistema de volta ao Git"
-		print "  -h, --help          Exibe esta ajuda"
-		return
-	}
+def uprc [
+	--status (-s)        # Audita o status do Profile e compara divergências
+	--dry-run (-n)       # Simula a sincronização sem alterar arquivos
+	--backup (-b)        # Cria backup (.bak) antes de substituir arquivos
+	--extensions (-e)    # Sincroniza extensões declarativas de IDE
+	--pull               # Reconcilia alterações do sistema de volta ao Git
+	...args: string
+] {
+	let is_query = $status
+	let is_dry = $dry_run
+	let is_backup = $backup
+	let is_ext = $extensions
+	let is_pull = $pull
+
 	let candidates = [
 		($env.PROFILE_DIR? | default ""),
 		([$env.USERPROFILE, ".local", "share", "profile"] | path join),
@@ -642,10 +619,6 @@ def uprc [...args: string] {
 	let target = ($candidates | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
 
 	if ($target | is-not-empty) {
-		let sub_args = ($args | str join " ")
-		let is_query = ($sub_args | str contains "--status") or ($sub_args | str contains "-s")
-		let is_pull = ($sub_args | str contains "--pull")
-		let is_dry = ($sub_args | str contains "--dry-run") or ($sub_args | str contains "-n")
 		if (not $is_query) and (not $is_pull) and (not $is_dry) {
 			_ui_step $"Atualizando Universal Profile em: ($target)..."
 			let dirty = (^git -C $target status --porcelain | str trim)
@@ -658,17 +631,26 @@ def uprc [...args: string] {
 		let sh_sync = ([$target, "profile.sh"] | path join)
 		if ($sh_sync | path exists) {
 			_ui_sub "Sincronizando dotfiles via profile.sh (MSYS2 / POSIX)..."
-			let bash = (get-msys-bash)
-			if ($bash | is-not-empty) {
+			let sh = (get-msys-shell)
+			if ($sh | is-not-empty) {
+				mut sync_args = []
+				if ($is_query) { $sync_args = ($sync_args | append "--status") }
+				if ($is_dry) { $sync_args = ($sync_args | append "--dry-run") }
+				if ($is_backup) { $sync_args = ($sync_args | append "--backup") }
+				if ($is_ext) { $sync_args = ($sync_args | append "--extensions") }
+				if ($is_pull) { $sync_args = ($sync_args | append "--pull") }
+				$sync_args = ($sync_args | append $args)
+				let sub_args = ($sync_args | str join " ")
+
 				mut target_posix = ($target | str replace -a '\' '/')
 				if ($target_posix | str starts-with "C:") or ($target_posix | str starts-with "c:") {
 					$target_posix = ($target_posix | str replace -r '^[Cc]:' '/c')
 				} else if ($target_posix | str starts-with "D:") or ($target_posix | str starts-with "d:") {
 					$target_posix = ($target_posix | str replace -r '^[Dd]:' '/d')
 				}
-				^$bash -c $"MSYS=winsymlinks:nativestrict '($target_posix)/profile.sh' sync ($sub_args)"
+				^$sh -c $"MSYS=winsymlinks:nativestrict '($target_posix)/profile.sh' sync ($sub_args)"
 			} else {
-				_ui_warn "Ambiente MSYS2/Bash não detectado no PATH (excluído WSL em System32)."
+				_ui_warn "Ambiente MSYS2/POSIX shell não detectado no PATH (excluído WSL em System32)."
 			}
 		}
 		_ui_ok "Universal Profile atualizado e sincronizado com sucesso!"
@@ -706,19 +688,14 @@ def vault-perms [path?: string] {
 	_ui_ok $"Permissões ajustadas com sucesso [acesso restrito a '($user)']."
 }
 
-def upvt [...args: string] {
-	let sub_args = ($args | str join " ")
-	if ($sub_args | str contains "--help") or ($sub_args | str contains "-h") {
-		print "Uso: upvt [opções] (alias: update-vault)"
-		print ""
-		print "Atualiza o repositório Universal Vault e aplica permissões de segurança."
-		print ""
-		print "Opções:"
-		print "  -s, --status    Audita o status do repositório do cofre"
-		print "  -n, --dry-run   Simula o pull sem aplicar alterações"
-		print "  -h, --help      Exibe esta ajuda"
-		return
-	}
+def upvt [
+	--status (-s)      # Audita o status do repositório do cofre
+	--dry-run (-n)     # Simula o pull sem aplicar alterações
+	...args: string
+] {
+	let is_status = $status
+	let is_dry = $dry_run
+
 	let candidates = [
 		($env.VAULT_DIR? | default ""),
 		([$env.USERPROFILE, ".local", "share", "vault"] | path join),
@@ -731,9 +708,6 @@ def upvt [...args: string] {
 	let target = ($candidates | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
 
 	if ($target | is-not-empty) {
-		let sub_args = ($args | str join " ")
-		let is_status = ($sub_args | str contains "--status") or ($sub_args | str contains "-s")
-		let is_dry = ($sub_args | str contains "--dry-run") or ($sub_args | str contains "-n")
 		if ($is_status) {
 			_ui_step $"Status do Universal Vault em: ($target)..."
 			^git -C $target status -s -b
@@ -753,19 +727,14 @@ def upvt [...args: string] {
 	}
 }
 
-def upsh [...args: string] {
-	let sub_args = ($args | str join " ")
-	if ($sub_args | str contains "--help") or ($sub_args | str contains "-h") {
-		print "Uso: upsh [opções] (alias: update-shell)"
-		print ""
-		print "Atualiza o repositório Universal Shell via git pull."
-		print ""
-		print "Opções:"
-		print "  -s, --status    Audita o status do repositório Git local sem puxar"
-		print "  -n, --dry-run   Simula a sincronização sem efetuar pull"
-		print "  -h, --help      Exibe esta ajuda"
-		return
-	}
+def upsh [
+	--status (-s)      # Audita o status do repositório Git local sem puxar
+	--dry-run (-n)     # Simula a sincronização sem efetuar pull
+	...args: string
+] {
+	let is_status = $status
+	let is_dry = $dry_run
+
 	let candidates = [
 		($env.SHELL_REPO_DIR? | default ""),
 		([$env.USERPROFILE, ".local", "share", "shell"] | path join),
@@ -779,9 +748,6 @@ def upsh [...args: string] {
 	let target = ($candidates | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
 
 	if ($target | is-not-empty) {
-		let sub_args = ($args | str join " ")
-		let is_status = ($sub_args | str contains "--status") or ($sub_args | str contains "-s")
-		let is_dry = ($sub_args | str contains "--dry-run") or ($sub_args | str contains "-n")
 		if ($is_status) {
 			_ui_step $"Status do Universal Shell em: ($target)..."
 			^git -C $target status -s -b
@@ -800,21 +766,13 @@ def upsh [...args: string] {
 	}
 }
 
-def upall [...args: string] {
-	let sub_args = ($args | str join " ")
-	if ($sub_args | str contains "--help") or ($sub_args | str contains "-h") {
-		print "Uso: upall [opções] (alias: update-all)"
-		print ""
-		print "Atualização geral e coordenada do ecossistema e gerenciadores de pacotes do sistema."
-		print ""
-		print "Opções:"
-		print "  -s, --status    Executa auditoria e diagnóstico geral sem atualizar"
-		print "  -n, --dry-run   Simula a atualização de todos os componentes"
-		print "  -h, --help      Exibe esta ajuda"
-		return
-	}
-	let is_status = ($sub_args | str contains "--status") or ($sub_args | str contains "-s")
-	let is_dry = ($sub_args | str contains "--dry-run") or ($sub_args | str contains "-n")
+def upall [
+	--status (-s)      # Executa auditoria e diagnóstico geral sem atualizar
+	--dry-run (-n)     # Simula a atualização de todos os componentes
+	...args: string
+] {
+	let is_status = $status
+	let is_dry = $dry_run
 
 	if ($is_status) {
 		_ui_banner "Status Global do Ecossistema"
