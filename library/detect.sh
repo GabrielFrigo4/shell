@@ -261,11 +261,20 @@ _detect_distro() {
 
 	if [ -f "/etc/os-release" ]; then
 		local _os_id="$(. /etc/os-release && echo "${ID}")"
+		if [ "${_os_id}" = "ubuntu" ]; then
+			case "$(. /etc/os-release && echo "${NAME:-} ${PRETTY_NAME:-}")" in
+				*[Kk]ubuntu*) _os_id="kubuntu" ;;
+				*[Xx]ubuntu*) _os_id="xubuntu" ;;
+				*[Ll]ubuntu*) _os_id="lubuntu" ;;
+			esac
+		fi
 		_DETECTED_DISTRO="${_os_id:-unknown}"
 	elif [ -f "/etc/arch-release" ]; then
 		_DETECTED_DISTRO="arch"
 	elif [ -f "/etc/devuan_version" ]; then
 		_DETECTED_DISTRO="devuan"
+	elif [ -f "/etc/oracle-release" ]; then
+		_DETECTED_DISTRO="ol"
 	elif [ -f "/etc/debian_version" ]; then
 		_DETECTED_DISTRO="debian"
 	elif [ -f "/etc/release" ]; then
@@ -304,9 +313,9 @@ _detect_distro_family() {
 	[ -f "/etc/os-release" ] && _distro_like="$(. /etc/os-release && echo "${ID_LIKE}")"
 
 	case "${_distro_id}" in
-		arch|manjaro|endeavouros|garuda)      _DETECTED_DISTRO_FAMILY="arch" ;;
-		debian|devuan|ubuntu|linuxmint|pop|raspbian|kali) _DETECTED_DISTRO_FAMILY="debian" ;;
-		fedora|rhel|centos|rocky|alma*|nobara) _DETECTED_DISTRO_FAMILY="fedora" ;;
+		arch|manjaro|endeavouros|garuda|cachyos|artix)          _DETECTED_DISTRO_FAMILY="arch" ;;
+		debian|devuan|ubuntu|kubuntu|xubuntu|lubuntu|linuxmint|pop|raspbian|kali|parrot|tails|mx|zorin|elementary|neon) _DETECTED_DISTRO_FAMILY="debian" ;;
+		fedora|rhel|centos|rocky|alma*|nobara|ol|amzn|azurelinux|mariner|qubes) _DETECTED_DISTRO_FAMILY="fedora" ;;
 		opensuse*|sles)                       _DETECTED_DISTRO_FAMILY="suse" ;;
 		void)                                 _DETECTED_DISTRO_FAMILY="void" ;;
 		alpine)                               _DETECTED_DISTRO_FAMILY="alpine" ;;
@@ -314,6 +323,8 @@ _detect_distro_family() {
 		nixos)                                _DETECTED_DISTRO_FAMILY="nixos" ;;
 		solus)                                _DETECTED_DISTRO_FAMILY="solus" ;;
 		slackware)                            _DETECTED_DISTRO_FAMILY="slackware" ;;
+		guix)                                 _DETECTED_DISTRO_FAMILY="guix" ;;
+		openwrt)                              _DETECTED_DISTRO_FAMILY="embedded" ;;
 		freebsd|openbsd|netbsd)               _DETECTED_DISTRO_FAMILY="bsd" ;;
 		omnios|smartos|openindiana|illumos)   _DETECTED_DISTRO_FAMILY="illumos" ;;
 		macos)                                _DETECTED_DISTRO_FAMILY="darwin" ;;
@@ -350,12 +361,23 @@ _detect_distro_icon() {
 		manjaro)                            _DETECTED_DISTRO_ICON=" " ;;
 		endeavouros)                        _DETECTED_DISTRO_ICON=" " ;;
 		garuda)                             _DETECTED_DISTRO_ICON="󰛓 " ;;
+		cachyos)                            _DETECTED_DISTRO_ICON=" " ;;
+		artix)                              _DETECTED_DISTRO_ICON=" " ;;
 		debian)                             _DETECTED_DISTRO_ICON=" " ;;
 		devuan)                             _DETECTED_DISTRO_ICON=" " ;;
 		ubuntu)                             _DETECTED_DISTRO_ICON=" " ;;
+		kubuntu)                            _DETECTED_DISTRO_ICON=" " ;;
+		xubuntu)                            _DETECTED_DISTRO_ICON=" " ;;
+		lubuntu)                            _DETECTED_DISTRO_ICON=" " ;;
 		linuxmint|mint)                     _DETECTED_DISTRO_ICON=" " ;;
 		pop)                                _DETECTED_DISTRO_ICON=" " ;;
 		kali)                               _DETECTED_DISTRO_ICON=" " ;;
+		parrot)                             _DETECTED_DISTRO_ICON=" " ;;
+		tails)                              _DETECTED_DISTRO_ICON=" " ;;
+		mx)                                 _DETECTED_DISTRO_ICON=" " ;;
+		zorin)                              _DETECTED_DISTRO_ICON=" " ;;
+		elementary)                         _DETECTED_DISTRO_ICON=" " ;;
+		neon)                               _DETECTED_DISTRO_ICON=" " ;;
 		nobara)                             _DETECTED_DISTRO_ICON=" " ;;
 		solus)                              _DETECTED_DISTRO_ICON=" " ;;
 		slackware)                          _DETECTED_DISTRO_ICON=" " ;;
@@ -364,6 +386,14 @@ _detect_distro_icon() {
 		alma|almalinux)                     _DETECTED_DISTRO_ICON=" " ;;
 		centos)                             _DETECTED_DISTRO_ICON=" " ;;
 		rhel)                               _DETECTED_DISTRO_ICON=" " ;;
+		ol|oracle)                          _DETECTED_DISTRO_ICON="󰌷 " ;;
+		azurelinux|mariner)                 _DETECTED_DISTRO_ICON="󰠅 " ;;
+		amzn|amazon)                        _DETECTED_DISTRO_ICON=" " ;;
+		qubes)                              _DETECTED_DISTRO_ICON=" " ;;
+		guix)                               _DETECTED_DISTRO_ICON=" " ;;
+		openwrt)                            _DETECTED_DISTRO_ICON=" " ;;
+		puppy)                              _DETECTED_DISTRO_ICON=" " ;;
+		mageia)                             _DETECTED_DISTRO_ICON=" " ;;
 		opensuse*|sles)                     _DETECTED_DISTRO_ICON=" " ;;
 		void)                               _DETECTED_DISTRO_ICON=" " ;;
 		alpine)                             _DETECTED_DISTRO_ICON=" " ;;
