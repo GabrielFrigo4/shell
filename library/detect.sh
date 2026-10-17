@@ -364,7 +364,7 @@ _detect_distro_icon() {
 	local _distro="$(_detect_distro)"
 	case "${_distro}" in
 		fedora)                             _DETECTED_DISTRO_ICON=" " ;;
-		arch)                               _DETECTED_DISTRO_ICON="󰣇 " ;;
+		arch)                               _DETECTED_DISTRO_ICON=" " ;;
 		manjaro)                            _DETECTED_DISTRO_ICON=" " ;;
 		endeavouros)                        _DETECTED_DISTRO_ICON=" " ;;
 		garuda)                             _DETECTED_DISTRO_ICON="󰛓 " ;;
