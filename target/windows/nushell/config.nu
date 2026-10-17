@@ -303,7 +303,7 @@ def upsys [] {
 def clean-system [...args: string] {
 	let sub_args = ($args | str join " ")
 	if ($sub_args | str contains "--help") or ($sub_args | str contains "-h") {
-		print "Uso: clean-system [opções] (alias: cleansys, sysclean, syscls)"
+		print "Uso: clean-system [opções] (alias: cleansys, sysclean, syscls, clear-system, clearsys)"
 		print ""
 		print "Limpeza de pacotes órfãos e caches no Windows."
 		return
@@ -806,8 +806,10 @@ alias update-shell = upsh;
 alias update-system = upsys;
 alias update-all = upall;
 alias cleansys = clean-system;
+alias clearsys = clean-system;
 alias sysclean = clean-system;
 alias syscls = clean-system;
+alias clear-system = clean-system;
 def er [] { ek; es };
 def oa [...args: string] {
 	let app = "antigravity-ide"

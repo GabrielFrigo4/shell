@@ -1244,7 +1244,7 @@ clean-system() {
 				;;
 			--help|-h)
 				cat <<- 'EOF'
-				Uso: clean-system [opções] (alias: cleansys, sysclean, syscls)
+				Uso: clean-system [opções] (alias: cleansys, sysclean, syscls, clear-system, clearsys)
 
 				Limpeza de pacotes órfãos, dependências obsoletas e caches do sistema operacional.
 
@@ -1467,8 +1467,10 @@ clean-system() {
 }
 
 alias cleansys="clean-system"
+alias clearsys="clean-system"
 alias sysclean="clean-system"
 alias syscls="clean-system"
+alias clear-system="clean-system"
 
 ### --------------------------------
 ### Update Linux Host Bhyve

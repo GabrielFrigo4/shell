@@ -54,7 +54,7 @@ if not defined PWSH_EXE (
 	)
 )
 
-set "PWSH_BOOT=& { if (Test-Path $PROFILE) { . $PROFILE } elseif (Test-Path '%SHELL_REPO_DIR%\target\windows\powershell\profile.ps1') { . '%SHELL_REPO_DIR%\target\windows\powershell\profile.ps1' }"
+set "PWSH_BOOT=& { if ($PROFILE.CurrentUserAllHosts -and (Test-Path $PROFILE.CurrentUserAllHosts)) { . $PROFILE.CurrentUserAllHosts }; if (Test-Path $PROFILE) { . $PROFILE }; if (-not (Get-Command Update-All -ErrorAction SilentlyContinue) -and (Test-Path '%SHELL_REPO_DIR%\target\windows\powershell\profile.ps1')) { . '%SHELL_REPO_DIR%\target\windows\powershell\profile.ps1' }"
 
 rem ================================
 rem ALIASES & DOSKEY
@@ -76,6 +76,8 @@ doskey vault-perms=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH
 doskey upsh=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Update-Shell }"
 doskey upall=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Update-All }"
 doskey cleansys=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"
+doskey clearsys=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"
 doskey sysclean=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"
 doskey syscls=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"
 doskey clean-system=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"
+doskey clear-system=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"

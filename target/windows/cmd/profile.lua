@@ -1410,6 +1410,21 @@ local function cmd_upsys(args)
 	_ui_ok("Pacotes do sistema atualizados com sucesso!")
 end
 
+local function cmd_clean_system(args)
+	local flags = args and trim(args) or ""
+	if flags:find("%-%-help") or flags:find("%-h") then
+		print("Uso: clean-system [opções] (alias: cleansys, sysclean, syscls, clear-system, clearsys)")
+		print("")
+		print("Limpeza de pacotes órfãos e caches no Windows.")
+		return
+	end
+	_ui_step("Executando limpeza de pacotes e caches do sistema...")
+	os.execute([[scoop cache rm * >nul 2>nul]])
+	os.execute([[scoop cleanup * >nul 2>nul]])
+	os.execute([[powershell -NoProfile -Command "if (Get-Command choco -ErrorAction SilentlyContinue) { Start-Process choco -ArgumentList 'cache remove' -Verb RunAs -Wait }" >nul 2>nul]])
+	_ui_ok("Limpeza do sistema concluída!")
+end
+
 local function cmd_upall(args)
 	local flags = args and trim(args) or ""
 	if flags:find("%-%-help") or flags:find("%-h") then
@@ -1454,21 +1469,6 @@ local function cmd_upall(args)
 	_ui_banner("Atualização Global Concluída com Sucesso")
 end
 
-local function cmd_clean_system(args)
-	local flags = args and trim(args) or ""
-	if flags:find("%-%-help") or flags:find("%-h") then
-		print("Uso: clean-system [opções] (alias: cleansys, sysclean, syscls)")
-		print("")
-		print("Limpeza de pacotes órfãos e caches no Windows.")
-		return
-	end
-	_ui_step("Executando limpeza de pacotes e caches do sistema...")
-	os.execute([[scoop cache rm * >nul 2>nul]])
-	os.execute([[scoop cleanup * >nul 2>nul]])
-	os.execute([[powershell -NoProfile -Command "if (Get-Command choco -ErrorAction SilentlyContinue) { Start-Process choco -ArgumentList 'cache remove' -Verb RunAs -Wait }" >nul 2>nul]])
-	_ui_ok("Limpeza do sistema concluída!")
-end
-
 local updater_commands = {
 	["upgit"] = cmd_upgit,
 	["plgit"] = cmd_upgit,
@@ -1494,7 +1494,9 @@ local updater_commands = {
 	["upall"] = cmd_upall,
 	["update-all"] = cmd_upall,
 	["clean-system"] = cmd_clean_system,
+	["clear-system"] = cmd_clean_system,
 	["cleansys"] = cmd_clean_system,
+	["clearsys"] = cmd_clean_system,
 	["sysclean"] = cmd_clean_system,
 	["syscls"] = cmd_clean_system,
 }

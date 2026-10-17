@@ -262,8 +262,10 @@ function clean-system -d "Limpeza de pacotes órfãos, dependências obsoletas e
     _ui_ok "Limpeza do sistema concluída com sucesso!"
 end
 alias cleansys="clean-system"
+alias clearsys="clean-system"
 alias sysclean="clean-system"
 alias syscls="clean-system"
+alias clear-system="clean-system"
 
 function update-all -d "Orquestra atualização completa do sistema e ecossistema"
     _ui_banner "Atualização Global do Ecossistema e Sistema"

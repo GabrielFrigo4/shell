@@ -4,6 +4,12 @@
 # ----------------------------------------------------------------
 #>
 
+$scriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path $MyInvocation.MyCommand.Path } else { "" }
+$allHostsProfile = if ($scriptDir) { Join-Path $scriptDir "profile.ps1" } else { "" }
+if ($allHostsProfile -and (Test-Path $allHostsProfile) -and -not (Get-Command Update-All -ErrorAction SilentlyContinue)) {
+	. $allHostsProfile
+}
+
 ### ================================
 ### PROMPT THEME
 ### ================================

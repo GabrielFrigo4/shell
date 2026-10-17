@@ -41,17 +41,17 @@ New-Item -ItemType SymbolicLink -Force -Path "$env:APPDATA\nushell\env.nu" -Targ
 
 ## ⚡ Comandos e Atualizadores da Família `up*`
 
-| Comando                     | Descrição                                                                      |
-| :-------------------------- | :----------------------------------------------------------------------------- |
-| `upgit [caminho]`           | Varre e atualiza recursivamente todos os repositórios Git (profundidade até 3) |
-| `uped`                      | Atualiza a Suíte de Editores (`~/.emacs.d`, `helix`, `nvim`, `vimfiles`)       |
-| `uprc` / `upprofile`        | Atualiza o Universal Profile e sincroniza dotfiles via `profile.sh` (MSYS2)    |
-| `sync-profile`              | Sincroniza dotfiles via `profile.sh` (`--status`, `--pull`, `--dry-run`)       |
-| `upvt`                      | Atualiza o repositório privado Universal Vault                                 |
-| `vault-perms`               | Ajusta e endurece permissões de segurança do Vault (`icacls` / `chmod`)        |
-| `upsh`                      | Atualiza o repositório Universal Shell                                         |
-| `upall`                     | Orquestra atualização de sistema (`upsys`), Profile, Vault e Editores          |
-| `upget` / `upscp` / `upcho` | Atualizadores de pacotes (Winget, Scoop e Chocolatey)                          |
-| `upsys`                     | Atualiza Winget, Scoop e Chocolatey em lote                                    |
-| `clean-system` / `cleansys` | Limpeza de caches de pacotes e dependências obsoletas (Scoop, Chocolatey)      |
-| `upwin`                     | Executa a atualização do Windows Update                                        |
+| Comando                                                   | Descrição                                                                      |
+| :-------------------------------------------------------- | :----------------------------------------------------------------------------- |
+| `upgit [caminho]`                                         | Varre e atualiza recursivamente todos os repositórios Git (profundidade até 3) |
+| `uped`                                                    | Atualiza a Suíte de Editores (`~/.emacs.d`, `helix`, `nvim`, `vimfiles`)       |
+| `uprc` / `upprofile`                                      | Atualiza o Universal Profile e sincroniza dotfiles via `profile.sh` (MSYS2)    |
+| `sync-profile`                                            | Sincroniza dotfiles via `profile.sh` (`--status`, `--pull`, `--dry-run`)       |
+| `upvt`                                                    | Atualiza o repositório privado Universal Vault                                 |
+| `vault-perms`                                             | Ajusta e endurece permissões de segurança do Vault (`icacls` / `chmod`)        |
+| `upsh`                                                    | Atualiza o repositório Universal Shell                                         |
+| `upall`                                                   | Orquestra atualização de sistema (`upsys`), Profile, Vault e Editores          |
+| `upget` / `upscp` / `upcho`                               | Atualizadores de pacotes (Winget, Scoop e Chocolatey)                          |
+| `upsys`                                                   | Atualiza Winget, Scoop e Chocolatey em lote                                    |
+| `clean-system` / `cleansys` / `clearsys` / `clear-system` | Limpeza de caches de pacotes e dependências obsoletas (Scoop, Chocolatey)      |
+| `upwin`                                                   | Executa a atualização do Windows Update                                        |

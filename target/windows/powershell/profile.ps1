@@ -873,6 +873,11 @@ Parâmetros:
 		}
 		_ui_step "Atualizando Universal Shell em: $target..."
 		git -C $target pull --ff-only
+		$pwshScript = Join-Path $target "target\windows\powershell\profile.ps1"
+		if (Test-Path $pwshScript) {
+			_ui_sub "Recarregando perfis e funções do Universal Shell..."
+			. $pwshScript
+		}
 		_ui_ok "Universal Shell atualizado com sucesso!"
 	} else {
 		_ui_info "Repositório do Shell não encontrado."
@@ -898,7 +903,7 @@ function Clean-System {
 	)
 	if ($Help) {
 		Write-Host @"
-Uso: Clean-System [-Help] (alias: cleansys, sysclean, syscls)
+Uso: Clean-System [-Help] (alias: cleansys, sysclean, syscls, clean-system, clear-system, clearsys)
 
 Limpeza de caches de pacotes e dependências obsoletas no Windows.
 "@
@@ -1019,9 +1024,11 @@ New-Alias "sync-profile" "Update-Profile"
 New-Alias "upvt" "Update-Vault"
 New-Alias "upall" "Update-All"
 New-Alias "cleansys" "Clean-System"
+New-Alias "clearsys" "Clean-System"
 New-Alias "sysclean" "Clean-System"
 New-Alias "syscls" "Clean-System"
 New-Alias "clean-system" "Clean-System"
+New-Alias "clear-system" "Clean-System"
 
 New-Alias "brw" "Browser-Search"
 New-Alias "win-man" "Windows-Manual"
