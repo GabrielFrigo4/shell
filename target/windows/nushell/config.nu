@@ -53,6 +53,19 @@ def get-msys-shell [] {
 	null
 }
 
+def get-git-cmd [] {
+	let candidates = [
+		"C:\\Program Files\\Git\\cmd\\git.exe",
+		"C:\\Program Files\\Git\\bin\\git.exe",
+		([$env.USERPROFILE, "scoop", "shims", "git.exe"] | path join)
+	]
+	for c in $candidates {
+		if ($c | path exists) { return $c }
+	}
+	let detected = (which git | get -o 0.path | default "git")
+	$detected
+}
+
 let _vault_candidates = [
 	($env.VAULT_DIR? | default ""),
 	(($env.USERPROFILE? | default ($env.HOME? | default "~")) | path join ".local" "share" "vault"),
@@ -345,14 +358,15 @@ def upgit [
 		return
 	}
 
+	let git_bin = (get-git-cmd)
 	for repo in $repos {
 		let dir = ($repo | path dirname)
-		let branch = (do { ^git -C $dir branch --show-current } | complete).stdout | str trim
+		let branch = (do { ^$git_bin -C $dir branch --show-current } | complete).stdout | str trim
 		let branch_lbl = if ($branch | is-empty) { "detached" } else { $branch }
 
 		if ($is_status) {
-			let st = (do { ^git -C $dir status -s } | complete).stdout | str trim
-			let unpushed = (do { ^git -C $dir cherry -v } | complete).stdout | str trim
+			let st = (do { ^$git_bin -C $dir status -s } | complete).stdout | str trim
+			let unpushed = (do { ^$git_bin -C $dir cherry -v } | complete).stdout | str trim
 			if ($st | is-not-empty) or ($unpushed | is-not-empty) {
 				_ui_warn $"($dir) [($branch_lbl)]: divergências detectadas"
 				if ($unpushed | is-not-empty) { print $"  (ansi yellow_bold)↳ Commits pendentes de push(ansi reset)" }
@@ -364,9 +378,9 @@ def upgit [
 			_ui_sub $"[DRY-RUN PULL] ($dir) [($branch_lbl)]"
 		} else {
 			_ui_sub $"Atualizando ($dir)..."
-			let res = (do { ^git -C $dir pull --ff-only } | complete)
+			let res = (do { ^$git_bin -C $dir pull --ff-only } | complete)
 			if $res.exit_code != 0 {
-				^git -C $dir pull
+				^$git_bin -C $dir pull
 			}
 		}
 	}
@@ -618,11 +632,12 @@ def uprc [
 	if ($target | is-not-empty) {
 		if (not $is_query) and (not $is_pull) and (not $is_dry) {
 			_ui_step $"Atualizando Universal Profile em: ($target)..."
-			let dirty = (^git -C $target status --porcelain | str trim)
+			let git_bin = (get-git-cmd)
+			let dirty = (^$git_bin -C $target status --porcelain | str trim)
 			if ($dirty | is-not-empty) {
 				_ui_warn $"Alterações locais não commitadas detectadas em: ($target). Ignorando git pull para preservar dados."
 			} else {
-				^git -C $target pull --ff-only
+				^$git_bin -C $target pull --ff-only
 			}
 		}
 		let sh_sync = ([$target, "profile.sh"] | path join)
@@ -700,9 +715,10 @@ def upvt [
 	let target = ($candidates | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
 
 	if ($target | is-not-empty) {
+		let git_bin = (get-git-cmd)
 		if ($is_status) {
 			_ui_step $"Status do Universal Vault em: ($target)..."
-			^git -C $target status -s -b
+			^$git_bin -C $target status -s -b
 			return
 		}
 		if ($is_dry) {
@@ -711,7 +727,7 @@ def upvt [
 			return
 		}
 		_ui_step $"Atualizando Universal Vault em: ($target)..."
-		^git -C $target pull --ff-only
+		^$git_bin -C $target pull --ff-only
 		vault-perms $target
 		_ui_ok "Universal Vault atualizado com sucesso!"
 	} else {
@@ -740,9 +756,10 @@ def upsh [
 	let target = ($candidates | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
 
 	if ($target | is-not-empty) {
+		let git_bin = (get-git-cmd)
 		if ($is_status) {
 			_ui_step $"Status do Universal Shell em: ($target)..."
-			^git -C $target status -s -b
+			^$git_bin -C $target status -s -b
 			return
 		}
 		if ($is_dry) {
@@ -751,7 +768,21 @@ def upsh [
 			return
 		}
 		_ui_step $"Atualizando Universal Shell em: ($target)..."
-		^git -C $target pull --ff-only
+		^$git_bin -C $target pull --ff-only
+		let nu_dir = ([$target, "target", "windows", "nushell"] | path join)
+		if ($nu_dir | path exists) and ($env.APPDATA? | is-not-empty) {
+			let app_nu = ([$env.APPDATA, "nushell"] | path join)
+			if ($app_nu | path exists) {
+				for f in ["config.nu", "env.nu"] {
+					let src = ([$nu_dir, $f] | path join)
+					let dst = ([$app_nu, $f] | path join)
+					if ($src | path exists) {
+						do -i { cp -f $src $dst }
+					}
+				}
+				_ui_sub $"Sincronizados perfis físicos em: ($app_nu)"
+			}
+		}
 		_ui_ok "Universal Shell atualizado com sucesso!"
 	} else {
 		_ui_info "Repositório do Shell não encontrado."
