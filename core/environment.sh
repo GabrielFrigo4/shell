@@ -3,11 +3,21 @@
 ### ================================
 
 ### --------------------------------
-### Variables
+### Variables & Sovereign Locale
 ### --------------------------------
 export COLORTERM="truecolor"
 export MICRO_TRUECOLOR=1
 unset CDPATH
+
+if [ -z "${LANG:-}" ] || [ "${LANG}" = "C" ] || [ "${LANG}" = "POSIX" ]; then
+	if [ -r "/etc/locale.conf" ]; then
+		_conf_lang="$(grep -E '^[[:space:]]*LANG=' "/etc/locale.conf" 2> "/dev/null" | cut -d= -f2- | tr -d '"'\''')"
+		[ -n "${_conf_lang}" ] && export LANG="${_conf_lang}"
+		unset _conf_lang
+	fi
+	[ -z "${LANG:-}" ] && export LANG="pt_BR.UTF-8"
+fi
+[ -z "${LC_CTYPE:-}" ] && export LC_CTYPE="${LANG}"
 
 ### --------------------------------
 ### Python Bytecode & Cache Policy
