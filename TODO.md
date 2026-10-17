@@ -14,6 +14,8 @@
 | **Shells Alternativos** | 🟢 Estável  | PowerShell 7+, NuShell, CMD (Clink), Fish Shell (`fish.fish`)                            |
 | **Latência & Boot**     | 🟢 Estável  | Latência rigorosamente < 16ms / 64ms em todas as plataformas                             |
 | **Módulos Comuns**      | 🟢 Estável  | Simetria plana em `target/common/` (`bash.sh`, `fish.fish`, `ksh.sh`, `sh.sh`, `zsh.sh`) |
+| **Resiliência TTY**     | 🟢 Estável  | Detecção de console puro, locale soberano UTF-8 e rendering adaptativo pill/micro        |
+| **Paridade Windows**    | 🟢 Estável  | Executáveis defensivos (winget/scoop/choco), PowerShell 5.1/7 e NuShell                  |
 | **UI & Semântica**      | 🟢 Estável  | Padrão `_ui_*` com ANSI POSIX puro via `printf`                                          |
 | **Quality Gates**       | 🟢 Aprovado | 100% aprovado em `make test` e `make bench`                                              |
 
