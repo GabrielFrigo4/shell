@@ -30,7 +30,13 @@ hx() {
 	command -v hx > "/dev/null" 2>&1 || { echo "❌ hx not found." >&2; return 127; }
 	command hx "$@"
 	local _status=$?
-	[ -t 1 ] && echo -n $'\e[0 q'
+	if [ -t 1 ]; then
+		if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+			[ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e[?6c'
+		else
+			echo -n $'\e[0 q'
+		fi
+	fi
 	return ${_status}
 }
 
