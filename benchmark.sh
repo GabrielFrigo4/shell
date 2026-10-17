@@ -432,7 +432,7 @@ for _prompt_sh in zsh bash; do
 	if _is_shell_selected "${_prompt_sh}" && command -v "${_prompt_sh}" > "/dev/null" 2>&1; then
 		_p_bin="$(_resolve_shell_bin "${_prompt_sh}")"
 		_p_ms="$(_measure_prompt_latency "${_prompt_sh}" "${_p_bin}")"
-		printf "%-24s %b\n" "Prompt Render (${_prompt_sh})" "$(_format_ms "${_p_ms}" "16")"
+		printf "%-24s %b\n" "Prompt Render (${_prompt_sh})" "$(_format_ms "${_p_ms}" "${_target_limit}")"
 	fi
 done
 
