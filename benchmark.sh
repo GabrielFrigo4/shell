@@ -212,7 +212,7 @@ if [ -n \"\$t0\" ]; then
 fi
 ''']
 try:
-    res = subprocess.run(cmd_direct, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=15)
+    res = subprocess.run(cmd_direct, cwd=repo, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=10)
     for line in res.stdout.splitlines():
         if 'TIMING:' in line:
             parts = line.split('TIMING:')[1].split(':')
@@ -228,16 +228,16 @@ base = f'export LC_ALL=C; export SHELL_REPO_DIR={repo}; for _f in {repo}/library
 cmd_base = [shell_bin, '-c', base]
 cmd_prompt = [shell_bin, '-c', base + ' for i in 1 2 3 4 5; do _update_prompt; done;']
 try:
-    subprocess.run(cmd_base, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+    subprocess.run(cmd_base, cwd=repo, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
     tb = []
     for _ in range(2):
         t0 = time.perf_counter()
-        subprocess.run(cmd_base, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+        subprocess.run(cmd_base, cwd=repo, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
         tb.append(time.perf_counter() - t0)
     tp = []
     for _ in range(2):
         t0 = time.perf_counter()
-        subprocess.run(cmd_prompt, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+        subprocess.run(cmd_prompt, cwd=repo, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
         tp.append(time.perf_counter() - t0)
     diff = max(0.0, ((sum(tp)/len(tp)) - (sum(tb)/len(tb))) / 5) * 1000
     print(f'{diff:.2f}')

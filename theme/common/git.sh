@@ -7,6 +7,7 @@ _git_branch() {
 	_is_dirty=""
 	local _dir="${PWD}"
 	local _git_root=""
+	local _prev_dir=""
 	while [ -n "${_dir}" ]; do
 		if [ -d "${_dir}/.git" ]; then
 			_git_root="${_dir}/.git"
@@ -18,14 +19,19 @@ _git_branch() {
 				gitdir:\ *) _git_root="${_gitdir#gitdir: }" ;;
 			esac
 			case "${_git_root}" in
-				/*) ;;
+				/*|[a-zA-Z]:*) ;;
 				*)  _git_root="${_dir}/${_git_root}" ;;
 			esac
 			break
 		fi
 		case "${_dir}" in
-			/|"${HOME}"/..|//*) break ;;
-			*) _dir="${_dir%/*}" ;;
+			/|"${HOME}"/..|//*|[a-zA-Z]:|[a-zA-Z]:/|/[a-zA-Z]) break ;;
+			*/*)
+				_prev_dir="${_dir}"
+				_dir="${_dir%/*}"
+				[ -z "${_dir}" ] || [ "${_dir}" = "${_prev_dir}" ] && break
+				;;
+			*) break ;;
 		esac
 	done
 
