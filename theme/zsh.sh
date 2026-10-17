@@ -11,7 +11,7 @@ _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
 _update_prompt() {
 	_setup_colors
 
-	local _user="${USER:-$(command id -un)}"
+	local _user="${USERNAME:-${USER:-$(command id -un)}}"
 	local _host="${(%):-%m}"
 	local _pwd="${(%):-%c}"
 	local _shell_name="zsh"
@@ -41,6 +41,7 @@ _update_prompt() {
 
 	local _user_color="${_theme_color_green}" _user_icon_color="${_theme_color_blue}" _prompt_symbol="\$" _prompt_symbol_color="${_theme_color_cyan}" _terminal_color="${_theme_color_blue}"
 	if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+		_user="root"
 		_user_icon_color="${_theme_color_red}"
 		_terminal_color="${_theme_color_red}"
 		if [ "${_mode}" = "tty" ]; then
