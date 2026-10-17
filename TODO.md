@@ -26,7 +26,7 @@
 - **Suíte Tripartite Windows:** Paridade operacional completa entre PowerShell 7, NuShell e CMD (Clink).
 - **Eliminação de Aliases Circulares:** Erradicação de recursão case-insensitive no PowerShell (`Clean-System`) e garantia de reentrância via `Set-Alias -Force -Option AllScope`.
 - **Sincronização Dual de PATH no NuShell:** Resolução de inconsistência Win32 `Path` vs NuShell `$env.PATH` e configuração de `$env.ENV_CONVERSIONS`.
-- **Autenticação Git HTTPS Antifrágil & Sanitização de Tokens:** Filtragem estrita de templates/exemplos no loader do Vault no NuShell, expurgo automático de tokens dummy (`XXXX`) e injeção dinâmica via GitHub CLI.
+- **Autenticação Git HTTPS & Filtragem de Templates:** Filtragem canônica de templates e exemplos no loader do Vault no NuShell e injeção dinâmica via GitHub CLI.
 - **Paridade Google Antigravity CLI (`agy`):** Aliases completos (`agyc`, `agya`, `agyca`, etc.) sincronizados entre PowerShell, NuShell e CMD.
 - **Auto-Cura Reentrante de Perfis Físicos:** Sincronização cruzada automática entre perfis de PowerShell, NuShell e Clink via `upsh` e `resh` sem qualquer comando manual.
 - **Higienização Pré-Pull de Editores:** Limpeza defensiva de stubs locais (`usr/local/`) em `Update-Editors` antes de merges fast-forward.
