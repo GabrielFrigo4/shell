@@ -30,12 +30,20 @@ _deploy_win_paths() {
 				for _cand in "${_win_onedrive}/Documentos" "${_win_onedrive}/Documents"; do
 					[ -d "${_cand}" ] && _win_docs="${_cand}" && break
 				done
-				[ -z "${_win_docs}" ] && _win_docs="${_win_onedrive}/Documentos"
-			else
+			fi
+
+			if [ -z "${_win_docs}" ]; then
 				for _cand in "${_win_home}/Documentos" "${_win_home}/Documents"; do
 					[ -d "${_cand}" ] && _win_docs="${_cand}" && break
 				done
-				[ -z "${_win_docs}" ] && _win_docs="${_win_home}/Documents"
+			fi
+
+			if [ -z "${_win_docs}" ]; then
+				if [ -n "${_win_onedrive}" ] && [ -d "${_win_onedrive}" ]; then
+					_win_docs="${_win_onedrive}/Documentos"
+				else
+					_win_docs="${_win_home}/Documents"
+				fi
 			fi
 			;;
 	esac

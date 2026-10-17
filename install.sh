@@ -117,10 +117,10 @@ esac
 ### --------------------------------
 ### Detect Environment
 ### --------------------------------
-. "${SHELL_REPO_DIR}/library/ui.sh"
-. "${SHELL_REPO_DIR}/library/detect.sh"
-. "${SHELL_REPO_DIR}/library/functions.sh"
-. "${SHELL_REPO_DIR}/library/deploy.sh"
+for _lib in "${SHELL_REPO_DIR}/library/"*.sh; do
+	[ -f "${_lib}" ] && . "${_lib}"
+done
+unset _lib
 _cache_clean
 OS_NAME="$(_detect_os)"
 SHELL_NAME="$(_detect_shell)"
