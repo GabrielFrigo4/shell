@@ -2,11 +2,28 @@
 # Module: NuShell Environment Setup
 # ----------------------------------------------------------------
 
-$env.HOME = $"($env.USERPROFILE)";
+$env.ENV_CONVERSIONS = {
+	"PATH": {
+		from_string: { |s| $s | split row (char esep) | path expand --no-symlink }
+		to_string: { |v| $v | path expand --no-symlink | str join (char esep) }
+	}
+	"Path": {
+		from_string: { |s| $s | split row (char esep) | path expand --no-symlink }
+		to_string: { |v| $v | path expand --no-symlink | str join (char esep) }
+	}
+}
 
-$env.PATH = (
-	$env.PATH
-	| split row (char esep)
+$env.HOME = ($env.USERPROFILE? | default ($env.HOME? | default "~"))
+
+let _raw_path = ($env.Path? | default ($env.PATH? | default []))
+let _initial_path = if ($_raw_path | describe | str starts-with "list") {
+	$_raw_path
+} else {
+	($_raw_path | split row (char esep))
+}
+
+let _cleaned_path = (
+	$_initial_path
 	| each { |p| $p | str trim | str trim -c '"' }
 	| prepend ($env.HOME | path join .local bin)
 	| prepend ($env.HOME | path join .cargo bin)
@@ -17,6 +34,9 @@ $env.PATH = (
 	| where { |p| ($p | is-not-empty) and ($p | path exists) }
 	| uniq
 )
+
+$env.Path = $_cleaned_path
+$env.PATH = $_cleaned_path
 
 $env.EMACS_SOCKET_NAME = ($env.HOME | path join ".emacs.d" "var" "server" "auth" "server");
 $env.MICRO_TRUECOLOR = 1;

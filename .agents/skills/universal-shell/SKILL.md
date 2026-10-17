@@ -104,6 +104,18 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
 - Evite o uso repetitivo de `zstyle` em loops de renderização de prompt (`theme/zsh.sh`). Declare e utilize diretamente variáveis locais de cores ANSI.
 - Para checar privilégios de root no prompt, utilize a variável nativa `${EUID:-$(id -u)}`, eliminando a invocação do executável externo `id`.
 
+14. **Invariante de Aliases Não-Circulares no PowerShell:**
+
+- No PowerShell, nomes de funções e aliases são case-insensitive. Criar um alias com o mesmo nome da função (ex: `New-Alias "clean-system" "Clean-System"`) cria um loop circular auto-referencial que suprime a função e tenta executar um binário `.exe` inexistente no PATH. Funções nunca devem ter aliases homônimos. Aliases de atalho devem usar `Set-Alias -Force -Option AllScope` para garantir reentrância sem colisões.
+
+15. **Invariante Dual `Path` / `PATH` & Injeção de Helpers no NuShell:**
+
+- O Windows NT armazena caminhos em `Path`, enquanto NuShell é case-sensitive em `$env`. No NuShell no Windows, configure `$env.ENV_CONVERSIONS` para ambas as chaves e sincronize `$env.Path` e `$env.PATH`. Em comandos de atualização Git (`upvt`), injete o helper explicitamente via `-c credential.https://github.com.helper=!"(get-gh-cmd)" auth git-credential` para imunidade a subprocessos.
+
+16. **Auto-Cura Reentrante de Perfis Físicos Cross-Shell:**
+
+- Em conformidade com o Princípio 19 (Autonomia Reentrante) e Princípio 7 (Zero-Tweaks), `upsh` e `resh` executados em qualquer shell no Windows (PowerShell, NuShell, CMD) sincronizam atomicamente os perfis físicos em disco de todos os demais (`Documents\PowerShell`, `%APPDATA%\nushell`, `%LOCALAPPDATA%\clink`), sem qualquer intervenção manual.
+
 ---
 
 ## 3. Procedimento para Criar um Novo Comando / Editor

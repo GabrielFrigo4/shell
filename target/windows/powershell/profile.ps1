@@ -898,6 +898,35 @@ Parâmetros:
 					}
 				}
 			}
+
+			if ($env:APPDATA) {
+				$appNu = Join-Path $env:APPDATA "nushell"
+				$nuSrc = Join-Path $target "target\windows\nushell"
+				if ((Test-Path $appNu) -and (Test-Path $nuSrc)) {
+					foreach ($f in @("config.nu", "env.nu")) {
+						$srcF = Join-Path $nuSrc $f
+						$dstF = Join-Path $appNu $f
+						if ((Test-Path $srcF) -and (-not (Get-Item $dstF -ErrorAction SilentlyContinue).LinkType)) {
+							Copy-Item $srcF $dstF -Force
+						}
+					}
+					_ui_sub "Sincronizados perfis físicos NuShell em: $appNu"
+				}
+			}
+			if ($env:LOCALAPPDATA) {
+				$appClink = Join-Path $env:LOCALAPPDATA "clink"
+				$cmdSrc = Join-Path $target "target\windows\cmd"
+				if ((Test-Path $appClink) -and (Test-Path $cmdSrc)) {
+					foreach ($f in @("profile.lua", "profile.cmd")) {
+						$srcF = Join-Path $cmdSrc $f
+						$dstF = Join-Path $appClink $f
+						if ((Test-Path $srcF) -and (-not (Get-Item $dstF -ErrorAction SilentlyContinue).LinkType)) {
+							Copy-Item $srcF $dstF -Force
+						}
+					}
+					_ui_sub "Sincronizados perfis físicos Clink em: $appClink"
+				}
+			}
 		}
 		_ui_ok "Universal Shell atualizado com sucesso!"
 	} else {

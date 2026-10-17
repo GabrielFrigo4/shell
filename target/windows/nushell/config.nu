@@ -66,6 +66,20 @@ def get-git-cmd [] {
 	$detected
 }
 
+def get-gh-cmd [] {
+	let candidates = [
+		"C:\\Program Files\\GitHub CLI\\gh.exe",
+		"C:\\Program Files (x86)\\GitHub CLI\\gh.exe",
+		([$env.USERPROFILE, "scoop", "shims", "gh.exe"] | path join),
+		(if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "Programs", "GitHub CLI", "gh.exe"] | path join } else { "" })
+	]
+	for c in $candidates {
+		if ($c | is-not-empty) and ($c | path exists) { return $c }
+	}
+	let detected = (which gh | get -o 0.path | default "")
+	$detected
+}
+
 let _vault_candidates = [
 	($env.VAULT_DIR? | default ""),
 	(($env.USERPROFILE? | default ($env.HOME? | default "~")) | path join ".local" "share" "vault"),
@@ -716,6 +730,7 @@ def upvt [
 
 	if ($target | is-not-empty) {
 		let git_bin = (get-git-cmd)
+		let gh_bin = (get-gh-cmd)
 		if ($is_status) {
 			_ui_step $"Status do Universal Vault em: ($target)..."
 			^$git_bin -C $target status -s -b
@@ -727,7 +742,12 @@ def upvt [
 			return
 		}
 		_ui_step $"Atualizando Universal Vault em: ($target)..."
-		^$git_bin -C $target pull --ff-only
+		if ($gh_bin | is-not-empty) {
+			let helper_arg = $"credential.https://github.com.helper=!\"($gh_bin)\" auth git-credential"
+			^$git_bin -C $target -c $helper_arg pull --ff-only
+		} else {
+			^$git_bin -C $target pull --ff-only
+		}
 		vault-perms $target
 		_ui_ok "Universal Vault atualizado com sucesso!"
 	} else {
@@ -780,7 +800,41 @@ def upsh [
 						do -i { cp -f $src $dst }
 					}
 				}
-				_ui_sub $"Sincronizados perfis físicos em: ($app_nu)"
+				_ui_sub $"Sincronizados perfis físicos NuShell em: ($app_nu)"
+			}
+		}
+		let pwsh_dir = ([$target, "target", "windows", "powershell"] | path join)
+		let docs_cands = [
+			([$env.USERPROFILE, "OneDrive", "Documentos", "PowerShell"] | path join),
+			([$env.USERPROFILE, "OneDrive", "Documents", "PowerShell"] | path join),
+			([$env.USERPROFILE, "Documentos", "PowerShell"] | path join),
+			([$env.USERPROFILE, "Documents", "PowerShell"] | path join)
+		]
+		for d in $docs_cands {
+			if ($d | path exists) and ($pwsh_dir | path exists) {
+				for f in ["profile.ps1", "Microsoft.PowerShell_profile.ps1"] {
+					let src = ([$pwsh_dir, $f] | path join)
+					let dst = ([$d, $f] | path join)
+					if ($src | path exists) {
+						do -i { cp -f $src $dst }
+					}
+				}
+				_ui_sub $"Sincronizados perfis físicos PowerShell em: ($d)"
+				break
+			}
+		}
+		let cmd_dir = ([$target, "target", "windows", "cmd"] | path join)
+		if ($cmd_dir | path exists) and ($env.LOCALAPPDATA? | is-not-empty) {
+			let app_clink = ([$env.LOCALAPPDATA, "clink"] | path join)
+			if ($app_clink | path exists) {
+				for f in ["profile.lua", "profile.cmd"] {
+					let src = ([$cmd_dir, $f] | path join)
+					let dst = ([$app_clink, $f] | path join)
+					if ($src | path exists) {
+						do -i { cp -f $src $dst }
+					}
+				}
+				_ui_sub $"Sincronizados perfis físicos Clink em: ($app_clink)"
 			}
 		}
 		_ui_ok "Universal Shell atualizado com sucesso!"
