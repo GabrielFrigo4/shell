@@ -415,7 +415,7 @@ _detect_distro_icon() {
 		windows)                            _DETECTED_DISTRO_ICON=" " ;;
 		*)
 			case "$(_detect_os)" in
-				linux)   _DETECTED_DISTRO_ICON=" " ;;
+				linux)   _DETECTED_DISTRO_ICON=" " ;;
 				freebsd) _DETECTED_DISTRO_ICON=" " ;;
 				dragonfly) _DETECTED_DISTRO_ICON=" " ;;
 				openbsd) _DETECTED_DISTRO_ICON="󰈺 " ;;
