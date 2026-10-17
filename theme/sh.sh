@@ -135,7 +135,7 @@ _update_prompt() {
 	_trim_string "${_os_icon}" 4 ""
 	_os_icon="${_trimmed}"
 	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || uname -s 2> "/dev/null" || echo "UNIX")}}"
-	_os_name="${_os_name%%-*}"
+	_os_name="${_os_name%%[-+~_]*}"
 	local _os_color
 
 	case "${PROMPT_OS_COLOR:-blue}" in

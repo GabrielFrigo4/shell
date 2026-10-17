@@ -26,7 +26,7 @@ _update_prompt() {
 	local _shell_name="bash"
 	local _os_icon="${PROMPT_OS_ICON:- }"
 	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || uname -s 2> "/dev/null" || echo "UNIX")}}"
-	_os_name="${_os_name%%-*}"
+	_os_name="${_os_name%%[-+~_]*}"
 
 	local _mode="pty"
 	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
