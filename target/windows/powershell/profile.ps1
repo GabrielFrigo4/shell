@@ -849,6 +849,10 @@ Parâmetros:
 		(Join-Path $HOME ".local\share\shell"),
 		(Join-Path $HOME ".config\shell"),
 		(Join-Path $HOME ".shell"),
+		(Join-Path $HOME "Documentos\Environment\Shell"),
+		(Join-Path $HOME "Documents\Environment\Shell"),
+		(Join-Path $HOME "OneDrive\Documentos\Environment\Shell"),
+		(Join-Path $HOME "OneDrive\Documents\Environment\Shell"),
 		"C:\Program Files\Shell"
 	)
 	if ($MsysHome) {
@@ -877,6 +881,13 @@ Parâmetros:
 		if (Test-Path $pwshScript) {
 			_ui_sub "Recarregando perfis e funções do Universal Shell..."
 			. $pwshScript
+			if ($PROFILE -and (Test-Path $PROFILE)) {
+				$isSymlink = (Get-Item $PROFILE).LinkType
+				if (-not $isSymlink) {
+					Copy-Item $pwshScript $PROFILE -Force
+					_ui_sub "Sincronizado perfil estático em: $PROFILE"
+				}
+			}
 		}
 		_ui_ok "Universal Shell atualizado com sucesso!"
 	} else {
