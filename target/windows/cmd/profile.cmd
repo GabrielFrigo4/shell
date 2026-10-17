@@ -81,3 +81,14 @@ doskey sysclean=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BO
 doskey syscls=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"
 doskey clean-system=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"
 doskey clear-system=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"
+
+doskey agy-continue=agy -c $*
+doskey agyc=agy -c $*
+doskey agy-auto=agy --dangerously-skip-permissions $*
+doskey agy-danger=agy --dangerously-skip-permissions $*
+doskey agya=agy --dangerously-skip-permissions $*
+doskey agyd=agy --dangerously-skip-permissions $*
+doskey agy-continue-auto=agy -c --dangerously-skip-permissions $*
+doskey agy-continue-danger=agy -c --dangerously-skip-permissions $*
+doskey agyca=agy -c --dangerously-skip-permissions $*
+doskey agycd=agy -c --dangerously-skip-permissions $*

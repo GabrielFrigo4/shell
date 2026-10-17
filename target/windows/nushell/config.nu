@@ -240,6 +240,25 @@ alias on = nvim .;
 alias oc = code .;
 alias ocm = codium .;
 alias oz = zed .;
+alias oa = antigravity-ide .;
+alias ant = antigravity-ide;
+
+### ================================
+### GOOGLE ANTIGRAVITY CLI ALIASES
+### ================================
+
+alias agy-continue = agy -c;
+alias agyc = agy -c;
+
+alias agy-auto = agy --dangerously-skip-permissions;
+alias agy-danger = agy --dangerously-skip-permissions;
+alias agya = agy --dangerously-skip-permissions;
+alias agyd = agy --dangerously-skip-permissions;
+
+alias agy-continue-auto = agy -c --dangerously-skip-permissions;
+alias agy-continue-danger = agy -c --dangerously-skip-permissions;
+alias agyca = agy -c --dangerously-skip-permissions;
+alias agycd = agy -c --dangerously-skip-permissions;
 
 ### ================================
 ### EMISSAO E UI SEMANTICA

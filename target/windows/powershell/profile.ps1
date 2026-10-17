@@ -1198,3 +1198,20 @@ function ant {
 		Start-Process -FilePath $app -WindowStyle Hidden
 	}
 }
+
+### ================================
+### GOOGLE ANTIGRAVITY CLI ALIASES
+### ================================
+
+function agy-continue { agy -c @args }
+function agyc { agy -c @args }
+
+function agy-auto { agy --dangerously-skip-permissions @args }
+function agy-danger { agy --dangerously-skip-permissions @args }
+function agya { agy --dangerously-skip-permissions @args }
+function agyd { agy --dangerously-skip-permissions @args }
+
+function agy-continue-auto { agy -c --dangerously-skip-permissions @args }
+function agy-continue-danger { agy -c --dangerously-skip-permissions @args }
+function agyca { agy -c --dangerously-skip-permissions @args }
+function agycd { agy -c --dangerously-skip-permissions @args }

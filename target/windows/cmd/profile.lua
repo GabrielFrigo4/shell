@@ -658,6 +658,20 @@ local aliases = {
 	['ant'] = [[antigravity-ide]],
 
 	-- --------------------------------
+	-- Google Antigravity CLI
+	-- --------------------------------
+	["agy-continue"] = [[agy -c]],
+	["agyc"] = [[agy -c]],
+	["agy-auto"] = [[agy --dangerously-skip-permissions]],
+	["agy-danger"] = [[agy --dangerously-skip-permissions]],
+	["agya"] = [[agy --dangerously-skip-permissions]],
+	["agyd"] = [[agy --dangerously-skip-permissions]],
+	["agy-continue-auto"] = [[agy -c --dangerously-skip-permissions]],
+	["agy-continue-danger"] = [[agy -c --dangerously-skip-permissions]],
+	["agyca"] = [[agy -c --dangerously-skip-permissions]],
+	["agycd"] = [[agy -c --dangerously-skip-permissions]],
+
+	-- --------------------------------
 	-- Console and Terminal
 	-- --------------------------------
 	["clear"] = [[cls]],
