@@ -71,12 +71,8 @@ _deploy_item() {
 		return 0
 	fi
 
+	unlink "${_dst}" 2> "/dev/null" || true
 	rm -rf "${_dst}" 2> "/dev/null" || true
-	if [ "${_is_win}" -eq 1 ] && command -v cmd.exe > "/dev/null" 2>&1; then
-		_win_dst="$(cygpath -w "${_dst}" 2> "/dev/null" || echo "${_dst}")"
-		cmd.exe /c "del /f /q \"${_win_dst}\"" > "/dev/null" 2>&1 || true
-		cmd.exe /c "rmdir /s /q \"${_win_dst}\"" > "/dev/null" 2>&1 || true
-	fi
 
 	export MSYS="winsymlinks:nativestrict"
 	if ln -sf "${_src}" "${_dst}" 2> "/dev/null"; then
@@ -93,6 +89,9 @@ _deploy_item() {
 ### ================================
 _install_extended_shell() {
 	_target_shell="$1"
+	if ! command -v _ui_step > "/dev/null" 2>&1; then
+		[ -f "${SHELL_REPO_DIR:-}/library/ui.sh" ] && . "${SHELL_REPO_DIR:-}/library/ui.sh"
+	fi
 	_deploy_win_paths
 
 	case "${_target_shell}" in

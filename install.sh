@@ -11,13 +11,16 @@ unset IFS
 ### Active Shell Elevation Guard
 ### --------------------------------
 if [ -z "${ZSH_VERSION:-}" ]; then
-	if ! (eval 'f-f() { :; }') 2> "/dev/null"; then
+	_esc_test=$'\e'
+	if [ "${_esc_test}" = '\e' ] || ! (eval 'f-f() { :; }') 2> "/dev/null"; then
+		unset _esc_test
 		if command -v zsh > "/dev/null" 2>&1; then
 			exec zsh "$0" "$@"
 		elif command -v bash > "/dev/null" 2>&1; then
 			exec bash "$0" "$@"
 		fi
 	fi
+	unset _esc_test
 fi
 
 

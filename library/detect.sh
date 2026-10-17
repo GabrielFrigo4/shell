@@ -302,19 +302,21 @@ _detect_distro_family() {
 	[ -f "/etc/os-release" ] && _distro_like="$(. /etc/os-release && echo "${ID_LIKE}")"
 
 	case "${_distro_id}" in
-		arch|manjaro|endeavouros)             _DETECTED_DISTRO_FAMILY="arch" ;;
-		debian|ubuntu|linuxmint|pop|raspbian) _DETECTED_DISTRO_FAMILY="debian" ;;
-		fedora|rhel|centos|rocky|alma)        _DETECTED_DISTRO_FAMILY="fedora" ;;
+		arch|manjaro|endeavouros|garuda)      _DETECTED_DISTRO_FAMILY="arch" ;;
+		debian|ubuntu|linuxmint|pop|raspbian|kali) _DETECTED_DISTRO_FAMILY="debian" ;;
+		fedora|rhel|centos|rocky|alma*|nobara) _DETECTED_DISTRO_FAMILY="fedora" ;;
 		opensuse*|sles)                       _DETECTED_DISTRO_FAMILY="suse" ;;
 		void)                                 _DETECTED_DISTRO_FAMILY="void" ;;
 		alpine)                               _DETECTED_DISTRO_FAMILY="alpine" ;;
 		gentoo|funtoo|calculate)              _DETECTED_DISTRO_FAMILY="gentoo" ;;
 		nixos)                                _DETECTED_DISTRO_FAMILY="nixos" ;;
+		solus)                                _DETECTED_DISTRO_FAMILY="solus" ;;
+		slackware)                            _DETECTED_DISTRO_FAMILY="slackware" ;;
 		freebsd|openbsd|netbsd)               _DETECTED_DISTRO_FAMILY="bsd" ;;
 		omnios|smartos|openindiana|illumos)   _DETECTED_DISTRO_FAMILY="illumos" ;;
 		macos)                                _DETECTED_DISTRO_FAMILY="darwin" ;;
 		*)
-			case "${_like}" in
+			case "${_distro_like}" in
 				*arch*)            _DETECTED_DISTRO_FAMILY="arch" ;;
 				*debian*|*ubuntu*) _DETECTED_DISTRO_FAMILY="debian" ;;
 				*fedora*|*rhel*)   _DETECTED_DISTRO_FAMILY="fedora" ;;
@@ -345,12 +347,20 @@ _detect_distro_icon() {
 		arch)                               _DETECTED_DISTRO_ICON="󰣇 " ;;
 		manjaro)                            _DETECTED_DISTRO_ICON=" " ;;
 		endeavouros)                        _DETECTED_DISTRO_ICON=" " ;;
+		garuda)                             _DETECTED_DISTRO_ICON="󰛓 " ;;
 		debian)                             _DETECTED_DISTRO_ICON=" " ;;
 		ubuntu)                             _DETECTED_DISTRO_ICON=" " ;;
-		linuxmint)                          _DETECTED_DISTRO_ICON=" " ;;
+		linuxmint|mint)                     _DETECTED_DISTRO_ICON=" " ;;
 		pop)                                _DETECTED_DISTRO_ICON=" " ;;
+		kali)                               _DETECTED_DISTRO_ICON=" " ;;
+		nobara)                             _DETECTED_DISTRO_ICON=" " ;;
+		solus)                              _DETECTED_DISTRO_ICON=" " ;;
+		slackware)                          _DETECTED_DISTRO_ICON=" " ;;
 		raspbian)                           _DETECTED_DISTRO_ICON=" " ;;
-		rhel|centos|rocky|alma)             _DETECTED_DISTRO_ICON=" " ;;
+		rocky)                              _DETECTED_DISTRO_ICON=" " ;;
+		alma|almalinux)                     _DETECTED_DISTRO_ICON=" " ;;
+		centos)                             _DETECTED_DISTRO_ICON=" " ;;
+		rhel)                               _DETECTED_DISTRO_ICON=" " ;;
 		opensuse*|sles)                     _DETECTED_DISTRO_ICON=" " ;;
 		void)                               _DETECTED_DISTRO_ICON=" " ;;
 		alpine)                             _DETECTED_DISTRO_ICON=" " ;;

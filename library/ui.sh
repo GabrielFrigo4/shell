@@ -28,7 +28,7 @@ _ui_has_color() {
 ### ================================
 _ui_step() {
 	if _ui_has_color; then
-		echo -n $'\e[1;36m==>\e[0m '
+		echo -n "${_ui_color_cyan}==>${_ui_color_reset} "
 	else
 		echo -n "==> "
 	fi
@@ -37,7 +37,7 @@ _ui_step() {
 
 _ui_sub() {
 	if _ui_has_color; then
-		echo -n $'\e[1;34m  ↳\e[0m '
+		echo -n "${_ui_color_blue}  ↳${_ui_color_reset} "
 	else
 		echo -n "  -> "
 	fi
@@ -46,7 +46,7 @@ _ui_sub() {
 
 _ui_ok() {
 	if _ui_has_color; then
-		echo -n $'\e[1;32m  ✅\e[0m '
+		echo -n "${_ui_color_green}  ✅${_ui_color_reset} "
 	else
 		echo -n "  OK "
 	fi
@@ -55,7 +55,7 @@ _ui_ok() {
 
 _ui_warn() {
 	if _ui_has_color; then
-		echo -n $'\e[1;33m  ⚠️ \e[0m '
+		echo -n "${_ui_color_yellow}  ⚠️ ${_ui_color_reset} "
 	else
 		echo -n "  WARN "
 	fi
@@ -64,7 +64,7 @@ _ui_warn() {
 
 _ui_err() {
 	if [ -t 2 ]; then
-		echo -n $'\e[1;31m  ❌\e[0m ' >&2
+		echo -n "${_ui_color_red}  ❌${_ui_color_reset} " >&2
 	else
 		echo -n "  FAIL " >&2
 	fi
@@ -73,7 +73,7 @@ _ui_err() {
 
 _ui_info() {
 	if _ui_has_color; then
-		echo -n $'\e[1;35m  ℹ️ \e[0m '
+		echo -n "${_ui_color_magenta}  ℹ️ ${_ui_color_reset} "
 	else
 		echo -n "  INFO "
 	fi
@@ -85,14 +85,9 @@ _ui_banner() {
 	local _separator="================================================================"
 	echo ""
 	if _ui_has_color; then
-		echo -n $'\e[1;36m'
-		echo "${_separator}"
-		echo -n $'\e[1m  '
-		echo -n "${_title}"
-		echo $'\e[0m'
-		echo -n $'\e[1;36m'
-		echo "${_separator}"
-		echo -n $'\e[0m'
+		echo "${_ui_color_cyan}${_separator}${_ui_color_reset}"
+		echo "${_ui_color_bold}  ${_title}${_ui_color_reset}"
+		echo "${_ui_color_cyan}${_separator}${_ui_color_reset}"
 	else
 		echo "${_separator}"
 		echo "  ${_title}"

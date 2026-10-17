@@ -26,7 +26,7 @@ function Get-Msys2UserHome {
 	return $null
 }
 
-function Get-Msys2Bash {
+function Get-Msys2Shell {
 	$roots = @(
 		$env:MSYS2_ROOT,
 		'C:\msys64',
@@ -35,24 +35,23 @@ function Get-Msys2Bash {
 		(Join-Path $env:LOCALAPPDATA 'Programs\msys64'),
 		'C:\Program Files\Git'
 	)
-	foreach ($r in $roots) {
-		if ($r) {
-			$bin = Join-Path $r 'usr\bin\bash.exe'
-			if (Test-Path $bin) { return $bin }
-			$bin = Join-Path $r 'bin\bash.exe'
-			if (Test-Path $bin) { return $bin }
+	$candidateShells = @('zsh.exe', 'bash.exe', 'sh.exe', 'ksh.exe')
+	foreach ($shName in $candidateShells) {
+		foreach ($r in $roots) {
+			if ($r) {
+				$bin = Join-Path $r (Join-Path 'usr\bin' $shName)
+				if (Test-Path $bin) { return $bin }
+				$bin = Join-Path $r (Join-Path 'bin' $shName)
+				if (Test-Path $bin) { return $bin }
+			}
 		}
 	}
-	$cmds = Get-Command 'bash.exe', 'bash' -ErrorAction SilentlyContinue
-	foreach ($c in $cmds) {
-		if ($c.Source -and ($c.Source -notmatch '(?i)[\\/]system32[\\/]')) {
-			return $c.Source
-		}
-	}
-	$shs = Get-Command 'sh.exe', 'sh' -ErrorAction SilentlyContinue
-	foreach ($s in $shs) {
-		if ($s.Source -and ($s.Source -notmatch '(?i)[\\/]system32[\\/]')) {
-			return $s.Source
+	foreach ($shName in @('zsh', 'bash', 'sh', 'ksh')) {
+		$cmds = Get-Command "$shName.exe", $shName -ErrorAction SilentlyContinue
+		foreach ($c in $cmds) {
+			if ($c.Source -and ($c.Source -notmatch '(?i)[\\/]system32[\\/]')) {
+				return $c.Source
+			}
 		}
 	}
 	return $null
@@ -625,8 +624,8 @@ Parâmetros:
 	}
 	$targetRepo = $candidates | Where-Object { $_ -and (Test-Path (Join-Path $_ "profile.sh")) } | Select-Object -First 1
 
-	$bash = Get-Msys2Bash
-	if ($targetRepo -and $bash) {
+	$sh = Get-Msys2Shell
+	if ($targetRepo -and $sh) {
 		$argsList = @("extensions")
 		if ($Export) { $argsList += "export" }
 		elseif ($Status) { $argsList += "status" }
@@ -641,7 +640,7 @@ Parâmetros:
 			$rest = $targetPosix.Substring(2)
 			$targetPosix = "/$drive$rest"
 		}
-		& $bash -c "MSYS=winsymlinks:nativestrict '$targetPosix/profile.sh' $argStr"
+		& $sh -c "MSYS=winsymlinks:nativestrict '$targetPosix/profile.sh' $argStr"
 	} else {
 		$ideCli = if (Get-Command "antigravity" -ErrorAction SilentlyContinue) { "antigravity" }
 			elseif (Get-Command "code" -ErrorAction SilentlyContinue) { "code" }
@@ -747,17 +746,17 @@ Parâmetros:
 			if ($Backup)     { $syncArgs += "--backup" }
 			if ($Extensions) { $syncArgs += "--extensions" }
 			$argStr = $syncArgs -join " "
-			$bash = Get-Msys2Bash
-			if ($bash) {
+			$sh = Get-Msys2Shell
+			if ($sh) {
 				$targetPosix = ($target -replace '\\', '/')
 				if ($targetPosix -match '^[A-Za-z]:') {
 					$drive = $targetPosix.Substring(0, 1).ToLower()
 					$rest = $targetPosix.Substring(2)
 					$targetPosix = "/$drive$rest"
 				}
-				& $bash -c "MSYS=winsymlinks:nativestrict bash '$targetPosix/profile.sh' $argStr"
+				& $sh -c "MSYS=winsymlinks:nativestrict '$targetPosix/profile.sh' $argStr"
 			} else {
-				_ui_warn "Ambiente MSYS2/Bash não detectado no PATH (excluído WSL em System32)."
+				_ui_warn "Ambiente MSYS2/POSIX shell não detectado no PATH (excluído WSL em System32)."
 			}
 		}
 		_ui_ok "Universal Profile atualizado e sincronizado com sucesso!"
