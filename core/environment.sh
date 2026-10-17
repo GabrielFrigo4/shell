@@ -470,7 +470,7 @@ eval 'agy() {
 
 if [ -t 1 ]; then
 	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
-		[ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e[?6c\e[16;500]'
+		[ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e[?6c'
 	else
 		echo -n $'\e[0 q'
 	fi
