@@ -453,23 +453,17 @@ def sync-extensions [
 	let target = ($candidates | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
 
 	if ($target | is-not-empty) {
-		mut sub_args_list = []
-		if ($export) { $sub_args_list = ($sub_args_list | append "export") }
-		else if ($status) { $sub_args_list = ($sub_args_list | append "status") }
-		else { $sub_args_list = ($sub_args_list | append "install") }
-		if ($dry_run) { $sub_args_list = ($sub_args_list | append "--dry-run") }
-		if ($target_arg | is-not-empty) { $sub_args_list = ($sub_args_list | append $target_arg) }
-		$sub_args_list = ($sub_args_list | append $args)
-		let sub_args = ($sub_args_list | str join " ")
+		let action_arg = if $export { "export" } else if $status { "status" } else { "install" }
+		let sub_flags = [
+			$action_arg,
+			(if $dry_run { "--dry-run" } else { null }),
+			(if ($target_arg | is-not-empty) { $target_arg } else { null })
+		] | compact
+		let sub_args = ($sub_flags | append $args | str join " ")
 
 		let sh = (get-msys-shell)
 		if ($sh | is-not-empty) {
-			mut target_posix = ($target | str replace -a '\' '/')
-			if ($target_posix | str starts-with "C:") or ($target_posix | str starts-with "c:") {
-				$target_posix = ($target_posix | str replace -r '^[Cc]:' '/c')
-			} else if ($target_posix | str starts-with "D:") or ($target_posix | str starts-with "d:") {
-				$target_posix = ($target_posix | str replace -r '^[Dd]:' '/d')
-			}
+			let target_posix = ($target | str replace -a '\' '/' | str replace -r '^[Cc]:' '/c' | str replace -r '^[Dd]:' '/d')
 			^$sh -c $"MSYS=winsymlinks:nativestrict '($target_posix)/profile.sh' extensions ($sub_args)"
 		} else {
 			_ui_warn "Ambiente MSYS2/POSIX shell não detectado no PATH."
@@ -633,21 +627,16 @@ def uprc [
 			_ui_sub "Sincronizando dotfiles via profile.sh (MSYS2 / POSIX)..."
 			let sh = (get-msys-shell)
 			if ($sh | is-not-empty) {
-				mut sync_args = []
-				if ($is_query) { $sync_args = ($sync_args | append "--status") }
-				if ($is_dry) { $sync_args = ($sync_args | append "--dry-run") }
-				if ($is_backup) { $sync_args = ($sync_args | append "--backup") }
-				if ($is_ext) { $sync_args = ($sync_args | append "--extensions") }
-				if ($is_pull) { $sync_args = ($sync_args | append "--pull") }
-				$sync_args = ($sync_args | append $args)
-				let sub_args = ($sync_args | str join " ")
+				let sync_flags = [
+					(if $is_query { "--status" } else { null }),
+					(if $is_dry { "--dry-run" } else { null }),
+					(if $is_backup { "--backup" } else { null }),
+					(if $is_ext { "--extensions" } else { null }),
+					(if $is_pull { "--pull" } else { null })
+				] | compact
+				let sub_args = ($sync_flags | append $args | str join " ")
 
-				mut target_posix = ($target | str replace -a '\' '/')
-				if ($target_posix | str starts-with "C:") or ($target_posix | str starts-with "c:") {
-					$target_posix = ($target_posix | str replace -r '^[Cc]:' '/c')
-				} else if ($target_posix | str starts-with "D:") or ($target_posix | str starts-with "d:") {
-					$target_posix = ($target_posix | str replace -r '^[Dd]:' '/d')
-				}
+				let target_posix = ($target | str replace -a '\' '/' | str replace -r '^[Cc]:' '/c' | str replace -r '^[Dd]:' '/d')
 				^$sh -c $"MSYS=winsymlinks:nativestrict '($target_posix)/profile.sh' sync ($sub_args)"
 			} else {
 				_ui_warn "Ambiente MSYS2/POSIX shell não detectado no PATH (excluído WSL em System32)."
