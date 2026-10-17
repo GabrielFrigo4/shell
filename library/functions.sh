@@ -1060,7 +1060,7 @@ update-apk() {
 
 update-pkg() {
 	command -v pkg > "/dev/null" 2>&1 || { _ui_err "pkg não encontrado no sistema."; return 127; }
-	_ui_step "Executando atualização de pacotes via pkg (FreeBSD)..."
+	_ui_step "Executando atualização de pacotes via pkg (FreeBSD/DragonFly)..."
 	_as_root pkg update && _as_root pkg upgrade --yes "$@"
 }
 
@@ -1120,23 +1120,101 @@ update-mas() {
 	mas upgrade "$@"
 }
 
+update-tdnf() {
+	command -v tdnf > "/dev/null" 2>&1 || { _ui_err "tdnf não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via tdnf (Azure Linux / Photon)..."
+	_as_root tdnf upgrade --refresh -y "$@"
+}
+
+update-guix() {
+	command -v guix > "/dev/null" 2>&1 || { _ui_err "guix não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via GNU Guix..."
+	guix pull && guix package -u "$@"
+}
+
+update-opkg() {
+	command -v opkg > "/dev/null" 2>&1 || { _ui_err "opkg não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via opkg (OpenWrt)..."
+	_as_root opkg update && _as_root opkg upgrade "$@"
+}
+
+update-emerge() {
+	command -v emerge > "/dev/null" 2>&1 || { _ui_err "emerge não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via Portage emerge (Gentoo)..."
+	_as_root emerge --sync && _as_root emerge -uDN @world "$@"
+}
+
+update-nix() {
+	if command -v nixos-rebuild > "/dev/null" 2>&1; then
+		_ui_step "Executando atualização de pacotes via nixos-rebuild (NixOS)..."
+		_as_root nixos-rebuild switch --upgrade "$@"
+	elif command -v nix-channel > "/dev/null" 2>&1; then
+		_ui_step "Executando atualização de pacotes via Nix..."
+		nix-channel --update && nix-env -u "$@"
+	else
+		_ui_err "nixos-rebuild ou nix-channel não encontrado no sistema."
+		return 127
+	fi
+}
+
+update-eopkg() {
+	command -v eopkg > "/dev/null" 2>&1 || { _ui_err "eopkg não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via eopkg (Solus)..."
+	_as_root eopkg upgrade "$@"
+}
+
+update-slackpkg() {
+	command -v slackpkg > "/dev/null" 2>&1 || { _ui_err "slackpkg não encontrado no sistema."; return 127; }
+	_ui_step "Executando atualização de pacotes via slackpkg (Slackware)..."
+	_as_root slackpkg update && _as_root slackpkg upgrade-all "$@"
+}
+
 ### --------------------------------
 ### Update System
 ### --------------------------------
 update-system() {
 	_ui_step "Atualizando pacotes do sistema operacional..."
 	case "$(_detect_distro_family)" in
-		arch)   command -v pacman > "/dev/null" 2>&1 && update-pacman "$@" ;;
-		debian) command -v apt > "/dev/null" 2>&1 && update-apt "$@" ;;
-		fedora) command -v dnf > "/dev/null" 2>&1 && update-dnf "$@" ;;
-		suse)   command -v zypper > "/dev/null" 2>&1 && update-zypper "$@" ;;
-		void)   command -v xbps-install > "/dev/null" 2>&1 && update-xbps "$@" ;;
-		alpine) command -v apk > "/dev/null" 2>&1 && update-apk "$@" ;;
+		arch)      command -v pacman > "/dev/null" 2>&1 && update-pacman "$@" ;;
+		debian)    command -v apt > "/dev/null" 2>&1 && update-apt "$@" ;;
+		fedora)
+			if command -v dnf > "/dev/null" 2>&1; then
+				update-dnf "$@"
+			elif command -v tdnf > "/dev/null" 2>&1; then
+				update-tdnf "$@"
+			fi
+			;;
+		suse)      command -v zypper > "/dev/null" 2>&1 && update-zypper "$@" ;;
+		void)      command -v xbps-install > "/dev/null" 2>&1 && update-xbps "$@" ;;
+		alpine)    command -v apk > "/dev/null" 2>&1 && update-apk "$@" ;;
+		gentoo)    command -v emerge > "/dev/null" 2>&1 && update-emerge "$@" ;;
+		nixos)     command -v nixos-rebuild > "/dev/null" 2>&1 && update-nix "$@" ;;
+		solus)     command -v eopkg > "/dev/null" 2>&1 && update-eopkg "$@" ;;
+		slackware) command -v slackpkg > "/dev/null" 2>&1 && update-slackpkg "$@" ;;
+		guix)      command -v guix > "/dev/null" 2>&1 && update-guix "$@" ;;
+		embedded)  command -v opkg > "/dev/null" 2>&1 && update-opkg "$@" ;;
+		bsd)
+			case "$(_detect_os)" in
+				freebsd|dragonfly) command -v pkg > "/dev/null" 2>&1 && update-pkg "$@" ;;
+				openbsd)           command -v pkg_add > "/dev/null" 2>&1 && update-pkg-add "$@" ;;
+				netbsd)            command -v pkgin > "/dev/null" 2>&1 && update-pkgin "$@" ;;
+			esac
+			;;
+		illumos)
+			if [ -f "/etc/release" ] && grep -qiE "omnios|openindiana|solaris" "/etc/release" 2> "/dev/null"; then
+				update-ips "$@"
+			elif command -v pkgin > "/dev/null" 2>&1; then
+				update-pkgin "$@"
+			elif command -v pkg > "/dev/null" 2>&1; then
+				update-ips "$@"
+			fi
+			;;
+		darwin)    command -v brew > "/dev/null" 2>&1 && update-brew "$@" ;;
 		*)
 			case "$(_detect_os)" in
-				freebsd) command -v pkg > "/dev/null" 2>&1 && update-pkg "$@" ;;
-				openbsd) command -v pkg_add > "/dev/null" 2>&1 && update-pkg-add "$@" ;;
-				netbsd)  command -v pkgin > "/dev/null" 2>&1 && update-pkgin "$@" ;;
+				freebsd|dragonfly) command -v pkg > "/dev/null" 2>&1 && update-pkg "$@" ;;
+				openbsd)           command -v pkg_add > "/dev/null" 2>&1 && update-pkg-add "$@" ;;
+				netbsd)            command -v pkgin > "/dev/null" 2>&1 && update-pkgin "$@" ;;
 				illumos)
 					if [ -f "/etc/release" ] && grep -qiE "omnios|openindiana|solaris" "/etc/release" 2> "/dev/null"; then
 						update-ips "$@"
@@ -1146,8 +1224,8 @@ update-system() {
 						update-ips "$@"
 					fi
 					;;
-				macos)   command -v brew > "/dev/null" 2>&1 && update-brew "$@" ;;
-				windows) command -v pacman > "/dev/null" 2>&1 && update-pacman "$@" ;;
+				macos)             command -v brew > "/dev/null" 2>&1 && update-brew "$@" ;;
+				windows)           command -v pacman > "/dev/null" 2>&1 && update-pacman "$@" ;;
 			esac
 			;;
 	esac
@@ -1171,17 +1249,23 @@ clean-system() {
 				Limpeza de pacotes órfãos, dependências obsoletas e caches do sistema operacional.
 
 				Ações por plataforma:
-				  - Debian / Ubuntu:   apt autoremove --yes && apt clean
-				  - Fedora / RHEL:     dnf autoremove --assumeyes && dnf clean packages
-				  - Arch Linux:        pacman -Rns (órfãos) && paccache -r
-				  - Void Linux:        xbps-remove -o && xbps-remove -O
-				  - Alpine Linux:      apk cache clean
-				  - openSUSE:          zypper clean --all
-				  - FreeBSD:           pkg autoremove --yes && pkg clean --yes
-				  - OpenBSD:           pkg_delete -a
-				  - NetBSD:            pkgin autoremove && pkgin clean
-				  - macOS:             brew cleanup --prune=all
-				  - Flatpak:           flatpak uninstall --unused --assumeyes
+				  - Debian / Ubuntu:     apt autoremove --yes && apt clean
+				  - Fedora / RHEL:       dnf autoremove --assumeyes && dnf clean packages
+				  - Azure Linux:         tdnf clean all
+				  - Arch Linux:          pacman -Rns (órfãos) && paccache -r
+				  - Void Linux:          xbps-remove -o && xbps-remove -O
+				  - Alpine Linux:        apk cache clean
+				  - openSUSE:            zypper clean --all
+				  - Gentoo:              emerge --depclean
+				  - NixOS:               nix-collect-garbage -d
+				  - Solus:               eopkg delete-cache
+				  - Guix:                guix gc
+				  - OpenWrt:             limpeza de listas do opkg
+				  - FreeBSD / DragonFly: pkg autoremove --yes && pkg clean --yes
+				  - OpenBSD:             pkg_delete -a
+				  - NetBSD / illumos:    pkgin autoremove && pkgin clean
+				  - macOS:               brew cleanup --prune=all
+				  - Flatpak:             flatpak uninstall --unused --assumeyes
 
 				Opções:
 				  -n, --dry-run        Simula a limpeza sem remover pacotes
@@ -1233,6 +1317,9 @@ clean-system() {
 				_as_root dnf autoremove --assumeyes
 				_ui_sub "Limpando cache de pacotes baixados pelo dnf..."
 				_as_root dnf clean packages > "/dev/null" 2>&1 || true
+			elif command -v tdnf > "/dev/null" 2>&1; then
+				_ui_sub "Limpando cache de pacotes do tdnf..."
+				_as_root tdnf clean all > "/dev/null" 2>&1 || true
 			fi
 			;;
 		suse)
@@ -1255,9 +1342,39 @@ clean-system() {
 				_as_root apk cache clean > "/dev/null" 2>&1 || true
 			fi
 			;;
-		*)
+		gentoo)
+			if command -v emerge > "/dev/null" 2>&1; then
+				_ui_sub "Removendo dependências órfãs via emerge --depclean..."
+				_as_root emerge --depclean -q > "/dev/null" 2>&1 || true
+			fi
+			;;
+		nixos)
+			if command -v nix-collect-garbage > "/dev/null" 2>&1; then
+				_ui_sub "Coletando lixo do Nix store..."
+				_as_root nix-collect-garbage -d > "/dev/null" 2>&1 || true
+			fi
+			;;
+		solus)
+			if command -v eopkg > "/dev/null" 2>&1; then
+				_ui_sub "Limpando cache de pacotes via eopkg..."
+				_as_root eopkg delete-cache > "/dev/null" 2>&1 || true
+			fi
+			;;
+		guix)
+			if command -v guix > "/dev/null" 2>&1; then
+				_ui_sub "Coletando lixo do Guix store..."
+				guix gc > "/dev/null" 2>&1 || true
+			fi
+			;;
+		embedded)
+			if command -v opkg > "/dev/null" 2>&1; then
+				_ui_sub "Limpando caches de listas do opkg..."
+				rm -rf /var/opkg-lists/* > "/dev/null" 2>&1 || true
+			fi
+			;;
+		bsd)
 			case "$(_detect_os)" in
-				freebsd)
+				freebsd|dragonfly)
 					if command -v pkg > "/dev/null" 2>&1; then
 						_ui_sub "Removendo pacotes órfãos via pkg autoremove..."
 						_as_root pkg autoremove --yes
@@ -1272,6 +1389,45 @@ clean-system() {
 					fi
 					;;
 				netbsd)
+					if command -v pkgin > "/dev/null" 2>&1; then
+						_ui_sub "Removendo pacotes órfãos via pkgin autoremove..."
+						_as_root pkgin -y autoremove > "/dev/null" 2>&1 || true
+						_as_root pkgin -y clean > "/dev/null" 2>&1 || true
+					fi
+					;;
+			esac
+			;;
+		illumos)
+			if command -v pkgin > "/dev/null" 2>&1; then
+				_ui_sub "Removendo pacotes órfãos via pkgin autoremove..."
+				_as_root pkgin -y autoremove > "/dev/null" 2>&1 || true
+				_as_root pkgin -y clean > "/dev/null" 2>&1 || true
+			fi
+			;;
+		*)
+			case "$(_detect_os)" in
+				freebsd|dragonfly)
+					if command -v pkg > "/dev/null" 2>&1; then
+						_ui_sub "Removendo pacotes órfãos via pkg autoremove..."
+						_as_root pkg autoremove --yes
+						_ui_sub "Limpando cache de pacotes via pkg clean..."
+						_as_root pkg clean --yes > "/dev/null" 2>&1 || true
+					fi
+					;;
+				openbsd)
+					if command -v pkg_delete > "/dev/null" 2>&1; then
+						_ui_sub "Removendo dependências órfãs via pkg_delete..."
+						_as_root pkg_delete -a > "/dev/null" 2>&1 || true
+					fi
+					;;
+				netbsd)
+					if command -v pkgin > "/dev/null" 2>&1; then
+						_ui_sub "Removendo pacotes órfãos via pkgin autoremove..."
+						_as_root pkgin -y autoremove > "/dev/null" 2>&1 || true
+						_as_root pkgin -y clean > "/dev/null" 2>&1 || true
+					fi
+					;;
+				illumos)
 					if command -v pkgin > "/dev/null" 2>&1; then
 						_ui_sub "Removendo pacotes órfãos via pkgin autoremove..."
 						_as_root pkgin -y autoremove > "/dev/null" 2>&1 || true

@@ -57,16 +57,16 @@ _ksh_prompt() {
 	local _host="${HOSTNAME%%.*}"
 	[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
 
-	local _os_icon="${PROMPT_OS_ICON:-🐡 }"
-	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(uname -r 2> "/dev/null" || echo "OpenBSD")}}"
+	local _os_icon="${PROMPT_OS_ICON:- }"
+	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || uname -s 2> "/dev/null" || echo "UNIX")}}"
 	_os_name="${_os_name%%-*}"
 
-	local _os_color="${_theme_color_yellow}"
-	case "${PROMPT_OS_COLOR:-yellow}" in
+	local _os_color="${_theme_color_blue}"
+	case "${PROMPT_OS_COLOR:-blue}" in
 		red)    _os_color="${_theme_color_red}" ;;
 		blue)   _os_color="${_theme_color_blue}" ;;
 		yellow) _os_color="${_theme_color_yellow}" ;;
-		*)      _os_color="${_theme_color_yellow}" ;;
+		*)      _os_color="${_theme_color_blue}" ;;
 	esac
 
 	local _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"

@@ -85,6 +85,7 @@ _detect_os() {
 	case "$(uname -s)" in
 		Linux*)                        _DETECTED_OS="linux" ;;
 		FreeBSD*)                      _DETECTED_OS="freebsd" ;;
+		DragonFly*)                    _DETECTED_OS="dragonfly" ;;
 		OpenBSD*)                      _DETECTED_OS="openbsd" ;;
 		NetBSD*)                       _DETECTED_OS="netbsd" ;;
 		SunOS*)                        _DETECTED_OS="illumos" ;;
@@ -286,11 +287,13 @@ _detect_distro() {
 		esac
 	else
 		case "$(uname -s)" in
-			OpenBSD*) _DETECTED_DISTRO="openbsd" ;;
-			NetBSD*)  _DETECTED_DISTRO="netbsd" ;;
-			FreeBSD*) _DETECTED_DISTRO="freebsd" ;;
-			Darwin*)  _DETECTED_DISTRO="macos" ;;
-			*)        _DETECTED_DISTRO="unknown" ;;
+			OpenBSD*)   _DETECTED_DISTRO="openbsd" ;;
+			NetBSD*)    _DETECTED_DISTRO="netbsd" ;;
+			FreeBSD*)   _DETECTED_DISTRO="freebsd" ;;
+			DragonFly*) _DETECTED_DISTRO="dragonfly" ;;
+			SunOS*)     _DETECTED_DISTRO="illumos" ;;
+			Darwin*)    _DETECTED_DISTRO="macos" ;;
+			*)          _DETECTED_DISTRO="unknown" ;;
 		esac
 	fi
 	_cache_write "distro" "${_DETECTED_DISTRO}"
@@ -325,7 +328,7 @@ _detect_distro_family() {
 		slackware)                            _DETECTED_DISTRO_FAMILY="slackware" ;;
 		guix)                                 _DETECTED_DISTRO_FAMILY="guix" ;;
 		openwrt)                              _DETECTED_DISTRO_FAMILY="embedded" ;;
-		freebsd|openbsd|netbsd)               _DETECTED_DISTRO_FAMILY="bsd" ;;
+		freebsd|dragonfly|openbsd|netbsd)     _DETECTED_DISTRO_FAMILY="bsd" ;;
 		omnios|smartos|openindiana|illumos)   _DETECTED_DISTRO_FAMILY="illumos" ;;
 		macos)                                _DETECTED_DISTRO_FAMILY="darwin" ;;
 		*)
@@ -400,12 +403,25 @@ _detect_distro_icon() {
 		gentoo)                             _DETECTED_DISTRO_ICON=" " ;;
 		nixos)                              _DETECTED_DISTRO_ICON=" " ;;
 		freebsd)                            _DETECTED_DISTRO_ICON=" " ;;
+		dragonfly)                          _DETECTED_DISTRO_ICON=" " ;;
 		openbsd)                            _DETECTED_DISTRO_ICON="󰈺 " ;;
 		netbsd)                             _DETECTED_DISTRO_ICON=" " ;;
 		omnios|smartos|openindiana|illumos) _DETECTED_DISTRO_ICON=" " ;;
 		macos)                              _DETECTED_DISTRO_ICON=" " ;;
 		windows)                            _DETECTED_DISTRO_ICON=" " ;;
-		*)                                  _DETECTED_DISTRO_ICON=" " ;;
+		*)
+			case "$(_detect_os)" in
+				linux)   _DETECTED_DISTRO_ICON=" " ;;
+				freebsd) _DETECTED_DISTRO_ICON=" " ;;
+				dragonfly) _DETECTED_DISTRO_ICON=" " ;;
+				openbsd) _DETECTED_DISTRO_ICON="󰈺 " ;;
+				netbsd)  _DETECTED_DISTRO_ICON=" " ;;
+				illumos) _DETECTED_DISTRO_ICON=" " ;;
+				macos)   _DETECTED_DISTRO_ICON=" " ;;
+				windows) _DETECTED_DISTRO_ICON=" " ;;
+				*)       _DETECTED_DISTRO_ICON=" " ;;
+			esac
+			;;
 	esac
 	_cache_write "distro_icon" "${_DETECTED_DISTRO_ICON}"
 	echo "${_DETECTED_DISTRO_ICON}"

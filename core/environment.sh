@@ -141,22 +141,36 @@ eval 'ls() {
 		esac
 	fi
 
-	if [ "${_DETECTED_OS-$(_detect_os)}" = "freebsd" ]; then
-		command ls -G "$@"
-	else
-		command ls --color=auto "$@"
-	fi
+	case "${_DETECTED_OS-$(_detect_os)}" in
+		freebsd|dragonfly*|macos|darwin|netbsd)
+			command ls -G "$@"
+			;;
+		openbsd|illumos|solaris|sunos)
+			command ls "$@"
+			;;
+		*)
+			command ls --color=auto "$@"
+			;;
+	esac
 }'
 
-if [ "${_env_os}" = "freebsd" ]; then
-	_ls_l="ls -lG"
-	_ls_ll="ls -laFoG"
-	_ls_la="ls -aG"
-else
-	_ls_l="ls -l --color=auto"
-	_ls_ll="ls -laF --color=auto"
-	_ls_la="ls -a --color=auto"
-fi
+case "${_env_os}" in
+	freebsd|dragonfly*|macos|darwin|netbsd)
+		_ls_l="ls -lG"
+		_ls_ll="ls -laFoG"
+		_ls_la="ls -aG"
+		;;
+	openbsd|illumos|solaris|sunos)
+		_ls_l="ls -l"
+		_ls_ll="ls -laF"
+		_ls_la="ls -a"
+		;;
+	*)
+		_ls_l="ls -l --color=auto"
+		_ls_ll="ls -laF --color=auto"
+		_ls_la="ls -a --color=auto"
+		;;
+esac
 
 if _is_raw_tty || [ -z "${_eza_bin}" ]; then
 	alias l="${_ls_l}"
@@ -195,17 +209,18 @@ eval 'grep() {
 			return $?
 		fi
 	fi
-	if [ "${_DETECTED_OS-$(_detect_os)}" = "freebsd" ]; then
-		command grep "$@"
-	else
-		command grep --color=auto "$@"
-	fi
+	case "${_DETECTED_OS-$(_detect_os)}" in
+		freebsd|dragonfly*|openbsd|netbsd|illumos|solaris|sunos)
+			command grep "$@"
+			;;
+		*)
+			command grep --color=auto "$@"
+			;;
+	esac
 }'
 
 if [ -n "${_rg_bin}" ]; then
 	alias g="${_rg_bin} --smart-case"
-elif [ "${_env_os}" = "freebsd" ]; then
-	alias g="egrep -i"
 else
 	alias g="grep -Ei"
 fi
@@ -420,6 +435,13 @@ alias uppkgadd="update-pkg-add"
 alias upin="update-pkgin"
 alias uppkgin="update-pkgin"
 alias upips="update-ips"
+alias uptdnf="update-tdnf"
+alias upguix="update-guix"
+alias upopkg="update-opkg"
+alias upemerge="update-emerge"
+alias upnix="update-nix"
+alias upeopkg="update-eopkg"
+alias upslack="update-slackpkg"
 alias upbrew="update-brew"
 alias upmas="update-mas"
 alias upaur="update-aur"
