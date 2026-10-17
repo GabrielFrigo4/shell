@@ -46,6 +46,15 @@ if not defined SHELL_REPO_DIR (
 		set "SHELL_REPO_DIR=%PROGRAMFILES%\Shell"
 	)
 )
+if not defined PWSH_EXE (
+	where pwsh >nul 2>&1 && (
+		set "PWSH_EXE=pwsh"
+	) || (
+		set "PWSH_EXE=powershell"
+	)
+)
+
+set "PWSH_BOOT=& { if (Test-Path $PROFILE) { . $PROFILE } elseif (Test-Path '%SHELL_REPO_DIR%\target\windows\powershell\profile.ps1') { . '%SHELL_REPO_DIR%\target\windows\powershell\profile.ps1' }"
 
 rem ================================
 rem ALIASES & DOSKEY
@@ -53,20 +62,20 @@ rem ================================
 doskey upget=winget upgrade --all
 doskey upscp=scoop update ^&^& scoop update --all
 doskey upcho=choco upgrade all -y
-doskey upsys=winget upgrade --all ^&^& scoop update ^&^& scoop update --all ^&^& choco upgrade all -y
-doskey upwin=powershell -NoProfile -Command "Get-WindowsUpdate -AcceptAll -Install -AutoReboot"
-doskey upgit=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Update-Git $* }"
-doskey plgit=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Update-Git $* }"
-doskey psgit=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Push-Git $* }"
-doskey uped=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Update-Editors }"
-doskey uprc=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Update-Profile }"
-doskey upprofile=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Update-Profile }"
-doskey sync-profile=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Sync-Profile $* }"
-doskey upvt=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Update-Vault }"
-doskey vault-perms=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; vault-perms $* }"
-doskey upsh=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Update-Shell }"
-doskey upall=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Update-All }"
-doskey cleansys=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Clean-System }"
-doskey sysclean=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Clean-System }"
-doskey syscls=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Clean-System }"
-doskey clean-system=powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . $PROFILE; Clean-System }"
+doskey upsys=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Update-System }"
+doskey upwin=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Update-Windows }"
+doskey upgit=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Update-Git $* }"
+doskey plgit=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Update-Git $* }"
+doskey psgit=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Push-Git $* }"
+doskey uped=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Update-Editors }"
+doskey uprc=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Update-Profile }"
+doskey upprofile=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Update-Profile }"
+doskey sync-profile=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Sync-Profile $* }"
+doskey upvt=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Update-Vault }"
+doskey vault-perms=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; vault-perms $* }"
+doskey upsh=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Update-Shell }"
+doskey upall=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Update-All }"
+doskey cleansys=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"
+doskey sysclean=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"
+doskey syscls=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"
+doskey clean-system=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Clean-System }"

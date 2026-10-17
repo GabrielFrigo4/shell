@@ -290,12 +290,20 @@ function _ui_banner([string]$title) {$sep = "=" * 64
 ### ================================
 
 function Update-Winget {
+	if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+		_ui_info "Winget não encontrado no sistema."
+		return
+	}
 	_ui_step "Atualizando pacotes via Winget..."
 	winget upgrade --all
 	if ($LASTEXITCODE -eq 0) { _ui_ok "Winget atualizado com sucesso!" }
 }
 
 function Update-Scoop {
+	if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+		_ui_info "Scoop não encontrado no sistema."
+		return
+	}
 	_ui_step "Atualizando pacotes via Scoop..."
 	scoop update
 	scoop update --all
@@ -303,6 +311,10 @@ function Update-Scoop {
 }
 
 function Update-Choco {
+	if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+		_ui_info "Chocolatey não encontrado no sistema."
+		return
+	}
 	_ui_step "Atualizando pacotes via Chocolatey..."
 	$process = Start-Process -FilePath "choco" -ArgumentList "upgrade all -y" -Verb RunAs -PassThru -WindowStyle Normal
 	Wait-Process -InputObject $process
@@ -312,7 +324,8 @@ function Update-Choco {
 function Update-Windows {
 	_ui_step "Executando Windows Update com reinicialização automática se necessário..."
 	$cmd = "Get-WindowsUpdate -AcceptAll -Install -AutoReboot"
-	$process = Start-Process -FilePath "pwsh" -ArgumentList "-Command $cmd" -Verb RunAs -PassThru -WindowStyle Normal
+	$pw = if (Get-Command pwsh -ErrorAction SilentlyContinue) { "pwsh" } else { "powershell" }
+	$process = Start-Process -FilePath $pw -ArgumentList "-Command $cmd" -Verb RunAs -PassThru -WindowStyle Normal
 	Wait-Process -InputObject $process
 	_ui_ok "Windows Update finalizado!"
 }
@@ -869,9 +882,14 @@ Parâmetros:
 
 function Update-System {
 	_ui_step "Atualizando gerenciadores de pacotes do sistema..."
-	Update-Winget
-	Update-Scoop
-	Update-Choco
+	$found = $false
+	if (Get-Command winget -ErrorAction SilentlyContinue) { Update-Winget; $found = $true }
+	if (Get-Command scoop -ErrorAction SilentlyContinue)  { Update-Scoop; $found = $true }
+	if (Get-Command choco -ErrorAction SilentlyContinue)  { Update-Choco; $found = $true }
+	if (-not $found) {
+		_ui_warn "Nenhum gerenciador de pacotes suportado (winget, scoop, choco) encontrado no sistema."
+		return
+	}
 	_ui_ok "Atualização de pacotes do sistema concluída!"
 }
 

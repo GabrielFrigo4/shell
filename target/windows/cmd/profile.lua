@@ -53,6 +53,17 @@ local function is_git_repo(dir)
 	return false
 end
 
+local function has_cmd(cmd)
+	if not cmd or cmd == "" then return false end
+	local handle = io.popen([[where ]] .. cmd .. [[ 2>nul]])
+	if handle then
+		local res = handle:read("*a")
+		handle:close()
+		return res and res:match("%S") ~= nil
+	end
+	return false
+end
+
 -- ================================
 -- ENVIRONMENT
 -- ================================
@@ -600,7 +611,6 @@ local aliases = {
 	["upscp"] = [[scoop update && scoop update --all]],
 	["upcho"] = [[powershell -NoProfile -Command "Start-Process choco -ArgumentList 'upgrade all -y' -Verb RunAs -Wait"]],
 	["upwin"] = [[powershell -NoProfile -Command "Get-WindowsUpdate -AcceptAll -Install -AutoReboot"]],
-	["upsys"] = [[winget upgrade --all && scoop update && scoop update --all && powershell -NoProfile -Command "Start-Process choco -ArgumentList 'upgrade all -y' -Verb RunAs -Wait"]],
 
 	["goto-msys"] = [[cd /d "]] .. (MSYS_HOME or [[C:\msys64]]) .. [["]],
 	["show-msys"] = [[start "" "]] .. (MSYS_HOME or [[C:\msys64]]) .. [["]],
@@ -1357,6 +1367,39 @@ local function cmd_upsh(args)
 	end
 end
 
+local function cmd_upsys(args)
+	local flags = args and trim(args) or ""
+	if flags:find("%-%-help") or flags:find("%-h") then
+		print("Uso: upsys [opções] (alias: update-system)")
+		print("")
+		print("Atualiza pacotes dos gerenciadores nativos (Winget, Scoop, Chocolatey).")
+		return
+	end
+	_ui_step("Atualizando gerenciadores de pacotes do sistema...")
+	local found = false
+	if has_cmd("winget") then
+		found = true
+		_ui_sub("Atualizando pacotes via Winget...")
+		os.execute([[winget upgrade --all]])
+	end
+	if has_cmd("scoop") then
+		found = true
+		_ui_sub("Atualizando pacotes via Scoop...")
+		os.execute([[scoop update && scoop update --all]])
+	end
+	if has_cmd("choco") then
+		found = true
+		_ui_sub("Atualizando pacotes via Chocolatey...")
+		local pw = has_cmd("pwsh") and "pwsh" or "powershell"
+		os.execute(pw .. [[ -NoProfile -Command "Start-Process choco -ArgumentList 'upgrade all -y' -Verb RunAs -Wait"]])
+	end
+	if not found then
+		_ui_warn("Nenhum gerenciador de pacotes suportado (winget, scoop, choco) encontrado no sistema.")
+		return
+	end
+	_ui_ok("Pacotes do sistema atualizados com sucesso!")
+end
+
 local function cmd_upall(args)
 	local flags = args and trim(args) or ""
 	if flags:find("%-%-help") or flags:find("%-h") then
@@ -1392,11 +1435,7 @@ local function cmd_upall(args)
 		return
 	end
 	_ui_banner("Atualização Global do Ecossistema e Sistema")
-	_ui_step("Atualizando gerenciadores de pacotes do sistema...")
-	os.execute([[winget upgrade --all]])
-	os.execute([[scoop update && scoop update --all]])
-	os.execute([[powershell -NoProfile -Command "Start-Process choco -ArgumentList 'upgrade all -y' -Verb RunAs -Wait"]])
-	_ui_ok("Pacotes do sistema atualizados!")
+	cmd_upsys()
 	cmd_uprc()
 	cmd_upvt()
 	cmd_upsh()
@@ -1440,6 +1479,8 @@ local updater_commands = {
 	["vault-perms"] = cmd_vault_perms,
 	["upsh"] = cmd_upsh,
 	["update-shell"] = cmd_upsh,
+	["upsys"] = cmd_upsys,
+	["update-system"] = cmd_upsys,
 	["upall"] = cmd_upall,
 	["update-all"] = cmd_upall,
 	["clean-system"] = cmd_clean_system,

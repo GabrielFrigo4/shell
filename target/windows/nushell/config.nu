@@ -152,8 +152,6 @@ alias man = wsl man;
 alias wman = win-man;
 alias uman = unix-man;
 alias mandoc = unix-man;
-alias upget = winget upgrade --all;
-alias upcho = ^pwsh -NoProfile -Command "Start-Process choco -ArgumentList 'upgrade all -y' -Verb RunAs -Wait";
 alias Goto-Home = cd $"($Home)";
 alias Goto-OneDrive = cd $"($OneDrive)";
 alias Goto-Desktop = cd $"($Desktop)";
@@ -240,24 +238,64 @@ def _ui_banner [title: string] {
 ### SHELL FUNCTIONS
 ### ================================
 
+def upget [] {
+	if (which winget | is-empty) {
+		_ui_info "Winget não encontrado no sistema."
+		return
+	}
+	_ui_step "Atualizando pacotes via Winget..."
+	winget upgrade --all
+	_ui_ok "Winget atualizado com sucesso!"
+}
+
 def upscp [] {
+	if (which scoop | is-empty) {
+		_ui_info "Scoop não encontrado no sistema."
+		return
+	}
 	_ui_step "Atualizando pacotes via Scoop..."
 	scoop update
 	scoop update --all
 	_ui_ok "Scoop atualizado com sucesso!"
 }
 
+def upcho [] {
+	if (which choco | is-empty) {
+		_ui_info "Chocolatey não encontrado no sistema."
+		return
+	}
+	_ui_step "Atualizando pacotes via Chocolatey..."
+	let pw = if (which pwsh | is-not-empty) { "pwsh" } else { "powershell" }
+	^$pw -NoProfile -Command "Start-Process choco -ArgumentList 'upgrade all -y' -Verb RunAs -Wait"
+	_ui_ok "Chocolatey atualizado com sucesso!"
+}
+
 def upwin [] {
 	_ui_step "Executando Windows Update com reinicialização automática se necessário..."
-	^pwsh -NoProfile -Command "Get-WindowsUpdate -AcceptAll -Install -AutoReboot"
+	let pw = if (which pwsh | is-not-empty) { "pwsh" } else { "powershell" }
+	^$pw -NoProfile -Command "Get-WindowsUpdate -AcceptAll -Install -AutoReboot"
 	_ui_ok "Windows Update finalizado!"
 }
 
 def upsys [] {
 	_ui_step "Atualizando gerenciadores de pacotes do sistema..."
-	upget
-	upscp
-	upcho
+	mut found = false
+	if (which winget | is-not-empty) {
+		$found = true
+		upget
+	}
+	if (which scoop | is-not-empty) {
+		$found = true
+		upscp
+	}
+	if (which choco | is-not-empty) {
+		$found = true
+		upcho
+	}
+	if not $found {
+		_ui_warn "Nenhum gerenciador de pacotes suportado (winget, scoop, choco) encontrado no sistema."
+		return
+	}
 	_ui_ok "Atualização de pacotes do sistema concluída!"
 }
 
@@ -808,7 +846,6 @@ def upall [...args: string] {
 
 alias upprofile = uprc;
 alias sync-profile = uprc;
-alias sync-extensions = sync-extensions;
 alias update-extensions = sync-extensions;
 alias upext = sync-extensions;
 alias update-git = upgit;

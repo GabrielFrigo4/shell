@@ -91,6 +91,14 @@ _install_extended_shell() {
 			if [ "${_is_win}" -eq 1 ]; then
 				_deploy_item "${_pwsh_dir}/profile.ps1" "${_win_docs}/PowerShell/profile.ps1"
 				_deploy_item "${_pwsh_dir}/Microsoft.PowerShell_profile.ps1" "${_win_docs}/PowerShell/Microsoft.PowerShell_profile.ps1"
+				_deploy_item "${_pwsh_dir}/profile.ps1" "${_win_docs}/WindowsPowerShell/profile.ps1"
+				_deploy_item "${_pwsh_dir}/Microsoft.PowerShell_profile.ps1" "${_win_docs}/WindowsPowerShell/Microsoft.PowerShell_profile.ps1"
+				if [ -n "${_win_onedrive}" ] && [ -d "${_win_home}/Documents" ] && [ "${_win_docs}" != "${_win_home}/Documents" ]; then
+					_deploy_item "${_pwsh_dir}/profile.ps1" "${_win_home}/Documents/PowerShell/profile.ps1"
+					_deploy_item "${_pwsh_dir}/Microsoft.PowerShell_profile.ps1" "${_win_home}/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
+					_deploy_item "${_pwsh_dir}/profile.ps1" "${_win_home}/Documents/WindowsPowerShell/profile.ps1"
+					_deploy_item "${_pwsh_dir}/Microsoft.PowerShell_profile.ps1" "${_win_home}/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1"
+				fi
 			fi
 			_deploy_item "${_pwsh_dir}/profile.ps1" "${_cfg}/powershell/profile.ps1"
 			_deploy_item "${_pwsh_dir}/Microsoft.PowerShell_profile.ps1" "${_cfg}/powershell/Microsoft.PowerShell_profile.ps1"

@@ -1031,7 +1031,7 @@ update-pacman() {
 update-apt() {
 	command -v apt > "/dev/null" 2>&1 || { _ui_err "apt não encontrado no sistema."; return 127; }
 	_ui_step "Executando atualização de pacotes via apt..."
-	_as_root apt update && _as_root apt upgrade --yes "$@"
+	_as_root apt update && _as_root apt full-upgrade --yes "$@"
 }
 
 update-dnf() {
