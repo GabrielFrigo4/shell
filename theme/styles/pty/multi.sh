@@ -30,11 +30,13 @@ _theme_render() {
 	local _kernel_info=""
 	if [ "${_os_type:-}" = "linux" ] && [ -n "${_kernel_release:-}" ]; then
 		_kernel_info=" ${_theme_color_blue} ${_theme_color_magenta}${_kernel_release}"
+	elif case "${_os_type:-}" in *windows*|*msys*|*cygwin*|*nt*) true ;; *) false ;; esac; then
+		_kernel_info=" ${_theme_color_blue}󰣆 ${_theme_color_magenta}NT 10.0"
 	fi
 
-	PS1="${_newline}${_delimiter}${_os_color}${_os_icon}${_theme_color_magenta}${_os_name}${_kernel_info} ${_theme_color_blue} ${_theme_color_magenta}${_shell_name}${_delimiter}"
-	PS1="${PS1}${_newline}${_delimiter}┌──${_theme_color_blue} ${_theme_color_green}${_time}${_delimiter}─${_theme_color_blue} ${_theme_color_green}${_date}${_delimiter}─${_theme_color_yellow} ${_theme_color_cyan}${_pwd}${_delimiter}─ ${_user_icon_color:-${_theme_color_blue}} ${_user_color}${_user}${_delimiter}${_git_info}"
-	PS1="${PS1}${_newline}${_delimiter}└─${_terminal_color}${_theme_color_reset} "
+	PS1="${_newline}${_delimiter}${_os_color}${_os_icon}${_theme_color_magenta}${_os_name}${_kernel_info} ${_theme_color_blue} ${_theme_color_magenta}${_shell_name}${_delimiter}"
+	PS1="${PS1}${_newline}${_delimiter}┌──${_theme_color_blue} ${_theme_color_green}${_time}${_delimiter}─${_theme_color_blue} ${_theme_color_green}${_date}${_delimiter}─${_theme_color_yellow} ${_theme_color_cyan}${_pwd}${_delimiter}─ ${_user_icon_color:-${_theme_color_blue}} ${_user_color}${_user}${_delimiter}${_git_info}"
+	PS1="${PS1}${_newline}${_delimiter}└─${_terminal_color}${_theme_color_reset} "
 
 	[ -n "${ZSH_VERSION:-}" ] && export PROMPT="${PS1}"
 	return 0

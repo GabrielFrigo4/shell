@@ -200,6 +200,16 @@ sh "/usr/local/share/shell/install.sh" --context desktop
 
 ---
 
+## 🔤 Tipografia & Requisitos de Terminal
+
+Para a renderização visual precisa dos prompts, glifos do Powerline (``, ``, ``) e ícones de status (``, ``, ``, `󰣆`, ``, `󰊢`):
+
+- **Fonte Oficial Homologada:** **`JetBrainsMono Nerd Font`** (versão 3.x+). Suas hastes de peso 400 (15% mais encorpadas) e proporções de célula fornecem alinhamento geométrico perfeito com Box-Drawing e Powerline.
+- **Suporte a Cores:** Terminal com suporte a ANSI 256 colors ou TrueColor (24-bit).
+- **Emuladores Recomendados:** Alacritty, Kitty, WezTerm, Foot, Windows Terminal.
+
+---
+
 ## 📚 Documentação Técnica Completa
 
 Para aprofundar na arquitetura, comportamentos por contexto e motores de detecção:

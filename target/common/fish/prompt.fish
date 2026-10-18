@@ -48,9 +48,9 @@ function fish_prompt
     end
 
     set -l sep (set_color -o brblack)
-    set -l l1 "$sep"(set_color -o blue)"$os_icon "(set_color -o magenta)"$os_name"$kernel_rel" "(set_color -o blue)" "(set_color -o magenta)"fish"$sep""
-    set -l l2 "$sep┌──"(set_color -o blue)" "(set_color -o green)"$time"$sep"─"(set_color -o blue)" "(set_color -o green)"$c_date"$sep"─"(set_color -o yellow)" "(set_color -o cyan)"$pwd_segment"$sep"─ "(set_color -o blue)" "(set_color -o green)"$user"$sep" $git_info"
-    set -l l3 "$sep└─"(set_color -o blue)""(set_color normal)" "
+    set -l l1 "$sep"(set_color -o blue)"$os_icon "(set_color -o magenta)"$os_name"$kernel_rel" "(set_color -o blue)" "(set_color -o magenta)"fish"$sep""
+    set -l l2 "$sep┌──"(set_color -o blue)" "(set_color -o green)"$time"$sep"─"(set_color -o blue)" "(set_color -o green)"$c_date"$sep"─"(set_color -o yellow)" "(set_color -o cyan)"$pwd_segment"$sep"─ "(set_color -o blue)" "(set_color -o green)"$user"$sep" $git_info"
+    set -l l3 "$sep└─"(set_color -o blue)""(set_color normal)" "
 
     echo ""
     echo $l1

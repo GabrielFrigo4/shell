@@ -518,12 +518,14 @@ function pf:filter(prompt)
 	current.cwd = prompt_info.cwd
 	current.dir = prompt_info.dir
 
-	local line1 = text_bright_black("") ..
+	local line1 = text_bright_black("") ..
 		text_bright_blue(icon .. " ") ..
 		text_bright_magenta(info .. " ") ..
+		text_bright_blue("󰣆 ") ..
+		text_bright_magenta("NT 10.0 ") ..
 		text_bright_blue(" ") ..
 		text_bright_magenta("cmd") ..
-		text_bright_black("\n")
+		text_bright_black("\n")
 
 	local time_str = os.date("%H:%M:%S")
 	local date_str = os.date("%d/%m/%y")
@@ -531,7 +533,7 @@ function pf:filter(prompt)
 	local line2 = text_bright_black("┌──") ..
 		text_bright_blue(" ") .. text_bright_green(time_str) .. text_bright_black("─") ..
 		text_bright_blue(" ") .. text_bright_green(date_str) .. text_bright_black("─") ..
-		text_bright_yellow(" ") .. text_bright_cyan(prompt_info.dir) .. text_bright_black("─ ")
+		text_bright_yellow(" ") .. text_bright_cyan(prompt_info.dir) .. text_bright_black("─ ")
 
 	if admin then
 		line2 = line2 .. text_bright_black("") .. text_bright_blue(" ") .. text_bright_red("admin") .. text_bright_black("")
@@ -561,7 +563,7 @@ function pf:filter(prompt)
 		line2 = line2 .. " " .. text_bright_black("") .. text_bright_blue(" ") .. text_bright_cyan(prompt_info.venv) .. text_bright_black("")
 	end
 
-	local line3 = text_bright_black("\n└─") .. text_bright_blue(" ")
+	local line3 = text_bright_black("\n└─") .. text_bright_blue(" ")
 
 	prompt = GET_RESET() .. line1 .. line2 .. line3 .. GET_RESET()
 	current.prompt = prompt

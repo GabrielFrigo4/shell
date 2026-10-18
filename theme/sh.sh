@@ -49,11 +49,11 @@ _calc_c_len() {
 	done
 
 	local _utf8_extra=0
-	for _glyph in "" "" "" "" "" "" "" "" "󰊢" "" "" "🐡" "" "" "" "" "" "" "󰖨" ""; do
+	for _glyph in "" "" "" "" "" "" "" "" "󰊢" "" "" "🐡" "" "" "" "" "" "" "󰖨" "" "" "󰣆"; do
 		local _scan="${_string}"
 		local _weight=2
 		case "${_glyph}" in
-			"󰊢"|"🐡"|"󰖨"|""|"") _weight=3 ;;
+			"󰊢"|"🐡"|"󰖨"|""|""|"󰣆") _weight=3 ;;
 			*) _weight=2 ;;
 		esac
 		while true; do
