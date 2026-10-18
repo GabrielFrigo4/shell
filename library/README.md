@@ -13,6 +13,14 @@ Esta pasta fornece o runtime compartilhado de utilitários POSIX e funções de 
     - Helpers POSIX canônicos: `path-front`, `path-back`, `path-dedup`, `_is_command`, `_as_root`.
     - Orquestradores e atualizadores universais (`update-all`, `update-system`, `update-shell`, `update-editors`, `update-profile`, `update-git`, `update-aur`, etc.).
     - Funções de controle de energia (`reboot`, `poweroff`).
+- **`hypervisor.sh`**:
+    - Orquestrador unificado multiplataforma para Máquinas Virtuais (KVM/Bhyve), Containers (Incus LXC) e Jails (BastilleBSD).
+    - Comandos e aliases canônicos:
+        - `fb` / `freebsd`: Controla VM KVM (no Linux Host) ou Jail nativa Bastille (no FreeBSD Host).
+        - `lx` / `linux`: Controla Container Incus LXC (no Linux Host) ou VM Bhyve Debian (no FreeBSD Host).
+        - `ob` / `openbsd`: Controla VM OpenBSD no KVM (Linux) ou Bhyve (FreeBSD).
+        - `nt` / `netbsd`: Controla VM NetBSD no KVM (Linux) ou Bhyve (FreeBSD).
+    - Subcomandos universais: `start`, `stop`, `restart`, `status`, `console`, `ssh` e execução direta de comandos no convidado.
 - **`ui.sh`**:
     - Sistema de emissão semântica e interface de terminal (TUI) resiliente com suporte estrito a POSIX sh.
     - Detecção automática de TTY interativo (`_ui_has_color` sob `[ -t 1 ]`) com fallback gracioso para texto plano sem sequências ANSI em pipelines e redirecionamentos.

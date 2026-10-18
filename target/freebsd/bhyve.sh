@@ -106,8 +106,6 @@ agy() {
 ### --------------------------------
 ### Aliases
 ### --------------------------------
-alias linux="linux-host"
-alias lx="linux-host"
-alias debian="linux-host"
-alias deb="linux-host"
+alias debian="linux"
+alias deb="linux"
 alias agy="agy-lx"

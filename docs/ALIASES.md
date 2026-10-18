@@ -193,7 +193,28 @@ flowchart TD
 
 ---
 
-## 9. 🌐 Variáveis de Ambiente & Configurações Globais
+## 9. 📦 Virtualização, Hipervisores & Containers
+
+| Comando Canônico / Alias                            | Descrição                                                                        | Ferramenta Alvo / Comportamento                      |
+| :-------------------------------------------------- | :------------------------------------------------------------------------------- | :--------------------------------------------------- |
+| `freebsd` / `fb`                                    | Conecta ou abre console interativo do FreeBSD.                                   | KVM (`virsh`/SSH) no Linux; Bastille Jail no FreeBSD |
+| `fb start` / `fb stop` / `fb restart`               | Liga, desliga ou reinicia a VM/Jail FreeBSD.                                     | `virsh` (Linux) / `bastille` (FreeBSD)               |
+| `fb status` / `fb list`                             | Exibe status, interfaces e informações da VM/Jail FreeBSD.                       | `virsh dominfo` (Linux) / `bastille list` (FreeBSD)  |
+| `fb console`                                        | Conecta diretamente ao console de terminal serial do FreeBSD.                    | `virsh console` (Linux) / `bastille console` (BSD)   |
+| `fb ssh [cmd...]`                                   | Dispara comando ou sessão SSH para o host/Jail FreeBSD.                          | OpenSSH (`freebsd@IP`)                               |
+| `linux` / `lx`                                      | Conecta ou abre console interativo do Linux.                                     | Container Incus no Linux; VM Bhyve Debian no FreeBSD |
+| `lx start` / `lx stop` / `lx restart`               | Liga, desliga ou reinicia o container/VM Linux.                                  | `incus` (Linux) / `vm-bhyve` (FreeBSD)               |
+| `lx status` / `lx list`                             | Exibe status e listagem dos containers ou VMs Linux.                             | `incus list` (Linux) / `vm list` (FreeBSD)           |
+| `lx console`                                        | Abre o console interativo do container Incus ou VM Bhyve.                        | `incus exec` (Linux) / `vm console` (FreeBSD)        |
+| `lx [cmd...]`                                       | Executa comando transparente no container (Incus) ou na VM (Bhyve com PWD sync). | `incus exec` / `linux-host` (FreeBSD)                |
+| `openbsd` / `ob`                                    | Conecta ou orquestra a VM OpenBSD.                                               | KVM no Linux (`virsh`); Bhyve no FreeBSD (`vm`)      |
+| `ob start` / `ob stop` / `ob restart` / `ob status` | Ciclo de vida da VM OpenBSD.                                                     | KVM (`virsh`) / Bhyve (`vm`)                         |
+| `netbsd` / `nt`                                     | Conecta ou orquestra a VM NetBSD.                                                | KVM no Linux (`virsh`); Bhyve no FreeBSD (`vm`)      |
+| `nt start` / `nt stop` / `nt restart` / `nt status` | Ciclo de vida da VM NetBSD.                                                      | KVM (`virsh`) / Bhyve (`vm`)                         |
+
+---
+
+## 10. 🌐 Variáveis de Ambiente & Configurações Globais
 
 | Variável                                 | Descrição / Propósito                                                        | Origem / Padrão                                                             |
 | :--------------------------------------- | :--------------------------------------------------------------------------- | :-------------------------------------------------------------------------- |
@@ -213,3 +234,7 @@ flowchart TD
 | `HISTSIZE` / `HISTFILE`                  | Limite e arquivo de histórico persistente no POSIX `sh`.                     | `50000` comandos em `${HOME}/.sh_history`                                   |
 | `WIFI_SSID_*` / `WIFI_PASS_*`            | Credenciais Wi-Fi lidas e sincronizadas pelo `update-wifi`/`update-network`. | Injetadas pelo `Vault` ou variáveis de ambiente                             |
 | `PERSONAL_SERVER_*` / `VENTURE_SERVER_*` | Chaves SSH e endereços IP de servidores remotos (Personal e Venture).        | Injetados pelo `Vault`                                                      |
+| `FREEBSD_HOST_IP` / `FREEBSD_VM_NAME`    | IP e nome da VM (KVM) ou Jail (Bastille) para o orquestrador `fb`.           | Injetados pelo `Vault` / Auto-detectados (`192.168.8.3`)                    |
+| `LINUX_HOST_IP` / `LINUX_CONTAINER_NAME` | IP e nome do container Incus ou VM Bhyve para o orquestrador `lx`.           | Injetados pelo `Vault` / Auto-detectados (`192.168.8.2`)                    |
+| `OPENBSD_HOST_IP` / `OPENBSD_VM_NAME`    | IP e nome da VM OpenBSD para o orquestrador `ob`.                            | Injetados pelo `Vault` (`192.168.8.4`)                                      |
+| `NETBSD_HOST_IP` / `NETBSD_VM_NAME`      | IP e nome da VM NetBSD para o orquestrador `nt`.                             | Injetados pelo `Vault` (`192.168.8.5`)                                      |
