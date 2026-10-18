@@ -4,7 +4,7 @@
 
 PROMPT_OS_ICON="${PROMPT_OS_ICON:-$(_detect_distro_icon)}"
 PROMPT_OS_COLOR="blue"
-[ -z "${PROMPT_OS_NAME:-}" ] && export PROMPT_OS_NAME="${_DETECTED_KERNEL_RELEASE-$(_detect_kernel_release)}"
+[ -z "${PROMPT_OS_NAME:-}" ] && export PROMPT_OS_NAME="${_DETECTED_DISTRO_VERSION-$(_detect_distro_version)}"
 
 . "${SHELL_REPO_DIR}/theme/bash.sh"
 . "${SHELL_REPO_DIR}/target/linux/environment.sh"

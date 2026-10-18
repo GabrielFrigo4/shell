@@ -60,13 +60,13 @@ function prompt {
 			$dirty = ""
 			$status = (git status --porcelain=v1 -uno --ignore-submodules=dirty 2>$null)
 			if ($status) { $dirty = "$yellow*" }
-			$gitInfo = " $gray❮$red󰊢 $magenta$b$dirty$gray❯"
+			$gitInfo = " $gray$red󰊢 $magenta$b$dirty$gray"
 		}
 	} catch { }
 
 	$userColor = if ($IsAdmin) { $red } else { $green }
-	$l1 = "$gray$blue$osIcon $magenta$osName$gray─$blue $magenta$shellName$gray"
-	$l2 = "$gray┌──❮$blue $green$time$gray❯─❮$blue $green$date$gray❯─❮$yellow $cyan$pwd$gray❯─ ❮$blue $userColor$user$gray❯$gitInfo"
+	$l1 = "$gray$blue$osIcon $magenta$osName $blue $magenta$shellName$gray"
+	$l2 = "$gray┌──$blue $green$time$gray─$blue $green$date$gray─$yellow $cyan$pwd$gray─ $blue $userColor$user$gray$gitInfo"
 	$l3 = "$gray└─$blue$reset "
 
 	return "`n$l1`n$l2`n$l3"

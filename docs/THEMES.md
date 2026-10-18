@@ -16,7 +16,7 @@ user@hostname:~/projects/myapp (main ✗) $
 
 1. **Identificador de Usuário e Host:**
     - Usuário comum: Exibido em tom suave (verde nos temas gráficos / ciano no TTY).
-    - Usuário `root`: Destacado em vermelho no console puro TTY (`root@host #`) e no tema multilinha PTY `multi` (`❮ root❯`), servindo como alerta evidente de privilégios; nos temas compactos PTY de 1 linha (`pill` e `micro`), o nome preserva o tom verde harmônico da pílula enquanto o chevron final (``) assume o tom vermelho de alerta.
+    - Usuário `root`: Destacado em vermelho no console puro TTY (`root@host #`) e no tema multilinha PTY `multi` (` root`), servindo como alerta evidente de privilégios; nos temas compactos PTY de 1 linha (`pill` e `micro`), o nome preserva o tom verde harmônico da pílula enquanto o chevron final (``) assume o tom vermelho de alerta.
 2. **Diretório Atual (`PWD`):**
     - Diretórios abreviados com base no `$HOME` (`~`).
     - Cores de contraste para rápida localização do caminho.
@@ -64,7 +64,7 @@ user@hostname:~/projects/myapp (main ✗) $
 - **Peculiaridades da `libedit`:** Utiliza delimitador único hexadecimal (`\x01` / `0x01`), descarta literais consecutivos sem caractere imprimível e desincroniza o cursor vertical em multilinhas (`\n`). Por isso, o tema adota rigorosamente **1 linha**.
 - **Decisão Arquitetural Upstream:** Os mantenedores do FreeBSD rejeitam intencionalmente parsers reentrantes e hooks arbitrários (`PROMPT_COMMAND`) para preservar a segurança contra injeção de comandos e manter a estabilidade no _single-user mode_.
 - **Mini Prompt Gráfico (`! _is_raw_tty`):** Em emuladores modernos, suporta dois layouts de alta densidade via `$PROMPT_STYLE`:
-    - **Pílula (`pill` — padrão em FreeBSD 14+):** Exibe pílula inicial unificada de sistema (` 15.1  sh`), pasta (` shell`), usuário (` gabrielf`) e Git (`󰊢 main*` com `*` em amarelo), eliminando delimitadores `❮❯` para calibragem estrita entre 170 e 185 bytes no buffer de 192 bytes.
+    - **Pílula (`pill` — padrão em FreeBSD 14+):** Exibe pílula inicial unificada de sistema (` 15.1  sh`), pasta (` shell`), usuário (` gabrielf`) e Git (`󰊢 main*` com `*` em amarelo), eliminando delimitadores `` para calibragem estrita entre 170 e 185 bytes no buffer de 192 bytes.
     - **Micro (`micro` — auto-fallback em FreeBSD <= 13 ou `$PROMPT_BUFFER_LIMIT < 192`):** Layout _streamlined_ ultra-leve com ícones diretos sem delimitadores e sem identificador de shell (` 13.2  shell  gabrielf 󰊢 main* `), com o indicador `*` herdando a cor da branch, calibrado entre 96 e 126 bytes no buffer estático de 128 bytes.
 - **Motor de Orçamento Dinâmico de Buffer (Proteção 360°):** Em vez de limites fixos, calcula em tempo real via aritmética nativa POSIX o espaço exato disponível no buffer `ps[PROMPTLEN]`. Aplica travas defensivas de entrada no usuário (`${#_user} <= 12`), hostname (`<= 12`) e versão do SO (`<= 6`), deduzindo seus custos exatos e alocando a sobra inteligentemente entre pasta e branch. Permite nomes de pastas longos (até 40+ caracteres) quando fora do Git ou com branch curta, e contrai sob nomes extensos para travar inegociavelmente no teto físico (mesmo que o usuário ou branch tenham centenas de caracteres).
 - **Fallback TTY 100% Bold (`_is_raw_tty`):** No console puro `vt`/`syscons`, comuta para prompt ASCII atômico de linha única 100% negrito via persistência ANSI ECMA-48, com orçamento dinâmico operando entre 107 e 190 bytes com salvaguarda absoluta contra overflow e zero forks no PTY.

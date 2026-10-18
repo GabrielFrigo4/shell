@@ -520,8 +520,7 @@ function pf:filter(prompt)
 
 	local line1 = text_bright_black("") ..
 		text_bright_blue(icon .. " ") ..
-		text_bright_magenta(info) ..
-		text_bright_black("─") ..
+		text_bright_magenta(info .. " ") ..
 		text_bright_blue(" ") ..
 		text_bright_magenta("cmd") ..
 		text_bright_black("\n")
@@ -529,15 +528,15 @@ function pf:filter(prompt)
 	local time_str = os.date("%H:%M:%S")
 	local date_str = os.date("%d/%m/%y")
 
-	local line2 = text_bright_black("┌──❮") ..
-		text_bright_blue(" ") .. text_bright_green(time_str) .. text_bright_black("❯─❮") ..
-		text_bright_blue(" ") .. text_bright_green(date_str) .. text_bright_black("❯─❮") ..
-		text_bright_yellow(" ") .. text_bright_cyan(prompt_info.dir) .. text_bright_black("❯─ ")
+	local line2 = text_bright_black("┌──") ..
+		text_bright_blue(" ") .. text_bright_green(time_str) .. text_bright_black("─") ..
+		text_bright_blue(" ") .. text_bright_green(date_str) .. text_bright_black("─") ..
+		text_bright_yellow(" ") .. text_bright_cyan(prompt_info.dir) .. text_bright_black("─ ")
 
 	if admin then
-		line2 = line2 .. text_bright_black("❮") .. text_bright_blue(" ") .. text_bright_red("admin") .. text_bright_black("❯")
+		line2 = line2 .. text_bright_black("") .. text_bright_blue(" ") .. text_bright_red("admin") .. text_bright_black("")
 	else
-		line2 = line2 .. text_bright_black("❮") .. text_bright_blue(" ") .. text_bright_green(user) .. text_bright_black("❯")
+		line2 = line2 .. text_bright_black("") .. text_bright_blue(" ") .. text_bright_green(user) .. text_bright_black("")
 	end
 
 	local binfo = clink.promptcoroutine(get_git_branch)
@@ -555,11 +554,11 @@ function pf:filter(prompt)
 
 	if active_branch then
 		local dirty_ind = active_dirty and text_bright_yellow("*") or ""
-		line2 = line2 .. " " .. text_bright_black("❮") .. text_bright_red("󰊢 ") .. text_bright_magenta(active_branch) .. dirty_ind .. text_bright_black("❯")
+		line2 = line2 .. " " .. text_bright_black("") .. text_bright_red("󰊢 ") .. text_bright_magenta(active_branch) .. dirty_ind .. text_bright_black("")
 	end
 
 	if prompt_info.venv ~= nil then
-		line2 = line2 .. " " .. text_bright_black("❮") .. text_bright_blue(" ") .. text_bright_cyan(prompt_info.venv) .. text_bright_black("❯")
+		line2 = line2 .. " " .. text_bright_black("") .. text_bright_blue(" ") .. text_bright_cyan(prompt_info.venv) .. text_bright_black("")
 	end
 
 	local line3 = text_bright_black("\n└─") .. text_bright_blue(" ")

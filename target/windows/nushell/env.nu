@@ -108,13 +108,13 @@ def create_left_prompt [] {
 		let bname = ($branch.stdout | str trim)
 		let dirty_check = (do -i { git status --porcelain=v1 -uno --ignore-submodules=dirty } | complete)
 		let indicator = (if ($dirty_check.stdout | str trim | is-not-empty) { $"($yellow)*" } else { "" })
-		$git_info = $" ($gray)❮($red)󰊢 ($magenta)($bname)($indicator)($gray)❯"
+		$git_info = $" ($gray)($red)󰊢 ($magenta)($bname)($indicator)($gray)"
 	}
 
 	let os_icon = ($env.PROMPT_OS_ICON? | default "")
 	let os_name = ($env.PROMPT_OS_NAME? | default "Win 11")
-	let line1 = $"($gray)($blue)($os_icon) ($magenta)($os_name)($gray)─($blue) ($magenta)nu($gray)"
-	let line2 = $"($gray)┌──❮($blue) ($green)($time)($gray)❯─❮($blue) ($green)($date)($gray)❯─❮($yellow) ($cyan)($dir)($gray)❯─ ❮($blue) ($green)($user)($gray)❯($git_info)"
+	let line1 = $"($gray)($blue)($os_icon) ($magenta)($os_name) ($blue) ($magenta)nu($gray)"
+	let line2 = $"($gray)┌──($blue) ($green)($time)($gray)─($blue) ($green)($date)($gray)─($yellow) ($cyan)($dir)($gray)─ ($blue) ($green)($user)($gray)($git_info)"
 	let line3 = $"($gray)└─($blue)($reset) "
 
 	$"\n($line1)\n($line2)\n($line3)"

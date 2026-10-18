@@ -937,3 +937,39 @@ _detect_kernel_release() {
 	_cache_write "kernel_release" "${_DETECTED_KERNEL_RELEASE}"
 	echo "${_DETECTED_KERNEL_RELEASE}"
 }
+
+### --------------------------------
+### Detect Distro Version
+### --------------------------------
+_detect_distro_version() {
+	[ -n "${_DETECTED_DISTRO_VERSION+x}" ] && echo "${_DETECTED_DISTRO_VERSION}" && return 0
+	if [ -f "${_SHELL_CACHE_DIR}/distro_version" ]; then
+		_DETECTED_DISTRO_VERSION="$(_cache_read "distro_version")"
+		echo "${_DETECTED_DISTRO_VERSION}"
+		return 0
+	fi
+
+	if [ -f "/etc/os-release" ]; then
+		_DETECTED_DISTRO_VERSION="$(. /etc/os-release 2> "/dev/null" && echo "${VERSION_ID:-${BUILD_ID:-}}")"
+	elif [ -f "/etc/debian_version" ]; then
+		_DETECTED_DISTRO_VERSION="$(cat /etc/debian_version 2> "/dev/null")"
+	fi
+
+	if [ -z "${_DETECTED_DISTRO_VERSION:-}" ]; then
+		case "$(_detect_distro)" in
+			arch|void|gentoo) _DETECTED_DISTRO_VERSION="rolling" ;;
+			freebsd|openbsd|netbsd|dragonfly)
+				_DETECTED_DISTRO_VERSION="$(uname -r 2> "/dev/null" | cut -d'-' -f1)"
+				;;
+			macos)
+				_DETECTED_DISTRO_VERSION="$(sw_vers -productVersion 2> "/dev/null" || uname -r)"
+				;;
+			*)
+				_DETECTED_DISTRO_VERSION="$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "UNIX")"
+				;;
+		esac
+	fi
+
+	_cache_write "distro_version" "${_DETECTED_DISTRO_VERSION}"
+	echo "${_DETECTED_DISTRO_VERSION}"
+}
