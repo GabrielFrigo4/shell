@@ -87,7 +87,7 @@ export PROMPT_STYLE="multi"
 
 ### Regras de Auto-Fallback:
 
-1. **Fallback TTY:** Se o terminal for um console puro (`_is_raw_tty`), o estilo `multi` comuta automaticamente para `pill` (ASCII estruturado).
+1. **Fallback TTY:** Se o terminal for um console puro (`_is_raw_tty`), o estilo `multi` comuta automaticamente para `pill` (ASCII estruturado) e o prompt assegura cursor estático em bloco sólido (`\e%G\e[?16;238;0c` no Linux VT ou `\e[0 q` em PTYs), prevenindo pisque e distorções cromáticas em fontes de 512 glifos.
 2. **Salvaguarda do FreeBSD `/bin/sh`:** No `/bin/sh`, o estilo `multi` comuta automaticamente para `pill` para proteger o buffer estático de 192 bytes. Se o limite físico do buffer for inferior a 192 bytes (`PROMPT_BUFFER_LIMIT < 192`), comuta automaticamente para `micro`.
 3. **Desempenho Zero-I/O:** O carregamento do arquivo de tema em disco ocorre apenas na inicialização ou quando a variável `PROMPT_STYLE` for alterada. Renderizações subsequentes ocorrem 100% em memória, garantindo latência < 32ms (classificação ULTRA).
 

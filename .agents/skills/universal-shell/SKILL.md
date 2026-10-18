@@ -116,6 +116,12 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
 
 - Em conformidade com o Princípio 19 (Autonomia Reentrante) e Princípio 7 (Zero-Tweaks), `upsh` e `resh` executados em qualquer shell no Windows (PowerShell, NuShell, CMD) sincronizam atomicamente os perfis físicos em disco de todos os demais (`Documents\PowerShell`, `%APPDATA%\nushell`, `%LOCALAPPDATA%\clink`), sem qualquer intervenção manual.
 
+17. **Ciclo Sagrado de Propagação & Invariante de Produção Imaculada (Zero-Dirty):**
+
+- O clone de produção `/usr/local/share/shell` (ou `~/.local/share/shell`) é estritamente downstream e atualizado exclusivamente via `git pull` ou comando `upsh`.
+- É TERMINANTEMENTE PROIBIDO copiar arquivos avulsos (`cp`, `rsync`) da bancada para a produção, mesmo durante testes rápidos ou diagnósticos. Modificações manuais tornam a working tree de produção suja (`dirty`), quebrando a soberania do DVCS e impedindo atualizações limpas.
+- Toda modificação deve ser desenvolvida e validada na bancada (`~/Documents/Environment/Shell`), comitada e enviada via `git push`. A árvore de produção deve manter `git status` 100% limpo em todo momento.
+
 ---
 
 ## 3. Procedimento para Criar um Novo Comando / Editor
@@ -136,12 +142,18 @@ Quando criar uma nova função de abertura de editor ou utilitário interativo:
     fi
     ```
 2. **Se a ferramenta alterar o cursor do terminal (como o Helix):**
-   Crie um wrapper local que capture o exit status e envie `echo -n $'\e[0 q'` antes de retornar:
+   Crie um wrapper local que capture o exit status e execute a auto-cura de cursor antes de retornar, diferenciando console TTY puro de emuladores PTY gráficos:
     ```sh
     <bin>() {
         command <bin> "$@"
-        local _status=$?
-        [ -t 1 ] && echo -n $'\e[0 q'
+        _status=$?
+        if [ -t 1 ]; then
+            if _is_raw_tty; then
+                echo -n $'\e%G\e[?16;238;0c'
+            else
+                echo -n $'\e[0 q'
+            fi
+        fi
         return ${_status}
     }
     ```

@@ -57,3 +57,34 @@ script -q /dev/null bash -i -c 'echo "Prompt: ${PS1}"'
 
 - **GhostBSD & NomadBSD:** Detectados sob a família `bsd`, preservando compatibilidade com `pkg` (`update-pkg`) e glifo ` ` (`U+F30C`, `nf-linux-freebsd`).
 - **DragonFly BSD:** Identificado isoladamente como `dragonfly` (DPorts/pkg) com glifo ` ` (`U+EEF8`).
+
+---
+
+## 🔒 Modo Monousuário & Invariante de `/bin/sh`
+
+No FreeBSD, a inicialização em modo monousuário (_Single-User Mode_ — acionada via flag `-s` do bootloader ou prompt do loader) **executa incondicionalmente o `/bin/sh` diretamente pelo kernel/init (`/sbin/init`)**, independentemente do shell configurado para o usuário ou root em `/etc/passwd` (`pw usermod -s`) ou da variável `shell_target`.
+
+### Fundamentos Arquiteturais:
+
+1. **Raiz Somente-Leitura (`ro`):** O sistema de arquivos raiz (`/`) é montado em modo somente-leitura.
+2. **Ausência de Filesystems Secundários:** Partições e datasets ZFS como `/usr` e `/usr/local` ainda não estão montados. Interpretadores de terceiros em `/usr/local/bin/zsh` ou `/usr/local/bin/bash` são fisicamente inacessíveis.
+3. **Bypass de PAM e Login:** O subsistema de autenticação PAM e o processo `login` não entram em execução. O kernel não lê `/etc/profile` nem dotfiles do usuário (`~/.profile`), entregando um ambiente de recuperação estático e minimalista sob o `/bin/sh` da base.
+
+---
+
+## 🌉 Virtualização Bhyve vs Linux Bare-Metal (`bhyve.sh`)
+
+- **Papel de `bhyve.sh` no FreeBSD:** Em estações de trabalho FreeBSD, o script `Shell/target/freebsd/bhyve.sh` atua como ponte de despacho transparente para executar o agente de IA (`agy`) e toolchains GNU pesadas isoladas em uma máquina virtual Debian convidada no Bhyve (`192.168.8.2`), conectada via NFSv3 ao `/home/gabrielf` com paridade de UID/GID 1001.
+- **Ausência Proposital no Linux (`kvm.sh` inexistente):** No Linux, o sistema executa nativamente em bare-metal, tendo acesso direto ao kernel Linux e ao ambiente GNU. Não há necessidade de scripts de ponte de virtualização no `target/linux/`.
+
+---
+
+## 🖥️ Consoles Virtuais `vt(4)` & Cursor Estático
+
+No FreeBSD, o console virtual da base é gerenciado pelo driver `vt(4)`. O controle de pisque do cursor é realizado nativamente pelo utilitário `vidcontrol`:
+
+```sh
+vidcontrol -c normal,noblink
+```
+
+Essa configuração é persistida no `/etc/rc.conf` via `allscreens_flags="-c normal,noblink"`, garantindo que todas as telas virtuais (`ttyv0` a `ttyv7`) inicializem com cursor estático e tipografia Spleen 12x24 (`font12x24="spleen-12x24"`).

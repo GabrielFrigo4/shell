@@ -126,3 +126,45 @@ flowchart TD
         SHELL=/usr/bin/zsh
         ```
     - Nas configurações do Windows Terminal ou Mintty, passando o argumento `-shell /usr/bin/zsh`.
+
+---
+
+## 🏛️ Camadas de Soberania: Setup vs Shell (Infraestrutura vs Auto-Cura)
+
+O ecossistema estabelece uma divisão rigorosa de responsabilidades entre o provisionamento de infraestrutura do sistema operacional (**Setup**) e a operação do ambiente interativo de usuário (**Shell**):
+
+```mermaid
+flowchart TD
+    subgraph SETUP ["🏛️ Setup (Infraestrutura & Boot)"]
+        S1["Kernel Boot Params<br/>(vt.cur_default=0xee10)"] --> S3["Drivers de Vídeo & VT"]
+        S2["Tipografia de Console<br/>(Spleen 12x24 / 512 glifos)"] --> S3
+        S4["Daemon & Login Flags<br/>(cursor_blink 0 / /etc/issue)"] --> S5["Ambiente de Boot Canônico"]
+        S3 --> S5
+    end
+
+    subgraph SHELL ["🐚 Shell (Runtime & Auto-Cura)"]
+        SH1["Sessão Interativa<br/>(core/environment.sh)"] --> SH4["Auto-Cura Oportunista"]
+        SH2["Prompts de Shell<br/>(theme/bash.sh / zsh.sh)"] --> SH4
+        SH3["Retorno de Editores<br/>(wrapper hx / vim)"] --> SH4
+        SH4 --> SH5["\e%G\e[?16;238;0c<br/>(Cursor Estático & Bloco Branco)"]
+    end
+
+    SETUP -.->|Prepara a Máquina| SHELL
+```
+
+### 1. Responsabilidade do Setup (Infraestrutura do SO)
+
+O repositório **Setup** opera com privilégios de superusuário (`sudo`/`doas`) e governa o estado do hardware e do sistema operacional desde o boot:
+
+- **Parâmetros de Kernel:** Injeta `vt.cur_default=0xee10` (`60944`) no GRUB e `systemd-boot`, estabelecendo o softcursor canônico para o subsistema VT do Linux.
+- **Drivers de Console & Tipografia:** Instala e ativa as fontes bitmap de alta legibilidade (Spleen 12x24 / 512 glifos) via `vconsole.conf` (Linux) e `/etc/rc.conf` (FreeBSD).
+- **Desativação de Pisque:** Configura `cursor_blink 0` via `systemd-tmpfiles` e limpa o terminal pré-login em `/etc/issue` no Linux; configura `allscreens_flags="-c normal,noblink"` no FreeBSD.
+- O Setup garante que, antes mesmo do usuário autenticar, o console virtual já opere em alta resolução e com cursor estático.
+
+### 2. Responsabilidade do Shell (Sessão & Auto-Cura)
+
+O repositório **Universal Shell** opera no espaço de usuário desprivilegiado e governa a integridade da sessão interativa:
+
+- **Resiliência contra Mutações de TUI:** Editores modais (Helix, Vim, Neovim) e aplicações TUI frequentemente alteram o cursor via sequências de controle DECSCUSR (`\e[?1 q` para bloco piscante, `\e[?5 q` para barra). Ao encerrar ou receber sinais (`SIGINT`), essas aplicações podem deixar o console em estado degradado.
+- **Auto-Cura no Retorno de Ferramentas:** Wrappers de editores (como `hx()` em `context/desktop/common.sh`) capturam o código de retorno e reemitem a sequência de cura (`\e%G\e[?16;238;0c` em consoles puros `_is_raw_tty` ou `\e[0 q` em PTYs gráficos).
+- **Auto-Cura no Ciclo de Prompt:** Na inicialização da sessão (`core/environment.sh`) e na renderização dos prompts (`theme/bash.sh`, `theme/zsh.sh`), o Shell assegura que o interpretador UTF-8 permaneça sincronizado (`\e%G`) e que o cursor mantenha-se em bloco estático e imune ao bug de deslocamento de cor das fontes de 512 glifos.
