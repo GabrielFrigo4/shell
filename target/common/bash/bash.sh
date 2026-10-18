@@ -34,10 +34,12 @@ set -o noclobber
 if case "$-" in *i*) true;; *) false;; esac; then
 	bind 'set show-all-if-ambiguous on' 2> "/dev/null" || true
 	bind 'set completion-ignore-case on' 2> "/dev/null" || true
-	bind 'set completion-prefix-display-length 2' 2> "/dev/null" || true
+	bind 'set completion-prefix-display-length 0' 2> "/dev/null" || true
+	bind 'set menu-complete-display-prefix on' 2> "/dev/null" || true
 	bind 'set colored-stats on' 2> "/dev/null" || true
 	bind 'set colored-completion-prefix on' 2> "/dev/null" || true
 	bind 'set mark-symlinked-directories on' 2> "/dev/null" || true
+	bind 'TAB: menu-complete' 2> "/dev/null" || true
 	bind '"\e[Z": menu-complete-backward' 2> "/dev/null" || true
 
 	bind '"\e[A": history-search-backward' 2> "/dev/null" || true

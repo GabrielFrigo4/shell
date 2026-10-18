@@ -165,18 +165,19 @@ _lazy_compinit() {
 zle -N _lazy_compinit
 bindkey '^I' _lazy_compinit
 
-zstyle ':completion:*' menu select
+zstyle ':completion:*' menu select=1
 zstyle ':completion:*' select-prompt '%S[ %p | %l ]%s'
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
-zstyle ':completion:*:descriptions' format '%F{yellow}-- %d --%f'
-zstyle ':completion:*:messages' format '%F{purple}-- %d --%f'
-zstyle ':completion:*:warnings' format '%F{red}-- sem correspondências --%f'
+zstyle ':completion:*:descriptions' format '%F{blue}── %F{cyan}%d %F{blue}────────────────────────────────%f'
+zstyle ':completion:*:messages' format '%F{magenta}── %d ──%f'
+zstyle ':completion:*:warnings' format '%F{red}── sem correspondências ──%f'
 zstyle ':completion:*' group-name ''
 zstyle ':completion:*' verbose yes
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-${HOME}/.cache}/zsh"
 
+bindkey -M menuselect '^I' menu-complete 2> "/dev/null" || true
 bindkey -M menuselect '^[[Z' reverse-menu-complete 2> "/dev/null" || true
 bindkey -M menuselect '^?' undo 2> "/dev/null" || true
