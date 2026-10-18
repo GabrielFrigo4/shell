@@ -1,0 +1,20 @@
+# ----------------------------------------------------------------
+# FreeBSD libedit Configuration (~/.editrc)
+# ----------------------------------------------------------------
+
+bind -e
+
+# Readline-style Tab completion for /bin/sh
+sh:bind "^I" rl_complete
+
+# Cursor & History Navigation
+bind "\e[A" ed-search-prev-history
+bind "\e[B" ed-search-next-history
+bind "\eOA" ed-search-prev-history
+bind "\eOB" ed-search-next-history
+
+bind "\e[H" ed-move-to-beg
+bind "\e[F" ed-move-to-end
+bind "\e[1~" ed-move-to-beg
+bind "\e[4~" ed-move-to-end
+bind "\e[3~" ed-delete-next-char

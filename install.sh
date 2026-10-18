@@ -345,6 +345,13 @@ _install_shell_target() {
 		fi
 	fi
 
+	if [ "${OS_NAME}" = "freebsd" ] && [ -f "${SHELL_REPO_DIR}/target/freebsd/editrc" ]; then
+		if [ ! -f "${HOME}/.editrc" ] || ! grep -qF "rl_complete" "${HOME}/.editrc" 2> "/dev/null"; then
+			cp "${SHELL_REPO_DIR}/target/freebsd/editrc" "${HOME}/.editrc"
+			_as_root cp "${SHELL_REPO_DIR}/target/freebsd/editrc" "/root/.editrc" 2> "/dev/null" || true
+		fi
+	fi
+
 	if [ "${SHELL_FRAMEWORK}" -eq 0 ] || [ "${_target_shell}" = "sh" ] || [ "${_target_shell}" = "ksh" ]; then
 		case "${_target_shell}" in
 			zsh)

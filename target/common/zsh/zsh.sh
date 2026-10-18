@@ -165,6 +165,8 @@ _lazy_compinit() {
 zle -N _lazy_compinit
 bindkey '^I' _lazy_compinit
 
+zstyle ':completion:*' completer _complete _approximate
+zstyle ':completion:*:approximate:*' max-errors 2 numeric
 zstyle ':completion:*' menu select=1
 zstyle ':completion:*' select-prompt '%S[ %p | %l ]%s'
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
@@ -181,3 +183,54 @@ zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-${HOME}/.cache}/zsh"
 bindkey -M menuselect '^I' menu-complete 2> "/dev/null" || true
 bindkey -M menuselect '^[[Z' reverse-menu-complete 2> "/dev/null" || true
 bindkey -M menuselect '^?' undo 2> "/dev/null" || true
+
+### --------------------------------
+### Native History Autosuggestions
+### --------------------------------
+if [ -t 0 ] && [ -t 1 ]; then
+	_zsh_suggest_fetch() {
+		POSTDISPLAY=""
+		[ -z "${BUFFER}" ] && return 0
+		local -a _hits
+		_hits=(${(k)history[(R)${(b)BUFFER}*]})
+		if [ "${#_hits}" -gt 0 ]; then
+			local _last_id="${_hits[-1]}"
+			local _candidate="${history[${_last_id}]}"
+			if [ "${#_candidate}" -gt "${#BUFFER}" ]; then
+				POSTDISPLAY="${_candidate[${#BUFFER}+1,-1]}"
+				region_highlight=("${#BUFFER} $((${#BUFFER} + ${#POSTDISPLAY})) fg=8")
+			fi
+		fi
+		return 0
+	}
+
+	_zsh_suggest_accept() {
+		if [ -n "${POSTDISPLAY}" ] && [ "${CURSOR}" -eq "${#BUFFER}" ]; then
+			BUFFER="${BUFFER}${POSTDISPLAY}"
+			CURSOR="${#BUFFER}"
+			POSTDISPLAY=""
+		else
+			zle .forward-char
+		fi
+	}
+
+	_zsh_suggest_accept_end() {
+		if [ -n "${POSTDISPLAY}" ]; then
+			BUFFER="${BUFFER}${POSTDISPLAY}"
+			CURSOR="${#BUFFER}"
+			POSTDISPLAY=""
+		else
+			zle .end-of-line
+		fi
+	}
+
+	zle -N zle-line-pre-redraw _zsh_suggest_fetch
+	zle -N _zsh_suggest_accept
+	zle -N _zsh_suggest_accept_end
+
+	bindkey '^[[C' _zsh_suggest_accept 2> "/dev/null" || true
+	bindkey '^[OC' _zsh_suggest_accept 2> "/dev/null" || true
+	bindkey '^E' _zsh_suggest_accept_end 2> "/dev/null" || true
+	bindkey '^[[F' _zsh_suggest_accept_end 2> "/dev/null" || true
+	bindkey '^[OF' _zsh_suggest_accept_end 2> "/dev/null" || true
+fi

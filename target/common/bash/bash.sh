@@ -39,6 +39,8 @@ if case "$-" in *i*) true;; *) false;; esac; then
 	bind 'set colored-stats on' 2> "/dev/null" || true
 	bind 'set colored-completion-prefix on' 2> "/dev/null" || true
 	bind 'set mark-symlinked-directories on' 2> "/dev/null" || true
+	bind 'set skip-completed-text on' 2> "/dev/null" || true
+	bind 'set echo-control-characters off' 2> "/dev/null" || true
 	bind 'TAB: menu-complete' 2> "/dev/null" || true
 	bind '"\e[Z": menu-complete-backward' 2> "/dev/null" || true
 

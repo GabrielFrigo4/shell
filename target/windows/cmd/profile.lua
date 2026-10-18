@@ -1534,3 +1534,9 @@ end
 if clink.onfilterinput then
 	clink.onfilterinput(filter_updater_cmd)
 end
+
+if settings and settings.set then
+	settings.set("autosuggest.enable", true)
+	settings.set("autosuggest.strategy", "history,completion")
+	settings.set("match.preview", true)
+end

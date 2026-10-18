@@ -76,4 +76,9 @@ if ($Host.Name -eq 'ConsoleHost') {
 	if (Get-Module -ListAvailable -Name Terminal-Icons) {
 		Import-Module Terminal-Icons
 	}
+	if (Get-Module -ListAvailable -Name PSReadLine) {
+		Set-PSReadLineOption -PredictionSource History -ErrorAction SilentlyContinue
+		Set-PSReadLineOption -PredictionViewStyle InlineView -ErrorAction SilentlyContinue
+		Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete -ErrorAction SilentlyContinue
+	}
 }
