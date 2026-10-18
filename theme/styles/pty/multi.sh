@@ -30,8 +30,6 @@ _theme_render() {
 	local _kernel_info=""
 	if [ "${_os_type:-}" = "linux" ] && [ -n "${_kernel_release:-}" ]; then
 		_kernel_info=" ${_theme_color_blue} ${_theme_color_magenta}${_kernel_release}"
-	elif case "${_os_type:-}" in *windows*|*msys*|*cygwin*|*nt*) true ;; *) false ;; esac; then
-		_kernel_info=" ${_theme_color_blue}󰣆 ${_theme_color_magenta}NT 10.0"
 	fi
 
 	PS1="${_newline}${_delimiter}${_os_color}${_os_icon}${_theme_color_magenta}${_os_name}${_kernel_info} ${_theme_color_blue} ${_theme_color_magenta}${_shell_name}${_delimiter}"

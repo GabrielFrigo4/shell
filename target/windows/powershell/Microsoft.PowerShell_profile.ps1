@@ -65,7 +65,7 @@ function prompt {
 	} catch { }
 
 	$userColor = if ($IsAdmin) { $red } else { $green }
-	$l1 = "$gray$blue$osIcon $magenta$osName $blue󰣆 $magentaNT 10.0 $blue $magenta$shellName$gray"
+	$l1 = "$gray$blue$osIcon $magenta$osName $blue󰣆 ${magenta}NT 10.0 $blue $magenta$shellName$gray"
 	$l2 = "$gray┌──$blue $green$time$gray─$blue $green$date$gray─$yellow $cyan$pwd$gray─ $blue $userColor$user$gray$gitInfo"
 	$l3 = "$gray└─$blue$reset "
 
