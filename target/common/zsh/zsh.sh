@@ -165,18 +165,31 @@ _lazy_compinit() {
 zle -N _lazy_compinit
 bindkey '^I' _lazy_compinit
 
-zstyle ':completion:*' completer _complete _approximate
-zstyle ':completion:*:approximate:*' max-errors 2 numeric
+zstyle ':completion:*' completer _extensions _complete _approximate
+zstyle -e ':completion:*:approximate:*' max-errors 'reply=($((($#PREFIX+$#SUFFIX)/3)) numeric)'
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
+
 zstyle ':completion:*' menu select=1
 zstyle ':completion:*' select-prompt '%S[ %p | %l ]%s'
-zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*' verbose yes
+zstyle ':completion:*' list-dirs-first true
+zstyle ':completion:*' list-packed true
+zstyle ':completion:*' list-separator ' ── '
+
+zstyle ':completion:*:*:-command-:*' group-order aliases functions builtins commands
+
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
-zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
 zstyle -e ':completion:*:descriptions' format 'reply=("%F{blue}── %F{cyan}%d %F{blue}%$((COLUMNS - 4))<─<${(r:COLUMNS::─:)}%<<%f")'
 zstyle -e ':completion:*:messages' format 'reply=("%F{magenta}── %d %$((COLUMNS - 4))<─<${(r:COLUMNS::─:)}%<<%f")'
 zstyle -e ':completion:*:warnings' format 'reply=("%F{red}── sem correspondências %$((COLUMNS - 4))<─<${(r:COLUMNS::─:)}%<<%f")'
-zstyle ':completion:*' group-name ''
-zstyle ':completion:*' verbose yes
+zstyle ':completion:*:corrections' format '%F{yellow}── %d (erros: %e) %f'
+
+zstyle ':completion:*' squeeze-slashes true
+zstyle ':completion:*' ignore-parents parent pwd
+zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
+zstyle ':completion:*:*:kill:*:processes' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
+
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-${HOME}/.cache}/zsh"
 
