@@ -194,8 +194,10 @@ if [ -t 0 ] && [ -t 1 ]; then
 		local -a _hits
 		_hits=(${(k)history[(R)${(b)BUFFER}*]})
 		if [ "${#_hits}" -gt 0 ]; then
-			local _last_id="${_hits[-1]}"
+			local _last_id="${_hits[1]}"
 			local _candidate="${history[${_last_id}]}"
+			_candidate="${_candidate%%$'\n'*}"
+			[ "${#_candidate}" -gt 80 ] && return 0
 			if [ "${#_candidate}" -gt "${#BUFFER}" ]; then
 				POSTDISPLAY="${_candidate[${#BUFFER}+1,-1]}"
 				region_highlight=("${#BUFFER} $((${#BUFFER} + ${#POSTDISPLAY})) fg=8")
