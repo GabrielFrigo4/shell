@@ -180,9 +180,12 @@ zstyle ':completion:*' list-separator ' ── '
 zstyle ':completion:*:*:-command-:*' group-order aliases functions builtins commands
 
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
-zstyle -e ':completion:*:descriptions' format 'reply=("%F{blue}── %F{cyan}%d %F{blue}%$((COLUMNS - 4))<─<${(r:COLUMNS::─:)}%<<%f")'
-zstyle -e ':completion:*:messages' format 'reply=("%F{magenta}── %d %$((COLUMNS - 4))<─<${(r:COLUMNS::─:)}%<<%f")'
-zstyle -e ':completion:*:warnings' format 'reply=("%F{red}── sem correspondências %$((COLUMNS - 4))<─<${(r:COLUMNS::─:)}%<<%f")'
+zstyle -e ':completion:*:descriptions' format \
+  'local len=${#3}; (( len == 0 )) && len=15; reply=("%F{blue}── %F{cyan}%d %F{blue}${(r:$((COLUMNS - len - 7))::─:)%f}")'
+zstyle -e ':completion:*:messages' format \
+  'local len=${#3}; (( len == 0 )) && len=15; reply=("%F{magenta}── %d %F{magenta}${(r:$((COLUMNS - len - 7))::─:)%f}")'
+zstyle -e ':completion:*:warnings' format \
+  'reply=("%F{red}── sem correspondências ${(r:$((COLUMNS - 25))::─:)%f}")'
 zstyle ':completion:*:corrections' format '%F{yellow}── %d (erros: %e) %f'
 
 zstyle ':completion:*' squeeze-slashes true
