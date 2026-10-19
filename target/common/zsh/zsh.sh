@@ -172,9 +172,9 @@ zstyle ':completion:*' select-prompt '%S[ %p | %l ]%s'
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
-zstyle ':completion:*:descriptions' format '%F{blue}── %F{cyan}%d %F{blue}────────────────────────────────%f'
-zstyle ':completion:*:messages' format '%F{magenta}── %d ──%f'
-zstyle ':completion:*:warnings' format '%F{red}── sem correspondências ──%f'
+zstyle -e ':completion:*:descriptions' format 'reply=("%F{blue}── %F{cyan}%d %F{blue}%$((COLUMNS - 4))<─<${(r:COLUMNS::─:)}%<<%f")'
+zstyle -e ':completion:*:messages' format 'reply=("%F{magenta}── %d %$((COLUMNS - 4))<─<${(r:COLUMNS::─:)}%<<%f")'
+zstyle -e ':completion:*:warnings' format 'reply=("%F{red}── sem correspondências %$((COLUMNS - 4))<─<${(r:COLUMNS::─:)}%<<%f")'
 zstyle ':completion:*' group-name ''
 zstyle ':completion:*' verbose yes
 zstyle ':completion:*' use-cache on
