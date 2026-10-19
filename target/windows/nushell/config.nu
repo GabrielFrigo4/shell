@@ -858,14 +858,25 @@ def upsh [
 		if ($nu_dir | path exists) and ($env.APPDATA? | is-not-empty) {
 			let app_nu = ([$env.APPDATA, "nushell"] | path join)
 			if ($app_nu | path exists) {
+				mut nu_synced = false
 				for f in ["config.nu", "env.nu"] {
 					let src = ([$nu_dir, $f] | path join)
 					let dst = ([$app_nu, $f] | path join)
 					if ($src | path exists) {
-						do -i { cp -f $src $dst }
+						let is_same = if ($dst | path exists) {
+							try { ($dst | path expand) == ($src | path expand) } catch { false }
+						} else {
+							false
+						}
+						if not $is_same {
+							do -i { cp -f $src $dst }
+							$nu_synced = true
+						}
 					}
 				}
-				_ui_sub $"Sincronizados perfis físicos NuShell em: ($app_nu)"
+				if $nu_synced {
+					_ui_sub $"Sincronizados perfis físicos NuShell em: ($app_nu)"
+				}
 			}
 		}
 		let pwsh_dir = ([$target, "target", "windows", "powershell"] | path join)
@@ -877,14 +888,25 @@ def upsh [
 		]
 		for d in $docs_cands {
 			if ($d | path exists) and ($pwsh_dir | path exists) {
+				mut pwsh_synced = false
 				for f in ["profile.ps1", "Microsoft.PowerShell_profile.ps1"] {
 					let src = ([$pwsh_dir, $f] | path join)
 					let dst = ([$d, $f] | path join)
 					if ($src | path exists) {
-						do -i { cp -f $src $dst }
+						let is_same = if ($dst | path exists) {
+							try { ($dst | path expand) == ($src | path expand) } catch { false }
+						} else {
+							false
+						}
+						if not $is_same {
+							do -i { cp -f $src $dst }
+							$pwsh_synced = true
+						}
 					}
 				}
-				_ui_sub $"Sincronizados perfis físicos PowerShell em: ($d)"
+				if $pwsh_synced {
+					_ui_sub $"Sincronizados perfis físicos PowerShell em: ($d)"
+				}
 				break
 			}
 		}
@@ -892,14 +914,25 @@ def upsh [
 		if ($cmd_dir | path exists) and ($env.LOCALAPPDATA? | is-not-empty) {
 			let app_clink = ([$env.LOCALAPPDATA, "clink"] | path join)
 			if ($app_clink | path exists) {
+				mut clink_synced = false
 				for f in ["profile.lua", "profile.cmd"] {
 					let src = ([$cmd_dir, $f] | path join)
 					let dst = ([$app_clink, $f] | path join)
 					if ($src | path exists) {
-						do -i { cp -f $src $dst }
+						let is_same = if ($dst | path exists) {
+							try { ($dst | path expand) == ($src | path expand) } catch { false }
+						} else {
+							false
+						}
+						if not $is_same {
+							do -i { cp -f $src $dst }
+							$clink_synced = true
+						}
 					}
 				}
-				_ui_sub $"Sincronizados perfis físicos Clink em: ($app_clink)"
+				if $clink_synced {
+					_ui_sub $"Sincronizados perfis físicos Clink em: ($app_clink)"
+				}
 			}
 		}
 		_ui_ok "Universal Shell atualizado com sucesso!"

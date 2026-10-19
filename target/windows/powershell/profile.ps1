@@ -885,16 +885,18 @@ Parâmetros:
 			_ui_sub "Recarregando perfis e funções do Universal Shell..."
 			. $pwshScript
 			if ($PROFILE -and (Test-Path $PROFILE)) {
-				$isSymlink = (Get-Item $PROFILE).LinkType
+				$profItem = Get-Item $PROFILE -Force -ErrorAction SilentlyContinue
+				$isSymlink = $profItem.LinkType -or ($profItem.FullName -eq (Get-Item $pwshScript -Force).FullName)
 				if (-not $isSymlink) {
-					Copy-Item $pwshScript $PROFILE -Force
+					Copy-Item $pwshScript $PROFILE -Force -ErrorAction SilentlyContinue
 					_ui_sub "Sincronizado perfil físico em: $PROFILE"
 				}
 				$docDir = Split-Path $PROFILE
 				$commonProfile = Join-Path $docDir "profile.ps1"
-				if ((Test-Path $commonProfile) -and ((Get-Item $commonProfile).FullName -ne (Get-Item $pwshScript).FullName)) {
-					if (-not (Get-Item $commonProfile).LinkType) {
-						Copy-Item $pwshScript $commonProfile -Force
+				if (Test-Path $commonProfile) {
+					$comItem = Get-Item $commonProfile -Force -ErrorAction SilentlyContinue
+					if ($comItem -and (-not $comItem.LinkType) -and ($comItem.FullName -ne (Get-Item $pwshScript -Force).FullName)) {
+						Copy-Item $pwshScript $commonProfile -Force -ErrorAction SilentlyContinue
 					}
 				}
 			}
@@ -903,28 +905,54 @@ Parâmetros:
 				$appNu = Join-Path $env:APPDATA "nushell"
 				$nuSrc = Join-Path $target "target\windows\nushell"
 				if ((Test-Path $appNu) -and (Test-Path $nuSrc)) {
+					$nuSynced = $false
 					foreach ($f in @("config.nu", "env.nu")) {
 						$srcF = Join-Path $nuSrc $f
 						$dstF = Join-Path $appNu $f
 						if (Test-Path $srcF) {
-							Copy-Item $srcF $dstF -Force
+							$isLink = $false
+							if (Test-Path $dstF) {
+								$item = Get-Item $dstF -Force -ErrorAction SilentlyContinue
+								if ($item -and ($item.LinkType -or ($item.FullName -eq (Get-Item $srcF -Force).FullName))) {
+									$isLink = $true
+								}
+							}
+							if (-not $isLink) {
+								Copy-Item $srcF $dstF -Force -ErrorAction SilentlyContinue
+								$nuSynced = $true
+							}
 						}
 					}
-					_ui_sub "Sincronizados perfis físicos NuShell em: $appNu"
+					if ($nuSynced) {
+						_ui_sub "Sincronizados perfis físicos NuShell em: $appNu"
+					}
 				}
 			}
 			if ($env:LOCALAPPDATA) {
 				$appClink = Join-Path $env:LOCALAPPDATA "clink"
 				$cmdSrc = Join-Path $target "target\windows\cmd"
 				if ((Test-Path $appClink) -and (Test-Path $cmdSrc)) {
+					$clinkSynced = $false
 					foreach ($f in @("profile.lua", "profile.cmd")) {
 						$srcF = Join-Path $cmdSrc $f
 						$dstF = Join-Path $appClink $f
 						if (Test-Path $srcF) {
-							Copy-Item $srcF $dstF -Force
+							$isLink = $false
+							if (Test-Path $dstF) {
+								$item = Get-Item $dstF -Force -ErrorAction SilentlyContinue
+								if ($item -and ($item.LinkType -or ($item.FullName -eq (Get-Item $srcF -Force).FullName))) {
+									$isLink = $true
+								}
+							}
+							if (-not $isLink) {
+								Copy-Item $srcF $dstF -Force -ErrorAction SilentlyContinue
+								$clinkSynced = $true
+							}
 						}
 					}
-					_ui_sub "Sincronizados perfis físicos Clink em: $appClink"
+					if ($clinkSynced) {
+						_ui_sub "Sincronizados perfis físicos Clink em: $appClink"
+					}
 				}
 			}
 		}
