@@ -36,19 +36,12 @@ _setup_colors() {
 	_theme_color_bright_cyan="${_theme_color_open}${_escape}[96m${_theme_color_close}"
 	_theme_color_bright_white="${_theme_color_open}${_escape}[97m${_theme_color_close}"
 
-	local _is_raw=0
-	if command -v _is_raw_tty > "/dev/null" 2>&1; then
-		_is_raw_tty && _is_raw=1
-	fi
-
 	_theme_color_gray="${_theme_color_bright_gray}"
-	if [ "${_is_raw}" -eq 0 ]; then
-		_theme_color_red="${_theme_color_bright_red}"
-		_theme_color_green="${_theme_color_bright_green}"
-		_theme_color_yellow="${_theme_color_bright_yellow}"
-		_theme_color_blue="${_theme_color_bright_blue}"
-		_theme_color_magenta="${_theme_color_bright_magenta}"
-		_theme_color_cyan="${_theme_color_bright_cyan}"
-		_theme_color_white="${_theme_color_bright_white}"
-	fi
+	_theme_color_red="${_theme_color_bright_red}"
+	_theme_color_green="${_theme_color_bright_green}"
+	_theme_color_yellow="${_theme_color_bright_yellow}"
+	_theme_color_blue="${_theme_color_bright_blue}"
+	_theme_color_magenta="${_theme_color_bright_magenta}"
+	_theme_color_cyan="${_theme_color_bright_cyan}"
+	_theme_color_white="${_theme_color_bright_white}"
 }

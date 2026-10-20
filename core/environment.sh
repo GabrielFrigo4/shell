@@ -5,9 +5,18 @@
 ### --------------------------------
 ### Variables & Sovereign Locale
 ### --------------------------------
-export COLORTERM="truecolor"
-export MICRO_TRUECOLOR=1
 unset CDPATH
+
+if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+	export RAW_TTY=1
+	export LC_RAW_TTY=1
+	export UNIVERSAL_RAW_TTY=1
+	unset COLORTERM
+	unset MICRO_TRUECOLOR
+else
+	export COLORTERM="truecolor"
+	export MICRO_TRUECOLOR=1
+fi
 
 if [ -z "${LANG:-}" ] || [ "${LANG}" = "C" ] || [ "${LANG}" = "POSIX" ]; then
 	if [ -r "/etc/locale.conf" ]; then
@@ -32,12 +41,6 @@ case "${SHELL_CONTEXT:-desktop}" in
 		unset PYTHONPYCACHEPREFIX
 		;;
 esac
-
-if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
-	export RAW_TTY=1
-	export LC_RAW_TTY=1
-	export UNIVERSAL_RAW_TTY=1
-fi
 
 ### --------------------------------
 ### Auto-Correct SHELL
@@ -504,8 +507,8 @@ eval 'agy() {
 
 if [ -t 1 ]; then
 	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
-		if [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ]; then
-			echo -n $'\e%G\e[?16;238;0c'
+		if [ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ]; then
+			echo -n $'\e%G\e[?16;238;0c\e]P0000000\e]P1d16969\e]P273c991\e]P3e5c07b\e]P4569cd6\e]P5c586c0\e]P64ec9b0\e]P7d4d4d4\e]P8858585\e]P9f7768e\e]PA9ece6a\e]PBe0af68\e]PC7dcfff\e]PDbb9af7\e]PE4fc1ff\e]PFffffff'
 			command -v stty > "/dev/null" 2>&1 && stty iutf8 2> "/dev/null" || true
 		fi
 	else

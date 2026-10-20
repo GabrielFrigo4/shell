@@ -32,7 +32,7 @@ hx() {
 	local _status=$?
 	if [ -t 1 ]; then
 		if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
-			[ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
+			[ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
 		else
 			echo -n $'\e[0 q'
 		fi
@@ -148,42 +148,90 @@ emacs-start() {
 emacs-restart() {
 	emacs-kill && emacs-start
 }
+_restore_tty_cursor() {
+	if [ -t 1 ]; then
+		if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+			[ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
+		else
+			echo -n $'\e[0 q'
+		fi
+	fi
+}
+
 emacs-client() {
 	command -v emacsclient > "/dev/null" 2>&1 || { echo "❌ emacsclient not found." >&2; return 127; }
+	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if [ "$#" -eq 0 ]; then
 			command emacsclient --create-frame --alternate-editor "" -n
+			_status=$?
 		else
 			command emacsclient --create-frame --alternate-editor "" "$@"
+			_status=$?
 		fi
 	else
 		command emacsclient -t --alternate-editor "" "$@"
+		_status=$?
+		_restore_tty_cursor
 	fi
+	return ${_status}
+}
+emacs-nw() {
+	if command -v emacsclient > "/dev/null" 2>&1; then
+		command emacsclient -t --alternate-editor "" "$@"
+	elif command -v emacs > "/dev/null" 2>&1; then
+		command emacs -nw "$@"
+	else
+		echo "❌ emacs not found." >&2
+		return 127
+	fi
+	local _status=$?
+	_restore_tty_cursor
+	return ${_status}
 }
 emacsclient() {
 	if [ "$#" -eq 0 ]; then
 		emacs-client
 	else
 		command emacsclient "$@"
+		local _status=$?
+		_restore_tty_cursor
+		return ${_status}
 	fi
 }
 emacs() {
+	local _status=0
 	case "${1:-}" in
 		client)
-			shift
+			[ "$#" -ge 1 ] && shift 1
 			emacs-client "$@"
+			_status=$?
 			;;
 		*)
 			command emacs "$@"
+			_status=$?
+			_restore_tty_cursor
 			;;
 	esac
+	return ${_status}
 }
 emacs-open() {
 	command -v emacsclient > "/dev/null" 2>&1 || { echo "❌ emacsclient not found." >&2; return 127; }
-	if [ "$#" -eq 0 ]; then
-		(command nohup emacsclient --create-frame --alternate-editor "" . < "/dev/null" > "/dev/null" 2>&1 &)
+	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+		if [ "$#" -eq 0 ]; then
+			(command nohup emacsclient --create-frame --alternate-editor "" . < "/dev/null" > "/dev/null" 2>&1 &)
+		else
+			(command nohup emacsclient --create-frame --alternate-editor "" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+		fi
 	else
-		(command nohup emacsclient --create-frame --alternate-editor "" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+		if [ "$#" -eq 0 ]; then
+			command emacsclient -t --alternate-editor "" .
+		else
+			command emacsclient -t --alternate-editor "" "$@"
+		fi
+		local _status=$?
+		_restore_tty_cursor
+		return ${_status}
 	fi
 }
 emacs-eshell() {
@@ -213,13 +261,18 @@ emacs-eshell() {
 		else
 			command emacs -nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
 		fi
+		local _status=$?
+		_restore_tty_cursor
+		return ${_status}
 	fi
 }
 alias ek="emacs-kill"
 alias es="emacs-start"
 alias er="emacs-restart"
 alias ec="emacs-client"
+alias enw="emacs-nw"
 alias oe="emacs-open"
+alias open-emacs="emacs-open"
 alias open-eshell="emacs-eshell"
 alias oes="emacs-eshell"
 alias esh="emacs-eshell"

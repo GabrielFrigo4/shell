@@ -46,7 +46,7 @@ linux-host() {
 		*1*|*true*|*yes*) _is_raw=1 ;;
 	esac
 	if [ "${_is_raw}" -eq 1 ] || { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
-		_tty_env="export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; unset COLORTERM; export TERM=linux; "
+		_tty_env="export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; unset COLORTERM; "
 		_ssh_opts="-o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
 	fi
 
@@ -86,7 +86,7 @@ agy-lx() {
 		*1*|*true*|*yes*) _is_raw=1 ;;
 	esac
 	if [ "${_is_raw}" -eq 1 ] || { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
-		_tty_env="export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; unset COLORTERM; export TERM=linux; "
+		_tty_env="export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; unset COLORTERM; "
 		_ssh_opts="-o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
 	fi
 
