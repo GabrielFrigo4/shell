@@ -3,6 +3,7 @@
 # ----------------------------------------------------------------
 
 bind -e
+settc bl "$<0>"
 
 # Native Command & Filename Tab Completion for /bin/sh
 sh:bind "^I" sh-complete

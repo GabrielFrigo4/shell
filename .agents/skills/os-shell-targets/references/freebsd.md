@@ -37,7 +37,15 @@ static char ps[PROMPTLEN];
 1. **Delimitador Único de Escapes (`\001`):** Tanto `\[` quanto `\]` são convertidos para `\001`.
 2. **Escapes Consecutivos Descartados:** Se duas sequências `\[...\]` forem colocadas sem caractere visível intermediário, `libedit` descarta a primeira.
 3. **Descarte do Último Literal:** O prompt deve sempre encerrar com `${_color_reset}` seguido por um espaço imprimível ` `.
-4. **Keybindings Canônicos:** Setas configuradas para `ed-search-prev-history` e `ed-search-next-history`.
+4. **Tab Completion Nativo (`sh-complete` vs `rl_complete` em `bin/sh/histedit.c`):**
+    - O `/bin/sh` do FreeBSD registra sua função interna de autocompletar comandos (`$PATH`, builtins, aliases, funções) e arquivos sob o nome **`sh-complete`** (`el_set(el, EL_ADDFN, "sh-complete", ...)`).
+    - O identificador `rl_complete` não existe na tabela do `/bin/sh` e jamais deve ser usado (emite `bind: Invalid command 'rl_complete'`).
+    - Como `bind -e` (em `~/.editrc`) e `set -o emacs` (em `sh.sh`) resetam a tabela de teclas para o padrão Emacs (`^I -> ed-insert`), deve-se declarar `sh:bind "^I" sh-complete` após `bind -e` no `~/.editrc` e `bind "^I" sh-complete` no `behavior.sh`.
+5. **Mecânica de 2-Tabs em Ambiguidade (`contrib/libedit/filecomplete.c`):**
+    - Em `fn_complete2()`, a listagem de múltiplos candidatos (`what_to_do = '?'`) exige `el->el_state.lastcmd == el->el_state.thiscmd` (segundo `<Tab>` consecutivo). No primeiro `<Tab>` ambíguo, o `libedit` expande o maior prefixo comum e invoca `el_beep(el)`.
+6. **Silenciamento Zero-Byte do Beep via `settc bl "$<0>"` (`terminal.c` & `lib_tputs.c`):**
+    - Em `terminal_beep()`, o `libedit` avalia `#define GoodStr(a) (t_str[a] != NULL && t_str[a][0] != '\0')`. Se `settc bl ""` for usado, `GoodStr(T_bl)` é falso e o `else` emite `'\007'` (`^G`) de qualquer forma.
+    - Ao definir **`settc bl "$<0>"`** no `~/.editrc`, `GoodStr(T_bl)` torna-se verdadeiro e delega para `tputs("$<0>", 1, terminal_putc)`. O parser `tputs` do `ncurses` interpreta `$<0>` como especificação de delay de `0ms` e emite **zero bytes** no descritor de saída, silenciando 100% o alerta sonoro sem injetar caracteres na linha.
 
 ---
 

@@ -32,6 +32,7 @@ set -o noclobber
 ### Keybindings & Line Editing
 ### --------------------------------
 if case "$-" in *i*) true;; *) false;; esac; then
+	bind 'set bell-style none' 2> "/dev/null" || true
 	bind 'set show-all-if-ambiguous on' 2> "/dev/null" || true
 	bind 'set completion-ignore-case on' 2> "/dev/null" || true
 	bind 'set completion-prefix-display-length 0' 2> "/dev/null" || true
