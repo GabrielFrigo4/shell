@@ -4,9 +4,6 @@
 
 bind -e
 
-# Readline-style Tab completion for /bin/sh
-sh:bind "^I" rl_complete
-
 # Cursor & History Navigation
 bind "\e[A" ed-search-prev-history
 bind "\e[B" ed-search-next-history

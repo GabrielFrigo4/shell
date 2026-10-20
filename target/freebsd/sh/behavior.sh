@@ -8,7 +8,6 @@
 if [ -t 0 ] && [ -t 1 ]; then
 	case "$-" in
 		*i*)
-			bind "^I" rl_complete 2> "/dev/null" || true
 			bind "^[[A" ed-search-prev-history 2> "/dev/null" || true
 			bind "^[OA" ed-search-prev-history 2> "/dev/null" || true
 			bind "^[[B" ed-search-next-history 2> "/dev/null" || true
