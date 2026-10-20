@@ -5,38 +5,111 @@
 ### --------------------------------
 ### Terminal Editors
 ### --------------------------------
-open-neovim() {
-	command -v nvim > "/dev/null" 2>&1 || { echo "❌ nvim not found." >&2; return 127; }
-	if [ "$#" -eq 0 ]; then
-		command nvim .
+_restore_tty_cursor() {
+	if [ -t 1 ]; then
+		if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+			[ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
+		else
+			echo -n $'\e[2 q'
+		fi
+	fi
+}
+
+nvim() {
+	command -v nvim > "/dev/null" 2>&1 || { _ui_err "nvim not found."; return 127; }
+	local _status=0
+	if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty && [ "${_DETECTED_OS-$(_detect_os)}" = "freebsd" ] && command -v python3 > "/dev/null" 2>&1; then
+		command python3 -c '
+import os, pty, select, signal, struct, fcntl, termios, sys
+pid, master = pty.fork()
+if pid == 0:
+    os.execvp("nvim", ["nvim"] + sys.argv[1:])
+def sync_winsz(*_):
+    try:
+        s = fcntl.ioctl(0, termios.TIOCGWINSZ, b"\x00" * 8)
+        fcntl.ioctl(master, termios.TIOCSWINSZ, s)
+    except Exception:
+        pass
+sync_winsz()
+signal.signal(signal.SIGWINCH, sync_winsz)
+try:
+    old_tty = termios.tcgetattr(0)
+    tty_raw = list(old_tty)
+    tty_raw[0] &= ~(termios.BRKINT | termios.ICRNL | termios.INPCK | termios.ISTRIP | termios.IXON)
+    tty_raw[1] &= ~(termios.OPOST)
+    tty_raw[2] &= ~(termios.CSIZE | termios.PARENB)
+    tty_raw[2] |= termios.CS8
+    tty_raw[3] &= ~(termios.ECHO | termios.ICANON | termios.IEXTEN | termios.ISIG)
+    termios.tcsetattr(0, termios.TCSADRAIN, tty_raw)
+except Exception:
+    old_tty = None
+try:
+    while True:
+        r, _, _ = select.select([0, master], [], [])
+        if 0 in r:
+            d = os.read(0, 4096)
+            if not d:
+                break
+            os.write(master, d)
+        if master in r:
+            try:
+                d = os.read(master, 4096)
+            except OSError:
+                break
+            if not d:
+                break
+            if b"\x1b[c" in d or b"\x1b[0c" in d:
+                os.write(master, b"\x1b[?1;2c")
+            if b"\x1b[5n" in d:
+                os.write(master, b"\x1b[0n")
+            os.write(1, d)
+finally:
+    if old_tty is not None:
+        try:
+            termios.tcsetattr(0, termios.TCSADRAIN, old_tty)
+        except Exception:
+            pass
+    os.close(master)
+_, st = os.waitpid(pid, 0)
+sys.exit(os.WEXITSTATUS(st) if os.WIFEXITED(st) else 1)
+' "$@"
+		_status=$?
 	else
 		command nvim "$@"
+		_status=$?
+	fi
+	_restore_tty_cursor
+	return ${_status}
+}
+
+open-neovim() {
+	if [ "$#" -eq 0 ]; then
+		nvim .
+	else
+		nvim "$@"
 	fi
 }
 alias open-nvim="open-neovim"
 alias on="open-neovim"
 
 open-vim() {
-	command -v vim > "/dev/null" 2>&1 || { echo "❌ vim not found." >&2; return 127; }
+	command -v vim > "/dev/null" 2>&1 || { _ui_err "vim not found."; return 127; }
 	if [ "$#" -eq 0 ]; then
 		command vim .
 	else
 		command vim "$@"
 	fi
+	local _status=$?
+	_restore_tty_cursor
+	return ${_status}
 }
 alias ov="open-vim"
 
 hx() {
-	command -v hx > "/dev/null" 2>&1 || { echo "❌ hx not found." >&2; return 127; }
+	command -v hx > "/dev/null" 2>&1 || { _ui_err "hx not found."; return 127; }
 	command hx "$@"
 	local _status=$?
-	if [ -t 1 ]; then
-		if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
-			[ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
-		else
-			echo -n $'\e[0 q'
-		fi
-	fi
+	_restore_tty_cursor
 	return ${_status}
 }
 
@@ -147,15 +220,6 @@ emacs-start() {
 }
 emacs-restart() {
 	emacs-kill && emacs-start
-}
-_restore_tty_cursor() {
-	if [ -t 1 ]; then
-		if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
-			[ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
-		else
-			echo -n $'\e[0 q'
-		fi
-	fi
 }
 
 emacs-client() {

@@ -83,6 +83,13 @@ _ksh_prompt() {
 	if command -v _theme_render > "/dev/null" 2>&1; then
 		_theme_render
 	fi
+	if [ -t 1 ]; then
+		if [ -n "${RAW_TTY:-}" ]; then
+			[ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c' >&2
+		else
+			echo -n $'\e[2 q' >&2
+		fi
+	fi
 	printf "%s" "${PS1:-}"
 }
 

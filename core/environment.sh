@@ -11,11 +11,13 @@ if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 	export RAW_TTY=1
 	export LC_RAW_TTY=1
 	export UNIVERSAL_RAW_TTY=1
+	export NVIM_NOTTYFAST=1
 	unset COLORTERM
 	unset MICRO_TRUECOLOR
 else
 	export COLORTERM="truecolor"
 	export MICRO_TRUECOLOR=1
+	unset NVIM_NOTTYFAST
 fi
 
 if [ -z "${LANG:-}" ] || [ "${LANG}" = "C" ] || [ "${LANG}" = "POSIX" ]; then
