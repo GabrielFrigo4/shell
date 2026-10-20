@@ -4,14 +4,84 @@
 
 bind -e
 
-# Cursor & History Navigation
+# Native Command & Filename Tab Completion for /bin/sh
+sh:bind "^I" sh-complete
+
+# Incremental History Search (Ctrl+R / Ctrl+S)
+bind "^R" em-inc-search-prev
+bind "^S" em-inc-search-next
+
+# Prefix History Navigation (Up / Down / PageUp / PageDown / Shift+Arrows)
 bind "\e[A" ed-search-prev-history
 bind "\e[B" ed-search-next-history
 bind "\eOA" ed-search-prev-history
 bind "\eOB" ed-search-next-history
+bind "\e[5~" ed-search-prev-history
+bind "\e[6~" ed-search-next-history
+bind "\e[1;2A" ed-search-prev-history
+bind "\e[1;2B" ed-search-next-history
+bind "\e[a" ed-search-prev-history
+bind "\e[b" ed-search-next-history
 
+# Line Boundaries (Home / End / Ctrl+A / Ctrl+E across VT/XTerm/Rxvt)
+bind "^A" ed-move-to-beg
+bind "^E" ed-move-to-end
 bind "\e[H" ed-move-to-beg
-bind "\e[F" ed-move-to-end
+bind "\eOH" ed-move-to-beg
 bind "\e[1~" ed-move-to-beg
+bind "\e[7~" ed-move-to-beg
+bind "\e[F" ed-move-to-end
+bind "\eOF" ed-move-to-end
 bind "\e[4~" ed-move-to-end
+bind "\e[8~" ed-move-to-end
+
+# Word Navigation (Ctrl+Arrows / Alt+Arrows / Shift+Arrows / Meta+B/F)
+bind "\eb" ed-prev-word
+bind "\ef" em-next-word
+bind "\e[1;5C" em-next-word
+bind "\e[1;5D" ed-prev-word
+bind "\e[1;3C" em-next-word
+bind "\e[1;3D" ed-prev-word
+bind "\e[5C" em-next-word
+bind "\e[5D" ed-prev-word
+bind "\e\e[C" em-next-word
+bind "\e\e[D" ed-prev-word
+bind "\e[1;2C" em-next-word
+bind "\e[1;2D" ed-prev-word
+bind "\e[c" em-next-word
+bind "\e[d" ed-prev-word
+
+# Deletion & Word Killing (Delete / Ctrl+Delete / Ctrl+W / Alt+D / Alt+BS)
 bind "\e[3~" ed-delete-next-char
+bind "\e[3;5~" em-delete-next-word
+bind "^?" ed-delete-prev-char
+bind "^H" ed-delete-prev-char
+bind "^W" ed-delete-prev-word
+bind "\ed" em-delete-next-word
+bind "\e^?" ed-delete-prev-word
+bind "\e^H" ed-delete-prev-word
+
+# Line Operations & Screen Control (Ctrl+U / Ctrl+K / Ctrl+Y / Ctrl+L)
+bind "^U" em-kill-line
+bind "^K" ed-kill-line
+bind "^Y" em-yank
+bind "^L" ed-clear-screen
+
+# Application Keypad Mode (NumPad Support)
+bind -s "\eOp" "0"
+bind -s "\eOq" "1"
+bind -s "\eOr" "2"
+bind -s "\eOs" "3"
+bind -s "\eOt" "4"
+bind -s "\eOu" "5"
+bind -s "\eOv" "6"
+bind -s "\eOw" "7"
+bind -s "\eOx" "8"
+bind -s "\eOy" "9"
+bind -s "\eOn" "."
+bind "\eOM" ed-newline
+bind -s "\eOj" "*"
+bind -s "\eOk" "+"
+bind -s "\eOl" ","
+bind -s "\eOm" "-"
+bind -s "\eOo" "/"
