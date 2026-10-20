@@ -1170,7 +1170,24 @@ function venture-server {
 
 function ek { taskkill /IM emacs.exe /F }
 function es { runemacs --fg-daemon }
+function er { ek; es }
 function ec { emacsclientw --create-frame --alternate-editor "" $args }
+function emacs-nw {
+	$target = if ($args) { $args } else { "." }
+	if (Get-Command emacsclient -ErrorAction SilentlyContinue) {
+		emacsclient -t --alternate-editor "" $target
+	} elseif (Get-Command emacs -ErrorAction SilentlyContinue) {
+		emacs -nw $target
+	} else {
+		_ui_err "emacs not found."
+	}
+}
+Set-Alias "en" "emacs-nw" -Force -Option AllScope
+Set-Alias "enw" "emacs-nw" -Force -Option AllScope
+Set-Alias "oen" "emacs-nw" -Force -Option AllScope
+Set-Alias "oenw" "emacs-nw" -Force -Option AllScope
+Set-Alias "open-emacs-nw" "emacs-nw" -Force -Option AllScope
+
 function oe {
 	$app = "emacsclientw"
 	$target = if ($args) { $args } else { "." }

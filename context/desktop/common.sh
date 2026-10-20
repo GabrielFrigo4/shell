@@ -125,7 +125,7 @@ alias oh="open-helix"
 alias h="open-helix"
 
 open-micro() {
-	command -v micro > "/dev/null" 2>&1 || { echo "❌ micro not found." >&2; return 127; }
+	command -v micro > "/dev/null" 2>&1 || { _ui_err "micro not found."; return 127; }
 	if [ "$#" -eq 0 ]; then
 		command micro .
 	else
@@ -138,7 +138,7 @@ alias om="open-micro"
 ### GUI Editors
 ### --------------------------------
 open-kate() {
-	command -v kate > "/dev/null" 2>&1 || { echo "❌ kate not found." >&2; return 127; }
+	command -v kate > "/dev/null" 2>&1 || { _ui_err "kate not found."; return 127; }
 	if [ "$#" -eq 0 ]; then
 		(command nohup kate . < "/dev/null" > "/dev/null" 2>&1 &)
 	else
@@ -148,7 +148,7 @@ open-kate() {
 alias ok="open-kate"
 
 open-geany() {
-	command -v geany > "/dev/null" 2>&1 || { echo "❌ geany not found." >&2; return 127; }
+	command -v geany > "/dev/null" 2>&1 || { _ui_err "geany not found."; return 127; }
 	if [ "$#" -eq 0 ]; then
 		(command nohup geany . < "/dev/null" > "/dev/null" 2>&1 &)
 	else
@@ -164,7 +164,7 @@ open-code() {
 	elif command -v code > "/dev/null" 2>&1; then
 		_bin="code"
 	fi
-	[ -z "${_bin}" ] && { echo "❌ Neither 'vscode' nor 'code' found." >&2; return 127; }
+	[ -z "${_bin}" ] && { _ui_err "Neither 'vscode' nor 'code' found."; return 127; }
 	if [ "$#" -eq 0 ]; then
 		"${_bin}" .
 	else
@@ -174,7 +174,7 @@ open-code() {
 alias oc="open-code"
 
 open-codium() {
-	command -v codium > "/dev/null" 2>&1 || { echo "❌ codium not found." >&2; return 127; }
+	command -v codium > "/dev/null" 2>&1 || { _ui_err "codium not found."; return 127; }
 	if [ "$#" -eq 0 ]; then
 		command codium .
 	else
@@ -184,7 +184,7 @@ open-codium() {
 alias ocm="open-codium"
 
 open-antigravity() {
-	command -v antigravity-ide > "/dev/null" 2>&1 || { echo "❌ antigravity-ide not found." >&2; return 127; }
+	command -v antigravity-ide > "/dev/null" 2>&1 || { _ui_err "antigravity-ide not found."; return 127; }
 	if [ "$#" -eq 0 ]; then
 		command antigravity-ide .
 	else
@@ -196,7 +196,7 @@ alias oa="open-antigravity"
 alias ant="antigravity-ide"
 
 open-zed() {
-	command -v zed > "/dev/null" 2>&1 || { echo "❌ zed not found." >&2; return 127; }
+	command -v zed > "/dev/null" 2>&1 || { _ui_err "zed not found."; return 127; }
 	if [ "$#" -eq 0 ]; then
 		command zed .
 	else
@@ -211,11 +211,11 @@ alias oz="open-zed"
 export EMACS_SOCKET_NAME="${HOME}/.emacs.d/var/server/auth/server"
 
 emacs-kill() {
-	command -v emacs > "/dev/null" 2>&1 || command -v emacsclient > "/dev/null" 2>&1 || { echo "❌ emacs not found." >&2; return 127; }
+	command -v emacs > "/dev/null" 2>&1 || command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacs not found."; return 127; }
 	command pkill emacs
 }
 emacs-start() {
-	command -v emacs > "/dev/null" 2>&1 || { echo "❌ emacs not found." >&2; return 127; }
+	command -v emacs > "/dev/null" 2>&1 || { _ui_err "emacs not found."; return 127; }
 	command emacs --daemon
 }
 emacs-restart() {
@@ -223,7 +223,7 @@ emacs-restart() {
 }
 
 emacs-client() {
-	command -v emacsclient > "/dev/null" 2>&1 || { echo "❌ emacsclient not found." >&2; return 127; }
+	command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacsclient not found."; return 127; }
 	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if [ "$#" -eq 0 ]; then
@@ -242,11 +242,19 @@ emacs-client() {
 }
 emacs-nw() {
 	if command -v emacsclient > "/dev/null" 2>&1; then
-		command emacsclient -t --alternate-editor "" "$@"
+		if [ "$#" -eq 0 ]; then
+			command emacsclient -t --alternate-editor "" .
+		else
+			command emacsclient -t --alternate-editor "" "$@"
+		fi
 	elif command -v emacs > "/dev/null" 2>&1; then
-		command emacs -nw "$@"
+		if [ "$#" -eq 0 ]; then
+			command emacs -nw .
+		else
+			command emacs -nw "$@"
+		fi
 	else
-		echo "❌ emacs not found." >&2
+		_ui_err "emacs not found."
 		return 127
 	fi
 	local _status=$?
@@ -280,7 +288,7 @@ emacs() {
 	return ${_status}
 }
 emacs-open() {
-	command -v emacsclient > "/dev/null" 2>&1 || { echo "❌ emacsclient not found." >&2; return 127; }
+	command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacsclient not found."; return 127; }
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if [ "$#" -eq 0 ]; then
 			(command nohup emacsclient --create-frame --alternate-editor "" . < "/dev/null" > "/dev/null" 2>&1 &)
@@ -300,7 +308,7 @@ emacs-open() {
 }
 emacs-eshell() {
 	command -v emacsclient > "/dev/null" 2>&1 || command -v emacs > "/dev/null" 2>&1 || {
-		echo "❌ emacs não encontrado no PATH." >&2
+		_ui_err "emacs não encontrado no PATH."
 		return 127
 	}
 
@@ -334,7 +342,11 @@ alias ek="emacs-kill"
 alias es="emacs-start"
 alias er="emacs-restart"
 alias ec="emacs-client"
+alias en="emacs-nw"
 alias enw="emacs-nw"
+alias oen="emacs-nw"
+alias oenw="emacs-nw"
+alias open-emacs-nw="emacs-nw"
 alias oe="emacs-open"
 alias open-emacs="emacs-open"
 alias open-eshell="emacs-eshell"

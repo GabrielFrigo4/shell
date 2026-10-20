@@ -243,6 +243,21 @@ alias ek = taskkill /IM emacs.exe /F;
 alias es = runemacs --fg-daemon;
 alias ec = emacsclientw --create-frame --alternate-editor "";
 alias oe = emacsclientw --create-frame --alternate-editor "" .;
+def --wrapped emacs-nw [...rest] {
+	let target = if ($rest | is-empty) { ["."] } else { $rest }
+	if (which emacsclient | is-not-empty) {
+		^emacsclient -t --alternate-editor "" ...$target
+	} else if (which emacs | is-not-empty) {
+		^emacs -nw ...$target
+	} else {
+		print -e "  ❌ emacs not found."
+	}
+}
+alias en = emacs-nw;
+alias enw = emacs-nw;
+alias oen = emacs-nw;
+alias oenw = emacs-nw;
+alias open-emacs-nw = emacs-nw;
 alias ov = vim .;
 alias on = nvim .;
 alias oc = code .;
