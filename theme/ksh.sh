@@ -87,7 +87,7 @@ _ksh_prompt() {
 		if [ -n "${RAW_TTY:-}" ]; then
 			[ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c' >&2
 		else
-			echo -n $'\e[2 q' >&2
+			echo -n $'\e[1 q' >&2
 		fi
 	fi
 	printf "%s" "${PS1:-}"
