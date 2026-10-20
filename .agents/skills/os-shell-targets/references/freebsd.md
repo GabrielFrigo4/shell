@@ -81,10 +81,16 @@ No FreeBSD, a inicialização em modo monousuário (_Single-User Mode_ — acion
 
 ## 🖥️ Consoles Virtuais `vt(4)` & Cursor Estático
 
-No FreeBSD, o console virtual da base é gerenciado pelo driver `vt(4)`. O controle de pisque do cursor é realizado nativamente pelo utilitário `vidcontrol`:
+No FreeBSD, o console virtual da base é gerenciado pelo driver `vt(4)` (com emulador terminal `teken`).
+
+Diferente do Linux (que exige parametrizações ativas de softcursor e `cursor_blink=0` no kernel para cessar o pisque), o **driver `vt(4)` do FreeBSD adota um cursor em bloco sólido estático por concepção arquitetural**:
+
+- A rotina de renderização no kernel (`sys/dev/vt/vt_core.c`) desenha diretamente um bloco invertido estático no framebuffer, sem temporizador ou thread de pisque.
+- O utilitário legado `vidcontrol -c normal,noblink` pertencia ao driver arcaico `sc(4)` dos anos 90 e é obsoleto no `vt(4)` (retornando erro de ioctl).
+- A persistência no `/etc/rc.conf` configura apenas a fonte Spleen 12x24 via:
 
 ```sh
-vidcontrol -c normal,noblink
+allscreens_flags="-f spleen-12x24"
 ```
 
-Essa configuração é persistida no `/etc/rc.conf` via `allscreens_flags="-c normal,noblink"`, garantindo que todas as telas virtuais (`ttyv0` a `ttyv7`) inicializem com cursor estático e tipografia Spleen 12x24 (`font12x24="spleen-12x24"`).
+Para aplicar em runtime sem reiniciar, reinicia-se o serviço canônico: `service syscons restart`.
