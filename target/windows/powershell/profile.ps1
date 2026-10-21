@@ -1173,20 +1173,24 @@ function es { runemacs --fg-daemon }
 function er { ek; es }
 function ec { emacsclientw --create-frame --alternate-editor "" $args }
 function emacs-nw {
-	$target = if ($args) { $args } else { "." }
 	if (Get-Command emacsclient -ErrorAction SilentlyContinue) {
-		emacsclient -t --alternate-editor "" $target
+		emacsclient -t --alternate-editor "" @args
 	} elseif (Get-Command emacs -ErrorAction SilentlyContinue) {
-		emacs -nw $target
+		emacs -nw @args
 	} else {
 		_ui_err "emacs not found."
 	}
 }
 Set-Alias "en" "emacs-nw" -Force -Option AllScope
 Set-Alias "enw" "emacs-nw" -Force -Option AllScope
-Set-Alias "oen" "emacs-nw" -Force -Option AllScope
-Set-Alias "oenw" "emacs-nw" -Force -Option AllScope
-Set-Alias "open-emacs-nw" "emacs-nw" -Force -Option AllScope
+
+function emacs-open-nw {
+	$target = if ($args) { $args } else { @(".") }
+	emacs-nw @target
+}
+Set-Alias "oen" "emacs-open-nw" -Force -Option AllScope
+Set-Alias "oenw" "emacs-open-nw" -Force -Option AllScope
+Set-Alias "open-emacs-nw" "emacs-open-nw" -Force -Option AllScope
 
 function oe {
 	$app = "emacsclientw"

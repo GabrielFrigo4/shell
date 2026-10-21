@@ -244,20 +244,23 @@ alias es = runemacs --fg-daemon;
 alias ec = emacsclientw --create-frame --alternate-editor "";
 alias oe = emacsclientw --create-frame --alternate-editor "" .;
 def --wrapped emacs-nw [...rest] {
-	let target = if ($rest | is-empty) { ["."] } else { $rest }
 	if (which emacsclient | is-not-empty) {
-		^emacsclient -t --alternate-editor "" ...$target
+		^emacsclient -t --alternate-editor "" ...$rest
 	} else if (which emacs | is-not-empty) {
-		^emacs -nw ...$target
+		^emacs -nw ...$rest
 	} else {
-		print -e "  ❌ emacs not found."
+		_ui_err "emacs not found."
 	}
+}
+def --wrapped emacs-open-nw [...rest] {
+	let target = if ($rest | is-empty) { ["."] } else { $rest }
+	emacs-nw ...$target
 }
 alias en = emacs-nw;
 alias enw = emacs-nw;
-alias oen = emacs-nw;
-alias oenw = emacs-nw;
-alias open-emacs-nw = emacs-nw;
+alias oen = emacs-open-nw;
+alias oenw = emacs-open-nw;
+alias open-emacs-nw = emacs-open-nw;
 alias ov = vim .;
 alias on = nvim .;
 alias oc = code .;

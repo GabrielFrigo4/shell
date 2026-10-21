@@ -242,17 +242,9 @@ emacs-client() {
 }
 emacs-nw() {
 	if command -v emacsclient > "/dev/null" 2>&1; then
-		if [ "$#" -eq 0 ]; then
-			command emacsclient -t --alternate-editor "" .
-		else
-			command emacsclient -t --alternate-editor "" "$@"
-		fi
+		command emacsclient -t --alternate-editor "" "$@"
 	elif command -v emacs > "/dev/null" 2>&1; then
-		if [ "$#" -eq 0 ]; then
-			command emacs -nw .
-		else
-			command emacs -nw "$@"
-		fi
+		command emacs -nw "$@"
 	else
 		_ui_err "emacs not found."
 		return 127
@@ -305,14 +297,14 @@ emacs-open() {
 			(command nohup emacsclient --create-frame --alternate-editor "" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 		fi
 	else
-		if [ "$#" -eq 0 ]; then
-			command emacsclient -t --alternate-editor "" .
-		else
-			command emacsclient -t --alternate-editor "" "$@"
-		fi
-		local _status=$?
-		_restore_tty_cursor
-		return ${_status}
+		emacs-open-nw "$@"
+	fi
+}
+emacs-open-nw() {
+	if [ "$#" -eq 0 ]; then
+		emacs-nw .
+	else
+		emacs-nw "$@"
 	fi
 }
 emacs-eshell() {
@@ -353,11 +345,11 @@ alias er="emacs-restart"
 alias ec="emacs-client"
 alias en="emacs-nw"
 alias enw="emacs-nw"
-alias oen="emacs-nw"
-alias oenw="emacs-nw"
-alias open-emacs-nw="emacs-nw"
 alias oe="emacs-open"
 alias open-emacs="emacs-open"
+alias oen="emacs-open-nw"
+alias oenw="emacs-open-nw"
+alias open-emacs-nw="emacs-open-nw"
 alias open-eshell="emacs-eshell"
 alias oes="emacs-eshell"
 alias esh="emacs-eshell"
