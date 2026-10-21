@@ -216,7 +216,7 @@ emacs-kill() {
 }
 emacs-start() {
 	command -v emacs > "/dev/null" 2>&1 || { _ui_err "emacs not found."; return 127; }
-	command emacs --daemon
+	command emacs --daemon="${EMACS_SOCKET_NAME}"
 }
 emacs-restart() {
 	emacs-kill && emacs-start
@@ -275,14 +275,23 @@ emacs() {
 	local _status=0
 	case "${1:-}" in
 		client)
-			[ "$#" -ge 1 ] && shift 1
+			shift 1
 			emacs-client "$@"
 			_status=$?
 			;;
-		*)
+		-nw | --no-window-system | -t | --tty)
+			shift 1
+			emacs-nw "$@"
+			_status=$?
+			;;
+		-*)
 			command emacs "$@"
 			_status=$?
 			_restore_tty_cursor
+			;;
+		*)
+			emacs-client "$@"
+			_status=$?
 			;;
 	esac
 	return ${_status}
