@@ -122,11 +122,19 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
 - É TERMINANTEMENTE PROIBIDO copiar arquivos avulsos (`cp`, `rsync`) da bancada para a produção, mesmo durante testes rápidos ou diagnósticos. Modificações manuais tornam a working tree de produção suja (`dirty`), quebrando a soberania do DVCS e impedindo atualizações limpas.
 - Toda modificação deve ser desenvolvida e validada na bancada (`~/Documents/Environment/Shell`), comitada e enviada via `git push`. A árvore de produção deve manter `git status` 100% limpo em todo momento.
 
-18. **Padrão Display Server Dispatcher & Tripartite Session Lifecycle:**
+18. **Padrão Display Server Dispatcher & Ciclo de Vida Multi-SO (Linux, FreeBSD & OpenBSD):**
 
-- Funções gráficas interativas adotam nomes canônicos por extenso (`window-manager`, `graphical-launcher`, `emacs-window-manager`) e despacham via `_dispatch_display_server <alvo>` para as variantes com sufixo (`<alvo>-wayland` e `<alvo>-x11`).
-- Aliases ergonômicos (`wm`, `win`, `wwm`, `way`, `xwm`, `xorg`, `x11`, `gui`, `wgui`, `xgui`, `ewm`, `wewm`, `xewm`) apontam para as funções correspondentes sem duplicar código.
-- A inicialização Wayland em `_exec_wayland` é tripartite: FreeBSD usa `ck-launch-session dbus-launch`; Linux com systemd detecta e preserva `/run/user/$(id -u)/bus` sem novo `dbus-run-session` (evitando corrupção de alvos de sessão como `gnome-session@gnome.target`); Linux sem systemd ou outros BSDs usam fallback isolado de `dbus-run-session`.
+- **Simetria Canônica de Nomenclatura em 3 Camadas:**
+    - _Funções Canônicas (Kebab-Case por Extenso):_ `<função>` universal com autoseleção inteligente (`window-manager`, `graphical-launcher`, `emacs-window-manager`), despachando via `_dispatch_display_server "<função>"`; variantes especializadas com sufixo `<função>-wayland` e `<função>-x11`. O uso do sufixo garante agrupamento no `<TAB>` autocompletion.
+    - _Aliases Ergonômicos (CLI):_ `<comando>` universal (`wm`, `win`, `gui`, `ewm`, `ew`); prefixo `w` para Wayland (`wwm`, `way`, `wgui`, `wewm`, `wew`); prefixo `x` para X11 (`xwm`, `xorg`, `x11`, `xgui`, `xewm`, `xew`, `exwm`). Proibição de colisões com utilitários de sistema (ex: `wg` do WireGuard).
+- **Inicialização Wayland (`_exec_wayland`):**
+    - _FreeBSD Workstation:_ Encapsula via `ck-launch-session dbus-launch --exit-with-session` vinculado ao ConsoleKit2 e `seatd`.
+    - _Linux com systemd:_ Detecta e preserva `/run/user/$(id -u)/bus`, exportando `DBUS_SESSION_BUS_ADDRESS` sem criar instâncias efêmeras de `dbus-run-session` que quebrem alvos do GNOME (`gnome-session@gnome.target`).
+    - _OpenBSD & Linux sem systemd (Devuan/Alpine/Void):_ Dispara via `dbus-run-session` com fallback para `dbus-launch --exit-with-session` e execução direta.
+- **Inicialização X11 / Xenocara (`_exec_x11`):**
+    - _Fusão de Recursos:_ Aplica `xrdb -merge ~/.Xresources` automaticamente se o arquivo e utilitário existirem.
+    - _Mapeamento de VT:_ Mapeia consoles virtuais Linux (`/dev/tty*`), FreeBSD (`/dev/ttyv*`) e OpenBSD wscons (`/dev/ttyC*`) para o argumento `vtN` correspondente.
+    - _Cascata Executiva:_ Executa prioritariamente `startx` com fallback para `xinit` e preservação de `${DISPLAY:-:0}`.
 
 ---
 

@@ -715,9 +715,37 @@ _exec_wayland() {
 
 	if command -v dbus-run-session > "/dev/null" 2>&1; then
 		exec dbus-run-session "$@"
+	elif command -v dbus-launch > "/dev/null" 2>&1; then
+		exec dbus-launch --exit-with-session "$@"
 	fi
 
 	exec "$@"
+}
+
+_exec_x11() {
+	command -v startx > "/dev/null" 2>&1 || command -v xinit > "/dev/null" 2>&1 || return 1
+
+	export DISPLAY="${DISPLAY:-:0}"
+	if [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
+		xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
+	fi
+
+	local _cur_tty="$(tty 2> "/dev/null" || true)"
+	local _vt_arg=""
+	case "${_cur_tty}" in
+		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyC*)
+			local _vt_num="$(printf '%s\n' "${_cur_tty}" | grep -o '[0-9a-f]*$' | tr 'a-f' '1-6')"
+			[ -n "${_vt_num}" ] && _vt_arg="vt${_vt_num}"
+			;;
+	esac
+
+	if command -v startx > "/dev/null" 2>&1; then
+		exec startx "$@" -- "${DISPLAY}" ${_vt_arg}
+	elif command -v xinit > "/dev/null" 2>&1; then
+		exec xinit "$@" -- "${DISPLAY}" ${_vt_arg}
+	else
+		exec "$@"
+	fi
 }
 
 _has_wayland() {
@@ -754,7 +782,7 @@ _has_x11() {
 	command -v startx > "/dev/null" 2>&1 && return 0
 
 	local _session_dir
-	for _session_dir in /usr/share/xsessions /usr/local/share/xsessions "${XDG_DATA_HOME:-${HOME}/.local/share}/xsessions"; do
+	for _session_dir in /usr/share/xsessions /usr/local/share/xsessions /usr/X11R6/share/xsessions "${XDG_DATA_HOME:-${HOME}/.local/share}/xsessions"; do
 		if [ -d "${_session_dir}" ] && [ -n "$(command ls -A "${_session_dir}" 2> "/dev/null")" ]; then
 			return 0
 		fi
@@ -800,11 +828,11 @@ _try_xorg() {
 	for _bin in "$@"; do
 		if command -v "${_bin}" > "/dev/null" 2>&1; then
 			if [ "${_bin}" = "gnome-session" ]; then
-				exec startx "$(command -v gnome-session)" --session=gnome-xorg
+				_exec_x11 "$(command -v gnome-session)" --session=gnome-xorg
 			elif [ "${_bin}" = "qtile" ]; then
-				exec startx "$(command -v qtile)" start
+				_exec_x11 "$(command -v qtile)" start
 			else
-				exec startx "$(command -v "${_bin}")"
+				_exec_x11 "$(command -v "${_bin}")"
 			fi
 		fi
 	done
@@ -851,10 +879,10 @@ _start_xorg() {
 		fluxbox)    _try_xorg startfluxbox fluxbox ;;
 		"")
 			if [ -f "${HOME}/.xinitrc" ] || [ -f "${HOME}/.xsession" ] || [ -f "${HOME}/.Xclients" ]; then
-				exec startx
+				_exec_x11
 			fi
 			_try_xorg startplasma-x11 startxfce4 gnome-session mate-session cinnamon-session startlxqt startlxde i3 bspwm awesome openbox-session dwm xmonad qtile startfluxbox
-			exec startx
+			_exec_x11
 			;;
 		*)
 			_try_xorg "${1}"
@@ -1033,7 +1061,7 @@ graphical-launcher-x11() {
 	local _cur_tty="$(tty 2> "/dev/null" || true)"
 	local _vt_arg=""
 	case "${_cur_tty}" in
-		/dev/tty[0-9]*|/dev/ttyv*)
+		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyC*)
 			local _vt_num="$(printf '%s\n' "${_cur_tty}" | grep -o '[0-9a-f]*$' | tr 'a-f' '1-6')"
 			[ -n "${_vt_num}" ] && _vt_arg="vt${_vt_num}"
 			;;
@@ -1081,14 +1109,7 @@ emacs-window-manager-x11() {
 		return 127
 	fi
 
-	if command -v xinit > "/dev/null" 2>&1; then
-		command xinit "$(command -v emacs)" "$@" -- "${DISPLAY:-:0}" > "/dev/null" 2>&1
-	elif command -v startx > "/dev/null" 2>&1; then
-		command startx "$(command -v emacs)" "$@" -- "${DISPLAY:-:0}" > "/dev/null" 2>&1
-	else
-		command emacs "$@"
-	fi
-
+	_exec_x11 "$(command -v emacs)" "$@"
 	_freebsd_vt_bounce
 }
 alias xewm="emacs-window-manager-x11"

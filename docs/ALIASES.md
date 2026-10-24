@@ -6,6 +6,22 @@ O **Universal Shell Environment** adota uma convenção estrita de nomenclatura 
 - 🔒 **`_snake_case` (prefixo `_`) = Helpers Privados:** Funções internas de bootstrapping e infraestrutura que não poluem o autocompletion.
 - 🏛️ **`SNAKE_CASE` maiúsculo = Variáveis de Ambiente:** Configurações e caminhos canônicos exportados para a sessão.
 
+### 🖥️ Padrão Universal de Nomenclatura & Simetria de Display Server
+
+Para ferramentas e comandos com ciclo de vida gráfico, o ecossistema segue a simetria canônica em três camadas:
+
+| Camada               | Padrão Sintático   | Papel & Comportamento                                                                  | Exemplos                                                                               |
+| :------------------- | :----------------- | :------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------- |
+| **Função Universal** | `<função>`         | Autoseleção inteligente (Wayland com fallback para X11 via `_dispatch_display_server`) | `window-manager`, `graphical-launcher`, `emacs-window-manager`                         |
+| **Função Wayland**   | `<função>-wayland` | Especialização forçada para Wayland nativo                                             | `window-manager-wayland`, `graphical-launcher-wayland`, `emacs-window-manager-wayland` |
+| **Função X11**       | `<função>-x11`     | Especialização forçada para X11 / Xenocara                                             | `window-manager-x11`, `graphical-launcher-x11`, `emacs-window-manager-x11`             |
+| **Alias Universal**  | `<comando>`        | Atalho ergonômico para a função universal                                              | `wm`, `win`, `gui`, `ewm`, `ew`                                                        |
+| **Alias Wayland**    | `w<comando>`       | Atalho ergonômico com prefixo `w` para Wayland                                         | `wwm`, `way`, `wgui`, `wewm`, `wew`                                                    |
+| **Alias X11**        | `x<comando>`       | Atalho ergonômico com prefixo `x` para X11                                             | `xwm`, `xorg`, `x11`, `xgui`, `xewm`, `xew`, `exwm`                                    |
+
+> [!NOTE]
+> O uso do sufixo nas funções canônicas (`-wayland` e `-x11`) garante que a tecla `<TAB>` no terminal autocomplete para a raiz comum e liste todas as variantes lado a lado, enquanto os prefixos `w` e `x` nos aliases proporcionam máxima velocidade de digitação sem poluir comandos essenciais do sistema operacional.
+
 ---
 
 ## 1. ⚙️ Shell, Ambiente & Vault (Universais)

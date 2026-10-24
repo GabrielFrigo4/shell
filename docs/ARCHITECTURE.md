@@ -171,7 +171,7 @@ O repositório **Universal Shell** opera no espaço de usuário desprivilegiado 
 
 ---
 
-## 🖥️ Despachante Universal de Display Server & Arquitetura Tripartite
+## 🖥️ Despachante Universal de Display Server & Inicialização Multi-SO
 
 Para gerenciar o ciclo de vida gráfico sem acoplamento a servidores específicos, o Shell adota o padrão **Display Server Dispatcher**:
 
@@ -186,27 +186,54 @@ flowchart TD
     PROBE_X -->|Sim| X_EXEC["Backend X11 (-x11)<br/><i>(start-session xorg / xgui / xewm)</i>"]
     PROBE_X -->|Não| ERR["_ui_err<br/><i>(Retorno 127)</i>"]
 
-    subgraph W_INIT ["Inicialização Tripartite de Wayland (_exec_wayland)"]
-        W_EXEC --> OS_CHK{"Detecção de SO & Bus"}
-        OS_CHK -->|FreeBSD| CK["ConsoleKit2 + dbus-launch"]
-        OS_CHK -->|Linux com systemd| SYSBUS["Preservação de /run/user/$UID/bus"]
-        OS_CHK -->|Linux sem systemd / BSD| DBRUN["dbus-run-session isolado"]
+    subgraph W_INIT ["Inicialização Wayland (_exec_wayland)"]
+        W_EXEC --> W_CHK{"Detecção de SO & Bus"}
+        W_CHK -->|FreeBSD| CK["ConsoleKit2 + dbus-launch"]
+        W_CHK -->|Linux com systemd| SYSBUS["Preserva /run/user/$UID/bus"]
+        W_CHK -->|OpenBSD / Alpine / Devuan| DBRUN["dbus-run-session / dbus-launch"]
+    end
+
+    subgraph X_INIT ["Inicialização X11 / Xenocara (_exec_x11)"]
+        X_EXEC --> X_CHK{"Detecção de Console VT & Display"}
+        X_CHK -->|Linux| LVT["vt1-vt6 (/dev/tty*)"]
+        X_CHK -->|FreeBSD| BVT["vt1-vt6 (/dev/ttyv*)"]
+        X_CHK -->|OpenBSD| OVT["vt1-vt6 (/dev/ttyC* Xenocara)"]
+        LVT --> XSTART["startx / xinit -- :0 vtN"]
+        BVT --> XSTART
+        OVT --> XSTART
     end
 ```
 
-### 1. Simetria de Nomes & Desacoplamento
+### 1. Padrão Canônico de Nomenclatura & Simetria em 3 Camadas
 
-- **Comandos Universais:** `window-manager`, `graphical-launcher`, `emacs-window-manager`. Despacham dinamicamente para o backend gráfico disponível.
-- **Especializações por Protocolo:** Sufixos `-wayland` e `-x11` mantêm autocompletion coeso no shell (`window-manager<TAB>` lista todas as opções).
-- **Aliases Ergonômicos:**
-    - Wayland: `wwm`, `way`, `wgui`, `wewm`.
-    - X11: `xwm`, `xorg`, `x11`, `xgui`, `xewm`, `exwm`.
-    - Universal: `wm`, `win`, `gui`, `ewm`.
+O ecossistema impõe uma regra inegociável de separação entre funções de runtime e atalhos de terminal:
 
-### 2. Ciclo de Vida Tripartite do `_exec_wayland`
+- **Funções Canônicas (Kebab-Case por Extenso):**
+    - Universal: `<função>` (ex: `window-manager`, `graphical-launcher`, `emacs-window-manager`). Despacha via `_dispatch_display_server "<função>"`.
+    - Wayland: `<função>-wayland` (ex: `window-manager-wayland`, `graphical-launcher-wayland`, `emacs-window-manager-wayland`).
+    - X11: `<função>-x11` (ex: `window-manager-x11`, `graphical-launcher-x11`, `emacs-window-manager-x11`).
+    - _Vantagem Arquitetural:_ O autocompletion no terminal (`<função><TAB>`) agrupa todas as implementações sob o mesmo prefixo sem poluir o namespace.
 
-Ao iniciar ambientes gráficos nativos a partir de TTY, o encapsulamento de barramento D-Bus segue três caminhos mutuamente exclusivos:
+- **Aliases Ergonômicos (CLI):**
+    - Universal: `<comando>` (ex: `wm`, `win`, `gui`, `ewm`, `ew`).
+    - Wayland: `w<comando>` (ex: `wwm`, `way`, `wayland`, `wgui`, `wewm`, `wew`).
+    - X11: `x<comando>` (ex: `xwm`, `xorg`, `x11`, `xgui`, `xewm`, `xew`, `exwm`).
 
-1. **FreeBSD:** Encapsulado via `ck-launch-session dbus-launch --exit-with-session` para registrar o assento VT no ConsoleKit2.
-2. **Linux com systemd (Fedora/Debian/Arch):** O socket `/run/user/$(id -u)/bus` gerado pelo PAM/systemd é detectado e preservado intacto, exportando `DBUS_SESSION_BUS_ADDRESS` e evitando a criação de barramentos isolados que corrompem alvos de sessão do GNOME (`gnome-session@gnome.target`).
-3. **Linux sem systemd / BSDs alternativos (Devuan/Alpine/Void):** Invocado via `dbus-run-session` para fornecer barramento efêmero sem daemon de sessão residente.
+### 2. Ciclo de Vida Multi-SO do `_exec_wayland`
+
+Ao iniciar compositores Wayland a partir do console puro (TTY), o encapsulamento de barramento e assento segue três vias adaptativas:
+
+1. **FreeBSD Workstation:** Encapsulado via `ck-launch-session dbus-launch --exit-with-session` para vincular ao assento ConsoleKit2 e gerenciar hardware DRM via `seatd`.
+2. **Linux com systemd (Fedora/Debian/Arch):** O socket `/run/user/$(id -u)/bus` gerado pelo PAM/systemd é detectado e preservado intacto, exportando `DBUS_SESSION_BUS_ADDRESS`. Isso previne a criação de barramentos isolados que causam falhas fatais em alvos de sessão do GNOME (`gnome-session@gnome.target`).
+3. **OpenBSD & Linux sem systemd (Devuan/Alpine/Void):** Invocado via `dbus-run-session` ou fallback defensivo `dbus-launch --exit-with-session`, garantindo que sessões em sistemas sem daemon de usuário recebam IPC funcional.
+
+### 3. Ciclo de Vida Multi-SO do `_exec_x11`
+
+Ao iniciar servidores X11 ou aplicações via `xinit` a partir do console, o `_exec_x11` unifica o tratamento de recursos e terminais virtuais:
+
+1. **Fusão de Recursos:** Carrega automaticamente `~/.Xresources` via `xrdb -merge` antes de disparar o servidor.
+2. **Resolução Universal de VT (Virtual Terminal):**
+    - **Linux:** Mapeia consoles `/dev/tty[1-6]` para o argumento `vt[1-6]`.
+    - **FreeBSD:** Mapeia consoles virtuais `/dev/ttyv[0-5]` para `vt[1-6]`.
+    - **OpenBSD (Xenocara):** Mapeia telas do driver wscons `/dev/ttyC[0-5]` para `vt[1-6]`.
+3. **Cascata de Execução:** Dispara prioritariamente `startx` com fallback para `xinit` e preservação de `${DISPLAY:-:0}`.
