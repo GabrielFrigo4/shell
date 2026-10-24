@@ -842,6 +842,168 @@ alias xorg="start-session xorg"
 alias x11="start-session xorg"
 
 ### --------------------------------
+### Ephemeral Session Helpers
+### --------------------------------
+_wayland_session_env() {
+	export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"
+	if [ ! -d "${XDG_RUNTIME_DIR}" ]; then
+		mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
+	fi
+
+	export XKB_DEFAULT_LAYOUT="br"
+	export XKB_DEFAULT_MODEL="abnt2"
+	export WLR_KEYBOARD_REPEAT_DELAY=200
+	export WLR_KEYBOARD_REPEAT_RATE=50
+
+	export QT_QPA_PLATFORM="wayland"
+	export QT_QPA_PLATFORMTHEME="kde"
+	export QT_STYLE_OVERRIDE="Breeze"
+	export XCURSOR_THEME="breeze_cursors"
+	export XCURSOR_SIZE=36
+	export QT_SCALE_FACTOR=1.25
+}
+
+_freebsd_vt_bounce() {
+	if [ "$(_detect_os)" = "freebsd" ]; then
+		local _cur_tty="$(tty 2> "/dev/null" || true)"
+		case "${_cur_tty}" in
+			/dev/ttyv*)
+				local _vt_idx="$(printf '%s\n' "${_cur_tty}" | sed -E 's#/dev/ttyv([0-9a-f])#\1#' | tr '0-9a-f' '1-9a-f')"
+				local _target_vt=1
+				[ "${_vt_idx}" = "1" ] && _target_vt=2
+				command vidcontrol -s "${_target_vt}" < "${_cur_tty}" 2> "/dev/null" || true
+				command vidcontrol -s "${_vt_idx}" < "${_cur_tty}" 2> "/dev/null" || printf '\033c'
+				;;
+		esac
+	fi
+}
+
+### --------------------------------
+### Ephemeral Launchers GUI and XGUI
+### --------------------------------
+gui() {
+	local _app="${1:-foot}"
+	[ "$#" -ge 1 ] && shift
+
+	_wayland_session_env
+
+	if command -v sway > "/dev/null" 2>&1; then
+		local _sway_cfg="${XDG_RUNTIME_DIR}/sway-gui-$$.conf"
+		cat << EOF > "${_sway_cfg}"
+default_border none
+default_floating_border none
+titlebar_border_thickness 0
+seat * xcursor_theme breeze_cursors 36
+input type:keyboard {
+    xkb_layout br
+    xkb_model abnt2
+    repeat_delay 200
+    repeat_rate 50
+}
+exec sh -c '${_app} $* ; swaymsg exit'
+EOF
+		command sway -c "${_sway_cfg}" > "/dev/null" 2>&1
+		rm -f "${_sway_cfg}"
+	elif command -v river > "/dev/null" 2>&1; then
+		local _river_init="${XDG_RUNTIME_DIR}/river-gui-$$.sh"
+		cat << EOF > "${_river_init}"
+#!/bin/sh
+riverctl border-width 0
+riverctl xcursor-theme breeze_cursors 36
+riverctl keyboard-layout -model abnt2 br
+riverctl set-repeat 50 200
+sh -c '${_app} $* ; riverctl exit' &
+EOF
+		chmod 0755 "${_river_init}"
+		command river -c "${_river_init}" > "/dev/null" 2>&1
+		rm -f "${_river_init}"
+	elif command -v labwc > "/dev/null" 2>&1; then
+		command labwc -C "${XDG_RUNTIME_DIR}" -s "${_app} $*" > "/dev/null" 2>&1
+	elif command -v cage > "/dev/null" 2>&1; then
+		command cage -s -- "${_app}" "$@" > "/dev/null" 2>&1
+	else
+		_ui_err "Nenhum micro-compositor Wayland (sway, river, labwc, cage) foi encontrado."
+		return 1
+	fi
+
+	_freebsd_vt_bounce
+}
+
+xgui() {
+	command -v xinit > "/dev/null" 2>&1 || command -v startx > "/dev/null" 2>&1 || {
+		_ui_err "xinit ou startx não encontrado para lançador Xorg."
+		return 1
+	}
+
+	local _app="${1:-xterm}"
+	[ "$#" -ge 1 ] && shift
+
+	export DISPLAY="${DISPLAY:-:0}"
+	if [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
+		xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
+	fi
+
+	local _cur_tty="$(tty 2> "/dev/null" || true)"
+	local _vt_arg=""
+	case "${_cur_tty}" in
+		/dev/tty[0-9]*|/dev/ttyv*)
+			local _vt_num="$(printf '%s\n' "${_cur_tty}" | grep -o '[0-9a-f]*$' | tr 'a-f' '1-6')"
+			[ -n "${_vt_num}" ] && _vt_arg="vt${_vt_num}"
+			;;
+	esac
+
+	if command -v xinit > "/dev/null" 2>&1; then
+		command xinit "$(command -v "${_app}")" "$@" -- "${DISPLAY}" ${_vt_arg} > "/dev/null" 2>&1
+	else
+		command startx "$(command -v "${_app}")" "$@" -- "${DISPLAY}" ${_vt_arg} > "/dev/null" 2>&1
+	fi
+
+	_freebsd_vt_bounce
+}
+
+### --------------------------------
+### Emacs OS Window Managers
+### --------------------------------
+emacs-window-manager() {
+	_wayland_session_env
+	export EMACS_OS_MODE="wayland"
+
+	if command -v emacs > "/dev/null" 2>&1; then
+		command emacs --eval "(when (fboundp 'ewm-start-module) (ewm-start-module))" "$@"
+	else
+		_ui_err "emacs não encontrado."
+		return 127
+	fi
+
+	_freebsd_vt_bounce
+}
+alias ewm="emacs-window-manager"
+alias ew="emacs-window-manager"
+
+emacs-x-window-manager() {
+	export EMACS_OS_MODE="x11"
+
+	if ! command -v emacs > "/dev/null" 2>&1; then
+		_ui_err "emacs não encontrado."
+		return 127
+	fi
+
+	if command -v xinit > "/dev/null" 2>&1; then
+		command xinit "$(command -v emacs)" "$@" -- "${DISPLAY:-:0}" > "/dev/null" 2>&1
+	elif command -v startx > "/dev/null" 2>&1; then
+		command startx "$(command -v emacs)" "$@" -- "${DISPLAY:-:0}" > "/dev/null" 2>&1
+	else
+		command emacs "$@"
+	fi
+
+	_freebsd_vt_bounce
+}
+alias exwm="emacs-x-window-manager"
+alias exw="emacs-x-window-manager"
+alias xewm="emacs-x-window-manager"
+alias xew="emacs-x-window-manager"
+
+### --------------------------------
 ### Python Zero-Cruft Policy
 ### --------------------------------
 export PYTHONDONTWRITEBYTECODE=1
