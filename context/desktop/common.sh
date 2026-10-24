@@ -694,16 +694,86 @@ fi
 ### Graphical Session Launchers
 ### --------------------------------
 _exec_wayland() {
-	if [ "$(_detect_os)" = "freebsd" ] && command -v ck-launch-session > "/dev/null" 2>&1; then
-		if command -v dbus-run-session > "/dev/null" 2>&1; then
-			exec ck-launch-session dbus-run-session "$@"
-		else
+	if [ "$(_detect_os)" = "freebsd" ]; then
+		if command -v ck-launch-session > "/dev/null" 2>&1; then
+			if command -v dbus-launch > "/dev/null" 2>&1; then
+				exec ck-launch-session dbus-launch --exit-with-session "$@"
+			fi
 			exec ck-launch-session "$@"
 		fi
-	elif command -v dbus-run-session > "/dev/null" 2>&1; then
-		exec dbus-run-session "$@"
-	else
+		if command -v dbus-run-session > "/dev/null" 2>&1; then
+			exec dbus-run-session "$@"
+		fi
 		exec "$@"
+	fi
+
+	if [ -S "/run/user/$(id -u)/bus" ]; then
+		DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
+		export DBUS_SESSION_BUS_ADDRESS
+		exec "$@"
+	fi
+
+	if command -v dbus-run-session > "/dev/null" 2>&1; then
+		exec dbus-run-session "$@"
+	fi
+
+	exec "$@"
+}
+
+_has_wayland() {
+	[ -n "${WAYLAND_DISPLAY:-}" ] && return 0
+
+	local _session_dir
+	for _session_dir in /usr/share/wayland-sessions /usr/local/share/wayland-sessions "${XDG_DATA_HOME:-${HOME}/.local/share}/wayland-sessions"; do
+		if [ -d "${_session_dir}" ] && [ -n "$(command ls -A "${_session_dir}" 2> "/dev/null")" ]; then
+			return 0
+		fi
+	done
+
+	local _compositor _micro _desktops _tilings _compositors
+	_micro="cage river labwc sway"
+	_desktops="gnome-shell startplasma-wayland cosmic-session"
+	_tilings="Hyprland hyprland niri wayfire dwl hikari weston"
+	_compositors="${_micro} ${_desktops} ${_tilings}"
+
+	for _compositor in ${_compositors}; do
+		if command -v "${_compositor}" > "/dev/null" 2>&1; then
+			return 0
+		fi
+	done
+
+	return 1
+}
+
+_has_x11() {
+	[ -n "${DISPLAY:-}" ] && return 0
+
+	command -v Xorg > "/dev/null" 2>&1 && return 0
+	command -v X > "/dev/null" 2>&1 && return 0
+	command -v xinit > "/dev/null" 2>&1 && return 0
+	command -v startx > "/dev/null" 2>&1 && return 0
+
+	local _session_dir
+	for _session_dir in /usr/share/xsessions /usr/local/share/xsessions "${XDG_DATA_HOME:-${HOME}/.local/share}/xsessions"; do
+		if [ -d "${_session_dir}" ] && [ -n "$(command ls -A "${_session_dir}" 2> "/dev/null")" ]; then
+			return 0
+		fi
+	done
+
+	return 1
+}
+
+_dispatch_display_server() {
+	local _base_target="${1:-}"
+	[ "$#" -ge 1 ] && shift
+
+	if _has_wayland && command -v "${_base_target}-wayland" > "/dev/null" 2>&1; then
+		"${_base_target}-wayland" "$@"
+	elif _has_x11 && command -v "${_base_target}-x11" > "/dev/null" 2>&1; then
+		"${_base_target}-x11" "$@"
+	else
+		_ui_err "Nenhum backend gráfico suportado (Wayland ou X11) disponível para '${_base_target}'."
+		return 127
 	fi
 }
 
@@ -829,17 +899,33 @@ start-session() {
 }
 
 ### --------------------------------
-### Session Aliases
+### Desktop Window Managers
 ### --------------------------------
-alias start-way="start-session way"
-alias start-wayland="start-session way"
-alias start-xorg="start-session xorg"
-alias start-x11="start-session xorg"
+window-manager-wayland() {
+	start-session way "$@"
+}
+alias wwm="window-manager-wayland"
+alias way="window-manager-wayland"
+alias wayland="window-manager-wayland"
+alias start-way="window-manager-wayland"
+alias start-wayland="window-manager-wayland"
 
-alias way="start-session way"
-alias wayland="start-session way"
-alias xorg="start-session xorg"
-alias x11="start-session xorg"
+window-manager-x11() {
+	start-session xorg "$@"
+}
+alias xwm="window-manager-x11"
+alias xorg="window-manager-x11"
+alias x11="window-manager-x11"
+alias start-xorg="window-manager-x11"
+alias start-x11="window-manager-x11"
+
+window-manager() {
+	_dispatch_display_server "window-manager" "$@"
+}
+alias wm="window-manager"
+alias win="window-manager"
+alias win-man="window-manager"
+alias window="window-manager"
 
 ### --------------------------------
 ### Ephemeral Session Helpers
@@ -879,9 +965,9 @@ _freebsd_vt_bounce() {
 }
 
 ### --------------------------------
-### Ephemeral Launchers GUI and XGUI
+### Ephemeral Graphical Launchers
 ### --------------------------------
-gui() {
+graphical-launcher-wayland() {
 	local _app="${1:-foot}"
 	[ "$#" -ge 1 ] && shift
 
@@ -928,8 +1014,9 @@ EOF
 
 	_freebsd_vt_bounce
 }
+alias wgui="graphical-launcher-wayland"
 
-xgui() {
+graphical-launcher-x11() {
 	command -v xinit > "/dev/null" 2>&1 || command -v startx > "/dev/null" 2>&1 || {
 		_ui_err "xinit ou startx não encontrado para lançador Xorg."
 		return 1
@@ -960,11 +1047,17 @@ xgui() {
 
 	_freebsd_vt_bounce
 }
+alias xgui="graphical-launcher-x11"
+
+graphical-launcher() {
+	_dispatch_display_server "graphical-launcher" "$@"
+}
+alias gui="graphical-launcher"
 
 ### --------------------------------
 ### Emacs OS Window Managers
 ### --------------------------------
-emacs-window-manager() {
+emacs-window-manager-wayland() {
 	_wayland_session_env
 	export EMACS_OS_MODE="wayland"
 
@@ -977,10 +1070,10 @@ emacs-window-manager() {
 
 	_freebsd_vt_bounce
 }
-alias ewm="emacs-window-manager"
-alias ew="emacs-window-manager"
+alias wewm="emacs-window-manager-wayland"
+alias wew="emacs-window-manager-wayland"
 
-emacs-x-window-manager() {
+emacs-window-manager-x11() {
 	export EMACS_OS_MODE="x11"
 
 	if ! command -v emacs > "/dev/null" 2>&1; then
@@ -998,10 +1091,16 @@ emacs-x-window-manager() {
 
 	_freebsd_vt_bounce
 }
-alias exwm="emacs-x-window-manager"
-alias exw="emacs-x-window-manager"
-alias xewm="emacs-x-window-manager"
-alias xew="emacs-x-window-manager"
+alias xewm="emacs-window-manager-x11"
+alias xew="emacs-window-manager-x11"
+alias exwm="emacs-window-manager-x11"
+alias exw="emacs-window-manager-x11"
+
+emacs-window-manager() {
+	_dispatch_display_server "emacs-window-manager" "$@"
+}
+alias ewm="emacs-window-manager"
+alias ew="emacs-window-manager"
 
 ### --------------------------------
 ### Python Zero-Cruft Policy

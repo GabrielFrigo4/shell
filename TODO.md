@@ -7,27 +7,33 @@
 
 ## 📊 Matriz de Maturidade
 
-| Área                    |   Status    | Cobertura / Estado                                                                       |
-| :---------------------- | :---------: | :--------------------------------------------------------------------------------------- |
-| **Plataformas Base**    | 🟢 Estável  | Linux, FreeBSD, DragonFly BSD, OpenBSD, NetBSD, illumos, macOS, Windows (MSYS2)          |
-| **Shells Nativos**      | 🟢 Estável  | Zsh, Bash, POSIX sh (FreeBSD), KornShell (OpenBSD)                                       |
-| **Shells Alternativos** | 🟢 Estável  | PowerShell 7+, NuShell, CMD (Clink), Fish Shell (`fish.fish`)                            |
-| **Latência & Boot**     | 🟢 Estável  | Latência rigorosamente < 16ms / 64ms em todas as plataformas                             |
-| **Módulos Comuns**      | 🟢 Estável  | Simetria plana em `target/common/` (`bash.sh`, `fish.fish`, `ksh.sh`, `sh.sh`, `zsh.sh`) |
-| **Resiliência TTY**     | 🟢 Estável  | Detecção de console puro, locale soberano UTF-8 e rendering adaptativo pill/micro        |
-| **Paridade Windows**    | 🟢 Estável  | Executáveis defensivos (winget/scoop/choco), PowerShell 5.1/7 e NuShell                  |
-| **UI & Semântica**      | 🟢 Estável  | Padrão `_ui_*` com ANSI POSIX puro via `printf`                                          |
-| **Lançadores Gráficos** | 🟢 Estável  | `gui` (Wayland: sway/river/labwc/cage) e `xgui` (Xorg: xinit) por TTY                    |
-| **Sessões Emacs OS**    | 🟢 Estável  | Comandos `emacs-window-manager` (`ewm`/`ew`) e `emacs-x-window-manager` (`xewm`/`exwm`)  |
-| **Restauração Console** | 🟢 Estável  | VT bounce defensivo com `vidcontrol -s` no FreeBSD pós-compositor                        |
-| **Quality Gates**       | 🟢 Aprovado | 100% aprovado em `make test` e `make bench`                                              |
+| Área                    |   Status    | Cobertura / Estado                                                                                           |
+| :---------------------- | :---------: | :----------------------------------------------------------------------------------------------------------- |
+| **Plataformas Base**    | 🟢 Estável  | Linux, FreeBSD, DragonFly BSD, OpenBSD, NetBSD, illumos, macOS, Windows (MSYS2)                              |
+| **Shells Nativos**      | 🟢 Estável  | Zsh, Bash, POSIX sh (FreeBSD), KornShell (OpenBSD)                                                           |
+| **Shells Alternativos** | 🟢 Estável  | PowerShell 7+, NuShell, CMD (Clink), Fish Shell (`fish.fish`)                                                |
+| **Latência & Boot**     | 🟢 Estável  | Latência rigorosamente < 16ms / 64ms em todas as plataformas                                                 |
+| **Módulos Comuns**      | 🟢 Estável  | Simetria plana em `target/common/` (`bash.sh`, `fish.fish`, `ksh.sh`, `sh.sh`, `zsh.sh`)                     |
+| **Resiliência TTY**     | 🟢 Estável  | Detecção de console puro, locale soberano UTF-8 e rendering adaptativo pill/micro                            |
+| **Paridade Windows**    | 🟢 Estável  | Executáveis defensivos (winget/scoop/choco), PowerShell 5.1/7 e NuShell                                      |
+| **UI & Semântica**      | 🟢 Estável  | Padrão `_ui_*` com ANSI POSIX puro via `printf`                                                              |
+| **Display Server Core** | 🟢 Estável  | Arquitetura `_dispatch_display_server` com simetria `-wayland` e `-x11`                                      |
+| **Lançadores Gráficos** | 🟢 Estável  | `graphical-launcher` (`gui`), `graphical-launcher-wayland` (`wgui`), `graphical-launcher-x11` (`xgui`)       |
+| **Sessões Emacs OS**    | 🟢 Estável  | `emacs-window-manager` (`ewm`), `emacs-window-manager-wayland` (`wewm`), `emacs-window-manager-x11` (`xewm`) |
+| **Sessões de Desktop**  | 🟢 Estável  | `window-manager` (`wm`/`win`), `window-manager-wayland` (`wwm`/`way`), `window-manager-x11` (`xwm`/`x11`)    |
+| **Restauração Console** | 🟢 Estável  | VT bounce defensivo com `vidcontrol -s` no FreeBSD pós-compositor                                            |
+| **Quality Gates**       | 🟢 Aprovado | 100% aprovado em `make test` e `make bench`                                                                  |
 
 ---
 
 ## 🛡️ Atributos Entregues
 
-- **Lançador Gráfico Efêmero Multi-TTY (`gui` & `xgui`):** Isolamento de processos gráficos atrelados ao terminal com cascata Wayland (`sway > river > labwc > cage`) e Xorg (`xinit`), padrão `foot`/`xterm`.
-- **Sessões Soberanas de Emacs OS (`ewm` & `xewm`):** Lançadores dedicados para Wayland nativo (`emacs-window-manager`, aliases `ewm`, `ew`) e X11 legado (`emacs-x-window-manager`, aliases `xewm`, `xew`, `exwm`, `exw`).
+- **Despachante Universal de Display Server (`_dispatch_display_server`):** Desacoplamento completo entre comandos universais por extenso (`window-manager`, `graphical-launcher`, `emacs-window-manager`) e backends específicos via sufixos (`-wayland` e `-x11`), permitindo alternância transparente e autocompletion semântico agrupado.
+- **Detecção Antifrágil de Backends (`_has_wayland` & `_has_x11`):** Verificação dupla combinando arquivos descritores FreeDesktop XDG (`/usr/share/wayland-sessions/`, `/usr/share/xsessions/`) e varredura categorizada no `$PATH` (`_micro`, `_desktops`, `_tilings`), imune a falsos positivos de `/dev/dri`.
+- **Inicialização Tripartite de Wayland (`_exec_wayland`):** Suporte nativo e adaptativo ao FreeBSD (ConsoleKit2 + dbus-launch), distribuições Linux com systemd (detecção e preservação íntegra de `/run/user/$UID/bus`, resolvendo crashes em targets do GNOME no TTY) e ambientes Linux/BSD sem systemd (`dbus-run-session`).
+- **Simetria Completa de Nomes & Aliases sem Conflitos:** Suíte ergonômica de atalhos (`wm`, `win`, `wwm`, `way`, `xwm`, `xorg`, `x11`, `gui`, `wgui`, `xgui`, `ewm`, `wewm`, `xewm`) sem colisões com comandos do sistema (como `wg` do WireGuard).
+- **Lançador Gráfico Efêmero Multi-TTY (`graphical-launcher`):** Isolamento de processos gráficos avulsos por TTY com cascata Wayland (`sway > river > labwc > cage`) e Xorg (`xinit`), padrão `foot`/`xterm`.
+- **Sessões Soberanas de Emacs OS (`emacs-window-manager`):** Execução dedicada em Wayland nativo (EAF / aweww) e X11 legado (EXWM via XELB) com auto-seleção universal.
 - **Restauração de Console Antifrágil (VT Bounce):** Redesenho instantâneo via `vidcontrol -s` em consoles FreeBSD `/dev/ttyv*` após o término de compositores.
 - **Suíte Tripartite Windows:** Paridade operacional completa entre PowerShell 7, NuShell e CMD (Clink).
 - **Eliminação de Aliases Circulares:** Erradicação de recursão case-insensitive no PowerShell (`Clean-System`) e garantia de reentrância via `Set-Alias -Force -Option AllScope`.

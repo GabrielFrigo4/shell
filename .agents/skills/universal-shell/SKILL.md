@@ -122,6 +122,12 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
 - É TERMINANTEMENTE PROIBIDO copiar arquivos avulsos (`cp`, `rsync`) da bancada para a produção, mesmo durante testes rápidos ou diagnósticos. Modificações manuais tornam a working tree de produção suja (`dirty`), quebrando a soberania do DVCS e impedindo atualizações limpas.
 - Toda modificação deve ser desenvolvida e validada na bancada (`~/Documents/Environment/Shell`), comitada e enviada via `git push`. A árvore de produção deve manter `git status` 100% limpo em todo momento.
 
+18. **Padrão Display Server Dispatcher & Tripartite Session Lifecycle:**
+
+- Funções gráficas interativas adotam nomes canônicos por extenso (`window-manager`, `graphical-launcher`, `emacs-window-manager`) e despacham via `_dispatch_display_server <alvo>` para as variantes com sufixo (`<alvo>-wayland` e `<alvo>-x11`).
+- Aliases ergonômicos (`wm`, `win`, `wwm`, `way`, `xwm`, `xorg`, `x11`, `gui`, `wgui`, `xgui`, `ewm`, `wewm`, `xewm`) apontam para as funções correspondentes sem duplicar código.
+- A inicialização Wayland em `_exec_wayland` é tripartite: FreeBSD usa `ck-launch-session dbus-launch`; Linux com systemd detecta e preserva `/run/user/$(id -u)/bus` sem novo `dbus-run-session` (evitando corrupção de alvos de sessão como `gnome-session@gnome.target`); Linux sem systemd ou outros BSDs usam fallback isolado de `dbus-run-session`.
+
 ---
 
 ## 3. Procedimento para Criar um Novo Comando / Editor

@@ -168,3 +168,45 @@ O repositório **Universal Shell** opera no espaço de usuário desprivilegiado 
 - **Resiliência contra Mutações de TUI:** Editores modais (Helix, Vim, Neovim) e aplicações TUI frequentemente alteram o cursor via sequências de controle DECSCUSR (`\e[?1 q` para bloco piscante, `\e[?5 q` para barra). Ao encerrar ou receber sinais (`SIGINT`), essas aplicações podem deixar o console em estado degradado.
 - **Auto-Cura no Retorno de Ferramentas:** Wrappers de editores (como `hx()` em `context/desktop/common.sh`) capturam o código de retorno e reemitem a sequência de cura (`\e%G\e[?16;238;0c` em consoles puros `_is_raw_tty` ou `\e[0 q` em PTYs gráficos).
 - **Auto-Cura no Ciclo de Prompt:** Na inicialização da sessão (`core/environment.sh`) e na renderização dos prompts (`theme/bash.sh`, `theme/zsh.sh`), o Shell assegura que o interpretador UTF-8 permaneça sincronizado (`\e%G`) e que o cursor mantenha-se em bloco estático e imune ao bug de deslocamento de cor das fontes de 512 glifos.
+
+---
+
+## 🖥️ Despachante Universal de Display Server & Arquitetura Tripartite
+
+Para gerenciar o ciclo de vida gráfico sem acoplamento a servidores específicos, o Shell adota o padrão **Display Server Dispatcher**:
+
+```mermaid
+flowchart TD
+    CMD["Comando Universal<br/><i>(window-manager / graphical-launcher / emacs-window-manager)</i>"] --> DISPATCH["_dispatch_display_server"]
+
+    DISPATCH --> PROBE_W{"_has_wayland?"}
+    PROBE_W -->|Sim| W_EXEC["Backend Wayland (-wayland)<br/><i>(start-session way / wgui / wewm)</i>"]
+    PROBE_W -->|Não| PROBE_X{"_has_x11?"}
+
+    PROBE_X -->|Sim| X_EXEC["Backend X11 (-x11)<br/><i>(start-session xorg / xgui / xewm)</i>"]
+    PROBE_X -->|Não| ERR["_ui_err<br/><i>(Retorno 127)</i>"]
+
+    subgraph W_INIT ["Inicialização Tripartite de Wayland (_exec_wayland)"]
+        W_EXEC --> OS_CHK{"Detecção de SO & Bus"}
+        OS_CHK -->|FreeBSD| CK["ConsoleKit2 + dbus-launch"]
+        OS_CHK -->|Linux com systemd| SYSBUS["Preservação de /run/user/$UID/bus"]
+        OS_CHK -->|Linux sem systemd / BSD| DBRUN["dbus-run-session isolado"]
+    end
+```
+
+### 1. Simetria de Nomes & Desacoplamento
+
+- **Comandos Universais:** `window-manager`, `graphical-launcher`, `emacs-window-manager`. Despacham dinamicamente para o backend gráfico disponível.
+- **Especializações por Protocolo:** Sufixos `-wayland` e `-x11` mantêm autocompletion coeso no shell (`window-manager<TAB>` lista todas as opções).
+- **Aliases Ergonômicos:**
+    - Wayland: `wwm`, `way`, `wgui`, `wewm`.
+    - X11: `xwm`, `xorg`, `x11`, `xgui`, `xewm`, `exwm`.
+    - Universal: `wm`, `win`, `gui`, `ewm`.
+
+### 2. Ciclo de Vida Tripartite do `_exec_wayland`
+
+Ao iniciar ambientes gráficos nativos a partir de TTY, o encapsulamento de barramento D-Bus segue três caminhos mutuamente exclusivos:
+
+1. **FreeBSD:** Encapsulado via `ck-launch-session dbus-launch --exit-with-session` para registrar o assento VT no ConsoleKit2.
+2. **Linux com systemd (Fedora/Debian/Arch):** O socket `/run/user/$(id -u)/bus` gerado pelo PAM/systemd é detectado e preservado intacto, exportando `DBUS_SESSION_BUS_ADDRESS` e evitando a criação de barramentos isolados que corrompem alvos de sessão do GNOME (`gnome-session@gnome.target`).
+3. **Linux sem systemd / BSDs alternativos (Devuan/Alpine/Void):** Invocado via `dbus-run-session` para fornecer barramento efêmero sem daemon de sessão residente.
