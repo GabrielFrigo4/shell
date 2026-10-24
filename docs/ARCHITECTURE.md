@@ -195,9 +195,9 @@ flowchart TD
 
     subgraph X_INIT ["Inicialização X11 / Xenocara (_exec_x11)"]
         X_EXEC --> X_CHK{"Detecção de Console VT & Display"}
-        X_CHK -->|Linux| LVT["vt1-vt6 (/dev/tty*)"]
-        X_CHK -->|FreeBSD| BVT["vt1-vt6 (/dev/ttyv*)"]
-        X_CHK -->|OpenBSD| OVT["vt1-vt6 (/dev/ttyC* Xenocara)"]
+        X_CHK -->|Linux| LVT["vtN (/dev/tty1 a tty63)"]
+        X_CHK -->|FreeBSD| BVT["vtN (/dev/ttyv0 a ttyvf: 16 VTs)"]
+        X_CHK -->|OpenBSD| OVT["vtN (/dev/ttyC0 a ttyCf Xenocara)"]
         LVT --> XSTART["startx / xinit -- :0 vtN"]
         BVT --> XSTART
         OVT --> XSTART
@@ -232,8 +232,8 @@ Ao iniciar compositores Wayland a partir do console puro (TTY), o encapsulamento
 Ao iniciar servidores X11 ou aplicações via `xinit` a partir do console, o `_exec_x11` unifica o tratamento de recursos e terminais virtuais:
 
 1. **Fusão de Recursos:** Carrega automaticamente `~/.Xresources` via `xrdb -merge` antes de disparar o servidor.
-2. **Resolução Universal de VT (Virtual Terminal):**
-    - **Linux:** Mapeia consoles `/dev/tty[1-6]` para o argumento `vt[1-6]`.
-    - **FreeBSD:** Mapeia consoles virtuais `/dev/ttyv[0-5]` para `vt[1-6]`.
-    - **OpenBSD (Xenocara):** Mapeia telas do driver wscons `/dev/ttyC[0-5]` para `vt[1-6]`.
+2. **Resolução Dinâmica e Universal de VT (Virtual Terminal):**
+    - **Linux:** Mapeia qualquer console `/dev/tty[0-9]+` (de `tty1` até `tty63`) para o argumento `vtN` correspondente.
+    - **FreeBSD:** Mapeia todos os 16 consoles virtuais padrão `/dev/ttyv0` a `/dev/ttyvf` (índice hexadecimal avaliado dinamicamente via aritmética POSIX `$(( 0x${hex} + 1 ))`) para `vt1` a `vt16`. Também executa auto-cura de redesenho de console com `_freebsd_vt_bounce` (`vidcontrol -s`).
+    - **OpenBSD (Xenocara):** Mapeia todas as telas do driver wscons `/dev/ttyC0` a `/dev/ttyCf` (hexadecimal avaliado via `$(( 0x${hex} + 1 ))`) para `vt1` a `vt16`.
 3. **Cascata de Execução:** Dispara prioritariamente `startx` com fallback para `xinit` e preservação de `${DISPLAY:-:0}`.

@@ -722,6 +722,24 @@ _exec_wayland() {
 	exec "$@"
 }
 
+_resolve_vt_arg() {
+	local _cur_tty="${1:-$(tty 2> "/dev/null" || true)}"
+	case "${_cur_tty}" in
+		/dev/ttyv[0-9a-fA-F]*)
+			local _hex="$(printf '%s\n' "${_cur_tty}" | sed -n 's#.*/ttyv\([0-9a-fA-F]\{1,2\}\)$#\1#p')"
+			[ -n "${_hex}" ] && echo "vt$(( 0x${_hex} + 1 ))"
+			;;
+		/dev/ttyC[0-9a-fA-F]*)
+			local _hex="$(printf '%s\n' "${_cur_tty}" | sed -n 's#.*/ttyC\([0-9a-fA-F]\{1,2\}\)$#\1#p')"
+			[ -n "${_hex}" ] && echo "vt$(( 0x${_hex} + 1 ))"
+			;;
+		/dev/tty[0-9]*)
+			local _num="$(printf '%s\n' "${_cur_tty}" | sed -n 's#.*/tty\([0-9]\{1,3\}\)$#\1#p')"
+			[ -n "${_num}" ] && echo "vt${_num}"
+			;;
+	esac
+}
+
 _exec_x11() {
 	command -v startx > "/dev/null" 2>&1 || command -v xinit > "/dev/null" 2>&1 || return 1
 
@@ -730,14 +748,7 @@ _exec_x11() {
 		xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
 	fi
 
-	local _cur_tty="$(tty 2> "/dev/null" || true)"
-	local _vt_arg=""
-	case "${_cur_tty}" in
-		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyC*)
-			local _vt_num="$(printf '%s\n' "${_cur_tty}" | grep -o '[0-9a-f]*$' | tr 'a-f' '1-6')"
-			[ -n "${_vt_num}" ] && _vt_arg="vt${_vt_num}"
-			;;
-	esac
+	local _vt_arg="$(_resolve_vt_arg)"
 
 	if command -v startx > "/dev/null" 2>&1; then
 		exec startx "$@" -- "${DISPLAY}" ${_vt_arg}
@@ -981,12 +992,15 @@ _freebsd_vt_bounce() {
 	if [ "$(_detect_os)" = "freebsd" ]; then
 		local _cur_tty="$(tty 2> "/dev/null" || true)"
 		case "${_cur_tty}" in
-			/dev/ttyv*)
-				local _vt_idx="$(printf '%s\n' "${_cur_tty}" | sed -E 's#/dev/ttyv([0-9a-f])#\1#' | tr '0-9a-f' '1-9a-f')"
-				local _target_vt=1
-				[ "${_vt_idx}" = "1" ] && _target_vt=2
-				command vidcontrol -s "${_target_vt}" < "${_cur_tty}" 2> "/dev/null" || true
-				command vidcontrol -s "${_vt_idx}" < "${_cur_tty}" 2> "/dev/null" || printf '\033c'
+			/dev/ttyv[0-9a-fA-F]*)
+				local _hex="$(printf '%s\n' "${_cur_tty}" | sed -n 's#.*/ttyv\([0-9a-fA-F]\{1,2\}\)$#\1#p')"
+				if [ -n "${_hex}" ]; then
+					local _vt_idx=$(( 0x${_hex} + 1 ))
+					local _target_vt=1
+					[ "${_vt_idx}" -eq 1 ] && _target_vt=2
+					command vidcontrol -s "${_target_vt}" < "${_cur_tty}" 2> "/dev/null" || true
+					command vidcontrol -s "${_vt_idx}" < "${_cur_tty}" 2> "/dev/null" || printf '\x1bc'
+				fi
 				;;
 		esac
 	fi
@@ -1058,14 +1072,7 @@ graphical-launcher-x11() {
 		xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
 	fi
 
-	local _cur_tty="$(tty 2> "/dev/null" || true)"
-	local _vt_arg=""
-	case "${_cur_tty}" in
-		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyC*)
-			local _vt_num="$(printf '%s\n' "${_cur_tty}" | grep -o '[0-9a-f]*$' | tr 'a-f' '1-6')"
-			[ -n "${_vt_num}" ] && _vt_arg="vt${_vt_num}"
-			;;
-	esac
+	local _vt_arg="$(_resolve_vt_arg)"
 
 	if command -v xinit > "/dev/null" 2>&1; then
 		command xinit "$(command -v "${_app}")" "$@" -- "${DISPLAY}" ${_vt_arg} > "/dev/null" 2>&1
