@@ -8,7 +8,11 @@
 _restore_tty_cursor() {
 	if [ -t 1 ]; then
 		if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
-			[ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
+			if [ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ]; then
+				echo -n $'\e%G\e[?16;238;0c'
+			else
+				echo -n $'\e]112\7'
+			fi
 		else
 			echo -n $'\e[1 q'
 		fi
