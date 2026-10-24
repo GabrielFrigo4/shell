@@ -17,6 +17,9 @@
 | **Resiliência TTY**     | 🟢 Estável  | Detecção de console puro, locale soberano UTF-8 e rendering adaptativo pill/micro        |
 | **Paridade Windows**    | 🟢 Estável  | Executáveis defensivos (winget/scoop/choco), PowerShell 5.1/7 e NuShell                  |
 | **UI & Semântica**      | 🟢 Estável  | Padrão `_ui_*` com ANSI POSIX puro via `printf`                                          |
+| **Lançadores Gráficos** | 🟢 Estável  | `gui` (Wayland: sway/river/labwc/cage) e `xgui` (Xorg: xinit) por TTY                    |
+| **Sessões Emacs OS**    | 🟢 Estável  | Comandos `emacs-window-manager` (`ewm`/`ew`) e `emacs-x-window-manager` (`xewm`/`exwm`)  |
+| **Restauração Console** | 🟢 Estável  | VT bounce defensivo com `vidcontrol -s` no FreeBSD pós-compositor                        |
 | **Quality Gates**       | 🟢 Aprovado | 100% aprovado em `make test` e `make bench`                                              |
 
 ---
