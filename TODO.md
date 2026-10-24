@@ -23,6 +23,9 @@
 
 ## 🛡️ Atributos Entregues
 
+- **Lançador Gráfico Efêmero Multi-TTY (`gui` & `xgui`):** Isolamento de processos gráficos atrelados ao terminal com cascata Wayland (`sway > river > labwc > cage`) e Xorg (`xinit`), padrão `foot`/`xterm`.
+- **Sessões Soberanas de Emacs OS (`ewm` & `xewm`):** Lançadores dedicados para Wayland nativo (`emacs-window-manager`, aliases `ewm`, `ew`) e X11 legado (`emacs-x-window-manager`, aliases `xewm`, `xew`, `exwm`, `exw`).
+- **Restauração de Console Antifrágil (VT Bounce):** Redesenho instantâneo via `vidcontrol -s` em consoles FreeBSD `/dev/ttyv*` após o término de compositores.
 - **Suíte Tripartite Windows:** Paridade operacional completa entre PowerShell 7, NuShell e CMD (Clink).
 - **Eliminação de Aliases Circulares:** Erradicação de recursão case-insensitive no PowerShell (`Clean-System`) e garantia de reentrância via `Set-Alias -Force -Option AllScope`.
 - **Sincronização Dual de PATH no NuShell:** Resolução de inconsistência Win32 `Path` vs NuShell `$env.PATH` e configuração de `$env.ENV_CONVERSIONS`.
