@@ -744,6 +744,8 @@ _exec_x11() {
 	command -v startx > "/dev/null" 2>&1 || command -v xinit > "/dev/null" 2>&1 || return 1
 
 	export DISPLAY="${DISPLAY:-:0}"
+	_setup_cursor_env
+
 	if [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 		xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
 	fi
@@ -969,6 +971,39 @@ alias window="window-manager"
 ### --------------------------------
 ### Ephemeral Session Helpers
 ### --------------------------------
+_setup_cursor_env() {
+	export XCURSOR_PATH="${HOME}/.local/share/icons:${HOME}/.icons:/usr/local/share/icons:/usr/share/icons"
+	export WLR_NO_HARDWARE_CURSORS=1
+
+	local _candidate=""
+	local _found_theme=""
+	for _candidate in "${XCURSOR_THEME:-}" "breeze_cursors" "Bibata-Modern-Classic" "Adwaita" "default"; do
+		[ -z "${_candidate}" ] && continue
+		for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
+			if [ -d "${_p}/${_candidate}/cursors" ]; then
+				_found_theme="${_candidate}"
+				break 2
+			fi
+		done
+	done
+
+	[ -z "${_found_theme}" ] && _found_theme="default"
+
+	local _target_size="${XCURSOR_SIZE:-24}"
+
+	export XCURSOR_THEME="${_found_theme}"
+	export XCURSOR_SIZE="${_target_size}"
+
+	if [ ! -f "${HOME}/.icons/default/index.theme" ]; then
+		mkdir -p "${HOME}/.icons/default"
+		printf '[Icon Theme]\nInherits=%s\n' "${_found_theme}" > "${HOME}/.icons/default/index.theme" 2> "/dev/null" || true
+	fi
+
+	if command -v xrdb > "/dev/null" 2>&1; then
+		printf "Xcursor.theme: %s\nXcursor.size: %s\n" "${_found_theme}" "${_target_size}" | xrdb -merge - 2> "/dev/null" || true
+	fi
+}
+
 _wayland_session_env() {
 	export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"
 	if [ ! -d "${XDG_RUNTIME_DIR}" ]; then
@@ -983,9 +1018,7 @@ _wayland_session_env() {
 	export QT_QPA_PLATFORM="wayland"
 	export QT_QPA_PLATFORMTHEME="kde"
 	export QT_STYLE_OVERRIDE="Breeze"
-	export XCURSOR_THEME="breeze_cursors"
-	export XCURSOR_SIZE=36
-	export QT_SCALE_FACTOR=1.25
+	_setup_cursor_env
 }
 
 _freebsd_vt_bounce() {
@@ -1014,6 +1047,19 @@ graphical-launcher-wayland() {
 	[ "$#" -ge 1 ] && shift
 
 	_wayland_session_env
+	_setup_cursor_env
+
+	if [ "${_app}" = "foot" ] && [ ! -f "${HOME}/.config/foot/foot.ini" ]; then
+		mkdir -p "${HOME}/.config/foot"
+		if [ -f "${HOME}/.local/share/profile/terminals/foot/foot.ini" ]; then
+			cp -f "${HOME}/.local/share/profile/terminals/foot/foot.ini" "${HOME}/.config/foot/foot.ini" 2> "/dev/null" || true
+		elif [ -f "${PROFILE_REPO_DIR:-}/terminals/foot/foot.ini" ]; then
+			cp -f "${PROFILE_REPO_DIR}/terminals/foot/foot.ini" "${HOME}/.config/foot/foot.ini" 2> "/dev/null" || true
+		fi
+	fi
+
+	local _cur_theme="${XCURSOR_THEME:-default}"
+	local _cur_size="${XCURSOR_SIZE:-24}"
 
 	if command -v sway > "/dev/null" 2>&1; then
 		local _sway_cfg="${XDG_RUNTIME_DIR}/sway-gui-$$.conf"
@@ -1021,7 +1067,8 @@ graphical-launcher-wayland() {
 default_border none
 default_floating_border none
 titlebar_border_thickness 0
-seat * xcursor_theme breeze_cursors 36
+seat * xcursor_theme ${_cur_theme} ${_cur_size}
+xwayland enable
 input type:keyboard {
     xkb_layout br
     xkb_model abnt2
@@ -1037,7 +1084,7 @@ EOF
 		cat << EOF > "${_river_init}"
 #!/bin/sh
 riverctl border-width 0
-riverctl xcursor-theme breeze_cursors 36
+riverctl xcursor-theme "${_cur_theme}" "${_cur_size}"
 riverctl keyboard-layout -model abnt2 br
 riverctl set-repeat 50 200
 sh -c '${_app} $* ; riverctl exit' &
@@ -1068,6 +1115,8 @@ graphical-launcher-x11() {
 	[ "$#" -ge 1 ] && shift
 
 	export DISPLAY="${DISPLAY:-:0}"
+	_setup_cursor_env
+
 	if [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 		xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
 	fi
