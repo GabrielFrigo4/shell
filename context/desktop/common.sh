@@ -1113,81 +1113,71 @@ _freebsd_vt_bounce() {
 
 _is_terminal_app() {
 	local _target="${1:-}"
-	[ -z "${_target}" ] && return 1
+	[ -z "${_target}" ] && return 0
 
 	local _base="${_target##*/}"
-
-	# 1. Fast-Path O(1): Categorias conhecidas de terminais
-	case "${_base}" in
-		# Shells
-		sh|bash|zsh|ksh|csh|tcsh|fish|pwsh|nu|elvish)
-			return 0
-			;;
-		# Editores de Texto TUI
-		vi|vim|nvim|hx|helix|nano|micro|emacs-nw|enw|pico|joe|ed)
-			return 0
-			;;
-		# Multiplexadores de Terminal
-		tmux|screen|zellij)
-			return 0
-			;;
-		# Pagers, Visualizadores & Manpages
-		less|more|man|bat|most)
-			return 0
-			;;
-		# Monitores de Sistema & Processos
-		top|htop|btop|btm|glances|nvtop|iotop|nethogs|iftop|bmon|bandwhich)
-			return 0
-			;;
-		# Gerenciadores de Arquivo & TUI Tools
-		yazi|ranger|mc|ncdu|gdu|lazygit|lazydocker|tig|bluetui|k9s)
-			return 0
-			;;
-		# Ferramentas de IA, DevOps & CLI Modernas
-		agy|gemini|claude|ollama|gh|git|docker|podman|kubectl|helm)
-			return 0
-			;;
-	esac
-
-	# 2. XDG Desktop Entry Lookup (Terminal=true vs Terminal=false)
-	local _xdg_dir _desktop_file
-	for _xdg_dir in /usr/share/applications /usr/local/share/applications "${XDG_DATA_HOME:-${HOME}/.local/share}/applications"; do
-		[ -d "${_xdg_dir}" ] || continue
-		_desktop_file="${_xdg_dir}/${_base}.desktop"
-		if [ -f "${_desktop_file}" ]; then
-			if command grep -q "^Terminal=true" "${_desktop_file}" 2> "/dev/null"; then
-				return 0
-			elif command grep -q "^Terminal=false" "${_desktop_file}" 2> "/dev/null"; then
-				return 1
-			fi
-		fi
-	done
-
-	# 3. Inspeção Segura de Dependências Dinâmicas ELF (Zero Falsos Positivos)
 	local _bin_path=""
 	if [ -f "${_target}" ] && [ -x "${_target}" ]; then
 		_bin_path="${_target}"
 	else
 		_bin_path="$(command -v "${_base}" 2> "/dev/null" || true)"
 	fi
+	[ -z "${_bin_path}" ] && return 0
 
-	if [ -n "${_bin_path}" ] && command -v readelf > "/dev/null" 2>&1; then
-		local _deps
-		_deps="$(command readelf -d "${_bin_path}" 2> "/dev/null" | command grep "NEEDED" || true)"
-		if [ -n "${_deps}" ]; then
-			# Se linka com QUALQUER biblioteca gráfica/multimídia, é GARANTIDAMENTE gráfico nativo
-			if printf '%s\n' "${_deps}" | command grep -qiE "wayland|X11|xcb|gtk|Qt|fltk|fox|wx|glfw|SDL|raylib|sfml|allegro|libGL|libEGL|libGLES|vulkan" > "/dev/null" 2>&1; then
+	# 1. Padrão XDG Desktop Entry (Freedesktop Specification)
+	local _xdg_dir _desktop_file
+	for _xdg_dir in /usr/share/applications /usr/local/share/applications "${XDG_DATA_HOME:-${HOME}/.local/share}/applications" /var/lib/flatpak/exports/share/applications; do
+		[ -d "${_xdg_dir}" ] || continue
+		for _desktop_file in "${_xdg_dir}/${_base}.desktop" "${_xdg_dir}/"*".${_base}.desktop"; do
+			[ -f "${_desktop_file}" ] || continue
+			if command grep -q -E "^Exec=([^ ]*/|)${_base}( |$)" "${_desktop_file}" 2> "/dev/null"; then
+				if command grep -q "^Terminal=true" "${_desktop_file}" 2> "/dev/null"; then
+					return 0
+				elif command grep -q "^Type=Application" "${_desktop_file}" 2> "/dev/null"; then
+					return 1
+				fi
+			fi
+		done
+	done
+
+	# Resolver links simbólicos para atingir o executável canônico
+	if command -v realpath > "/dev/null" 2>&1; then
+		_bin_path="$(command realpath "${_bin_path}" 2> "/dev/null" || echo "${_bin_path}")"
+	elif command -v readlink > "/dev/null" 2>&1; then
+		_bin_path="$(command readlink -f "${_bin_path}" 2> "/dev/null" || echo "${_bin_path}")"
+	fi
+
+	# 2. Introspecção de Seção Dinâmica ELF (Zero Falsos Positivos)
+	if [ -f "${_bin_path}" ] && command -v readelf > "/dev/null" 2>&1; then
+		local _needed_libs
+		_needed_libs="$(command readelf -d "${_bin_path}" 2> "/dev/null" | command grep "(NEEDED)" | command sed -n 's/.*\[\(lib[^]]*\)\].*/\1/p' || true)"
+		if [ -n "${_needed_libs}" ]; then
+			if printf '%s\n' "${_needed_libs}" | command grep -qiE "libwayland-client|libX11|libxcb|libgtk|libgdk|libQt|libfltk|libwx|libFOX|libglfw|libSDL|libraylib|libsfml|liballegro|libGL\.|libEGL\.|libGLES|libvulkan" > "/dev/null" 2>&1; then
 				return 1
 			fi
-			# Se linka com bibliotecas TUI (curses/terminfo/slang) e nenhuma gráfica, é terminal
-			if printf '%s\n' "${_deps}" | command grep -qiE "ncurses|tinfo|slang|curses" > "/dev/null" 2>&1; then
-				return 0
-			fi
+			return 0
 		fi
 	fi
 
-	# Fallback conservador: assume GUI nativa para evitar encapsulamento indevido
-	return 1
+	# 3. Scripts de Texto com Shebang POSIX
+	if [ -f "${_bin_path}" ]; then
+		local _first_line
+		_first_line="$(command head -n 1 "${_bin_path}" 2> "/dev/null" || true)"
+		case "${_first_line}" in
+			"#!"*sh*)
+				return 0
+				;;
+			"#!"*python*|"#!"*node*|"#!"*ruby*|"#!"*perl*)
+				if command grep -q -E "(tkinter|PyQt|PySide|gi\.repository\.Gtk|pygame|wx)" "${_bin_path}" 2> "/dev/null"; then
+					return 1
+				fi
+				return 0
+				;;
+		esac
+	fi
+
+	# 4. Fallback Seguro: sem evidências de GUI nativa, precisa de terminal
+	return 0
 }
 
 ### --------------------------------
