@@ -16,7 +16,7 @@ if [ -z "${SHELL_INIT:-}" ]; then
 		if _is_raw_tty; then
 			SHELL_TARGET="$(command -v ksh 2> "/dev/null")"
 		else
-			SHELL_TARGET="$(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || command -v ksh 2> "/dev/null")"
+			SHELL_TARGET="$(_detect_enabled_shell)"
 		fi
 		[ -x "${SHELL_TARGET}" ] || SHELL_TARGET="$(command -v ksh 2> "/dev/null")"
 	fi

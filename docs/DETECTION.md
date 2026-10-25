@@ -10,7 +10,7 @@ O módulo `library/detect.sh` é o cérebro investigativo do **Universal Shell E
 
 - **`_detect_os`**: Identifica o sistema via `uname -s` e normaliza para: `freebsd`, `dragonfly`, `linux`, `macos`, `windows`, `openbsd`, `netbsd` ou `illumos`.
 - **`_detect_shell`**: Identifica se a sessão interativa atual é executada por `zsh`, `bash`, `ksh` ou `sh` (POSIX).
-- **`_detect_enabled_shell`**: Retorna o primeiro binário de shell válido e instalado respeitando a cascata de preferência `$(_detect_shell) || zsh || bash || sh` (suporta flag `--name`).
+- **`_detect_enabled_shell`**: Retorna o binário de shell canônico respeitando a ordem de precedência: Shell do `chsh`/passwd (se válido e suportado) ➔ `zsh` ➔ `bash` ➔ `ksh` (OpenBSD) ➔ `sh` (FreeBSD) (suporta flag `--name`).
 
 ### 2. Distribuições, Derivados & Família de Gerenciadores
 

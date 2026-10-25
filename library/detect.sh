@@ -223,35 +223,40 @@ _detect_shell() {
 ### --------------------------------
 _detect_enabled_shell() {
 	local _target="${1:-path}"
-	local _current_shell=""
-
-	case "${_target}" in
-		--preferred|-p|preferred)
-			_current_shell=""
-			;;
-		*)
-			_current_shell="$(_detect_shell)"
-			case "${_current_shell}" in
-				dash|fish) _current_shell="" ;;
-			esac
-			;;
-	esac
-
-	# 1. Shell ativo da sessao (se valido e nao-dash)
 	local _shell_binary=""
-	if [ -n "${_current_shell}" ]; then
-		_shell_binary="$(command -v "${_current_shell}" 2> "/dev/null" || true)"
+
+	# 1. Shell configurado no chsh / passwd do usuario (se executavel e compativel)
+	local _chsh_shell=""
+	local _user="${USER:-$(id -un 2> "/dev/null" || true)}"
+	if [ -n "${_user}" ] && command -v getent > "/dev/null" 2>&1; then
+		_chsh_shell="$(getent passwd "${_user}" 2> "/dev/null" | cut -d: -f7)"
+	fi
+	if [ -z "${_chsh_shell}" ] && [ -n "${SHELL:-}" ]; then
+		_chsh_shell="${SHELL}"
 	fi
 
-	# 2. $SHELL configurado no chsh do usuario (se executavel e compativel)
-	if [ -z "${_shell_binary}" ] && [ -n "${SHELL:-}" ] && [ -x "${SHELL}" ]; then
-		case "${SHELL##*/}" in
-			dash|fish) ;;
-			*) _shell_binary="${SHELL}" ;;
+	if [ -n "${_chsh_shell}" ] && [ -x "${_chsh_shell}" ]; then
+		local _base_sh="${_chsh_shell##*/}"
+		case "${_base_sh}" in
+			dash|fish|csh|tcsh|nu|nologin|false) ;;
+			sh)
+				# /bin/sh so e suportado como login shell interativo no FreeBSD
+				local _cur_os="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" || true)"
+				case "${_cur_os}" in
+					freebsd|FreeBSD) _shell_binary="${_chsh_shell}" ;;
+				esac
+				;;
+			ksh)
+				# ksh e nativo e suportado no OpenBSD
+				_shell_binary="${_chsh_shell}"
+				;;
+			zsh|bash)
+				_shell_binary="${_chsh_shell}"
+				;;
 		esac
 	fi
 
-	# 3. Cascata canonica do ecossistema: Zsh -> Bash -> Ksh (OpenBSD) -> Sh (FreeBSD)
+	# 2. Cascata canonica do ecossistema: Zsh -> Bash -> Ksh (OpenBSD) -> Sh (FreeBSD)
 	if [ -z "${_shell_binary}" ]; then
 		_shell_binary="$(command -v zsh 2> "/dev/null" || true)"
 	fi
@@ -275,7 +280,7 @@ _detect_enabled_shell() {
 		fi
 	fi
 
-	# 4. Fallback defensivo
+	# 3. Fallback defensivo
 	[ -z "${_shell_binary}" ] && _shell_binary="${SHELL:-/bin/sh}"
 
 	case "${_target}" in
@@ -957,6 +962,13 @@ _is_raw_tty() {
 			;;
 	esac
 
+	case "$(command tty 2> "/dev/null")" in
+		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/ttyC*|/dev/ttyE*|/dev/console)
+			_IS_RAW_TTY_CACHED=0
+			return 0
+			;;
+	esac
+
 	case "${TERM:-}" in
 		linux|dumb|vt100|cons25*|wvt25*)
 			_IS_RAW_TTY_CACHED=0
@@ -969,16 +981,8 @@ _is_raw_tty() {
 		return 1
 	fi
 
-	case "$(command tty 2> "/dev/null")" in
-		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/ttyC*|/dev/ttyE*|/dev/console)
-			_IS_RAW_TTY_CACHED=0
-			return 0
-			;;
-		*)
-			_IS_RAW_TTY_CACHED=1
-			return 1
-			;;
-	esac
+	_IS_RAW_TTY_CACHED=1
+	return 1
 }
 
 ### --------------------------------

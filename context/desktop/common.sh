@@ -707,15 +707,6 @@ _resolve_vt_arg() {
 }
 
 _resolve_free_display() {
-	if [ -n "${DISPLAY:-}" ]; then
-		local _num="${DISPLAY#:}"
-		_num="${_num%%.*}"
-		if [ -e "/tmp/.X${_num}-lock" ] || [ -S "/tmp/.X11-unix/X${_num}" ]; then
-			echo "${DISPLAY}"
-			return 0
-		fi
-	fi
-
 	local _d=0
 	while true; do
 		if [ ! -e "/tmp/.X${_d}-lock" ] && [ ! -S "/tmp/.X11-unix/X${_d}" ]; then
@@ -733,30 +724,23 @@ _resolve_free_display() {
 _exec_x11() {
 	command -v startx > "/dev/null" 2>&1 || command -v xinit > "/dev/null" 2>&1 || return 1
 
-	local _had_display=1
-	[ -z "${DISPLAY:-}" ] && _had_display=0
-	local _display=""
-	if [ "${_had_display}" -eq 1 ]; then
-		_display="${DISPLAY}"
-	else
-		_display="$(_resolve_free_display)"
-	fi
+	local _display="$(_resolve_free_display)"
 	export DISPLAY="${_display}"
 	export XORG_RUN_AS_USER_OK=1
 	_setup_cursor_env
 
 	local _theme_flavor="$(_detect_desktop_theme)"
 	case "${_theme_flavor}" in
-		gnome|adwaita)
+		gnome|adwaita|cinnamon|mate|xfce)
 			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
-			export QT_STYLE_OVERRIDE="adwaita-dark"
+			unset QT_STYLE_OVERRIDE 2> "/dev/null" || true
+			if [ -f "${HOME}/.config/qt6ct/qt6ct.conf" ] || command -v qt6ct > "/dev/null" 2>&1; then
+				export QT_QPA_PLATFORMTHEME="qt6ct"
+			fi
 			;;
 		kde)
 			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_STYLE_OVERRIDE="Breeze"
-			;;
-		xfce)
-			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			;;
 	esac
 
@@ -1145,8 +1129,12 @@ _wayland_session_env() {
 			export XDG_CURRENT_DESKTOP="GNOME"
 			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_QPA_PLATFORM="wayland;xcb"
-			export QT_QPA_PLATFORMTHEME="gnome"
-			export QT_STYLE_OVERRIDE="adwaita-dark"
+			unset QT_STYLE_OVERRIDE 2> "/dev/null" || true
+			if [ -f "${HOME}/.config/qt6ct/qt6ct.conf" ] || command -v qt6ct > "/dev/null" 2>&1; then
+				export QT_QPA_PLATFORMTHEME="qt6ct"
+			else
+				export QT_QPA_PLATFORMTHEME="gnome"
+			fi
 			export XCURSOR_THEME="Adwaita"
 			;;
 		kde)
@@ -1161,24 +1149,36 @@ _wayland_session_env() {
 			export XDG_CURRENT_DESKTOP="X-Cinnamon"
 			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_QPA_PLATFORM="wayland;xcb"
-			export QT_QPA_PLATFORMTHEME="gtk3"
-			export QT_STYLE_OVERRIDE="adwaita-dark"
+			unset QT_STYLE_OVERRIDE 2> "/dev/null" || true
+			if [ -f "${HOME}/.config/qt6ct/qt6ct.conf" ] || command -v qt6ct > "/dev/null" 2>&1; then
+				export QT_QPA_PLATFORMTHEME="qt6ct"
+			else
+				export QT_QPA_PLATFORMTHEME="gtk3"
+			fi
 			export XCURSOR_THEME="Adwaita"
 			;;
 		mate)
 			export XDG_CURRENT_DESKTOP="MATE"
 			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_QPA_PLATFORM="wayland;xcb"
-			export QT_QPA_PLATFORMTHEME="gtk3"
-			export QT_STYLE_OVERRIDE="adwaita-dark"
+			unset QT_STYLE_OVERRIDE 2> "/dev/null" || true
+			if [ -f "${HOME}/.config/qt6ct/qt6ct.conf" ] || command -v qt6ct > "/dev/null" 2>&1; then
+				export QT_QPA_PLATFORMTHEME="qt6ct"
+			else
+				export QT_QPA_PLATFORMTHEME="gtk3"
+			fi
 			export XCURSOR_THEME="Adwaita"
 			;;
 		xfce)
 			export XDG_CURRENT_DESKTOP="XFCE"
 			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_QPA_PLATFORM="wayland;xcb"
-			export QT_QPA_PLATFORMTHEME="gtk3"
-			export QT_STYLE_OVERRIDE="adwaita-dark"
+			unset QT_STYLE_OVERRIDE 2> "/dev/null" || true
+			if [ -f "${HOME}/.config/qt6ct/qt6ct.conf" ] || command -v qt6ct > "/dev/null" 2>&1; then
+				export QT_QPA_PLATFORMTHEME="qt6ct"
+			else
+				export QT_QPA_PLATFORMTHEME="gtk3"
+			fi
 			export XCURSOR_THEME="Adwaita"
 			;;
 	esac
@@ -1322,34 +1322,12 @@ graphical-launcher-wayland() {
 	local _app="${1:-foot}"
 	[ "$#" -ge 1 ] && shift
 
-	if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; then
-		_ui_info "Sessão gráfica ativa detectada (${WAYLAND_DISPLAY:-${DISPLAY}})."
-		_ui_sub "Executando '${_app}' diretamente na sessão gráfica..."
-		export GTK_THEME="$(_resolve_gtk_theme "${_flavor}")"
-		export QT_STYLE_OVERRIDE="adwaita-dark"
-		if _is_terminal_app "${_app}"; then
-			local _sh="$(_detect_enabled_shell)"
-			[ -z "${_sh}" ] && _sh="$(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || echo "/bin/sh")"
-			if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v foot > "/dev/null" 2>&1; then
-				command foot "${_sh}" -i -c "${_app} $*"
-			elif command -v xterm > "/dev/null" 2>&1; then
-				command xterm -bc -bcf 600 -bcn 600 -e "${_sh}" -i -c "${_app} $*"
-			else
-				command "${_app}" "$@"
-			fi
-		else
-			command "${_app}" "$@"
-		fi
-		return $?
-	fi
-
 	_wayland_session_env "${_flavor}"
 	_setup_cursor_env
 
 	local _exec_cmd=""
 	if _is_terminal_app "${_app}"; then
 		local _sh="$(_detect_enabled_shell)"
-		[ -z "${_sh}" ] && _sh="$(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || echo "/bin/sh")"
 		_exec_cmd="foot ${_sh} -i -c '${_app} $*'"
 	else
 		_exec_cmd="${_app} $*"
@@ -1495,65 +1473,24 @@ graphical-launcher-x11() {
 	local _app="${1:-xterm}"
 	[ "$#" -ge 1 ] && shift
 
-	if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; then
-		_ui_info "Sessão gráfica ativa detectada (${WAYLAND_DISPLAY:-${DISPLAY}})."
-		_ui_sub "Executando '${_app}' diretamente na sessão gráfica..."
-		export GTK_THEME="$(_resolve_gtk_theme "${_flavor}")"
-		export QT_STYLE_OVERRIDE="adwaita-dark"
-		if _is_terminal_app "${_app}"; then
-			local _sh="$(_detect_enabled_shell)"
-			[ -z "${_sh}" ] && _sh="$(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || echo "/bin/sh")"
-			if command -v xterm > "/dev/null" 2>&1; then
-				command xterm -bc -bcf 600 -bcn 600 -e "${_sh}" -i -c "${_app} $*"
-			elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v foot > "/dev/null" 2>&1; then
-				command foot "${_sh}" -i -c "${_app} $*"
-			else
-				command "${_app}" "$@"
-			fi
-		else
-			command "${_app}" "$@"
-		fi
-		return $?
-	fi
-
-	local _had_display=1
-	[ -z "${DISPLAY:-}" ] && _had_display=0
-
-	local _display=""
-	if [ "${_had_display}" -eq 1 ]; then
-		_display="${DISPLAY}"
-	else
-		_display="$(_resolve_free_display)"
-	fi
+	local _display="$(_resolve_free_display)"
 	export DISPLAY="${_display}"
 	export XORG_RUN_AS_USER_OK=1
 
 	local _theme_flavor="$(_detect_desktop_theme "${_flavor}")"
 	case "${_theme_flavor}" in
-		gnome|adwaita)
+		gnome|adwaita|cinnamon|mate|xfce)
 			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
-			export QT_STYLE_OVERRIDE="adwaita-dark"
+			unset QT_STYLE_OVERRIDE 2> "/dev/null" || true
+			if [ -f "${HOME}/.config/qt6ct/qt6ct.conf" ] || command -v qt6ct > "/dev/null" 2>&1; then
+				export QT_QPA_PLATFORMTHEME="qt6ct"
+			fi
 			export XCURSOR_THEME="Adwaita"
 			;;
 		kde)
 			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_STYLE_OVERRIDE="Breeze"
 			export XCURSOR_THEME="breeze_cursors"
-			;;
-		cinnamon)
-			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
-			export QT_STYLE_OVERRIDE="adwaita-dark"
-			export XCURSOR_THEME="Adwaita"
-			;;
-		mate)
-			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
-			export QT_STYLE_OVERRIDE="adwaita-dark"
-			export XCURSOR_THEME="Adwaita"
-			;;
-		xfce)
-			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
-			export QT_STYLE_OVERRIDE="adwaita-dark"
-			export XCURSOR_THEME="Adwaita"
 			;;
 	esac
 
@@ -1578,7 +1515,6 @@ graphical-launcher-x11() {
 	fi
 
 	local _sh="$(_detect_enabled_shell)"
-	[ -z "${_sh}" ] && _sh="$(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || echo "/bin/sh")"
 
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-gui-$$.sh"
@@ -1588,8 +1524,23 @@ if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
 fi
 
-# Fallback quiosque de Window Managers para tela cheia estrita
-if command -v matchbox-window-manager > "/dev/null" 2>&1; then
+# Prioriza OpenBox para tela cheia e conformidade total com menus e submenus Qt/GTK
+if command -v openbox > "/dev/null" 2>&1; then
+	_ob_cfg="\${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-\$\$.xml"
+	cat << 'XOB' > "\${_ob_cfg}"
+<?xml version="1.0"?>
+<openbox_config>
+  <applications>
+    <application class="*">
+      <maximized>yes</maximized>
+      <decorations>no</decorations>
+    </application>
+  </applications>
+</openbox_config>
+XOB
+	openbox --config-file "\${_ob_cfg}" > "/dev/null" 2>&1 &
+elif command -v matchbox-window-manager > "/dev/null" 2>&1; then
+	matchbox-window-manager -use_titlebar no > "/dev/null" 2>&1 &
 	matchbox-window-manager -use_titlebar no > "/dev/null" 2>&1 &
 elif command -v openbox > "/dev/null" 2>&1; then
 	_ob_cfg="\${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-\$\$.xml"
@@ -1691,15 +1642,6 @@ emacs-window-manager-wayland() {
 		return 127
 	fi
 
-	if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; then
-		_ui_info "Sessão gráfica ativa detectada. EWM é um compositor soberano DRM/KMS executado via TTY."
-		_ui_sub "Encaminhando para instância gráfica padrão do Emacs..."
-		export GTK_THEME="$(_resolve_gtk_theme)"
-		export QT_STYLE_OVERRIDE="adwaita-dark"
-		command emacs "$@"
-		return $?
-	fi
-
 	local _ewm_so=""
 	if [ -f "${HOME}/.local/lib/libewm_core.so" ]; then
 		_ewm_so="${HOME}/.local/lib/libewm_core.so"
@@ -1740,15 +1682,6 @@ emacs-window-manager-x11() {
 	if ! command -v emacs > "/dev/null" 2>&1; then
 		_ui_err "emacs não encontrado."
 		return 127
-	fi
-
-	if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; then
-		_ui_info "Sessão gráfica ativa detectada. EXWM é um gerenciador de janelas X11 executado via TTY."
-		_ui_sub "Encaminhando para instância gráfica padrão do Emacs..."
-		export GTK_THEME="$(_resolve_gtk_theme)"
-		export QT_STYLE_OVERRIDE="adwaita-dark"
-		command emacs "$@"
-		return $?
 	fi
 
 	if [ -f "${HOME}/.emacs.d/etc/apps/exwm.el" ] || [ -f "${HOME}/.emacs.d/var/lib/elpaca/builds/exwm/exwm.el" ]; then
