@@ -1143,6 +1143,10 @@ _is_terminal_app() {
 		yazi|ranger|mc|ncdu|gdu|lazygit|lazydocker|tig|bluetui|k9s)
 			return 0
 			;;
+		# Ferramentas de IA, DevOps & CLI Modernas
+		agy|gemini|claude|ollama|gh|git|docker|podman|kubectl|helm)
+			return 0
+			;;
 	esac
 
 	# 2. XDG Desktop Entry Lookup (Terminal=true vs Terminal=false)
@@ -1483,9 +1487,9 @@ fi
 _target_bin="\$1"
 shift
 if [ "${_is_terminal}" -eq 1 ]; then
-	exec xterm -maximized -e "\${_target_bin}" "\$@"
+	exec xterm -bc -maximized -e "\${_target_bin}" "\$@"
 elif [ "\${_target_bin}" = "xterm" ]; then
-	exec xterm -maximized "\$@"
+	exec xterm -bc -maximized "\$@"
 else
 	exec "\${_target_bin}" "\$@"
 fi
