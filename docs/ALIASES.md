@@ -191,7 +191,7 @@ flowchart TD
 | `window-manager-x11 [env]` / `xwm` / `xorg` / `x11`          | Inicia sessão/ambiente gráfico X11 (Xorg / Xenocara).                                                              | `start-session xorg`                                        |
 | `graphical-launcher [-g/-k/-x/-m/-c] [app]` / `gui`          | Lançador universal efêmero de app gráfico por TTY (Wayland/X11 com flags de DE: GNOME, KDE, XFCE, MATE, Cinnamon). | `_dispatch_display_server graphical-launcher`               |
 | `graphical-launcher-wayland [-g/-k/-x/-m/-c] [app]` / `wgui` | Lançador Wayland efêmero por TTY (sway/river/labwc/cage; padrão: `foot`; estilização por DE).                      | Sessão Wayland efêmera com auto-exit                        |
-| `graphical-launcher-x11 [-g/-k/-x/-m/-c] [app]` / `xgui`     | Lançador Xorg efêmero por TTY via `xinit` (padrão: `xterm`; estilização por DE).                                   | Sessão X11 efêmera (`xinit`) com auto-exit                  |
+| `graphical-launcher-x11 [-g/-k/-x/-m/-c] [app]` / `xgui`     | Lançador Xorg efêmero por TTY via `xinit` (padrão: `xterm` maximizado com Adwaita Dark via Xresources).            | Sessão X11 efêmera (`xinit`) com auto-exit                  |
 | `~`, `/`, `..`, `...`, `....`, `-- -`                        | Atalhos rápidos de navegação no sistema de arquivos.                                                               | `cd ~`, `cd /`, `cd ..`, `cd ../..`, `cd ../../..`, `cd -`  |
 
 ---

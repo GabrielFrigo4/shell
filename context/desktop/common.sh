@@ -191,10 +191,10 @@ emacs-client() {
 	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if [ "$#" -eq 0 ]; then
-			command emacsclient --create-frame --alternate-editor "" -n
+			command emacsclient --create-frame -F "((fullscreen . maximized))" --alternate-editor "" -n
 			_status=$?
 		else
-			command emacsclient --create-frame --alternate-editor "" "$@"
+			command emacsclient --create-frame -F "((fullscreen . maximized))" --alternate-editor "" "$@"
 			_status=$?
 		fi
 	else
@@ -288,7 +288,7 @@ emacs-eshell() {
 
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if command -v emacsclient > "/dev/null" 2>&1; then
-			(command nohup emacsclient --create-frame --alternate-editor "" \
+			(command nohup emacsclient --create-frame -F "((fullscreen . maximized))" --alternate-editor "" \
 				--eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
 		else
 			(command nohup emacs --eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
@@ -1187,20 +1187,38 @@ EOF
 		command sway -c "${_sway_cfg}" > "/dev/null" 2>&1
 		rm -f "${_sway_cfg}"
 	elif command -v river > "/dev/null" 2>&1; then
-		local _river_init="${XDG_RUNTIME_DIR}/river-gui-$$.sh"
+		local _river_init="${XDG_RUNTIME_DIR:-/tmp}/river-gui-$$.sh"
 		cat << EOF > "${_river_init}"
 #!/bin/sh
 riverctl border-width 0
 riverctl xcursor-theme "${_cur_theme}" "${_cur_size}"
 riverctl keyboard-layout -model abnt2 br
 riverctl set-repeat 50 200
+riverctl default-attach-mode top
+riverctl map normal Super F toggle-fullscreen
 sh -c '${_app} $* ; riverctl exit' &
 EOF
 		chmod 0755 "${_river_init}"
 		command river -c "${_river_init}" > "/dev/null" 2>&1
 		rm -f "${_river_init}"
 	elif command -v labwc > "/dev/null" 2>&1; then
-		command labwc -C "${XDG_RUNTIME_DIR}" -s "${_app} $*" > "/dev/null" 2>&1
+		local _labwc_dir="${XDG_RUNTIME_DIR:-/tmp}/labwc-gui-$$"
+		mkdir -p "${_labwc_dir}"
+		cat << EOF > "${_labwc_dir}/rc.xml"
+<?xml version="1.0"?>
+<labwc_config>
+  <theme>
+    <cornerRadius>0</cornerRadius>
+  </theme>
+  <windowRules>
+    <windowRule identifier="*" serverDecoration="no">
+      <action name="Maximize"/>
+    </windowRule>
+  </windowRules>
+</labwc_config>
+EOF
+		command labwc -C "${_labwc_dir}" -s "sh -c '${_app} $* ; labwc --exit'" > "/dev/null" 2>&1
+		rm -rf "${_labwc_dir}"
 	elif command -v cage > "/dev/null" 2>&1; then
 		command cage -s -- "${_app}" "$@" > "/dev/null" 2>&1
 	else
@@ -1290,17 +1308,42 @@ graphical-launcher-x11() {
 
 	_setup_cursor_env
 
-	if [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
-		xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
+	local _xres_target="${HOME}/.Xresources"
+	local _xres_src=""
+	if [ -f "${HOME}/.local/share/profile/terminals/xterm/Xresources" ]; then
+		_xres_src="${HOME}/.local/share/profile/terminals/xterm/Xresources"
+	elif [ -f "${PROFILE_REPO_DIR:-}/terminals/xterm/Xresources" ]; then
+		_xres_src="${PROFILE_REPO_DIR}/terminals/xterm/Xresources"
+	fi
+	if [ -n "${_xres_src}" ]; then
+		if [ ! -f "${_xres_target}" ] || ! cmp -s "${_xres_src}" "${_xres_target}"; then
+			cp -f "${_xres_src}" "${_xres_target}" 2> "/dev/null" || true
+		fi
 	fi
 
 	local _vt_arg="$(_resolve_vt_arg)"
+	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-gui-$$.sh"
+	cat << 'EOF' > "${_xinit_script}"
+#!/bin/sh
+if [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
+	xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
+fi
+_target_bin="$1"
+shift
+if [ "${_target_bin}" = "xterm" ]; then
+	exec xterm -maximized "$@"
+else
+	exec "${_target_bin}" "$@"
+fi
+EOF
+	chmod 0755 "${_xinit_script}"
 
 	if command -v xinit > "/dev/null" 2>&1; then
-		command xinit "$(command -v "${_app}")" "$@" -- "${DISPLAY}" ${_vt_arg} > "/dev/null" 2>&1
+		command xinit "${_xinit_script}" "${_app}" "$@" -- "${DISPLAY}" ${_vt_arg} > "/dev/null" 2>&1
 	else
-		command startx "$(command -v "${_app}")" "$@" -- "${DISPLAY}" ${_vt_arg} > "/dev/null" 2>&1
+		command startx "${_xinit_script}" "${_app}" "$@" -- "${DISPLAY}" ${_vt_arg} > "/dev/null" 2>&1
 	fi
+	rm -f "${_xinit_script}"
 
 	_freebsd_vt_bounce
 }

@@ -253,9 +253,15 @@ Diferente do paradigma tradicional onde um Display Manager pesado (GDM, SDDM, Li
     - Ao fechar a aplicação gráfica (`_app`), o script efêmero emite o comando de saída do compositor (`swaymsg exit`, `riverctl exit` ou encerramento do `xinit`).
     - O compositor gráfico é encerrado e o terminal virtual retorna instantaneamente ao prompt interativo limpo do Shell.
     - No FreeBSD, o `_freebsd_vt_bounce` executa um chaveamento de VT via `vidcontrol -s` para forçar o redesenho do framebuffer do console do kernel, eliminando artefatos residuais de vídeo.
-- **Por que Sway com Fullscreen Automático é o Padrão:**
-    - O **Cage** é ideal para quiosques estritos de 1 janela, porém ele bloqueia a comutação de consoles virtuais (`Ctrl+Alt+F*`), quebrando a premissa de multi-sessão.
-    - O **Sway** suporta perfeitamente atalhos de kernel para troca de TTY e aceleração gráfica completa. Para preservar o paradigma de quiosque e evitar divisões indesejadas de tela (split 50/50 ao abrir janelas filhas), a configuração efêmera do Sway injeta regras de tela cheia automática (`for_window [app_id=".*"] fullscreen enable` e `for_window [class=".*"] fullscreen enable`), garantindo foco e visibilidade total da aplicação ativa.
+- **Por que Sway, Labwc e River com Fullscreen Automático são a Tétrade Wayland:**
+    - O **Sway** é o micro-compositor primário: suporta aceleração gráfica via wlroots e atalhos de kernel para troca de TTY (`Ctrl+Alt+F*`). Para preservar o paradigma de quiosque e evitar divisões indesejadas de tela (split 50/50 ao abrir janelas filhas ou editores), a configuração efêmera do Sway injeta regras de quiosque automático (`for_window [app_id=".*"] fullscreen enable` e `for_window [class=".*"] fullscreen enable`), garantindo tela cheia contínua.
+    - O **Labwc** atua como segundo fallback moderno: gera um `rc.xml` efêmero com `<windowRules><windowRule identifier="*" serverDecoration="no"><action name="Maximize"/></windowRule></windowRules>`, maximizando qualquer janela sem bordas nem decorações, com suporte nativo à troca de TTY.
+    - O **River** é o terceiro fallback: inicializado intencionalmente sem o gerador de tiling (`rivertile`), o que impede o fatiamento da tela, abrindo as janelas empilhadas no topo (`default-attach-mode top`) com tecla rápida `Super+F` para fullscreen e troca de TTY preservada.
+    - O **Cage** é mantido como último fallback defensivo de quiosque puro mono-aplicação, reservado para quando nenhum outro micro-compositor estiver disponível (devido à sua limitação de não comutar TTYs).
+- **Paridade Estrita no X11 (`xgui` com `xterm` e `xrdb`):**
+    - O lançador `xgui` espelha rigorosamente o comportamento do `wgui`, utilizando o **XTerm** com a paleta Adwaita Dark do Foot, tipografia `JetBrainsMono Nerd Font` e padding interno de 16px.
+    - O script efêmero do cliente do `xinit` injeta `~/.Xresources` via `xrdb -merge` após a subida do servidor X e dispara o XTerm com `-maximized`, ocupando 100% da resolução do monitor.
+    - Aplicações filhas e editores (como `emacs`) nascem automaticamente com parâmetros de frame maximizados (`-F "((fullscreen . maximized))"`), garantindo tela cheia mesmo em sessões X11 puras sem window manager permanente.
 - **Detecção e Sobrescrita de Temas de Desktop:**
     - O despachante inspeciona `$XDG_CURRENT_DESKTOP` e a hierarquia de ambientes instalados (GNOME > KDE > Cinnamon > MATE > XFCE > Adwaita).
     - Flags explícitas (`-g`, `-k`, `-x`, `-m`, `-c`) permitem forçar temas GTK, estilos Qt e cursores específicos para a aplicação em tempo de execução.
