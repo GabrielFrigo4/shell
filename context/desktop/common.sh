@@ -709,7 +709,10 @@ _resolve_vt_arg() {
 _exec_x11() {
 	command -v startx > "/dev/null" 2>&1 || command -v xinit > "/dev/null" 2>&1 || return 1
 
-	export DISPLAY="${DISPLAY:-:0}"
+	local _had_display=1
+	[ -z "${DISPLAY:-}" ] && _had_display=0
+	local _display="${DISPLAY:-:0}"
+	export DISPLAY="${_display}"
 	_setup_cursor_env
 
 	local _theme_flavor="$(_detect_desktop_theme)"
@@ -734,11 +737,13 @@ _exec_x11() {
 	local _vt_arg="$(_resolve_vt_arg)"
 
 	if command -v startx > "/dev/null" 2>&1; then
-		exec startx "$@" -- "${DISPLAY}" ${_vt_arg}
+		startx "$@" -- "${_display}" ${_vt_arg} > "/dev/null" 2>&1
 	elif command -v xinit > "/dev/null" 2>&1; then
-		exec xinit "$@" -- "${DISPLAY}" ${_vt_arg}
-	else
-		exec "$@"
+		xinit "$@" -- "${_display}" ${_vt_arg} > "/dev/null" 2>&1
+	fi
+
+	if [ "${_had_display}" -eq 0 ]; then
+		unset DISPLAY
 	fi
 }
 
@@ -1190,6 +1195,8 @@ graphical-launcher-wayland() {
 	export MICRO_TRUECOLOR=1
 
 	local _flavor=""
+	local _had_wayland=1
+	[ -z "${WAYLAND_DISPLAY:-}" ] && _had_wayland=0
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
 			-g|--gnome)
@@ -1321,6 +1328,10 @@ EOF
 		return 1
 	fi
 
+	if [ "${_had_wayland}" -eq 0 ]; then
+		unset WAYLAND_DISPLAY
+	fi
+
 	_freebsd_vt_bounce
 }
 alias wgui="graphical-launcher-wayland"
@@ -1374,7 +1385,11 @@ graphical-launcher-x11() {
 	local _app="${1:-xterm}"
 	[ "$#" -ge 1 ] && shift
 
-	export DISPLAY="${DISPLAY:-:0}"
+	local _had_display=1
+	[ -z "${DISPLAY:-}" ] && _had_display=0
+
+	local _display="${DISPLAY:-:0}"
+	export DISPLAY="${_display}"
 
 	local _theme_flavor="$(_detect_desktop_theme "${_flavor}")"
 	case "${_theme_flavor}" in
@@ -1477,12 +1492,23 @@ fi
 EOF
 	chmod 0755 "${_xinit_script}"
 
+	local _xinit_log="${XDG_RUNTIME_DIR:-/tmp}/xinit-$$.log"
 	if command -v xinit > "/dev/null" 2>&1; then
-		command xinit "${_xinit_script}" "${_app}" "$@" -- "${DISPLAY}" ${_vt_arg} > "/dev/null" 2>&1
+		command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} > "${_xinit_log}" 2>&1
 	else
-		command startx "${_xinit_script}" "${_app}" "$@" -- "${DISPLAY}" ${_vt_arg} > "/dev/null" 2>&1
+		command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} > "${_xinit_log}" 2>&1
 	fi
-	rm -f "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-$$.xml" 2> "/dev/null" || true
+	local _xinit_ret=$?
+
+	if [ "${_xinit_ret}" -ne 0 ] && [ -f "${_xinit_log}" ]; then
+		_ui_warn "Xorg encerrou com código ${_xinit_ret}."
+		command tail -n 10 "${_xinit_log}" 2> "/dev/null" || true
+	fi
+	rm -f "${_xinit_log}" "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-$$.xml" 2> "/dev/null" || true
+
+	if [ "${_had_display}" -eq 0 ]; then
+		unset DISPLAY
+	fi
 
 	_freebsd_vt_bounce
 }
@@ -1527,11 +1553,20 @@ emacs-window-manager-wayland() {
 		export EMACSLOADPATH="${HOME}/.local/share/emacs/site-lisp/ewm:${EMACSLOADPATH:-}:"
 		_setup_cursor_env
 		rm -f "${XDG_RUNTIME_DIR:-/tmp}/emacs/ewm" 2> "/dev/null" || true
-		command emacs --fg-daemon=ewm -L "${HOME}/.local/share/emacs/site-lisp/ewm" -l ewm -f ewm-start-module "$@"
+
+		local _ewm_log="${XDG_RUNTIME_DIR:-/tmp}/ewm-$$.log"
+		command emacs --fg-daemon=ewm -L "${HOME}/.local/share/emacs/site-lisp/ewm" -l ewm -f ewm-start-module "$@" 2> "${_ewm_log}"
+		local _emacs_ret=$?
+
+		if [ "${_emacs_ret}" -ne 0 ] && [ -f "${_ewm_log}" ]; then
+			command grep -v "Due to a limitation in GTK 3" "${_ewm_log}" 2> "/dev/null" | command grep -v "unlikely ever to be able" | command grep -v "display connection is closed" | command grep -v "Failed to connect to user scope bus" | command tail -n 10
+		fi
+		rm -f "${_ewm_log}" 2> "/dev/null" || true
 	else
 		graphical-launcher-wayland emacs "$@"
 	fi
 
+	_restore_tty_cursor
 	_freebsd_vt_bounce
 }
 alias wewm="emacs-window-manager-wayland"
