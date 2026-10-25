@@ -52,8 +52,20 @@ alias ov="open-vim"
 
 hx() {
 	command -v hx > "/dev/null" 2>&1 || { _ui_err "hx not found."; return 127; }
-	command hx "$@"
-	local _status=$?
+	local _status=0
+	if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
+		local _tty_cfg="${XDG_CONFIG_HOME:-${HOME}/.config}/helix/config-tty.toml"
+		if [ -f "${_tty_cfg}" ]; then
+			command hx -c "${_tty_cfg}" "$@"
+			_status=$?
+		else
+			command hx "$@"
+			_status=$?
+		fi
+	else
+		command hx "$@"
+		_status=$?
+	fi
 	_restore_tty_cursor
 	return ${_status}
 }
