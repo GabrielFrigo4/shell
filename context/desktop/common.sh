@@ -14,7 +14,7 @@ _restore_tty_cursor() {
 				echo -n $'\e]112\7'
 			fi
 		else
-			echo -n $'\e[1 q'
+			echo -n $'\e[1 q\e]112\7'
 		fi
 	fi
 }
@@ -245,13 +245,13 @@ emacs() {
 		-*)
 			command emacs "$@"
 			_status=$?
-			_restore_tty_cursor
 			;;
 		*)
 			emacs-client "$@"
 			_status=$?
 			;;
 	esac
+	_restore_tty_cursor
 	return ${_status}
 }
 emacs-open() {
