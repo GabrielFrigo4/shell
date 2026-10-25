@@ -1058,18 +1058,20 @@ _detect_desktop_theme() {
 }
 
 _resolve_gtk_theme() {
-	local _flavor="${1:-}"
+	local _flavor="${1:-$(_detect_desktop_theme)}"
 
-	if command -v gsettings > "/dev/null" 2>&1; then
-		local _gset_theme=""
-		_gset_theme="$(command gsettings get org.gnome.desktop.interface gtk-theme 2> "/dev/null" | tr -d "'" || true)"
-		if [ -n "${_gset_theme}" ]; then
-			if [ -d "/usr/share/themes/${_gset_theme}" ] || \
-			   [ -d "/usr/local/share/themes/${_gset_theme}" ] || \
-			   [ -d "${HOME}/.themes/${_gset_theme}" ] || \
-			   [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/${_gset_theme}" ]; then
-				echo "${_gset_theme}"
-				return 0
+	if [ "${_flavor}" = "gnome" ] || [ "${_flavor}" = "adwaita" ]; then
+		if command -v gsettings > "/dev/null" 2>&1; then
+			local _gset_theme=""
+			_gset_theme="$(command gsettings get org.gnome.desktop.interface gtk-theme 2> "/dev/null" | tr -d "'" || true)"
+			if [ -n "${_gset_theme}" ]; then
+				if [ -d "/usr/share/themes/${_gset_theme}" ] || \
+				   [ -d "/usr/local/share/themes/${_gset_theme}" ] || \
+				   [ -d "${HOME}/.themes/${_gset_theme}" ] || \
+				   [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/${_gset_theme}" ]; then
+					echo "${_gset_theme}"
+					return 0
+				fi
 			fi
 		fi
 	fi
@@ -1077,16 +1079,16 @@ _resolve_gtk_theme() {
 	local _candidates=""
 	case "${_flavor}" in
 		kde)
-			_candidates="Breeze-Dark Breeze Adwaita-dark adw-gtk3-dark"
+			_candidates="Breeze-Dark Breeze adw-gtk3-dark Adwaita-dark"
 			;;
 		xfce)
-			_candidates="Greybird-dark Greybird Adwaita-dark adw-gtk3-dark"
+			_candidates="Greybird-dark Greybird adw-gtk3-dark Adwaita-dark"
 			;;
 		cinnamon)
-			_candidates="Mint-Y-Dark Adwaita-dark adw-gtk3-dark"
+			_candidates="Mint-Y-Dark adw-gtk3-dark Adwaita-dark"
 			;;
 		mate)
-			_candidates="Yaru-MATE-dark Adwaita-dark adw-gtk3-dark"
+			_candidates="Yaru-MATE-dark adw-gtk3-dark Adwaita-dark"
 			;;
 		*)
 			_candidates="adw-gtk3-dark Adwaita-dark Adwaita:dark Breeze-Dark Greybird-dark"
