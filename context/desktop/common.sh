@@ -1144,15 +1144,14 @@ _is_terminal_app() {
 	local _xdg_dir _desktop_file
 	for _xdg_dir in /usr/share/applications /usr/local/share/applications "${XDG_DATA_HOME:-${HOME}/.local/share}/applications"; do
 		[ -d "${_xdg_dir}" ] || continue
-		for _desktop_file in "${_xdg_dir}/${_base}.desktop" "${_xdg_dir}/"*"-${_base}.desktop" "${_xdg_dir}/"*"."${_base}.desktop"; do
-			if [ -f "${_desktop_file}" ]; then
-				if command grep -q "^Terminal=true" "${_desktop_file}" 2> "/dev/null"; then
-					return 0
-				elif command grep -q "^Terminal=false" "${_desktop_file}" 2> "/dev/null"; then
-					return 1
-				fi
+		_desktop_file="${_xdg_dir}/${_base}.desktop"
+		if [ -f "${_desktop_file}" ]; then
+			if command grep -q "^Terminal=true" "${_desktop_file}" 2> "/dev/null"; then
+				return 0
+			elif command grep -q "^Terminal=false" "${_desktop_file}" 2> "/dev/null"; then
+				return 1
 			fi
-		done
+		fi
 	done
 
 	# 3. Inspeção Segura de Dependências Dinâmicas ELF (Zero Falsos Positivos)
@@ -1521,6 +1520,9 @@ emacs-window-manager-wayland() {
 	fi
 
 	if [ -n "${_ewm_so}" ]; then
+		if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -e "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus" ]; then
+			export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus"
+		fi
 		export EWM_MODULE_PATH="${_ewm_so}"
 		export EMACSLOADPATH="${HOME}/.local/share/emacs/site-lisp/ewm:${EMACSLOADPATH:-}:"
 		_setup_cursor_env
