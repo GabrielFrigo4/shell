@@ -1107,14 +1107,79 @@ _freebsd_vt_bounce() {
 }
 
 _is_terminal_app() {
-	case "${1:-}" in
-		vim|nvim|hx|helix|vi|nano|micro|emacs-nw|enw|btm|htop|top|yazi|ranger|mc|ncdu|lazygit|lazydocker|btop|bmon|iftop|tig)
+	local _target="${1:-}"
+	[ -z "${_target}" ] && return 1
+
+	local _base="${_target##*/}"
+
+	# 1. Fast-Path O(1): Categorias conhecidas de terminais
+	case "${_base}" in
+		# Shells
+		sh|bash|zsh|ksh|csh|tcsh|fish|pwsh|nu|elvish)
 			return 0
 			;;
-		*)
-			return 1
+		# Editores de Texto TUI
+		vi|vim|nvim|hx|helix|nano|micro|emacs-nw|enw|pico|joe|ed)
+			return 0
+			;;
+		# Multiplexadores de Terminal
+		tmux|screen|zellij)
+			return 0
+			;;
+		# Pagers, Visualizadores & Manpages
+		less|more|man|bat|most)
+			return 0
+			;;
+		# Monitores de Sistema & Processos
+		top|htop|btop|btm|glances|nvtop|iotop|nethogs|iftop|bmon|bandwhich)
+			return 0
+			;;
+		# Gerenciadores de Arquivo & TUI Tools
+		yazi|ranger|mc|ncdu|gdu|lazygit|lazydocker|tig|bluetui|k9s)
+			return 0
 			;;
 	esac
+
+	# 2. XDG Desktop Entry Lookup (Terminal=true vs Terminal=false)
+	local _xdg_dir _desktop_file
+	for _xdg_dir in /usr/share/applications /usr/local/share/applications "${XDG_DATA_HOME:-${HOME}/.local/share}/applications"; do
+		[ -d "${_xdg_dir}" ] || continue
+		for _desktop_file in "${_xdg_dir}/${_base}.desktop" "${_xdg_dir}/"*"-${_base}.desktop" "${_xdg_dir}/"*"."${_base}.desktop"; do
+			if [ -f "${_desktop_file}" ]; then
+				if command grep -q "^Terminal=true" "${_desktop_file}" 2> "/dev/null"; then
+					return 0
+				elif command grep -q "^Terminal=false" "${_desktop_file}" 2> "/dev/null"; then
+					return 1
+				fi
+			fi
+		done
+	done
+
+	# 3. Inspeção Segura de Dependências Dinâmicas ELF (Zero Falsos Positivos)
+	local _bin_path=""
+	if [ -f "${_target}" ] && [ -x "${_target}" ]; then
+		_bin_path="${_target}"
+	else
+		_bin_path="$(command -v "${_base}" 2> "/dev/null" || true)"
+	fi
+
+	if [ -n "${_bin_path}" ] && command -v readelf > "/dev/null" 2>&1; then
+		local _deps
+		_deps="$(command readelf -d "${_bin_path}" 2> "/dev/null" | command grep "NEEDED" || true)"
+		if [ -n "${_deps}" ]; then
+			# Se linka com QUALQUER biblioteca gráfica/multimídia, é GARANTIDAMENTE gráfico nativo
+			if printf '%s\n' "${_deps}" | command grep -qiE "wayland|X11|xcb|gtk|Qt|fltk|fox|wx|glfw|SDL|raylib|sfml|allegro|libGL|libEGL|libGLES|vulkan" > "/dev/null" 2>&1; then
+				return 1
+			fi
+			# Se linka com bibliotecas TUI (curses/terminfo/slang) e nenhuma gráfica, é terminal
+			if printf '%s\n' "${_deps}" | command grep -qiE "ncurses|tinfo|slang|curses" > "/dev/null" 2>&1; then
+				return 0
+			fi
+		fi
+	fi
+
+	# Fallback conservador: assume GUI nativa para evitar encapsulamento indevido
+	return 1
 }
 
 ### --------------------------------
@@ -1356,31 +1421,25 @@ graphical-launcher-x11() {
 		fi
 	fi
 
+	local _is_terminal=0
+	if _is_terminal_app "${_app}"; then
+		_is_terminal=1
+	fi
+
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-gui-$$.sh"
-	cat << 'EOF' > "${_xinit_script}"
+	cat << EOF > "${_xinit_script}"
 #!/bin/sh
-if [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
-	xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
+if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
+	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
 fi
-
-_is_term() {
-	case "$1" in
-		vim|nvim|hx|helix|vi|nano|micro|emacs-nw|enw|btm|htop|top|yazi|ranger|mc|ncdu|lazygit|lazydocker|btop|bmon|iftop|tig)
-			return 0
-			;;
-		*)
-			return 1
-			;;
-	esac
-}
 
 # Fallback quiosque de Window Managers para tela cheia estrita
 if command -v matchbox-window-manager > "/dev/null" 2>&1; then
 	matchbox-window-manager -use_titlebar no > "/dev/null" 2>&1 &
 elif command -v openbox > "/dev/null" 2>&1; then
-	_ob_cfg="${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-$$.xml"
-	cat << 'XOB' > "${_ob_cfg}"
+	_ob_cfg="\${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-\$\$.xml"
+	cat << 'XOB' > "\${_ob_cfg}"
 <?xml version="1.0"?>
 <openbox_config>
   <applications>
@@ -1391,30 +1450,30 @@ elif command -v openbox > "/dev/null" 2>&1; then
   </applications>
 </openbox_config>
 XOB
-	openbox --config-file "${_ob_cfg}" > "/dev/null" 2>&1 &
+	openbox --config-file "\${_ob_cfg}" > "/dev/null" 2>&1 &
 elif command -v cwm > "/dev/null" 2>&1; then
 	cwm > "/dev/null" 2>&1 &
 elif command -v ratpoison > "/dev/null" 2>&1; then
 	ratpoison > "/dev/null" 2>&1 &
 elif command -v xdotool > "/dev/null" 2>&1; then
 	(
-		for _i in $(seq 1 20); do
+		for _i in \$(seq 1 20); do
 			sleep 0.1
-			for _wid in $(command xdotool search --onlyvisible --class ".*" 2> "/dev/null"); do
-				command xdotool windowsize "${_wid}" 100% 100% windowmove "${_wid}" 0 0 2> "/dev/null" || true
+			for _wid in \$(command xdotool search --onlyvisible --class ".*" 2> "/dev/null"); do
+				command xdotool windowsize "\${_wid}" 100% 100% windowmove "\${_wid}" 0 0 2> "/dev/null" || true
 			done
 		done
 	) &
 fi
 
-_target_bin="$1"
+_target_bin="\$1"
 shift
-if [ "${_target_bin}" = "xterm" ]; then
-	exec xterm -maximized "$@"
-elif _is_term "${_target_bin}"; then
-	exec xterm -maximized -e "${_target_bin}" "$@"
+if [ "${_is_terminal}" -eq 1 ]; then
+	exec xterm -maximized -e "\${_target_bin}" "\$@"
+elif [ "\${_target_bin}" = "xterm" ]; then
+	exec xterm -maximized "\$@"
 else
-	exec "${_target_bin}" "$@"
+	exec "\${_target_bin}" "\$@"
 fi
 EOF
 	chmod 0755 "${_xinit_script}"
