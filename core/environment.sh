@@ -510,7 +510,7 @@ eval 'agy() {
 if [ -t 1 ]; then
 	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 		if [ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ]; then
-			echo -n $'\e%G\e[?16;238;0c\e]P0000000\e]P1d16969\e]P273c991\e]P3e5c07b\e]P4569cd6\e]P5c586c0\e]P64ec9b0\e]P7d4d4d4\e]P8858585\e]P9f7768e\e]PA9ece6a\e]PBe0af68\e]PC7dcfff\e]PDbb9af7\e]PE4fc1ff\e]PFffffff'
+			echo -n $'\e%G\e[?16;238;0c\e]P0000000\e]P17f0000\e]P2007f00\e]P3c4a100\e]P43366a3\e]P57f007f\e]P6007f7f\e]P7bfbfbf\e]P873828a\e]P9ff0000\e]Pa00ff00\e]Pbffff00\e]Pc739ecf\e]Pdff00ff\e]Pe00ffff\e]Pfffffff'
 			command -v stty > "/dev/null" 2>&1 && stty iutf8 2> "/dev/null" || true
 		fi
 	else
