@@ -237,11 +237,46 @@ _detect_enabled_shell() {
 			;;
 	esac
 
-	local _shell_binary
-	_shell_binary="$( { [ -n "${_current_shell}" ] && command -v "${_current_shell}" 2> "/dev/null"; } || \
-		command -v zsh 2> "/dev/null" || \
-		command -v bash 2> "/dev/null" || \
-		command -v sh 2> "/dev/null")"
+	# 1. Shell ativo da sessao (se valido e nao-dash)
+	local _shell_binary=""
+	if [ -n "${_current_shell}" ]; then
+		_shell_binary="$(command -v "${_current_shell}" 2> "/dev/null" || true)"
+	fi
+
+	# 2. $SHELL configurado no chsh do usuario (se executavel e compativel)
+	if [ -z "${_shell_binary}" ] && [ -n "${SHELL:-}" ] && [ -x "${SHELL}" ]; then
+		case "${SHELL##*/}" in
+			dash|fish) ;;
+			*) _shell_binary="${SHELL}" ;;
+		esac
+	fi
+
+	# 3. Cascata canonica do ecossistema: Zsh -> Bash -> Ksh (OpenBSD) -> Sh (FreeBSD)
+	if [ -z "${_shell_binary}" ]; then
+		_shell_binary="$(command -v zsh 2> "/dev/null" || true)"
+	fi
+	if [ -z "${_shell_binary}" ]; then
+		_shell_binary="$(command -v bash 2> "/dev/null" || true)"
+	fi
+	if [ -z "${_shell_binary}" ]; then
+		_shell_binary="$(command -v ksh 2> "/dev/null" || true)"
+	fi
+	if [ -z "${_shell_binary}" ]; then
+		local _sh_bin="$(command -v sh 2> "/dev/null" || true)"
+		if [ -n "${_sh_bin}" ]; then
+			local _real_sh="${_sh_bin}"
+			if [ -L "${_sh_bin}" ]; then
+				_real_sh="$(readlink -f "${_sh_bin}" 2> "/dev/null" || echo "${_sh_bin}")"
+			fi
+			case "${_real_sh##*/}" in
+				dash) ;; # Expurga estritamente o Debian dash
+				*) _shell_binary="${_sh_bin}" ;;
+			esac
+		fi
+	fi
+
+	# 4. Fallback defensivo
+	[ -z "${_shell_binary}" ] && _shell_binary="${SHELL:-/bin/sh}"
 
 	case "${_target}" in
 		--name|-n|name) echo "${_shell_binary##*/}" ;;

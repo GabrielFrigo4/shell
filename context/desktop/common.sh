@@ -1264,7 +1264,9 @@ graphical-launcher-wayland() {
 
 	local _exec_cmd=""
 	if _is_terminal_app "${_app}"; then
-		_exec_cmd="foot ${_app} $*"
+		local _sh="$(_detect_enabled_shell)"
+		[ -z "${_sh}" ] && _sh="$(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || echo "/bin/sh")"
+		_exec_cmd="foot ${_sh} -i -c '${_app} $*'"
 	else
 		_exec_cmd="${_app} $*"
 	fi
@@ -1470,6 +1472,9 @@ graphical-launcher-x11() {
 		_is_terminal=1
 	fi
 
+	local _sh="$(_detect_enabled_shell)"
+	[ -z "${_sh}" ] && _sh="$(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || echo "/bin/sh")"
+
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-gui-$$.sh"
 	cat << EOF > "${_xinit_script}"
@@ -1513,9 +1518,9 @@ fi
 _target_bin="\$1"
 shift
 if [ "${_is_terminal}" -eq 1 ]; then
-	exec xterm -bc -maximized -e "\${_target_bin}" "\$@"
+	exec xterm -bc -bcf 400 -bcn 500 -xrm 'XTerm*cursorBlink: true' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: true' -xrm '*cursorBlink: true' -maximized -e "${_sh}" -i -c "\${_target_bin} \$*"
 elif [ "\${_target_bin}" = "xterm" ]; then
-	exec xterm -bc -maximized "\$@"
+	exec xterm -bc -bcf 400 -bcn 500 -xrm 'XTerm*cursorBlink: true' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: true' -xrm '*cursorBlink: true' -maximized "\$@"
 else
 	exec "\${_target_bin}" "\$@"
 fi
