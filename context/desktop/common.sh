@@ -578,7 +578,7 @@ if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 	if [ -z "${QT_STYLE_OVERRIDE:-}" ]; then
 		if [ -n "${_DETECTED_QT_THEME:-}" ]; then
 			export QT_STYLE_OVERRIDE="${_DETECTED_QT_THEME}"
-		elif [ -z "${_DETECTED_QT_THEME+x}" ]; then
+		elif [ -z "${_DETECTED_QT_THEME+x}" ] && command -v _detect_qt_theme > "/dev/null" 2>&1; then
 			_qt_style="$(_detect_qt_theme)"
 			[ -n "${_qt_style}" ] && export QT_STYLE_OVERRIDE="${_qt_style}"
 			unset _qt_style
@@ -588,7 +588,7 @@ if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 	if [ -z "${QT_QPA_PLATFORMTHEME:-}" ]; then
 		if [ -n "${_DETECTED_QT_PLATFORM_THEME:-}" ]; then
 			export QT_QPA_PLATFORMTHEME="${_DETECTED_QT_PLATFORM_THEME}"
-		elif [ -z "${_DETECTED_QT_PLATFORM_THEME+x}" ]; then
+		elif [ -z "${_DETECTED_QT_PLATFORM_THEME+x}" ] && command -v _detect_qt_platform_theme > "/dev/null" 2>&1; then
 			_qt_platform="$(_detect_qt_platform_theme)"
 			[ -n "${_qt_platform}" ] && export QT_QPA_PLATFORMTHEME="${_qt_platform}"
 			unset _qt_platform
@@ -723,6 +723,16 @@ _resolve_free_display() {
 
 _exec_x11() {
 	command -v startx > "/dev/null" 2>&1 || command -v xinit > "/dev/null" 2>&1 || return 1
+
+	local _had_display=1
+	[ -z "${DISPLAY:-}" ] && _had_display=0
+
+	export XDG_SESSION_TYPE="x11"
+	unset WAYLAND_DISPLAY
+	export GDK_BACKEND="x11"
+	export QT_QPA_PLATFORM="xcb"
+	export SDL_VIDEODRIVER="x11"
+	export CLUTTER_BACKEND="x11"
 
 	local _display="$(_resolve_free_display)"
 	export DISPLAY="${_display}"
@@ -1335,14 +1345,23 @@ graphical-launcher-wayland() {
 
 	cat << EOF > "${_wayland_runner}"
 #!/bin/sh
-if [ "${_is_terminal}" -eq 1 ]; then
-	if command -v "\$1" > "/dev/null" 2>&1; then
-		foot "\$@"
+_app_target="\$1"
+[ "\$#" -ge 1 ] && shift
+
+if [ -z "\${_app_target}" ] || [ "\${_app_target}" = "foot" ]; then
+	if [ "\$#" -eq 0 ]; then
+		foot
 	else
-		foot "${_sh}" -i -c "\$*"
+		foot "\$@"
+	fi
+elif [ "${_is_terminal}" -eq 1 ]; then
+	if command -v "\${_app_target}" > "/dev/null" 2>&1; then
+		foot "\${_app_target}" "\$@"
+	else
+		foot "${_sh}" -i -c "\${_app_target} \$*"
 	fi
 else
-	"\$@"
+	"\${_app_target}" "\$@"
 fi
 _ret=\$?
 
@@ -1359,6 +1378,12 @@ fi
 exit "\${_ret}"
 EOF
 	chmod 0755 "${_wayland_runner}"
+
+	local _exec_invocation="\"${_wayland_runner}\" \"${_app}\""
+	local _arg
+	for _arg in "$@"; do
+		[ -n "${_arg}" ] && _exec_invocation="${_exec_invocation} \"$(printf '%s' "${_arg}" | sed 's/"/\\"/g')\""
+	done
 
 	if [ "${_app}" = "foot" ] || [ "${_is_terminal}" -eq 1 ]; then
 		local _foot_target="${HOME}/.config/foot/foot.ini"
@@ -1397,7 +1422,7 @@ input type:keyboard {
     repeat_delay 200
     repeat_rate 50
 }
-exec "${_wayland_runner}" "${_app}" "$@"
+exec ${_exec_invocation}
 EOF
 		command sway -c "${_sway_cfg}" > "/dev/null" 2>&1
 		rm -f "${_sway_cfg}"
@@ -1412,7 +1437,7 @@ riverctl set-repeat 50 200
 riverctl default-attach-mode top
 riverctl map normal Super F toggle-fullscreen
 riverctl map normal Super Q spawn "riverctl exit"
-"${_wayland_runner}" "${_app}" "$@" &
+${_exec_invocation} &
 EOF
 		chmod 0755 "${_river_init}"
 		command river -c "${_river_init}" > "/dev/null" 2>&1
@@ -1433,10 +1458,10 @@ EOF
   </windowRules>
 </labwc_config>
 EOF
-		command labwc -C "${_labwc_dir}" -s "${_wayland_runner} \"${_app}\" $*" > "/dev/null" 2>&1
+		command labwc -C "${_labwc_dir}" -s "${_exec_invocation}" > "/dev/null" 2>&1
 		rm -rf "${_labwc_dir}"
 	elif command -v cage > "/dev/null" 2>&1; then
-		command cage -s -- "${_wayland_runner}" "${_app}" "$@" > "/dev/null" 2>&1
+		command cage -s -- ${_exec_invocation} > "/dev/null" 2>&1
 	else
 		_ui_err "Nenhum micro-compositor Wayland (sway, river, labwc, cage) foi encontrado."
 		rm -f "${_wayland_runner}" 2> "/dev/null" || true
@@ -1464,6 +1489,15 @@ graphical-launcher-x11() {
 	export MICRO_TRUECOLOR=1
 
 	local _flavor=""
+	local _had_display=1
+	[ -z "${DISPLAY:-}" ] && _had_display=0
+
+	export XDG_SESSION_TYPE="x11"
+	unset WAYLAND_DISPLAY
+	export GDK_BACKEND="x11"
+	export QT_QPA_PLATFORM="xcb"
+	export SDL_VIDEODRIVER="x11"
+	export CLUTTER_BACKEND="x11"
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
 			-g|--gnome)
@@ -1549,20 +1583,65 @@ graphical-launcher-x11() {
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-gui-$$.sh"
 	cat << EOF > "${_xinit_script}"
 #!/bin/sh
+export XDG_SESSION_TYPE="x11"
+unset WAYLAND_DISPLAY
+export GDK_BACKEND="x11"
+export QT_QPA_PLATFORM="xcb"
+export SDL_VIDEODRIVER="x11"
+export CLUTTER_BACKEND="x11"
+
 if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
 fi
 
-# Prioriza OpenBox para tela cheia e conformidade total com menus e submenus Qt/GTK
+# Prioriza OpenBox configurado para tela cheia estrita sem movimentação ou redimensionamento
 if command -v openbox > "/dev/null" 2>&1; then
 	_ob_cfg="\${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-\$\$.xml"
 	cat << 'XOB' > "\${_ob_cfg}"
 <?xml version="1.0"?>
-<openbox_config>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <theme>
+    <keepBorder>no</keepBorder>
+    <borderWidth>0</borderWidth>
+  </theme>
+  <mouse>
+    <dragThreshold>0</dragThreshold>
+    <doubleClickTime>500</doubleClickTime>
+    <context name="Client">
+      <mousebind button="Left" action="Press">
+        <action name="Focus"/>
+        <action name="Raise"/>
+      </mousebind>
+      <mousebind button="Middle" action="Press">
+        <action name="Focus"/>
+        <action name="Raise"/>
+      </mousebind>
+      <mousebind button="Right" action="Press">
+        <action name="Focus"/>
+        <action name="Raise"/>
+      </mousebind>
+    </context>
+  </mouse>
+  <keyboard>
+    <keybind key="A-F4">
+      <action name="Close"/>
+    </keybind>
+    <keybind key="W-q">
+      <action name="Close"/>
+    </keybind>
+  </keyboard>
   <applications>
-    <application class="*">
-      <maximized>yes</maximized>
+    <application type="normal">
       <decorations>no</decorations>
+      <maximized>yes</maximized>
+    </application>
+    <application type="dialog">
+      <decorations>no</decorations>
+      <maximized>no</maximized>
+    </application>
+    <application class="*">
+      <decorations>no</decorations>
+      <maximized>yes</maximized>
     </application>
   </applications>
 </openbox_config>
@@ -1586,15 +1665,18 @@ elif command -v xdotool > "/dev/null" 2>&1; then
 fi
 
 _target_bin="\$1"
-shift
-if [ "${_is_terminal}" -eq 1 ]; then
+[ "\$#" -ge 1 ] && shift
+
+if [ -z "\${_target_bin}" ] || [ "\${_target_bin}" = "xterm" ]; then
+	exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized "\$@"
+elif [ "${_is_terminal}" -eq 1 ]; then
 	if command -v "\${_target_bin}" > "/dev/null" 2>&1; then
 		exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized -e "\${_target_bin}" "\$@"
 	else
 		exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized -e "${_sh}" -i -c "\${_target_bin} \$*"
 	fi
-elif [ "\${_target_bin}" = "xterm" ]; then
-	exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized "\$@"
+elif [ "\${_target_bin}" = "emacs" ] && command -v emacs-gtk+x11 > "/dev/null" 2>&1; then
+	exec emacs-gtk+x11 "\$@"
 else
 	exec "\${_target_bin}" "\$@"
 fi
@@ -1696,16 +1778,23 @@ alias wew="emacs-window-manager-wayland"
 
 emacs-window-manager-x11() {
 	export EMACS_OS_MODE="x11"
+	export XDG_SESSION_TYPE="x11"
+	unset WAYLAND_DISPLAY
+	export GDK_BACKEND="x11"
+	export QT_QPA_PLATFORM="xcb"
+	export SDL_VIDEODRIVER="x11"
+	export CLUTTER_BACKEND="x11"
 
-	if ! command -v emacs > "/dev/null" 2>&1; then
+	local _emacs_bin="$(command -v emacs-gtk+x11 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
+	if [ -z "${_emacs_bin}" ]; then
 		_ui_err "emacs não encontrado."
 		return 127
 	fi
 
 	if [ -f "${HOME}/.emacs.d/etc/apps/exwm.el" ] || [ -f "${HOME}/.emacs.d/var/lib/elpaca/builds/exwm/exwm.el" ]; then
-		_exec_x11 "$(command -v emacs)" "$@"
+		_exec_x11 "${_emacs_bin}" "$@"
 	else
-		graphical-launcher-x11 emacs "$@"
+		graphical-launcher-x11 "${_emacs_bin}" "$@"
 	fi
 
 	_freebsd_vt_bounce
