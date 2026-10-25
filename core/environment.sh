@@ -113,7 +113,7 @@ editor() {
 	fi
 }
 alias e="editor"
-command -v xterm > "/dev/null" 2>&1 && alias xterm="xterm -bc -bcf 400 -bcn 500"
+command -v xterm > "/dev/null" 2>&1 && alias xterm="xterm -bc -bcf 600 -bcn 600"
 [ -f "${HOME}/.Xresources" ] && export XENVIRONMENT="${HOME}/.Xresources"
 if [ -n "${DISPLAY:-}" ] && [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "${HOME}/.Xresources" > "/dev/null" 2>&1 || true

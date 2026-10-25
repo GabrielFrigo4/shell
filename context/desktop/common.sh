@@ -1518,9 +1518,9 @@ fi
 _target_bin="\$1"
 shift
 if [ "${_is_terminal}" -eq 1 ]; then
-	exec xterm -bc -bcf 400 -bcn 500 -xrm 'XTerm*cursorBlink: true' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: true' -xrm '*cursorBlink: true' -maximized -e "${_sh}" -i -c "\${_target_bin} \$*"
+	exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized -e "${_sh}" -i -c "\${_target_bin} \$*"
 elif [ "\${_target_bin}" = "xterm" ]; then
-	exec xterm -bc -bcf 400 -bcn 500 -xrm 'XTerm*cursorBlink: true' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: true' -xrm '*cursorBlink: true' -maximized "\$@"
+	exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized "\$@"
 else
 	exec "\${_target_bin}" "\$@"
 fi
