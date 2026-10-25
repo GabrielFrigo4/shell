@@ -752,11 +752,16 @@ _has_wayland() {
 		fi
 	done
 
-	local _compositor _micro _desktops _tilings _compositors
+	if [ -f "${HOME}/.local/lib/libewm_core.so" ] || [ -f "${HOME}/.local/lib/libewm.so" ]; then
+		return 0
+	fi
+
+	local _compositor _micro _desktops _tilings _emacs _compositors
 	_micro="cage river labwc sway"
 	_desktops="gnome-shell startplasma-wayland cosmic-session"
 	_tilings="Hyprland hyprland niri wayfire dwl hikari weston"
-	_compositors="${_micro} ${_desktops} ${_tilings}"
+	_emacs="ewm"
+	_compositors="${_micro} ${_desktops} ${_tilings} ${_emacs}"
 
 	for _compositor in ${_compositors}; do
 		if command -v "${_compositor}" > "/dev/null" 2>&1; then
@@ -1328,6 +1333,39 @@ graphical-launcher-x11() {
 if [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
 fi
+
+# Fallback quiosque de Window Managers para tela cheia estrita
+if command -v matchbox-window-manager > "/dev/null" 2>&1; then
+	matchbox-window-manager -use_titlebar no > "/dev/null" 2>&1 &
+elif command -v openbox > "/dev/null" 2>&1; then
+	_ob_cfg="${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-$$.xml"
+	cat << 'XOB' > "${_ob_cfg}"
+<?xml version="1.0"?>
+<openbox_config>
+  <applications>
+    <application class="*">
+      <maximized>yes</maximized>
+      <decorations>no</decorations>
+    </application>
+  </applications>
+</openbox_config>
+XOB
+	openbox --config-file "${_ob_cfg}" > "/dev/null" 2>&1 &
+elif command -v cwm > "/dev/null" 2>&1; then
+	cwm > "/dev/null" 2>&1 &
+elif command -v ratpoison > "/dev/null" 2>&1; then
+	ratpoison > "/dev/null" 2>&1 &
+elif command -v xdotool > "/dev/null" 2>&1; then
+	(
+		for _i in $(seq 1 20); do
+			sleep 0.1
+			for _wid in $(command xdotool search --onlyvisible --class ".*" 2> "/dev/null"); do
+				command xdotool windowsize "${_wid}" 100% 100% windowmove "${_wid}" 0 0 2> "/dev/null" || true
+			done
+		done
+	) &
+fi
+
 _target_bin="$1"
 shift
 if [ "${_target_bin}" = "xterm" ]; then
@@ -1343,7 +1381,7 @@ EOF
 	else
 		command startx "${_xinit_script}" "${_app}" "$@" -- "${DISPLAY}" ${_vt_arg} > "/dev/null" 2>&1
 	fi
-	rm -f "${_xinit_script}"
+	rm -f "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-$$.xml" 2> "/dev/null" || true
 
 	_freebsd_vt_bounce
 }
@@ -1361,11 +1399,24 @@ emacs-window-manager-wayland() {
 	_wayland_session_env
 	export EMACS_OS_MODE="wayland"
 
-	if command -v emacs > "/dev/null" 2>&1; then
-		command emacs --eval "(when (fboundp 'ewm-start-module) (ewm-start-module))" "$@"
-	else
+	if ! command -v emacs > "/dev/null" 2>&1; then
 		_ui_err "emacs não encontrado."
 		return 127
+	fi
+
+	local _ewm_so=""
+	if [ -f "${HOME}/.local/lib/libewm_core.so" ]; then
+		_ewm_so="${HOME}/.local/lib/libewm_core.so"
+	elif [ -f "${HOME}/.local/lib/libewm.so" ]; then
+		_ewm_so="${HOME}/.local/lib/libewm.so"
+	fi
+
+	if [ -n "${_ewm_so}" ]; then
+		export EWM_MODULE_PATH="${_ewm_so}"
+		export EMACSLOADPATH="${HOME}/.local/share/emacs/site-lisp/ewm:${EMACSLOADPATH:-}:"
+		command emacs --eval "(progn (require 'ewm nil t) (when (fboundp 'ewm-start-module) (ewm-start-module)))" "$@"
+	else
+		graphical-launcher-wayland emacs "$@"
 	fi
 
 	_freebsd_vt_bounce

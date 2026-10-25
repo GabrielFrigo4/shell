@@ -258,10 +258,16 @@ Diferente do paradigma tradicional onde um Display Manager pesado (GDM, SDDM, Li
     - O **Labwc** atua como segundo fallback moderno: gera um `rc.xml` efêmero com `<windowRules><windowRule identifier="*" serverDecoration="no"><action name="Maximize"/></windowRule></windowRules>`, maximizando qualquer janela sem bordas nem decorações, com suporte nativo à troca de TTY.
     - O **River** é o terceiro fallback: inicializado intencionalmente sem o gerador de tiling (`rivertile`), o que impede o fatiamento da tela, abrindo as janelas empilhadas no topo (`default-attach-mode top`) com tecla rápida `Super+F` para fullscreen e troca de TTY preservada.
     - O **Cage** é mantido como último fallback defensivo de quiosque puro mono-aplicação, reservado para quando nenhum outro micro-compositor estiver disponível (devido à sua limitação de não comutar TTYs).
-- **Paridade Estrita no X11 (`xgui` com `xterm` e `xrdb`):**
+- **Paridade Estrita no X11 (`xgui` com `xterm`, `xrdb` e Cascata de Quiosque):**
     - O lançador `xgui` espelha rigorosamente o comportamento do `wgui`, utilizando o **XTerm** com a paleta Adwaita Dark do Foot, tipografia `JetBrainsMono Nerd Font` e padding interno de 16px.
     - O script efêmero do cliente do `xinit` injeta `~/.Xresources` via `xrdb -merge` após a subida do servidor X e dispara o XTerm com `-maximized`, ocupando 100% da resolução do monitor.
-    - Aplicações filhas e editores (como `emacs`) nascem automaticamente com parâmetros de frame maximizados (`-F "((fullscreen . maximized))"`), garantindo tela cheia mesmo em sessões X11 puras sem window manager permanente.
+    - **Cascata de Quiosque em X11:** Para assegurar que qualquer aplicativo (Firefox, VLC, GIMP, Emacs) ocupe a tela inteira mesmo sem um Desktop Environment pesado, o `xinit` inicializa uma cascata de micro-gerenciadores de quiosque:
+        1. **`matchbox-window-manager`:** Quiosque estrito de 1 janela em tela cheia sem bordas.
+        2. **`openbox` efêmero:** Carrega regras com `<maximized>yes</maximized>` e `<decorations>no</decorations>` para todas as classes (`*`).
+        3. **`cwm` (OpenBSD Xenocara):** Micro-gerenciador padrão limpo nativo dos alvos BSD.
+        4. **`ratpoison`:** Gerenciador sem mouse onde cada janela ocupa 100% do display.
+        5. **Micro-Daemon `xdotool`:** Como último fallback defensivo, um loop inofensivo em background redimensiona novas janelas para 100% da resolução.
+    - Aplicações filhas e editores (como `emacs`) nascem automaticamente com parâmetros de frame maximizados (`-F "((fullscreen . maximized))"`).
 - **Detecção e Sobrescrita de Temas de Desktop:**
     - O despachante inspeciona `$XDG_CURRENT_DESKTOP` e a hierarquia de ambientes instalados (GNOME > KDE > Cinnamon > MATE > XFCE > Adwaita).
     - Flags explícitas (`-g`, `-k`, `-x`, `-m`, `-c`) permitem forçar temas GTK, estilos Qt e cursores específicos para a aplicação em tempo de execução.
