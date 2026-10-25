@@ -1400,6 +1400,8 @@ elif [ "${_is_terminal}" -eq 1 ]; then
 	else
 		foot "${_sh}" -i -c "\${_app_target} \$*"
 	fi
+elif [ "\${_app_target}" = "emacs" ]; then
+	emacs -mm "\$@"
 else
 	"\${_app_target}" "\$@"
 fi
@@ -1451,9 +1453,19 @@ default_border none
 default_floating_border none
 titlebar_border_thickness 0
 seat * xcursor_theme ${_cur_theme} ${_cur_size}
+seat * fallback true
+seat * hide_cursor_when_typing no
+seat * pointer_constraint enable
+input type:pointer {
+    accel_profile flat
+    pointer_accel 0
+}
+focus_follows_mouse yes
 xwayland enable
 for_window [app_id=".*"] fullscreen enable
+for_window [app_id=".*"] focus
 for_window [class=".*"] fullscreen enable
+for_window [class=".*"] focus
 bindsym Mod4+Shift+q exec swaymsg exit
 bindsym Mod4+q exec swaymsg exit
 input type:keyboard {
@@ -1663,18 +1675,21 @@ if command -v openbox > "/dev/null" 2>&1; then
     <keepBorder>no</keepBorder>
     <animateIconify>no</animateIconify>
   </theme>
+  <focus>
+    <focusNew>yes</focusNew>
+    <followMouse>no</followMouse>
+    <focusLast>yes</focusLast>
+    <underMouse>no</underMouse>
+    <focusModel>Smart</focusModel>
+  </focus>
   <mouse>
     <dragThreshold>0</dragThreshold>
     <doubleClickTime>500</doubleClickTime>
     <screenEdgeWarpTime>0</screenEdgeWarpTime>
     <screenEdgeWarpMouse>false</screenEdgeWarpMouse>
 
-    <context name="Frame">
-      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
-    </context>
-    <context name="Titlebar">
-      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
-    </context>
+    <context name="Frame"></context>
+    <context name="Titlebar"></context>
     <context name="Top"></context>
     <context name="Bottom"></context>
     <context name="Left"></context>
@@ -1689,11 +1704,7 @@ if command -v openbox > "/dev/null" 2>&1; then
     <context name="AllDesktops"></context>
     <context name="Shade"></context>
     <context name="Root"></context>
-    <context name="Client">
-      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
-      <mousebind button="Middle" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
-      <mousebind button="Right" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
-    </context>
+    <context name="Client"></context>
   </mouse>
   <keyboard>
     <keybind key="A-F4">
@@ -1709,6 +1720,7 @@ if command -v openbox > "/dev/null" 2>&1; then
     </application>
     <application type="dialog">
       <decor>no</decor>
+      <focus>yes</focus>
       <maximized>no</maximized>
     </application>
   </applications>
