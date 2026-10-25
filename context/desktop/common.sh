@@ -1447,6 +1447,13 @@ emacs-window-manager-wayland() {
 		return 127
 	fi
 
+	if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; then
+		_ui_info "Sessão gráfica ativa detectada. EWM é um compositor soberano DRM/KMS executado via TTY."
+		_ui_sub "Encaminhando para instância gráfica padrão do Emacs..."
+		command emacs "$@"
+		return $?
+	fi
+
 	local _ewm_so=""
 	if [ -f "${HOME}/.local/lib/libewm_core.so" ]; then
 		_ewm_so="${HOME}/.local/lib/libewm_core.so"
@@ -1457,7 +1464,9 @@ emacs-window-manager-wayland() {
 	if [ -n "${_ewm_so}" ]; then
 		export EWM_MODULE_PATH="${_ewm_so}"
 		export EMACSLOADPATH="${HOME}/.local/share/emacs/site-lisp/ewm:${EMACSLOADPATH:-}:"
-		command emacs --eval "(progn (require 'ewm nil t) (when (fboundp 'ewm-start-module) (ewm-start-module)))" "$@"
+		_setup_cursor_env
+		rm -f "${XDG_RUNTIME_DIR:-/tmp}/emacs/ewm" 2> "/dev/null" || true
+		command emacs --fg-daemon=ewm -L "${HOME}/.local/share/emacs/site-lisp/ewm" -l ewm -f ewm-start-module "$@"
 	else
 		graphical-launcher-wayland emacs "$@"
 	fi
@@ -1483,10 +1492,6 @@ emacs-window-manager-x11() {
 
 	_freebsd_vt_bounce
 }
-alias xewm="emacs-window-manager-x11"
-alias xew="emacs-window-manager-x11"
-alias exwm="emacs-window-manager-x11"
-alias exw="emacs-window-manager-x11"
 alias xewm="emacs-window-manager-x11"
 alias xew="emacs-window-manager-x11"
 alias exwm="emacs-window-manager-x11"
