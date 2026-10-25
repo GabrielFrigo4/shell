@@ -19,142 +19,10 @@ _restore_tty_cursor() {
 	fi
 }
 
-_raw_tty_pty_bridge() {
-	local _cmd="$1"
-	[ "$#" -ge 1 ] && shift 1
-	command python3 -c '
-import os, pty, select, signal, struct, fcntl, termios, sys, ctypes, re
-
-cmd = sys.argv[1]
-args = sys.argv[1:]
-
-pid, master = pty.fork()
-if pid == 0:
-    os.execvp(cmd, args)
-
-def sync_winsz(*_):
-    try:
-        s = fcntl.ioctl(0, termios.TIOCGWINSZ, b"\x00" * 8)
-        fcntl.ioctl(master, termios.TIOCSWINSZ, s)
-    except Exception:
-        pass
-
-sync_winsz()
-signal.signal(signal.SIGWINCH, sync_winsz)
-
-gpm_fd = None
-libgpm = None
-class GpmConnect(ctypes.Structure):
-    _fields_ = [("eventMask", ctypes.c_ushort), ("defaultMask", ctypes.c_ushort),
-                ("minMod", ctypes.c_ushort), ("maxMod", ctypes.c_ushort),
-                ("pid", ctypes.c_int), ("vc", ctypes.c_int)]
-class GpmEvent(ctypes.Structure):
-    _fields_ = [("buttons", ctypes.c_ubyte), ("modifiers", ctypes.c_ubyte),
-                ("vc", ctypes.c_ushort), ("dx", ctypes.c_short), ("dy", ctypes.c_short),
-                ("x", ctypes.c_short), ("y", ctypes.c_short), ("type", ctypes.c_int),
-                ("clicks", ctypes.c_int), ("margin", ctypes.c_int),
-                ("wdx", ctypes.c_short), ("wdy", ctypes.c_short)]
-
-if sys.platform.startswith("linux"):
-    try:
-        libgpm = ctypes.CDLL("libgpm.so.2")
-        conn = GpmConnect(~0 & 0xffff, 0, 0, 0, 0, 0)
-        fd = libgpm.Gpm_Open(ctypes.byref(conn), 0)
-        if fd >= 0:
-            gpm_fd = fd
-    except Exception:
-        pass
-
-try:
-    old_tty = termios.tcgetattr(0)
-    tty_raw = list(old_tty)
-    tty_raw[0] &= ~(termios.BRKINT | termios.ICRNL | termios.INPCK | termios.ISTRIP | termios.IXON)
-    tty_raw[1] &= ~(termios.OPOST)
-    tty_raw[2] &= ~(termios.CSIZE | termios.PARENB)
-    tty_raw[2] |= termios.CS8
-    tty_raw[3] &= ~(termios.ECHO | termios.ICANON | termios.IEXTEN | termios.ISIG)
-    termios.tcsetattr(0, termios.TCSADRAIN, tty_raw)
-except Exception:
-    old_tty = None
-
-ev = GpmEvent()
-try:
-    while True:
-        watch = [0, master]
-        if gpm_fd is not None:
-            watch.append(gpm_fd)
-        r, _, _ = select.select(watch, [], [])
-        if 0 in r:
-            d = os.read(0, 4096)
-            if not d:
-                break
-            os.write(master, d)
-        if gpm_fd is not None and gpm_fd in r:
-            try:
-                ret = libgpm.Gpm_GetEvent(ctypes.byref(ev))
-                if ret > 0:
-                    btn = 0
-                    if (ev.buttons & 16) or ev.wdy < 0:
-                        btn = 64
-                    elif (ev.buttons & 32) or ev.wdy > 0:
-                        btn = 65
-                    elif ev.buttons & 4:
-                        btn = 0
-                    elif ev.buttons & 2:
-                        btn = 1
-                    elif ev.buttons & 1:
-                        btn = 2
-                    if ev.type & 2:
-                        btn += 32
-                    flag = "m" if (ev.type & 8) else "M"
-                    os.write(master, f"\x1b[<{btn};{ev.x};{ev.y}{flag}".encode())
-            except Exception:
-                pass
-        if master in r:
-            try:
-                d = os.read(master, 4096)
-            except OSError:
-                break
-            if not d:
-                break
-            if b"\x1b[c" in d or b"\x1b[0c" in d:
-                os.write(master, b"\x1b[?1;2c")
-            if b"\x1b[5n" in d:
-                os.write(master, b"\x1b[0n")
-            if sys.platform.startswith("linux"):
-                d = re.sub(rb"\x1b\[[12] q", b"\x1b[?6c", d)
-                d = re.sub(rb"\x1b\[[34] q", b"\x1b[?4c", d)
-                d = re.sub(rb"\x1b\[[56] q", b"\x1b[?2c", d)
-                d = d.replace(b"\x1b[0 q", b"\x1b[?6c")
-            os.write(1, d)
-finally:
-    if gpm_fd is not None and libgpm is not None:
-        try:
-            libgpm.Gpm_Close()
-        except Exception:
-            pass
-    if old_tty is not None:
-        try:
-            termios.tcsetattr(0, termios.TCSADRAIN, old_tty)
-        except Exception:
-            pass
-    os.close(master)
-
-_, st = os.waitpid(pid, 0)
-sys.exit(os.WEXITSTATUS(st) if os.WIFEXITED(st) else 1)
-' "$_cmd" "$@"
-}
-
 nvim() {
 	command -v nvim > "/dev/null" 2>&1 || { _ui_err "nvim not found."; return 127; }
-	local _status=0
-	if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty && command -v python3 > "/dev/null" 2>&1; then
-		_raw_tty_pty_bridge nvim "$@"
-		_status=$?
-	else
-		command nvim "$@"
-		_status=$?
-	fi
+	command nvim "$@"
+	local _status=$?
 	_restore_tty_cursor
 	return ${_status}
 }
@@ -184,14 +52,8 @@ alias ov="open-vim"
 
 hx() {
 	command -v hx > "/dev/null" 2>&1 || { _ui_err "hx not found."; return 127; }
-	local _status=0
-	if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty && command -v python3 > "/dev/null" 2>&1; then
-		_raw_tty_pty_bridge hx "$@"
-		_status=$?
-	else
-		command hx "$@"
-		_status=$?
-	fi
+	command hx "$@"
+	local _status=$?
 	_restore_tty_cursor
 	return ${_status}
 }
@@ -209,14 +71,8 @@ alias h="open-helix"
 
 micro() {
 	command -v micro > "/dev/null" 2>&1 || { _ui_err "micro not found."; return 127; }
-	local _status=0
-	if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty && command -v python3 > "/dev/null" 2>&1; then
-		_raw_tty_pty_bridge micro "$@"
-		_status=$?
-	else
-		command micro "$@"
-		_status=$?
-	fi
+	command micro "$@"
+	local _status=$?
 	_restore_tty_cursor
 	return ${_status}
 }
@@ -330,13 +186,8 @@ emacs-client() {
 			_status=$?
 		fi
 	else
-		if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty && command -v python3 > "/dev/null" 2>&1; then
-			_raw_tty_pty_bridge emacsclient -t --alternate-editor "" "$@"
-			_status=$?
-		else
-			command emacsclient -t --alternate-editor "" "$@"
-			_status=$?
-		fi
+		command emacsclient -t --alternate-editor "" "$@"
+		_status=$?
 		_restore_tty_cursor
 	fi
 	return ${_status}
@@ -344,21 +195,11 @@ emacs-client() {
 emacs-nw() {
 	local _status=0
 	if command -v emacsclient > "/dev/null" 2>&1; then
-		if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty && command -v python3 > "/dev/null" 2>&1; then
-			_raw_tty_pty_bridge emacsclient -t --alternate-editor "" "$@"
-			_status=$?
-		else
-			command emacsclient -t --alternate-editor "" "$@"
-			_status=$?
-		fi
+		command emacsclient -t --alternate-editor "" "$@"
+		_status=$?
 	elif command -v emacs > "/dev/null" 2>&1; then
-		if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty && command -v python3 > "/dev/null" 2>&1; then
-			_raw_tty_pty_bridge emacs -nw "$@"
-			_status=$?
-		else
-			command emacs -nw "$@"
-			_status=$?
-		fi
+		command emacs -nw "$@"
+		_status=$?
 	else
 		_ui_err "emacs not found."
 		return 127
