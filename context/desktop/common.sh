@@ -191,10 +191,10 @@ emacs-client() {
 	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if [ "$#" -eq 0 ]; then
-			command emacsclient --create-frame -F "((fullscreen . maximized))" --alternate-editor "" -n
+			command emacsclient --create-frame --alternate-editor "" -n
 			_status=$?
 		else
-			command emacsclient --create-frame -F "((fullscreen . maximized))" --alternate-editor "" "$@"
+			command emacsclient --create-frame --alternate-editor "" "$@"
 			_status=$?
 		fi
 	else
@@ -288,7 +288,7 @@ emacs-eshell() {
 
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if command -v emacsclient > "/dev/null" 2>&1; then
-			(command nohup emacsclient --create-frame -F "((fullscreen . maximized))" --alternate-editor "" \
+			(command nohup emacsclient --create-frame --alternate-editor "" \
 				--eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
 		else
 			(command nohup emacs --eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
