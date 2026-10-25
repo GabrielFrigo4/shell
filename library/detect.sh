@@ -556,11 +556,13 @@ _detect_color_scheme() {
 ### Detect GTK Theme
 ### --------------------------------
 _detect_gtk_theme() {
-	[ -n "${_DETECTED_GTK_THEME+x}" ] && echo "${_DETECTED_GTK_THEME}" && return 0
+	[ -n "${_DETECTED_GTK_THEME:-}" ] && echo "${_DETECTED_GTK_THEME}" && return 0
 	if [ -f "${_SHELL_CACHE_DIR}/gtk_theme" ]; then
 		_DETECTED_GTK_THEME="$(_cache_read "gtk_theme")"
-		echo "${_DETECTED_GTK_THEME}"
-		return 0
+		if [ -n "${_DETECTED_GTK_THEME}" ]; then
+			echo "${_DETECTED_GTK_THEME}"
+			return 0
+		fi
 	fi
 
 	local _desktop_env="$(_detect_desktop_environment)"
