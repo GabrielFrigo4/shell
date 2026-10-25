@@ -1635,6 +1635,13 @@ emacs-window-manager-x11() {
 		return 127
 	fi
 
+	if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; then
+		_ui_info "Sessão gráfica ativa detectada. EXWM é um gerenciador de janelas X11 executado via TTY."
+		_ui_sub "Encaminhando para instância gráfica padrão do Emacs..."
+		command emacs "$@"
+		return $?
+	fi
+
 	if [ -f "${HOME}/.emacs.d/etc/apps/exwm.el" ] || [ -f "${HOME}/.emacs.d/var/lib/elpaca/builds/exwm/exwm.el" ]; then
 		_exec_x11 "$(command -v emacs)" "$@"
 	else

@@ -113,6 +113,11 @@ editor() {
 	fi
 }
 alias e="editor"
+command -v xterm > "/dev/null" 2>&1 && alias xterm="xterm -bc -bcf 400 -bcn 500"
+[ -f "${HOME}/.Xresources" ] && export XENVIRONMENT="${HOME}/.Xresources"
+if [ -n "${DISPLAY:-}" ] && [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
+	xrdb -merge "${HOME}/.Xresources" > "/dev/null" 2>&1 || true
+fi
 
 ### --------------------------------
 ### Package Compatibility Aliases
@@ -514,6 +519,6 @@ if [ -t 1 ]; then
 			command -v stty > "/dev/null" 2>&1 && stty iutf8 2> "/dev/null" || true
 		fi
 	else
-		echo -n $'\e[0 q'
+		echo -n $'\e[1 q'
 	fi
 fi
