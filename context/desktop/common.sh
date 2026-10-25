@@ -738,6 +738,7 @@ _exec_x11() {
 	export DISPLAY="${_display}"
 	export XORG_RUN_AS_USER_OK=1
 	_setup_cursor_env
+	_disable_numlock_console
 
 	local _theme_flavor="$(_detect_desktop_theme)"
 	case "${_theme_flavor}" in
@@ -771,6 +772,22 @@ export CLUTTER_BACKEND="x11"
 
 if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
+fi
+
+if command -v setxkbmap > "/dev/null" 2>&1; then
+	setxkbmap -model abnt2 -layout br 2> "/dev/null" || true
+fi
+if command -v xset > "/dev/null" 2>&1; then
+	xset r rate 200 50 2> "/dev/null" || true
+	xset -led named "Num Lock" 2> "/dev/null" || true
+fi
+if command -v numlockx > "/dev/null" 2>&1; then
+	numlockx off 2> "/dev/null" || true
+fi
+if command -v xset > "/dev/null" 2>&1 && command -v xdotool > "/dev/null" 2>&1; then
+	if xset q 2> "/dev/null" | grep -iq "Num Lock:[[:space:]]*on"; then
+		xdotool key Num_Lock 2> "/dev/null" || true
+	fi
 fi
 
 exec "\$@"
@@ -1026,6 +1043,13 @@ alias window="window-manager"
 ### --------------------------------
 ### Ephemeral Session Helpers
 ### --------------------------------
+_disable_numlock_console() {
+	if [ -t 0 ] || [ -c "/dev/tty" ]; then
+		command -v setleds > "/dev/null" 2>&1 && setleds -D -num 2> "/dev/null" || true
+		command -v kbdcontrol > "/dev/null" 2>&1 && kbdcontrol -l off 2> "/dev/null" || true
+	fi
+}
+
 _setup_cursor_env() {
 	export XCURSOR_PATH="${HOME}/.local/share/icons:${HOME}/.icons:/usr/local/share/icons:/usr/share/icons"
 	export WLR_NO_HARDWARE_CURSORS=1
@@ -1234,6 +1258,7 @@ _wayland_session_env() {
 	esac
 
 	_setup_cursor_env
+	_disable_numlock_console
 }
 
 _freebsd_vt_bounce() {
@@ -1374,6 +1399,7 @@ graphical-launcher-wayland() {
 
 	_wayland_session_env "${_flavor}"
 	_setup_cursor_env
+	_disable_numlock_console
 
 	local _is_terminal=0
 	if _is_terminal_app "${_app}"; then
@@ -1473,6 +1499,7 @@ input type:keyboard {
     xkb_model abnt2
     repeat_delay 200
     repeat_rate 50
+    xkb_numlock disabled
 }
 exec ${_exec_invocation}
 EOF
@@ -1503,6 +1530,11 @@ EOF
   <theme>
     <cornerRadius>0</cornerRadius>
   </theme>
+  <keyboard>
+    <repeatRate>50</repeatRate>
+    <repeatDelay>200</repeatDelay>
+    <numlock>off</numlock>
+  </keyboard>
   <windowRules>
     <windowRule identifier="*" serverDecoration="no">
       <action name="Maximize"/>
@@ -1610,6 +1642,7 @@ graphical-launcher-x11() {
 	esac
 
 	_setup_cursor_env
+	_disable_numlock_console
 
 	local _xres_target="${HOME}/.Xresources"
 	local _xres_src=""
@@ -1661,6 +1694,22 @@ export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
 
 if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
+fi
+
+if command -v setxkbmap > "/dev/null" 2>&1; then
+	setxkbmap -model abnt2 -layout br 2> "/dev/null" || true
+fi
+if command -v xset > "/dev/null" 2>&1; then
+	xset r rate 200 50 2> "/dev/null" || true
+	xset -led named "Num Lock" 2> "/dev/null" || true
+fi
+if command -v numlockx > "/dev/null" 2>&1; then
+	numlockx off 2> "/dev/null" || true
+fi
+if command -v xset > "/dev/null" 2>&1 && command -v xdotool > "/dev/null" 2>&1; then
+	if xset q 2> "/dev/null" | grep -iq "Num Lock:[[:space:]]*on"; then
+		xdotool key Num_Lock 2> "/dev/null" || true
+	fi
 fi
 
 # Prioriza OpenBox configurado para tela cheia estrita sem movimentação ou redimensionamento
@@ -1838,6 +1887,7 @@ emacs-window-manager-wayland() {
 		export EWM_MODULE_PATH="${_ewm_so}"
 		export EMACSLOADPATH="${HOME}/.local/share/emacs/site-lisp/ewm:${EMACSLOADPATH:-}:"
 		_setup_cursor_env
+		_disable_numlock_console
 		rm -f "${XDG_RUNTIME_DIR:-/tmp}/emacs/ewm" 2> "/dev/null" || true
 
 		local _ewm_log="${XDG_RUNTIME_DIR:-/tmp}/ewm-$$.log"
