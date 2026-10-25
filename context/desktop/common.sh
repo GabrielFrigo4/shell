@@ -1325,15 +1325,42 @@ graphical-launcher-wayland() {
 	_wayland_session_env "${_flavor}"
 	_setup_cursor_env
 
-	local _exec_cmd=""
+	local _is_terminal=0
 	if _is_terminal_app "${_app}"; then
-		local _sh="$(_detect_enabled_shell)"
-		_exec_cmd="foot ${_sh} -i -c '${_app} $*'"
-	else
-		_exec_cmd="${_app} $*"
+		_is_terminal=1
 	fi
 
-	if [ "${_app}" = "foot" ] || _is_terminal_app "${_app}"; then
+	local _wayland_runner="${XDG_RUNTIME_DIR:-/tmp}/wayland-runner-$$.sh"
+	local _sh="$(_detect_enabled_shell)"
+
+	cat << EOF > "${_wayland_runner}"
+#!/bin/sh
+if [ "${_is_terminal}" -eq 1 ]; then
+	if command -v "\$1" > "/dev/null" 2>&1; then
+		foot "\$@"
+	else
+		foot "${_sh}" -i -c "\$*"
+	fi
+else
+	"\$@"
+fi
+_ret=\$?
+
+# Encerra o micro-compositor Wayland garantindo retorno limpo ao TTY
+if command -v swaymsg > "/dev/null" 2>&1 && [ -n "\${SWAYSOCK:-}" ]; then
+	swaymsg exit > "/dev/null" 2>&1 || true
+fi
+if command -v riverctl > "/dev/null" 2>&1 && [ -n "\${RIVER_SOCKET:-}" ]; then
+	riverctl exit > "/dev/null" 2>&1 || true
+fi
+if command -v labwc > "/dev/null" 2>&1; then
+	labwc --exit > "/dev/null" 2>&1 || true
+fi
+exit "\${_ret}"
+EOF
+	chmod 0755 "${_wayland_runner}"
+
+	if [ "${_app}" = "foot" ] || [ "${_is_terminal}" -eq 1 ]; then
 		local _foot_target="${HOME}/.config/foot/foot.ini"
 		local _foot_src=""
 		if [ -f "${HOME}/.local/share/profile/terminals/foot/foot.ini" ]; then
@@ -1362,13 +1389,15 @@ seat * xcursor_theme ${_cur_theme} ${_cur_size}
 xwayland enable
 for_window [app_id=".*"] fullscreen enable
 for_window [class=".*"] fullscreen enable
+bindsym Mod4+Shift+q exec swaymsg exit
+bindsym Mod4+q exec swaymsg exit
 input type:keyboard {
     xkb_layout br
     xkb_model abnt2
     repeat_delay 200
     repeat_rate 50
 }
-exec sh -c '${_exec_cmd} ; swaymsg exit'
+exec "${_wayland_runner}" "${_app}" "$@"
 EOF
 		command sway -c "${_sway_cfg}" > "/dev/null" 2>&1
 		rm -f "${_sway_cfg}"
@@ -1382,7 +1411,8 @@ riverctl keyboard-layout -model abnt2 br
 riverctl set-repeat 50 200
 riverctl default-attach-mode top
 riverctl map normal Super F toggle-fullscreen
-sh -c '${_exec_cmd} ; riverctl exit' &
+riverctl map normal Super Q spawn "riverctl exit"
+"${_wayland_runner}" "${_app}" "$@" &
 EOF
 		chmod 0755 "${_river_init}"
 		command river -c "${_river_init}" > "/dev/null" 2>&1
@@ -1403,18 +1433,17 @@ EOF
   </windowRules>
 </labwc_config>
 EOF
-		command labwc -C "${_labwc_dir}" -s "sh -c '${_exec_cmd} ; labwc --exit'" > "/dev/null" 2>&1
+		command labwc -C "${_labwc_dir}" -s "${_wayland_runner} \"${_app}\" $*" > "/dev/null" 2>&1
 		rm -rf "${_labwc_dir}"
 	elif command -v cage > "/dev/null" 2>&1; then
-		if _is_terminal_app "${_app}"; then
-			command cage -s -- foot "${_app}" "$@" > "/dev/null" 2>&1
-		else
-			command cage -s -- "${_app}" "$@" > "/dev/null" 2>&1
-		fi
+		command cage -s -- "${_wayland_runner}" "${_app}" "$@" > "/dev/null" 2>&1
 	else
 		_ui_err "Nenhum micro-compositor Wayland (sway, river, labwc, cage) foi encontrado."
+		rm -f "${_wayland_runner}" 2> "/dev/null" || true
 		return 1
 	fi
+
+	rm -f "${_wayland_runner}" 2> "/dev/null" || true
 
 	if [ "${_had_wayland}" -eq 0 ]; then
 		unset WAYLAND_DISPLAY
@@ -1541,21 +1570,6 @@ XOB
 	openbox --config-file "\${_ob_cfg}" > "/dev/null" 2>&1 &
 elif command -v matchbox-window-manager > "/dev/null" 2>&1; then
 	matchbox-window-manager -use_titlebar no > "/dev/null" 2>&1 &
-	matchbox-window-manager -use_titlebar no > "/dev/null" 2>&1 &
-elif command -v openbox > "/dev/null" 2>&1; then
-	_ob_cfg="\${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-\$\$.xml"
-	cat << 'XOB' > "\${_ob_cfg}"
-<?xml version="1.0"?>
-<openbox_config>
-  <applications>
-    <application class="*">
-      <maximized>yes</maximized>
-      <decorations>no</decorations>
-    </application>
-  </applications>
-</openbox_config>
-XOB
-	openbox --config-file "\${_ob_cfg}" > "/dev/null" 2>&1 &
 elif command -v cwm > "/dev/null" 2>&1; then
 	cwm > "/dev/null" 2>&1 &
 elif command -v ratpoison > "/dev/null" 2>&1; then
@@ -1574,7 +1588,11 @@ fi
 _target_bin="\$1"
 shift
 if [ "${_is_terminal}" -eq 1 ]; then
-	exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized -e "${_sh}" -i -c "\${_target_bin} \$*"
+	if command -v "\${_target_bin}" > "/dev/null" 2>&1; then
+		exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized -e "\${_target_bin}" "\$@"
+	else
+		exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized -e "${_sh}" -i -c "\${_target_bin} \$*"
+	fi
 elif [ "\${_target_bin}" = "xterm" ]; then
 	exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized "\$@"
 else
