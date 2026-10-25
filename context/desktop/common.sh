@@ -1106,10 +1106,25 @@ _freebsd_vt_bounce() {
 	fi
 }
 
+_is_terminal_app() {
+	case "${1:-}" in
+		vim|nvim|hx|helix|vi|nano|micro|emacs-nw|enw|btm|htop|top|yazi|ranger|mc|ncdu|lazygit|lazydocker|btop|bmon|iftop|tig)
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
 ### --------------------------------
 ### Ephemeral Graphical Launchers
 ### --------------------------------
 graphical-launcher-wayland() {
+	unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST
+	export COLORTERM="truecolor"
+	export MICRO_TRUECOLOR=1
+
 	local _flavor=""
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
@@ -1152,7 +1167,14 @@ graphical-launcher-wayland() {
 	_wayland_session_env "${_flavor}"
 	_setup_cursor_env
 
-	if [ "${_app}" = "foot" ]; then
+	local _exec_cmd=""
+	if _is_terminal_app "${_app}"; then
+		_exec_cmd="foot ${_app} $*"
+	else
+		_exec_cmd="${_app} $*"
+	fi
+
+	if [ "${_app}" = "foot" ] || _is_terminal_app "${_app}"; then
 		local _foot_target="${HOME}/.config/foot/foot.ini"
 		local _foot_src=""
 		if [ -f "${HOME}/.local/share/profile/terminals/foot/foot.ini" ]; then
@@ -1187,7 +1209,7 @@ input type:keyboard {
     repeat_delay 200
     repeat_rate 50
 }
-exec sh -c '${_app} $* ; swaymsg exit'
+exec sh -c '${_exec_cmd} ; swaymsg exit'
 EOF
 		command sway -c "${_sway_cfg}" > "/dev/null" 2>&1
 		rm -f "${_sway_cfg}"
@@ -1201,7 +1223,7 @@ riverctl keyboard-layout -model abnt2 br
 riverctl set-repeat 50 200
 riverctl default-attach-mode top
 riverctl map normal Super F toggle-fullscreen
-sh -c '${_app} $* ; riverctl exit' &
+sh -c '${_exec_cmd} ; riverctl exit' &
 EOF
 		chmod 0755 "${_river_init}"
 		command river -c "${_river_init}" > "/dev/null" 2>&1
@@ -1222,10 +1244,14 @@ EOF
   </windowRules>
 </labwc_config>
 EOF
-		command labwc -C "${_labwc_dir}" -s "sh -c '${_app} $* ; labwc --exit'" > "/dev/null" 2>&1
+		command labwc -C "${_labwc_dir}" -s "sh -c '${_exec_cmd} ; labwc --exit'" > "/dev/null" 2>&1
 		rm -rf "${_labwc_dir}"
 	elif command -v cage > "/dev/null" 2>&1; then
-		command cage -s -- "${_app}" "$@" > "/dev/null" 2>&1
+		if _is_terminal_app "${_app}"; then
+			command cage -s -- foot "${_app}" "$@" > "/dev/null" 2>&1
+		else
+			command cage -s -- "${_app}" "$@" > "/dev/null" 2>&1
+		fi
 	else
 		_ui_err "Nenhum micro-compositor Wayland (sway, river, labwc, cage) foi encontrado."
 		return 1
@@ -1240,6 +1266,10 @@ graphical-launcher-x11() {
 		_ui_err "xinit ou startx não encontrado para lançador Xorg."
 		return 1
 	}
+
+	unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST
+	export COLORTERM="truecolor"
+	export MICRO_TRUECOLOR=1
 
 	local _flavor=""
 	while [ "$#" -gt 0 ]; do
@@ -1334,6 +1364,17 @@ if [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
 fi
 
+_is_term() {
+	case "$1" in
+		vim|nvim|hx|helix|vi|nano|micro|emacs-nw|enw|btm|htop|top|yazi|ranger|mc|ncdu|lazygit|lazydocker|btop|bmon|iftop|tig)
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
 # Fallback quiosque de Window Managers para tela cheia estrita
 if command -v matchbox-window-manager > "/dev/null" 2>&1; then
 	matchbox-window-manager -use_titlebar no > "/dev/null" 2>&1 &
@@ -1370,6 +1411,8 @@ _target_bin="$1"
 shift
 if [ "${_target_bin}" = "xterm" ]; then
 	exec xterm -maximized "$@"
+elif _is_term "${_target_bin}"; then
+	exec xterm -maximized -e "${_target_bin}" "$@"
 else
 	exec "${_target_bin}" "$@"
 fi
@@ -1432,9 +1475,18 @@ emacs-window-manager-x11() {
 		return 127
 	fi
 
-	_exec_x11 "$(command -v emacs)" "$@"
+	if [ -f "${HOME}/.emacs.d/etc/apps/exwm.el" ] || [ -f "${HOME}/.emacs.d/var/lib/elpaca/builds/exwm/exwm.el" ]; then
+		_exec_x11 "$(command -v emacs)" "$@"
+	else
+		graphical-launcher-x11 emacs "$@"
+	fi
+
 	_freebsd_vt_bounce
 }
+alias xewm="emacs-window-manager-x11"
+alias xew="emacs-window-manager-x11"
+alias exwm="emacs-window-manager-x11"
+alias exw="emacs-window-manager-x11"
 alias xewm="emacs-window-manager-x11"
 alias xew="emacs-window-manager-x11"
 alias exwm="emacs-window-manager-x11"
