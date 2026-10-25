@@ -986,10 +986,18 @@ _setup_cursor_env() {
 }
 
 _detect_desktop_theme() {
+	if [ -n "${1:-}" ]; then
+		case "$1" in
+			gnome|kde|xfce|mate|cinnamon|adwaita) echo "$1"; return 0 ;;
+		esac
+	fi
+
 	if [ -n "${XDG_CURRENT_DESKTOP:-}" ]; then
 		case "$(printf '%s\n' "${XDG_CURRENT_DESKTOP}" | tr '[:upper:]' '[:lower:]')" in
 			*gnome*) echo "gnome"; return 0 ;;
 			*kde*|*plasma*) echo "kde"; return 0 ;;
+			*cinnamon*) echo "cinnamon"; return 0 ;;
+			*mate*) echo "mate"; return 0 ;;
 			*xfce*) echo "xfce"; return 0 ;;
 		esac
 	fi
@@ -998,6 +1006,10 @@ _detect_desktop_theme() {
 		echo "gnome"
 	elif command -v startplasma-wayland > "/dev/null" 2>&1 || command -v plasmashell > "/dev/null" 2>&1 || [ -d "/usr/share/plasma" ]; then
 		echo "kde"
+	elif command -v cinnamon > "/dev/null" 2>&1 || [ -d "/usr/share/cinnamon" ]; then
+		echo "cinnamon"
+	elif command -v mate-session > "/dev/null" 2>&1 || [ -d "/usr/share/mate" ]; then
+		echo "mate"
 	elif command -v xfce4-session > "/dev/null" 2>&1 || [ -d "/usr/share/xfce4" ]; then
 		echo "xfce"
 	else
@@ -1006,6 +1018,8 @@ _detect_desktop_theme() {
 }
 
 _wayland_session_env() {
+	local _target_flavor="${1:-}"
+
 	export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"
 	if [ ! -d "${XDG_RUNTIME_DIR}" ]; then
 		mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
@@ -1022,7 +1036,7 @@ _wayland_session_env() {
 	export MOZ_ENABLE_WAYLAND=1
 	export ELECTRON_OZONE_PLATFORM_HINT="wayland"
 
-	local _theme_flavor="$(_detect_desktop_theme)"
+	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
 	case "${_theme_flavor}" in
 		gnome|adwaita)
 			export XDG_CURRENT_DESKTOP="GNOME"
@@ -1039,6 +1053,22 @@ _wayland_session_env() {
 			export QT_QPA_PLATFORMTHEME="kde"
 			export QT_STYLE_OVERRIDE="Breeze"
 			export XCURSOR_THEME="breeze_cursors"
+			;;
+		cinnamon)
+			export XDG_CURRENT_DESKTOP="X-Cinnamon"
+			export GTK_THEME="Mint-Y-Dark"
+			export QT_QPA_PLATFORM="wayland;xcb"
+			export QT_QPA_PLATFORMTHEME="gtk3"
+			export QT_STYLE_OVERRIDE="adwaita-dark"
+			export XCURSOR_THEME="Adwaita"
+			;;
+		mate)
+			export XDG_CURRENT_DESKTOP="MATE"
+			export GTK_THEME="Yaru-MATE-dark"
+			export QT_QPA_PLATFORM="wayland;xcb"
+			export QT_QPA_PLATFORMTHEME="gtk3"
+			export QT_STYLE_OVERRIDE="adwaita-dark"
+			export XCURSOR_THEME="Adwaita"
 			;;
 		xfce)
 			export XDG_CURRENT_DESKTOP="XFCE"
@@ -1075,10 +1105,46 @@ _freebsd_vt_bounce() {
 ### Ephemeral Graphical Launchers
 ### --------------------------------
 graphical-launcher-wayland() {
+	local _flavor=""
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			-g|--gnome)
+				_flavor="gnome"
+				shift
+				;;
+			-k|--kde)
+				_flavor="kde"
+				shift
+				;;
+			-x|--xfce)
+				_flavor="xfce"
+				shift
+				;;
+			-m|--mate)
+				_flavor="mate"
+				shift
+				;;
+			-c|--cinnamon)
+				_flavor="cinnamon"
+				shift
+				;;
+			--)
+				shift
+				break
+				;;
+			-*)
+				break
+				;;
+			*)
+				break
+				;;
+		esac
+	done
+
 	local _app="${1:-foot}"
 	[ "$#" -ge 1 ] && shift
 
-	_wayland_session_env
+	_wayland_session_env "${_flavor}"
 	_setup_cursor_env
 
 	if [ "${_app}" = "foot" ]; then
@@ -1150,26 +1216,77 @@ graphical-launcher-x11() {
 		return 1
 	}
 
+	local _flavor=""
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			-g|--gnome)
+				_flavor="gnome"
+				shift
+				;;
+			-k|--kde)
+				_flavor="kde"
+				shift
+				;;
+			-x|--xfce)
+				_flavor="xfce"
+				shift
+				;;
+			-m|--mate)
+				_flavor="mate"
+				shift
+				;;
+			-c|--cinnamon)
+				_flavor="cinnamon"
+				shift
+				;;
+			--)
+				shift
+				break
+				;;
+			-*)
+				break
+				;;
+			*)
+				break
+				;;
+		esac
+	done
+
 	local _app="${1:-xterm}"
 	[ "$#" -ge 1 ] && shift
 
 	export DISPLAY="${DISPLAY:-:0}"
-	_setup_cursor_env
 
-	local _theme_flavor="$(_detect_desktop_theme)"
+	local _theme_flavor="$(_detect_desktop_theme "${_flavor}")"
 	case "${_theme_flavor}" in
 		gnome|adwaita)
 			export GTK_THEME="Adwaita:dark"
 			export QT_STYLE_OVERRIDE="adwaita-dark"
+			export XCURSOR_THEME="Adwaita"
 			;;
 		kde)
 			export GTK_THEME="Breeze-Dark"
 			export QT_STYLE_OVERRIDE="Breeze"
+			export XCURSOR_THEME="breeze_cursors"
+			;;
+		cinnamon)
+			export GTK_THEME="Mint-Y-Dark"
+			export QT_STYLE_OVERRIDE="adwaita-dark"
+			export XCURSOR_THEME="Adwaita"
+			;;
+		mate)
+			export GTK_THEME="Yaru-MATE-dark"
+			export QT_STYLE_OVERRIDE="adwaita-dark"
+			export XCURSOR_THEME="Adwaita"
 			;;
 		xfce)
 			export GTK_THEME="Greybird-dark"
+			export QT_STYLE_OVERRIDE="adwaita-dark"
+			export XCURSOR_THEME="Adwaita"
 			;;
 	esac
+
+	_setup_cursor_env
 
 	if [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 		xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
