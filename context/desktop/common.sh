@@ -1174,6 +1174,8 @@ default_floating_border none
 titlebar_border_thickness 0
 seat * xcursor_theme ${_cur_theme} ${_cur_size}
 xwayland enable
+for_window [app_id=".*"] fullscreen enable
+for_window [class=".*"] fullscreen enable
 input type:keyboard {
     xkb_layout br
     xkb_model abnt2

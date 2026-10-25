@@ -237,3 +237,25 @@ Ao iniciar servidores X11 ou aplicações via `xinit` a partir do console, o `_e
     - **FreeBSD:** Mapeia todos os 16 consoles virtuais padrão `/dev/ttyv0` a `/dev/ttyvf` (índice hexadecimal avaliado dinamicamente via aritmética POSIX `$(( 0x${hex} + 1 ))`) para `vt1` a `vt16`. Também executa auto-cura de redesenho de console com `_freebsd_vt_bounce` (`vidcontrol -s`).
     - **OpenBSD (Xenocara):** Mapeia todas as telas do driver wscons `/dev/ttyC0` a `/dev/ttyCf` (hexadecimal avaliado via `$(( 0x${hex} + 1 ))`) para `vt1` a `vt16`.
 3. **Cascata de Execução:** Dispara prioritariamente `startx` com fallback para `xinit` e preservação de `${DISPLAY:-:0}`.
+
+### 4. Filosofia & Arquitetura dos Lançadores Efêmeros Multi-TTY (`gui` / `wgui` / `xgui`)
+
+Diferente do paradigma tradicional onde um Display Manager pesado (GDM, SDDM, LightDM) monopoliza o hardware da estação de trabalho, o Universal Shell adota a **filosofia antifrágil dos processos gráficos efêmeros**:
+
+- **A Interface Gráfica como Processo Filho de TTY:** O compositor gráfico é iniciado como um processo subordinado a um terminal virtual específico (`/dev/ttyN` no Linux ou `/dev/ttyvN` no FreeBSD).
+- **Isolamento Concorrente Multi-TTY:** O usuário pode manter múltiplos ambientes e aplicativos gráficos completamente isolados em TTYs diferentes:
+    - **TTY1:** Console puro de administração e monitoramento do sistema (`btm`, `htop`).
+    - **TTY2:** `gui -k firefox` (Firefox rodando sob Sway com estética e tema KDE Plasma).
+    - **TTY3:** `gui foot` (Terminal Foot rodando isolado em Wayland com estética GNOME).
+    - **TTY4:** `gui -x gimp` (GIMP rodando sob XFCE).
+    - **Troca Instantânea de Sessão:** A comutação entre ambientes é feita pelo kernel via `Ctrl+Alt+F1` a `Ctrl+Alt+F12`, sem overhead de virtualização ou containers.
+- **Ciclo de Auto-Exit e Restauração Limpa:**
+    - Ao fechar a aplicação gráfica (`_app`), o script efêmero emite o comando de saída do compositor (`swaymsg exit`, `riverctl exit` ou encerramento do `xinit`).
+    - O compositor gráfico é encerrado e o terminal virtual retorna instantaneamente ao prompt interativo limpo do Shell.
+    - No FreeBSD, o `_freebsd_vt_bounce` executa um chaveamento de VT via `vidcontrol -s` para forçar o redesenho do framebuffer do console do kernel, eliminando artefatos residuais de vídeo.
+- **Por que Sway com Fullscreen Automático é o Padrão:**
+    - O **Cage** é ideal para quiosques estritos de 1 janela, porém ele bloqueia a comutação de consoles virtuais (`Ctrl+Alt+F*`), quebrando a premissa de multi-sessão.
+    - O **Sway** suporta perfeitamente atalhos de kernel para troca de TTY e aceleração gráfica completa. Para preservar o paradigma de quiosque e evitar divisões indesejadas de tela (split 50/50 ao abrir janelas filhas), a configuração efêmera do Sway injeta regras de tela cheia automática (`for_window [app_id=".*"] fullscreen enable` e `for_window [class=".*"] fullscreen enable`), garantindo foco e visibilidade total da aplicação ativa.
+- **Detecção e Sobrescrita de Temas de Desktop:**
+    - O despachante inspeciona `$XDG_CURRENT_DESKTOP` e a hierarquia de ambientes instalados (GNOME > KDE > Cinnamon > MATE > XFCE > Adwaita).
+    - Flags explícitas (`-g`, `-k`, `-x`, `-m`, `-c`) permitem forçar temas GTK, estilos Qt e cursores específicos para a aplicação em tempo de execução.
