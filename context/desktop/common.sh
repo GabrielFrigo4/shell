@@ -794,7 +794,8 @@ exec "\$@"
 EOF
 	chmod 0755 "${_xinit_script}"
 
-	local _xinit_log="${XDG_RUNTIME_DIR:-/tmp}/xinit-session-$$.log"
+	local _persistent_log="${HOME}/.local/state/environment/xorg-session.log"
+	mkdir -p "${HOME}/.local/state/environment" 2> "/dev/null" || true
 	local _server_auth="${XDG_RUNTIME_DIR:-/tmp}/.serverauth-session-$$"
 	local _xinit_ret=0
 
@@ -814,14 +815,23 @@ EOF
 	fi
 
 	if command -v startx > "/dev/null" 2>&1; then
-		command startx "${_xinit_script}" "$@" -- "${_display}" ${_vt_arg} > "${_xinit_log}" 2>&1
+		command startx "${_xinit_script}" "$@" -- "${_display}" ${_vt_arg} > "${_persistent_log}" 2>&1
 		_xinit_ret=$?
 	elif command -v xinit > "/dev/null" 2>&1; then
-		command xinit "${_xinit_script}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} > "${_xinit_log}" 2>&1
+		command xinit "${_xinit_script}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} > "${_persistent_log}" 2>&1
 		_xinit_ret=$?
 	fi
-	rm -f "${_server_auth}" "${_xinit_script}" "${_xinit_log}" 2> "/dev/null" || true
+	rm -f "${_server_auth}" "${_xinit_script}" 2> "/dev/null" || true
 	command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" 2> "/dev/null" || true
+
+	if [ -f "${_persistent_log}" ] && [ -s "${_persistent_log}" ]; then
+		if [ "${_xinit_ret}" -ne 0 ]; then
+			_ui_warn "Xorg encerrou com código ${_xinit_ret}. Diagnóstico:"
+		else
+			_ui_info "Log da sessão Xorg preservado em: ${_persistent_log}"
+		fi
+		command tail -n 15 "${_persistent_log}" 2> "/dev/null" || true
+	fi
 
 	if [ "${_had_display}" -eq 0 ]; then
 		unset DISPLAY
@@ -1814,12 +1824,13 @@ fi
 EOF
 	chmod 0755 "${_xinit_script}"
 
-	local _xinit_log="${XDG_RUNTIME_DIR:-/tmp}/xinit-$$.log"
+	local _persistent_kiosk_log="${HOME}/.local/state/environment/xorg-kiosk.log"
+	mkdir -p "${HOME}/.local/state/environment" 2> "/dev/null" || true
 	local _server_auth="${XDG_RUNTIME_DIR:-/tmp}/.serverauth-gui-$$"
 	local _xinit_ret=0
 
 	if command -v startx > "/dev/null" 2>&1; then
-		command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} > "${_xinit_log}" 2>&1
+		command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} > "${_persistent_kiosk_log}" 2>&1
 		_xinit_ret=$?
 	elif command -v xinit > "/dev/null" 2>&1; then
 		local _auth_args=""
@@ -1836,17 +1847,19 @@ EOF
 				_auth_args="-auth ${_server_auth}"
 			fi
 		fi
-		command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} > "${_xinit_log}" 2>&1
+		command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} > "${_persistent_kiosk_log}" 2>&1
 		_xinit_ret=$?
 		rm -f "${_server_auth}" 2> "/dev/null" || true
 		command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" 2> "/dev/null" || true
 	fi
 
-	if [ "${_xinit_ret}" -ne 0 ] && [ -f "${_xinit_log}" ]; then
-		_ui_warn "Xorg encerrou com código ${_xinit_ret}."
-		command tail -n 10 "${_xinit_log}" 2> "/dev/null" || true
+	if [ -f "${_persistent_kiosk_log}" ] && [ -s "${_persistent_kiosk_log}" ]; then
+		if [ "${_xinit_ret}" -ne 0 ]; then
+			_ui_warn "Xorg encerrou com código ${_xinit_ret}. Diagnóstico:"
+			command tail -n 15 "${_persistent_kiosk_log}" 2> "/dev/null" || true
+		fi
 	fi
-	rm -f "${_xinit_log}" "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-$$.xml" 2> "/dev/null" || true
+	rm -f "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-$$.xml" 2> "/dev/null" || true
 
 	if [ "${_had_display}" -eq 0 ]; then
 		unset DISPLAY
