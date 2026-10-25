@@ -706,13 +706,43 @@ _resolve_vt_arg() {
 	esac
 }
 
+_resolve_free_display() {
+	if [ -n "${DISPLAY:-}" ]; then
+		local _num="${DISPLAY#:}"
+		_num="${_num%%.*}"
+		if [ -e "/tmp/.X${_num}-lock" ] || [ -S "/tmp/.X11-unix/X${_num}" ]; then
+			echo "${DISPLAY}"
+			return 0
+		fi
+	fi
+
+	local _d=0
+	while true; do
+		if [ ! -e "/tmp/.X${_d}-lock" ] && [ ! -S "/tmp/.X11-unix/X${_d}" ]; then
+			if [ -r "/proc/net/unix" ] && command grep -q "/tmp/.X11-unix/X${_d}" "/proc/net/unix" 2> "/dev/null"; then
+				:
+			else
+				echo ":${_d}"
+				return 0
+			fi
+		fi
+		_d=$((_d + 1))
+	done
+}
+
 _exec_x11() {
 	command -v startx > "/dev/null" 2>&1 || command -v xinit > "/dev/null" 2>&1 || return 1
 
 	local _had_display=1
 	[ -z "${DISPLAY:-}" ] && _had_display=0
-	local _display="${DISPLAY:-:0}"
+	local _display=""
+	if [ "${_had_display}" -eq 1 ]; then
+		_display="${DISPLAY}"
+	else
+		_display="$(_resolve_free_display)"
+	fi
 	export DISPLAY="${_display}"
+	export XORG_RUN_AS_USER_OK=1
 	_setup_cursor_env
 
 	local _theme_flavor="$(_detect_desktop_theme)"
@@ -1382,8 +1412,14 @@ graphical-launcher-x11() {
 	local _had_display=1
 	[ -z "${DISPLAY:-}" ] && _had_display=0
 
-	local _display="${DISPLAY:-:0}"
+	local _display=""
+	if [ "${_had_display}" -eq 1 ]; then
+		_display="${DISPLAY}"
+	else
+		_display="$(_resolve_free_display)"
+	fi
 	export DISPLAY="${_display}"
+	export XORG_RUN_AS_USER_OK=1
 
 	local _theme_flavor="$(_detect_desktop_theme "${_flavor}")"
 	case "${_theme_flavor}" in
@@ -1487,12 +1523,32 @@ EOF
 	chmod 0755 "${_xinit_script}"
 
 	local _xinit_log="${XDG_RUNTIME_DIR:-/tmp}/xinit-$$.log"
-	if command -v xinit > "/dev/null" 2>&1; then
-		command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} > "${_xinit_log}" 2>&1
-	else
+	local _server_auth="${XDG_RUNTIME_DIR:-/tmp}/.serverauth-gui-$$"
+	local _xinit_ret=0
+
+	if command -v startx > "/dev/null" 2>&1; then
 		command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} > "${_xinit_log}" 2>&1
+		_xinit_ret=$?
+	elif command -v xinit > "/dev/null" 2>&1; then
+		local _auth_args=""
+		if command -v xauth > "/dev/null" 2>&1; then
+			local _cookie=""
+			if command -v mcookie > "/dev/null" 2>&1; then
+				_cookie="$(command mcookie 2> "/dev/null" || true)"
+			elif [ -r "/dev/urandom" ]; then
+				_cookie="$(command dd if=/dev/urandom bs=16 count=1 2> "/dev/null" | command hexdump -e '16/1 "%02x"' 2> "/dev/null" || true)"
+			fi
+			if [ -n "${_cookie}" ]; then
+				command xauth -q -f "${_server_auth}" add "${_display}" . "${_cookie}" 2> "/dev/null" || true
+				command xauth -q add "${_display}" . "${_cookie}" 2> "/dev/null" || true
+				_auth_args="-auth ${_server_auth}"
+			fi
+		fi
+		command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} > "${_xinit_log}" 2>&1
+		_xinit_ret=$?
+		rm -f "${_server_auth}" 2> "/dev/null" || true
+		command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" 2> "/dev/null" || true
 	fi
-	local _xinit_ret=$?
 
 	if [ "${_xinit_ret}" -ne 0 ] && [ -f "${_xinit_log}" ]; then
 		_ui_warn "Xorg encerrou com código ${_xinit_ret}."
