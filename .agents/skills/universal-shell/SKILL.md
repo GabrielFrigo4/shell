@@ -99,6 +99,13 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
 - A inicialização da engine de completion do Zsh (`compinit`) NÃO deve rodar sincronicamente no boot, pois adiciona de 5ms a 7ms de latência.
 - Implemente o carregamento sob demanda (_Lazy Evaluation_) interceptando o widget da tecla `<Tab>` (`bindkey '^I' _lazy_compinit`). No primeiro toque, o completion é inicializado de forma imperceptível e o widget `expand-or-complete` é restaurado para as próximas chamadas.
 
+13. **Lançadores Efêmeros Multi-TTY (`gui`, `wgui`, `xgui`) e Quiosque Soberano:**
+
+- Processos gráficos lançados por TTY são instâncias efêmeras atreladas ao terminal virtual ativo (`/dev/ttyN` no Linux ou `/dev/ttyvN` no FreeBSD), dispensando Display Managers monolíticos.
+- A tétrade Wayland (`sway`, `labwc`, `river`, `cage`) opera com auto-maximização/fullscreen para evitar divisões de tela (split 50/50 indesejado) e garantir foco total na aplicação lançada, preservando a troca livre de TTY (`Ctrl+Alt+F1..F12`).
+- No X11 (`xgui`), o `xterm` herda paridade estética com o `foot` (Adwaita Dark, `JetBrainsMono Nerd Font` e 16px padding), carregado via `xrdb -merge` efêmero no `xinit` e executado com `-maximized`.
+- Ao término do ciclo da aplicação, o compositor gráfico é encerrado instantaneamente e o terminal retorna ao prompt interativo, com redesenho limpo de framebuffer (`_freebsd_vt_bounce`).
+
 13. **Otimização de Prompts e Cores ANSI:**
 
 - Evite o uso repetitivo de `zstyle` em loops de renderização de prompt (`theme/zsh.sh`). Declare e utilize diretamente variáveis locais de cores ANSI.
