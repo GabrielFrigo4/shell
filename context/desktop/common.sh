@@ -1930,7 +1930,7 @@ emacs-window-manager-x11() {
 	export SDL_VIDEODRIVER="x11"
 	export CLUTTER_BACKEND="x11"
 
-	local _emacs_bin="$(command -v emacs-gtk+x11 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
+	local _emacs_bin="$(command -v emacs-lucid 2> "/dev/null" || command -v emacs-gtk+x11 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
 	if [ -z "${_emacs_bin}" ]; then
 		_ui_err "emacs não encontrado."
 		return 127
