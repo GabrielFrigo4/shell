@@ -712,6 +712,21 @@ _exec_x11() {
 	export DISPLAY="${DISPLAY:-:0}"
 	_setup_cursor_env
 
+	local _theme_flavor="$(_detect_desktop_theme)"
+	case "${_theme_flavor}" in
+		gnome|adwaita)
+			export GTK_THEME="Adwaita:dark"
+			export QT_STYLE_OVERRIDE="adwaita-dark"
+			;;
+		kde)
+			export GTK_THEME="Breeze-Dark"
+			export QT_STYLE_OVERRIDE="Breeze"
+			;;
+		xfce)
+			export GTK_THEME="Greybird-dark"
+			;;
+	esac
+
 	if [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 		xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
 	fi
@@ -943,7 +958,7 @@ _setup_cursor_env() {
 
 	local _candidate=""
 	local _found_theme=""
-	for _candidate in "${XCURSOR_THEME:-}" "breeze_cursors" "Bibata-Modern-Classic" "Adwaita" "default"; do
+	for _candidate in "${XCURSOR_THEME:-}" "Adwaita" "breeze_cursors" "Bibata-Modern-Classic" "default"; do
 		[ -z "${_candidate}" ] && continue
 		for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
 			if [ -d "${_p}/${_candidate}/cursors" ]; then
@@ -970,6 +985,26 @@ _setup_cursor_env() {
 	fi
 }
 
+_detect_desktop_theme() {
+	if [ -n "${XDG_CURRENT_DESKTOP:-}" ]; then
+		case "$(printf '%s\n' "${XDG_CURRENT_DESKTOP}" | tr '[:upper:]' '[:lower:]')" in
+			*gnome*) echo "gnome"; return 0 ;;
+			*kde*|*plasma*) echo "kde"; return 0 ;;
+			*xfce*) echo "xfce"; return 0 ;;
+		esac
+	fi
+
+	if command -v gnome-shell > "/dev/null" 2>&1 || [ -d "/usr/share/gnome" ]; then
+		echo "gnome"
+	elif command -v startplasma-wayland > "/dev/null" 2>&1 || command -v plasmashell > "/dev/null" 2>&1 || [ -d "/usr/share/plasma" ]; then
+		echo "kde"
+	elif command -v xfce4-session > "/dev/null" 2>&1 || [ -d "/usr/share/xfce4" ]; then
+		echo "xfce"
+	else
+		echo "adwaita"
+	fi
+}
+
 _wayland_session_env() {
 	export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"
 	if [ ! -d "${XDG_RUNTIME_DIR}" ]; then
@@ -981,9 +1016,40 @@ _wayland_session_env() {
 	export WLR_KEYBOARD_REPEAT_DELAY=200
 	export WLR_KEYBOARD_REPEAT_RATE=50
 
-	export QT_QPA_PLATFORM="wayland"
-	export QT_QPA_PLATFORMTHEME="kde"
-	export QT_STYLE_OVERRIDE="Breeze"
+	export GDK_BACKEND="wayland,x11,*"
+	export CLUTTER_BACKEND="wayland"
+	export SDL_VIDEODRIVER="wayland"
+	export MOZ_ENABLE_WAYLAND=1
+	export ELECTRON_OZONE_PLATFORM_HINT="wayland"
+
+	local _theme_flavor="$(_detect_desktop_theme)"
+	case "${_theme_flavor}" in
+		gnome|adwaita)
+			export XDG_CURRENT_DESKTOP="GNOME"
+			export GTK_THEME="Adwaita:dark"
+			export QT_QPA_PLATFORM="wayland;xcb"
+			export QT_QPA_PLATFORMTHEME="gnome"
+			export QT_STYLE_OVERRIDE="adwaita-dark"
+			export XCURSOR_THEME="Adwaita"
+			;;
+		kde)
+			export XDG_CURRENT_DESKTOP="KDE"
+			export GTK_THEME="Breeze-Dark"
+			export QT_QPA_PLATFORM="wayland"
+			export QT_QPA_PLATFORMTHEME="kde"
+			export QT_STYLE_OVERRIDE="Breeze"
+			export XCURSOR_THEME="breeze_cursors"
+			;;
+		xfce)
+			export XDG_CURRENT_DESKTOP="XFCE"
+			export GTK_THEME="Greybird-dark"
+			export QT_QPA_PLATFORM="wayland;xcb"
+			export QT_QPA_PLATFORMTHEME="gtk3"
+			export QT_STYLE_OVERRIDE="adwaita-dark"
+			export XCURSOR_THEME="Adwaita"
+			;;
+	esac
+
 	_setup_cursor_env
 }
 
@@ -1015,12 +1081,19 @@ graphical-launcher-wayland() {
 	_wayland_session_env
 	_setup_cursor_env
 
-	if [ "${_app}" = "foot" ] && [ ! -f "${HOME}/.config/foot/foot.ini" ]; then
-		mkdir -p "${HOME}/.config/foot"
+	if [ "${_app}" = "foot" ]; then
+		local _foot_target="${HOME}/.config/foot/foot.ini"
+		local _foot_src=""
 		if [ -f "${HOME}/.local/share/profile/terminals/foot/foot.ini" ]; then
-			cp -f "${HOME}/.local/share/profile/terminals/foot/foot.ini" "${HOME}/.config/foot/foot.ini" 2> "/dev/null" || true
+			_foot_src="${HOME}/.local/share/profile/terminals/foot/foot.ini"
 		elif [ -f "${PROFILE_REPO_DIR:-}/terminals/foot/foot.ini" ]; then
-			cp -f "${PROFILE_REPO_DIR}/terminals/foot/foot.ini" "${HOME}/.config/foot/foot.ini" 2> "/dev/null" || true
+			_foot_src="${PROFILE_REPO_DIR}/terminals/foot/foot.ini"
+		fi
+		if [ -n "${_foot_src}" ]; then
+			mkdir -p "${HOME}/.config/foot"
+			if [ ! -f "${_foot_target}" ] || ! cmp -s "${_foot_src}" "${_foot_target}"; then
+				cp -f "${_foot_src}" "${_foot_target}" 2> "/dev/null" || true
+			fi
 		fi
 	fi
 
@@ -1082,6 +1155,21 @@ graphical-launcher-x11() {
 
 	export DISPLAY="${DISPLAY:-:0}"
 	_setup_cursor_env
+
+	local _theme_flavor="$(_detect_desktop_theme)"
+	case "${_theme_flavor}" in
+		gnome|adwaita)
+			export GTK_THEME="Adwaita:dark"
+			export QT_STYLE_OVERRIDE="adwaita-dark"
+			;;
+		kde)
+			export GTK_THEME="Breeze-Dark"
+			export QT_STYLE_OVERRIDE="Breeze"
+			;;
+		xfce)
+			export GTK_THEME="Greybird-dark"
+			;;
+	esac
 
 	if [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 		xrdb -merge "${HOME}/.Xresources" 2> "/dev/null" || true
