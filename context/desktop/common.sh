@@ -23,7 +23,7 @@ _raw_tty_pty_bridge() {
 	local _cmd="$1"
 	[ "$#" -ge 1 ] && shift 1
 	command python3 -c '
-import os, pty, select, signal, struct, fcntl, termios, sys, ctypes
+import os, pty, select, signal, struct, fcntl, termios, sys, ctypes, re
 
 cmd = sys.argv[1]
 args = sys.argv[1:]
@@ -121,6 +121,11 @@ try:
                 os.write(master, b"\x1b[?1;2c")
             if b"\x1b[5n" in d:
                 os.write(master, b"\x1b[0n")
+            if sys.platform.startswith("linux"):
+                d = re.sub(rb"\x1b\[[12] q", b"\x1b[?6c", d)
+                d = re.sub(rb"\x1b\[[34] q", b"\x1b[?4c", d)
+                d = re.sub(rb"\x1b\[[56] q", b"\x1b[?2c", d)
+                d = d.replace(b"\x1b[0 q", b"\x1b[?6c")
             os.write(1, d)
 finally:
     if gpm_fd is not None and libgpm is not None:
@@ -325,22 +330,39 @@ emacs-client() {
 			_status=$?
 		fi
 	else
-		command emacsclient -t --alternate-editor "" "$@"
-		_status=$?
+		if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty && command -v python3 > "/dev/null" 2>&1; then
+			_raw_tty_pty_bridge emacsclient -t --alternate-editor "" "$@"
+			_status=$?
+		else
+			command emacsclient -t --alternate-editor "" "$@"
+			_status=$?
+		fi
 		_restore_tty_cursor
 	fi
 	return ${_status}
 }
 emacs-nw() {
+	local _status=0
 	if command -v emacsclient > "/dev/null" 2>&1; then
-		command emacsclient -t --alternate-editor "" "$@"
+		if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty && command -v python3 > "/dev/null" 2>&1; then
+			_raw_tty_pty_bridge emacsclient -t --alternate-editor "" "$@"
+			_status=$?
+		else
+			command emacsclient -t --alternate-editor "" "$@"
+			_status=$?
+		fi
 	elif command -v emacs > "/dev/null" 2>&1; then
-		command emacs -nw "$@"
+		if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty && command -v python3 > "/dev/null" 2>&1; then
+			_raw_tty_pty_bridge emacs -nw "$@"
+			_status=$?
+		else
+			command emacs -nw "$@"
+			_status=$?
+		fi
 	else
 		_ui_err "emacs not found."
 		return 127
 	fi
-	local _status=$?
 	_restore_tty_cursor
 	return ${_status}
 }
