@@ -759,12 +759,52 @@ _exec_x11() {
 	fi
 
 	local _vt_arg="$(_resolve_vt_arg)"
+	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-session-$$.sh"
+	cat << EOF > "${_xinit_script}"
+#!/bin/sh
+export XDG_SESSION_TYPE="x11"
+unset WAYLAND_DISPLAY
+export GDK_BACKEND="x11"
+export QT_QPA_PLATFORM="xcb"
+export SDL_VIDEODRIVER="x11"
+export CLUTTER_BACKEND="x11"
+
+if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
+	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
+fi
+
+exec "\$@"
+EOF
+	chmod 0755 "${_xinit_script}"
+
+	local _xinit_log="${XDG_RUNTIME_DIR:-/tmp}/xinit-session-$$.log"
+	local _server_auth="${XDG_RUNTIME_DIR:-/tmp}/.serverauth-session-$$"
+	local _xinit_ret=0
+
+	local _auth_args=""
+	if command -v xauth > "/dev/null" 2>&1; then
+		local _cookie=""
+		if command -v mcookie > "/dev/null" 2>&1; then
+			_cookie="$(command mcookie 2> "/dev/null" || true)"
+		elif [ -r "/dev/urandom" ]; then
+			_cookie="$(command dd if=/dev/urandom bs=16 count=1 2> "/dev/null" | command hexdump -e '16/1 "%02x"' 2> "/dev/null" || true)"
+		fi
+		if [ -n "${_cookie}" ]; then
+			command xauth -q -f "${_server_auth}" add "${_display}" . "${_cookie}" 2> "/dev/null" || true
+			command xauth -q add "${_display}" . "${_cookie}" 2> "/dev/null" || true
+			_auth_args="-auth ${_server_auth}"
+		fi
+	fi
 
 	if command -v startx > "/dev/null" 2>&1; then
-		startx "$@" -- "${_display}" ${_vt_arg} > "/dev/null" 2>&1
+		command startx "${_xinit_script}" "$@" -- "${_display}" ${_vt_arg} > "${_xinit_log}" 2>&1
+		_xinit_ret=$?
 	elif command -v xinit > "/dev/null" 2>&1; then
-		xinit "$@" -- "${_display}" ${_vt_arg} > "/dev/null" 2>&1
+		command xinit "${_xinit_script}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} > "${_xinit_log}" 2>&1
+		_xinit_ret=$?
 	fi
+	rm -f "${_server_auth}" "${_xinit_script}" "${_xinit_log}" 2> "/dev/null" || true
+	command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" 2> "/dev/null" || true
 
 	if [ "${_had_display}" -eq 0 ]; then
 		unset DISPLAY
@@ -1572,6 +1612,20 @@ graphical-launcher-x11() {
 		fi
 	fi
 
+	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
+	if [ ! -f "${_kiosk_theme_dir}/themerc" ]; then
+		mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
+		cat << 'OTM' > "${_kiosk_theme_dir}/themerc"
+border.width: 0
+padding.width: 0
+padding.height: 0
+window.handle.width: 0
+window.client.padding.width: 0
+menu.border.width: 1
+menu.border.color: #2b2b2b
+OTM
+	fi
+
 	local _is_terminal=0
 	if _is_terminal_app "${_app}"; then
 		_is_terminal=1
@@ -1589,6 +1643,9 @@ export GDK_BACKEND="x11"
 export QT_QPA_PLATFORM="xcb"
 export SDL_VIDEODRIVER="x11"
 export CLUTTER_BACKEND="x11"
+export GTK_CSD=0
+export MOZ_GTK_TITLEBAR_DECORATION="system"
+export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
 
 if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
@@ -1601,47 +1658,58 @@ if command -v openbox > "/dev/null" 2>&1; then
 <?xml version="1.0"?>
 <openbox_config xmlns="http://openbox.org/3.4/rc">
   <theme>
+    <name>kiosk</name>
+    <titleLayout></titleLayout>
     <keepBorder>no</keepBorder>
-    <borderWidth>0</borderWidth>
+    <animateIconify>no</animateIconify>
   </theme>
   <mouse>
     <dragThreshold>0</dragThreshold>
     <doubleClickTime>500</doubleClickTime>
+    <screenEdgeWarpTime>0</screenEdgeWarpTime>
+    <screenEdgeWarpMouse>false</screenEdgeWarpMouse>
+
+    <context name="Frame">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+    </context>
+    <context name="Titlebar">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+    </context>
+    <context name="Top"></context>
+    <context name="Bottom"></context>
+    <context name="Left"></context>
+    <context name="Right"></context>
+    <context name="TopLeft"></context>
+    <context name="TopRight"></context>
+    <context name="BottomLeft"></context>
+    <context name="BottomRight"></context>
+    <context name="Maximize"></context>
+    <context name="Iconify"></context>
+    <context name="Close"></context>
+    <context name="AllDesktops"></context>
+    <context name="Shade"></context>
+    <context name="Root"></context>
     <context name="Client">
-      <mousebind button="Left" action="Press">
-        <action name="Focus"/>
-        <action name="Raise"/>
-      </mousebind>
-      <mousebind button="Middle" action="Press">
-        <action name="Focus"/>
-        <action name="Raise"/>
-      </mousebind>
-      <mousebind button="Right" action="Press">
-        <action name="Focus"/>
-        <action name="Raise"/>
-      </mousebind>
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Middle" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Right" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
     </context>
   </mouse>
   <keyboard>
     <keybind key="A-F4">
       <action name="Close"/>
     </keybind>
-    <keybind key="W-q">
-      <action name="Close"/>
-    </keybind>
   </keyboard>
   <applications>
-    <application type="normal">
-      <decorations>no</decorations>
+    <application class="*">
+      <decor>no</decor>
+      <shade>no</shade>
+      <focus>yes</focus>
       <maximized>yes</maximized>
     </application>
     <application type="dialog">
-      <decorations>no</decorations>
+      <decor>no</decor>
       <maximized>no</maximized>
-    </application>
-    <application class="*">
-      <decorations>no</decorations>
-      <maximized>yes</maximized>
     </application>
   </applications>
 </openbox_config>
@@ -1676,7 +1744,9 @@ elif [ "${_is_terminal}" -eq 1 ]; then
 		exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized -e "${_sh}" -i -c "\${_target_bin} \$*"
 	fi
 elif [ "\${_target_bin}" = "emacs" ] && command -v emacs-gtk+x11 > "/dev/null" 2>&1; then
-	exec emacs-gtk+x11 "\$@"
+	exec emacs-gtk+x11 -mm "\$@"
+elif [ "\${_target_bin}" = "emacs" ]; then
+	exec emacs -mm "\$@"
 else
 	exec "\${_target_bin}" "\$@"
 fi
@@ -1791,11 +1861,7 @@ emacs-window-manager-x11() {
 		return 127
 	fi
 
-	if [ -f "${HOME}/.emacs.d/etc/apps/exwm.el" ] || [ -f "${HOME}/.emacs.d/var/lib/elpaca/builds/exwm/exwm.el" ]; then
-		_exec_x11 "${_emacs_bin}" "$@"
-	else
-		graphical-launcher-x11 "${_emacs_bin}" "$@"
-	fi
+	_exec_x11 "${_emacs_bin}" -mm "$@"
 
 	_freebsd_vt_bounce
 }
