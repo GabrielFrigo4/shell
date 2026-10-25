@@ -583,7 +583,32 @@ _detect_gtk_theme() {
 			fi
 			;;
 		gnome)
-			_DETECTED_GTK_THEME=""
+			if command -v gsettings > "/dev/null" 2>&1; then
+				local _gset_theme=""
+				_gset_theme="$(command gsettings get org.gnome.desktop.interface gtk-theme 2> "/dev/null" | tr -d "'" || true)"
+				if [ -n "${_gset_theme}" ]; then
+					if [ -d "/usr/share/themes/${_gset_theme}" ] || [ -d "/usr/local/share/themes/${_gset_theme}" ] || [ -d "${HOME}/.themes/${_gset_theme}" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/${_gset_theme}" ]; then
+						_DETECTED_GTK_THEME="${_gset_theme}"
+					fi
+				fi
+			fi
+			if [ -z "${_DETECTED_GTK_THEME:-}" ]; then
+				if [ "${_color_scheme}" = "dark" ]; then
+					if [ -d "/usr/local/share/themes/adw-gtk3-dark" ] || [ -d "/usr/share/themes/adw-gtk3-dark" ] || [ -d "${HOME}/.themes/adw-gtk3-dark" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/adw-gtk3-dark" ]; then
+						_DETECTED_GTK_THEME="adw-gtk3-dark"
+					elif [ -d "/usr/share/themes/Adwaita-dark" ] || [ -d "/usr/local/share/themes/Adwaita-dark" ]; then
+						_DETECTED_GTK_THEME="Adwaita-dark"
+					else
+						_DETECTED_GTK_THEME="Adwaita:dark"
+					fi
+				else
+					if [ -d "/usr/local/share/themes/adw-gtk3" ] || [ -d "/usr/share/themes/adw-gtk3" ] || [ -d "${HOME}/.themes/adw-gtk3" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/adw-gtk3" ]; then
+						_DETECTED_GTK_THEME="adw-gtk3"
+					else
+						_DETECTED_GTK_THEME="Adwaita"
+					fi
+				fi
+			fi
 			;;
 		*)
 			if [ "${_color_scheme}" = "dark" ]; then

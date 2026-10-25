@@ -748,15 +748,15 @@ _exec_x11() {
 	local _theme_flavor="$(_detect_desktop_theme)"
 	case "${_theme_flavor}" in
 		gnome|adwaita)
-			export GTK_THEME="Adwaita:dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_STYLE_OVERRIDE="adwaita-dark"
 			;;
 		kde)
-			export GTK_THEME="Breeze-Dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_STYLE_OVERRIDE="Breeze"
 			;;
 		xfce)
-			export GTK_THEME="Greybird-dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			;;
 	esac
 
@@ -1057,10 +1057,71 @@ _detect_desktop_theme() {
 	fi
 }
 
+_resolve_gtk_theme() {
+	local _flavor="${1:-}"
+
+	if command -v gsettings > "/dev/null" 2>&1; then
+		local _gset_theme=""
+		_gset_theme="$(command gsettings get org.gnome.desktop.interface gtk-theme 2> "/dev/null" | tr -d "'" || true)"
+		if [ -n "${_gset_theme}" ]; then
+			if [ -d "/usr/share/themes/${_gset_theme}" ] || \
+			   [ -d "/usr/local/share/themes/${_gset_theme}" ] || \
+			   [ -d "${HOME}/.themes/${_gset_theme}" ] || \
+			   [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/${_gset_theme}" ]; then
+				echo "${_gset_theme}"
+				return 0
+			fi
+		fi
+	fi
+
+	local _candidates=""
+	case "${_flavor}" in
+		kde)
+			_candidates="Breeze-Dark Breeze Adwaita-dark adw-gtk3-dark"
+			;;
+		xfce)
+			_candidates="Greybird-dark Greybird Adwaita-dark adw-gtk3-dark"
+			;;
+		cinnamon)
+			_candidates="Mint-Y-Dark Adwaita-dark adw-gtk3-dark"
+			;;
+		mate)
+			_candidates="Yaru-MATE-dark Adwaita-dark adw-gtk3-dark"
+			;;
+		*)
+			_candidates="adw-gtk3-dark Adwaita-dark Adwaita:dark Breeze-Dark Greybird-dark"
+			;;
+	esac
+
+	local _cand
+	for _cand in ${_candidates}; do
+		if [ "${_cand}" = "Adwaita:dark" ]; then
+			if [ -d "/usr/share/themes/Adwaita" ] || [ -d "/usr/local/share/themes/Adwaita" ]; then
+				echo "Adwaita:dark"
+				return 0
+			fi
+		elif [ -d "/usr/share/themes/${_cand}" ] || \
+		     [ -d "/usr/local/share/themes/${_cand}" ] || \
+		     [ -d "${HOME}/.themes/${_cand}" ] || \
+		     [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/${_cand}" ]; then
+			echo "${_cand}"
+			return 0
+		fi
+	done
+
+	if [ -d "/usr/share/themes/adw-gtk3-dark" ] || [ -d "/usr/local/share/themes/adw-gtk3-dark" ]; then
+		echo "adw-gtk3-dark"
+	else
+		echo "Adwaita-dark"
+	fi
+}
+
 _wayland_session_env() {
 	local _target_flavor="${1:-}"
 
-	export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"
+	if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
+		export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"
+	fi
 	if [ ! -d "${XDG_RUNTIME_DIR}" ]; then
 		mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
 	fi
@@ -1080,7 +1141,7 @@ _wayland_session_env() {
 	case "${_theme_flavor}" in
 		gnome|adwaita)
 			export XDG_CURRENT_DESKTOP="GNOME"
-			export GTK_THEME="Adwaita:dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_QPA_PLATFORM="wayland;xcb"
 			export QT_QPA_PLATFORMTHEME="gnome"
 			export QT_STYLE_OVERRIDE="adwaita-dark"
@@ -1088,7 +1149,7 @@ _wayland_session_env() {
 			;;
 		kde)
 			export XDG_CURRENT_DESKTOP="KDE"
-			export GTK_THEME="Breeze-Dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_QPA_PLATFORM="wayland"
 			export QT_QPA_PLATFORMTHEME="kde"
 			export QT_STYLE_OVERRIDE="Breeze"
@@ -1096,7 +1157,7 @@ _wayland_session_env() {
 			;;
 		cinnamon)
 			export XDG_CURRENT_DESKTOP="X-Cinnamon"
-			export GTK_THEME="Mint-Y-Dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_QPA_PLATFORM="wayland;xcb"
 			export QT_QPA_PLATFORMTHEME="gtk3"
 			export QT_STYLE_OVERRIDE="adwaita-dark"
@@ -1104,7 +1165,7 @@ _wayland_session_env() {
 			;;
 		mate)
 			export XDG_CURRENT_DESKTOP="MATE"
-			export GTK_THEME="Yaru-MATE-dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_QPA_PLATFORM="wayland;xcb"
 			export QT_QPA_PLATFORMTHEME="gtk3"
 			export QT_STYLE_OVERRIDE="adwaita-dark"
@@ -1112,7 +1173,7 @@ _wayland_session_env() {
 			;;
 		xfce)
 			export XDG_CURRENT_DESKTOP="XFCE"
-			export GTK_THEME="Greybird-dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_QPA_PLATFORM="wayland;xcb"
 			export QT_QPA_PLATFORMTHEME="gtk3"
 			export QT_STYLE_OVERRIDE="adwaita-dark"
@@ -1258,6 +1319,27 @@ graphical-launcher-wayland() {
 
 	local _app="${1:-foot}"
 	[ "$#" -ge 1 ] && shift
+
+	if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; then
+		_ui_info "Sessão gráfica ativa detectada (${WAYLAND_DISPLAY:-${DISPLAY}})."
+		_ui_sub "Executando '${_app}' diretamente na sessão gráfica..."
+		export GTK_THEME="$(_resolve_gtk_theme "${_flavor}")"
+		export QT_STYLE_OVERRIDE="adwaita-dark"
+		if _is_terminal_app "${_app}"; then
+			local _sh="$(_detect_enabled_shell)"
+			[ -z "${_sh}" ] && _sh="$(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || echo "/bin/sh")"
+			if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v foot > "/dev/null" 2>&1; then
+				command foot "${_sh}" -i -c "${_app} $*"
+			elif command -v xterm > "/dev/null" 2>&1; then
+				command xterm -bc -bcf 600 -bcn 600 -e "${_sh}" -i -c "${_app} $*"
+			else
+				command "${_app}" "$@"
+			fi
+		else
+			command "${_app}" "$@"
+		fi
+		return $?
+	fi
 
 	_wayland_session_env "${_flavor}"
 	_setup_cursor_env
@@ -1411,6 +1493,27 @@ graphical-launcher-x11() {
 	local _app="${1:-xterm}"
 	[ "$#" -ge 1 ] && shift
 
+	if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; then
+		_ui_info "Sessão gráfica ativa detectada (${WAYLAND_DISPLAY:-${DISPLAY}})."
+		_ui_sub "Executando '${_app}' diretamente na sessão gráfica..."
+		export GTK_THEME="$(_resolve_gtk_theme "${_flavor}")"
+		export QT_STYLE_OVERRIDE="adwaita-dark"
+		if _is_terminal_app "${_app}"; then
+			local _sh="$(_detect_enabled_shell)"
+			[ -z "${_sh}" ] && _sh="$(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || echo "/bin/sh")"
+			if command -v xterm > "/dev/null" 2>&1; then
+				command xterm -bc -bcf 600 -bcn 600 -e "${_sh}" -i -c "${_app} $*"
+			elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v foot > "/dev/null" 2>&1; then
+				command foot "${_sh}" -i -c "${_app} $*"
+			else
+				command "${_app}" "$@"
+			fi
+		else
+			command "${_app}" "$@"
+		fi
+		return $?
+	fi
+
 	local _had_display=1
 	[ -z "${DISPLAY:-}" ] && _had_display=0
 
@@ -1426,27 +1529,27 @@ graphical-launcher-x11() {
 	local _theme_flavor="$(_detect_desktop_theme "${_flavor}")"
 	case "${_theme_flavor}" in
 		gnome|adwaita)
-			export GTK_THEME="Adwaita:dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_STYLE_OVERRIDE="adwaita-dark"
 			export XCURSOR_THEME="Adwaita"
 			;;
 		kde)
-			export GTK_THEME="Breeze-Dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_STYLE_OVERRIDE="Breeze"
 			export XCURSOR_THEME="breeze_cursors"
 			;;
 		cinnamon)
-			export GTK_THEME="Mint-Y-Dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_STYLE_OVERRIDE="adwaita-dark"
 			export XCURSOR_THEME="Adwaita"
 			;;
 		mate)
-			export GTK_THEME="Yaru-MATE-dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_STYLE_OVERRIDE="adwaita-dark"
 			export XCURSOR_THEME="Adwaita"
 			;;
 		xfce)
-			export GTK_THEME="Greybird-dark"
+			export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 			export QT_STYLE_OVERRIDE="adwaita-dark"
 			export XCURSOR_THEME="Adwaita"
 			;;
@@ -1589,6 +1692,8 @@ emacs-window-manager-wayland() {
 	if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; then
 		_ui_info "Sessão gráfica ativa detectada. EWM é um compositor soberano DRM/KMS executado via TTY."
 		_ui_sub "Encaminhando para instância gráfica padrão do Emacs..."
+		export GTK_THEME="$(_resolve_gtk_theme)"
+		export QT_STYLE_OVERRIDE="adwaita-dark"
 		command emacs "$@"
 		return $?
 	fi
@@ -1638,6 +1743,8 @@ emacs-window-manager-x11() {
 	if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; then
 		_ui_info "Sessão gráfica ativa detectada. EXWM é um gerenciador de janelas X11 executado via TTY."
 		_ui_sub "Encaminhando para instância gráfica padrão do Emacs..."
+		export GTK_THEME="$(_resolve_gtk_theme)"
+		export QT_STYLE_OVERRIDE="adwaita-dark"
 		command emacs "$@"
 		return $?
 	fi
