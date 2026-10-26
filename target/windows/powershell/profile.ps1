@@ -1168,10 +1168,27 @@ function venture-server {
 ### EMACS ALIASES
 ### ================================
 
-function ek { taskkill /IM emacs.exe /F }
-function es { runemacs --fg-daemon }
-function er { ek; es }
-function ec { emacsclientw --create-frame --alternate-editor "" $args }
+function _restore_tty_cursor {
+	[Console]::Write("$([char]27)[1 q$([char]27)]112`a$([char]27)]112$([char]27)\")
+}
+
+function ek {
+	taskkill /IM emacs.exe /F
+	_restore_tty_cursor
+}
+function es {
+	runemacs --fg-daemon
+	_restore_tty_cursor
+}
+function er {
+	ek
+	es
+	_restore_tty_cursor
+}
+function ec {
+	emacsclientw --create-frame --alternate-editor "" $args
+	_restore_tty_cursor
+}
 function emacs-nw {
 	if (Get-Command emacsclient -ErrorAction SilentlyContinue) {
 		emacsclient -t --alternate-editor "" @args
@@ -1180,6 +1197,7 @@ function emacs-nw {
 	} else {
 		_ui_err "emacs not found."
 	}
+	_restore_tty_cursor
 }
 Set-Alias "en" "emacs-nw" -Force -Option AllScope
 Set-Alias "enw" "emacs-nw" -Force -Option AllScope
@@ -1187,6 +1205,7 @@ Set-Alias "enw" "emacs-nw" -Force -Option AllScope
 function emacs-open-nw {
 	$target = if ($args) { $args } else { @(".") }
 	emacs-nw @target
+	_restore_tty_cursor
 }
 Set-Alias "oen" "emacs-open-nw" -Force -Option AllScope
 Set-Alias "oenw" "emacs-open-nw" -Force -Option AllScope
@@ -1197,6 +1216,7 @@ function oe {
 	$target = if ($args) { $args } else { "." }
 	$argList = @("--create-frame", "--alternate-editor", '""', $target)
 	Start-Process -FilePath $app -ArgumentList $argList -WindowStyle Hidden
+	_restore_tty_cursor
 }
 
 ### ================================
