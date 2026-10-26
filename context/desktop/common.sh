@@ -770,6 +770,10 @@ export QT_QPA_PLATFORM="xcb"
 export SDL_VIDEODRIVER="x11"
 export CLUTTER_BACKEND="x11"
 
+if [ -z "\${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -e "\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}/bus" ]; then
+	export DBUS_SESSION_BUS_ADDRESS="unix:path=\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}/bus"
+fi
+
 if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
 fi
@@ -790,7 +794,11 @@ if command -v xset > "/dev/null" 2>&1 && command -v xdotool > "/dev/null" 2>&1; 
 	fi
 fi
 
-exec "\$@"
+if command -v dbus-launch > "/dev/null" 2>&1 && [ -z "\${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+	exec dbus-launch --exit-with-session "\$@"
+else
+	exec "\$@"
+fi
 EOF
 	chmod 0755 "${_xinit_script}"
 
@@ -1437,7 +1445,8 @@ elif [ "${_is_terminal}" -eq 1 ]; then
 		foot "${_sh}" -i -c "\${_app_target} \$*"
 	fi
 elif [ "\${_app_target}" = "emacs" ]; then
-	emacs -mm "\$@"
+	_emacs_wayland_bin="\$(command -v emacs-pgtk 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
+	"\${_emacs_wayland_bin}" -mm "\$@"
 else
 	"\${_app_target}" "\$@"
 fi
@@ -1702,6 +1711,10 @@ export GTK_CSD=0
 export MOZ_GTK_TITLEBAR_DECORATION="system"
 export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
 
+if [ -z "\${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -e "\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}/bus" ]; then
+	export DBUS_SESSION_BUS_ADDRESS="unix:path=\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}/bus"
+fi
+
 if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
 fi
@@ -1814,10 +1827,9 @@ elif [ "${_is_terminal}" -eq 1 ]; then
 	else
 		exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized -e "${_sh}" -i -c "\${_target_bin} \$*"
 	fi
-elif [ "\${_target_bin}" = "emacs" ] && command -v emacs-gtk+x11 > "/dev/null" 2>&1; then
-	exec emacs-gtk+x11 -mm "\$@"
 elif [ "\${_target_bin}" = "emacs" ]; then
-	exec emacs -mm "\$@"
+	_emacs_kiosk_bin="\$(command -v emacs-lucid 2> "/dev/null" || command -v emacs-gtk+x11 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
+	exec "\${_emacs_kiosk_bin}" -mm "\$@"
 else
 	exec "\${_target_bin}" "\$@"
 fi
