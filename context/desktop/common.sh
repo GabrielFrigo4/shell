@@ -177,13 +177,22 @@ export EMACS_SOCKET_NAME="${HOME}/.emacs.d/var/server/auth/server"
 emacs-kill() {
 	command -v emacs > "/dev/null" 2>&1 || command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacs not found."; return 127; }
 	command pkill emacs
+	local _status=$?
+	_restore_tty_cursor
+	return ${_status}
 }
 emacs-start() {
 	command -v emacs > "/dev/null" 2>&1 || { _ui_err "emacs not found."; return 127; }
 	command emacs --daemon="${EMACS_SOCKET_NAME}"
+	local _status=$?
+	_restore_tty_cursor
+	return ${_status}
 }
 emacs-restart() {
 	emacs-kill && emacs-start
+	local _status=$?
+	_restore_tty_cursor
+	return ${_status}
 }
 
 emacs-client() {
@@ -200,8 +209,8 @@ emacs-client() {
 	else
 		command emacsclient -t --alternate-editor "" "$@"
 		_status=$?
-		_restore_tty_cursor
 	fi
+	_restore_tty_cursor
 	return ${_status}
 }
 emacs-nw() {
@@ -220,14 +229,16 @@ emacs-nw() {
 	return ${_status}
 }
 emacsclient() {
+	local _status=0
 	if [ "$#" -eq 0 ]; then
 		emacs-client
+		_status=$?
 	else
 		command emacsclient "$@"
-		local _status=$?
-		_restore_tty_cursor
-		return ${_status}
+		_status=$?
 	fi
+	_restore_tty_cursor
+	return ${_status}
 }
 emacs() {
 	local _status=0
@@ -256,22 +267,33 @@ emacs() {
 }
 emacs-open() {
 	command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacsclient not found."; return 127; }
+	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if [ "$#" -eq 0 ]; then
 			(command nohup emacsclient --create-frame --alternate-editor "" . < "/dev/null" > "/dev/null" 2>&1 &)
+			_status=$?
 		else
 			(command nohup emacsclient --create-frame --alternate-editor "" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+			_status=$?
 		fi
 	else
 		emacs-open-nw "$@"
+		_status=$?
 	fi
+	_restore_tty_cursor
+	return ${_status}
 }
 emacs-open-nw() {
+	local _status=0
 	if [ "$#" -eq 0 ]; then
 		emacs-nw .
+		_status=$?
 	else
 		emacs-nw "$@"
+		_status=$?
 	fi
+	_restore_tty_cursor
+	return ${_status}
 }
 emacs-eshell() {
 	command -v emacsclient > "/dev/null" 2>&1 || command -v emacs > "/dev/null" 2>&1 || {
@@ -286,24 +308,28 @@ emacs-eshell() {
 		_dir="${PWD}"
 	fi
 
+	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if command -v emacsclient > "/dev/null" 2>&1; then
 			(command nohup emacsclient --create-frame --alternate-editor "" \
 				--eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
+			_status=$?
 		else
 			(command nohup emacs --eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
+			_status=$?
 		fi
 	else
 		if command -v emacsclient > "/dev/null" 2>&1; then
 			command emacsclient -t --alternate-editor "" \
 				--eval "(progn (cd \"${_dir}/\") (aweshell/new))"
+			_status=$?
 		else
 			command emacs -nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
+			_status=$?
 		fi
-		local _status=$?
-		_restore_tty_cursor
-		return ${_status}
 	fi
+	_restore_tty_cursor
+	return ${_status}
 }
 alias ek="emacs-kill"
 alias es="emacs-start"
@@ -804,6 +830,7 @@ EOF
 
 	local _persistent_log="${HOME}/.local/state/environment/xorg-session.log"
 	mkdir -p "${HOME}/.local/state/environment" 2> "/dev/null" || true
+	rm -f "${_persistent_log}" 2> "/dev/null" || true
 	local _server_auth="${XDG_RUNTIME_DIR:-/tmp}/.serverauth-session-$$"
 	local _xinit_ret=0
 
@@ -823,10 +850,10 @@ EOF
 	fi
 
 	if command -v startx > "/dev/null" 2>&1; then
-		command startx "${_xinit_script}" "$@" -- "${_display}" ${_vt_arg} > "${_persistent_log}" 2>&1
+		command startx "${_xinit_script}" "$@" -- "${_display}" ${_vt_arg} >| "${_persistent_log}" 2>&1
 		_xinit_ret=$?
 	elif command -v xinit > "/dev/null" 2>&1; then
-		command xinit "${_xinit_script}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} > "${_persistent_log}" 2>&1
+		command xinit "${_xinit_script}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} >| "${_persistent_log}" 2>&1
 		_xinit_ret=$?
 	fi
 	rm -f "${_server_auth}" "${_xinit_script}" 2> "/dev/null" || true
@@ -1838,11 +1865,12 @@ EOF
 
 	local _persistent_kiosk_log="${HOME}/.local/state/environment/xorg-kiosk.log"
 	mkdir -p "${HOME}/.local/state/environment" 2> "/dev/null" || true
+	rm -f "${_persistent_kiosk_log}" 2> "/dev/null" || true
 	local _server_auth="${XDG_RUNTIME_DIR:-/tmp}/.serverauth-gui-$$"
 	local _xinit_ret=0
 
 	if command -v startx > "/dev/null" 2>&1; then
-		command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} > "${_persistent_kiosk_log}" 2>&1
+		command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} >| "${_persistent_kiosk_log}" 2>&1
 		_xinit_ret=$?
 	elif command -v xinit > "/dev/null" 2>&1; then
 		local _auth_args=""
@@ -1859,7 +1887,7 @@ EOF
 				_auth_args="-auth ${_server_auth}"
 			fi
 		fi
-		command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} > "${_persistent_kiosk_log}" 2>&1
+		command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} >| "${_persistent_kiosk_log}" 2>&1
 		_xinit_ret=$?
 		rm -f "${_server_auth}" 2> "/dev/null" || true
 		command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" 2> "/dev/null" || true
@@ -1948,8 +1976,12 @@ emacs-window-manager-x11() {
 		return 127
 	fi
 
-	_exec_x11 "${_emacs_bin}" -mm "$@"
+	if [ "${_emacs_bin##*/}" != "emacs-lucid" ]; then
+		_ui_warn "EXWM requer Emacs compilado com Lucid (emacs-lucid). A versão GTK3/PGTK pode causar instabilidade no X11."
+	fi
 
+	_exec_x11 "${_emacs_bin}" -mm "$@"
+	_restore_tty_cursor
 	_freebsd_vt_bounce
 }
 alias xewm="emacs-window-manager-x11"
