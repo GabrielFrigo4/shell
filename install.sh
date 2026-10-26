@@ -475,8 +475,7 @@ _install_shell_target() {
 
 	echo "Target RC file: ${_rc_file}"
 	if grep -qF "${_source_line}" "${_rc_file}" 2> "/dev/null"; then
-		echo "Shell config already installed in ${_rc_file}"
-		echo "Skipping."
+		echo "Shell config already installed in ${_rc_file}. Skipping."
 	else
 		echo "${_setup_block}" | tee -a "${_rc_file}" > "/dev/null"
 		echo "Done! Added source lines to ${_rc_file}"
@@ -485,8 +484,7 @@ _install_shell_target() {
 	if [ "${OS_NAME}" != "windows" ]; then
 		echo "Target RC file: ${_root_rc_file} (root)"
 		if _as_root grep -qF "${_source_line}" "${_root_rc_file}" 2> "/dev/null"; then
-			echo "Shell config already installed in ${_root_rc_file}"
-			echo "Skipping."
+			echo "Shell config already installed in ${_root_rc_file}. Skipping."
 		else
 			echo "${_setup_block}" | _as_root tee -a "${_root_rc_file}" > "/dev/null" 2>&1 || true
 			echo "Done! Added source lines to ${_root_rc_file}"
@@ -501,15 +499,8 @@ for _target in ${TARGET_SHELLS}; do
 	echo ""
 	echo "🔧 Configuring for shell: ${_target}"
 	case "${_target}" in
-		zsh|bash|sh|ksh)
-			_install_shell_target "${_target}"
-			;;
-		fish|pwsh|powershell|nu|nushell|cmd)
-			_install_extended_shell "${_target}"
-			;;
-		*)
-			_install_shell_target "${_target}"
-			;;
+		fish|pwsh|powershell|nu|nushell|cmd) _install_extended_shell "${_target}" ;;
+		*)                                   _install_shell_target "${_target}" ;;
 	esac
 done
 

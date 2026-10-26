@@ -11,16 +11,11 @@ _SHELL_CACHE_FILE="${_SHELL_CACHE_DIR}/cache.env"
 [ -f "${_SHELL_CACHE_FILE}" ] && . "${_SHELL_CACHE_FILE}" 2> "/dev/null"
 
 if [ -z "${_DETECTED_SHELL:-}" ]; then
-	if [ -n "${ZSH_VERSION:-}" ]; then
-		_DETECTED_SHELL="zsh"
-	elif [ -n "${BASH_VERSION:-}" ]; then
-		_DETECTED_SHELL="bash"
-	elif [ -n "${KSH_VERSION:-}" ]; then
-		_DETECTED_SHELL="ksh"
-	elif [ -n "${FISH_VERSION:-}" ]; then
-		_DETECTED_SHELL="fish"
-	elif [ -n "${NU_VERSION:-}" ]; then
-		_DETECTED_SHELL="nu"
+	if [ -n "${ZSH_VERSION:-}" ]; then _DETECTED_SHELL="zsh"
+	elif [ -n "${BASH_VERSION:-}" ]; then _DETECTED_SHELL="bash"
+	elif [ -n "${KSH_VERSION:-}" ]; then _DETECTED_SHELL="ksh"
+	elif [ -n "${FISH_VERSION:-}" ]; then _DETECTED_SHELL="fish"
+	elif [ -n "${NU_VERSION:-}" ]; then _DETECTED_SHELL="nu"
 	fi
 fi
 
@@ -51,21 +46,17 @@ _cache_write() {
 	unset _var_name
 }
 
-
 ### --------------------------------
 ### Cache Clean
 ### --------------------------------
 _cache_clean() {
-	if [ -d "${_SHELL_CACHE_DIR}" ]; then
-		command rm -rf "${_SHELL_CACHE_DIR}" 2> "/dev/null" || true
-	fi
+	[ -d "${_SHELL_CACHE_DIR}" ] && command rm -rf "${_SHELL_CACHE_DIR}" 2> "/dev/null" || true
 	unset _DETECTED_OS _DETECTED_SHELL _DETECTED_ENABLED_SHELL _DETECTED_DISTRO _DETECTED_DISTRO_FAMILY \
 		_DETECTED_DISTRO_ICON _DETECTED_DESKTOP_ENV _DETECTED_COLOR_SCHEME _DETECTED_GTK_THEME \
 		_DETECTED_QT_THEME _DETECTED_QT_PLATFORM_THEME _DETECTED_EZA \
 		_DETECTED_BAT _DETECTED_RG _DETECTED_FD _DETECTED_ZOXIDE _DETECTED_ESCALATOR \
 		_DETECTED_KERNEL_RELEASE _DETECTED_XCURSOR_THEME _DETECTED_XCURSOR_SIZE 2> "/dev/null" || true
 }
-
 
 ### ================================
 ### SHELL DETECTION
@@ -135,20 +126,13 @@ _detect_shell() {
 	fi
 
 	if [ -z "${_name}" ]; then
-		if [ -n "${ZSH_VERSION:-}" ]; then
-			_name="zsh"
-		elif [ -n "${BASH_VERSION:-}" ]; then
-			_name="bash"
-		elif [ -n "${KSH_VERSION:-}" ]; then
-			_name="ksh"
-		elif [ -n "${FISH_VERSION:-}" ]; then
-			_name="fish"
-		elif [ -n "${NU_VERSION:-}" ]; then
-			_name="nu"
-		elif [ -n "${YASH_VERSION:-}" ]; then
-			_name="yash"
-		elif [ -n "${NETBSD_SHELL:-}" ]; then
-			_name="sh"
+		if [ -n "${ZSH_VERSION:-}" ]; then _name="zsh"
+		elif [ -n "${BASH_VERSION:-}" ]; then _name="bash"
+		elif [ -n "${KSH_VERSION:-}" ]; then _name="ksh"
+		elif [ -n "${FISH_VERSION:-}" ]; then _name="fish"
+		elif [ -n "${NU_VERSION:-}" ]; then _name="nu"
+		elif [ -n "${YASH_VERSION:-}" ]; then _name="yash"
+		elif [ -n "${NETBSD_SHELL:-}" ]; then _name="sh"
 		fi
 	fi
 
@@ -162,8 +146,8 @@ _detect_shell() {
 			*busybox*|*ash*|*hush*)      _name="busybox" ;;
 			*ksh*|*mksh*|*pdksh*|*oksh*) _name="ksh" ;;
 			*fish*)                      _name="fish" ;;
-			*csh*)                       _name="csh" ;;
 			*tcsh*)                      _name="tcsh" ;;
+			*csh*)                       _name="csh" ;;
 			*yash*)                      _name="yash" ;;
 			*nu*)                        _name="nu" ;;
 			*sh*)                        _name="sh" ;;
@@ -182,19 +166,13 @@ _detect_shell() {
 	if [ "${_name}" = "sudo" ] || [ "${_name}" = "doas" ] || [ "${_name}" = "su" ]; then
 		local _parent_pid="$(command ps -p "${_pid}" -o ppid= 2> "/dev/null" | command tr -d ' ')"
 		if [ -z "${_parent_pid}" ]; then
-			if [ "${_os}" = "windows" ]; then
-				_parent_pid="$(command ps 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $2}')"
-			else
-				_parent_pid="$(command ps -o pid,ppid 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $2}')"
-			fi
+			_parent_pid="$(command ps -o pid,ppid 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $2}')"
 		fi
 		if [ -n "${_parent_pid}" ] && [ -r "/proc/${_parent_pid}/comm" ]; then
 			read -r _name < "/proc/${_parent_pid}/comm" 2> "/dev/null"
 			_name="${_name#-}"
 		fi
-		if [ -z "${_name}" ]; then
-			_name="$(command ps -p "${_parent_pid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
-		fi
+		[ -z "${_name}" ] && _name="$(command ps -p "${_parent_pid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
 	fi
 
 	case "${_name}" in
@@ -206,8 +184,8 @@ _detect_shell() {
 		fish*|*fish)       _DETECTED_SHELL="fish" ;;
 		sh*|*sh)           _DETECTED_SHELL="sh" ;;
 		ash*|*ash)         _DETECTED_SHELL="ash" ;;
-		csh*|*csh)         _DETECTED_SHELL="csh" ;;
 		tcsh*|*tcsh)       _DETECTED_SHELL="tcsh" ;;
+		csh*|*csh)         _DETECTED_SHELL="csh" ;;
 		yash*|*yash)       _DETECTED_SHELL="yash" ;;
 		nu*|*nu)           _DETECTED_SHELL="nu" ;;
 		*)                 _DETECTED_SHELL="${_name:-sh}" ;;
@@ -224,63 +202,40 @@ _detect_shell() {
 _detect_enabled_shell() {
 	local _target="${1:-path}"
 	local _shell_binary=""
-
-	# 1. Shell configurado no chsh / passwd do usuario (se executavel e compativel)
 	local _chsh_shell=""
 	local _user="${USER:-$(id -un 2> "/dev/null" || true)}"
+
 	if [ -n "${_user}" ] && command -v getent > "/dev/null" 2>&1; then
 		_chsh_shell="$(getent passwd "${_user}" 2> "/dev/null" | cut -d: -f7)"
 	fi
-	if [ -z "${_chsh_shell}" ] && [ -n "${SHELL:-}" ]; then
-		_chsh_shell="${SHELL}"
-	fi
+	[ -z "${_chsh_shell}" ] && [ -n "${SHELL:-}" ] && _chsh_shell="${SHELL}"
 
 	if [ -n "${_chsh_shell}" ] && [ -x "${_chsh_shell}" ]; then
-		local _base_sh="${_chsh_shell##*/}"
-		case "${_base_sh}" in
+		case "${_chsh_shell##*/}" in
 			dash|fish|csh|tcsh|nu|nologin|false) ;;
 			sh)
-				# /bin/sh so e suportado como login shell interativo no FreeBSD
-				local _cur_os="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" || true)"
-				case "${_cur_os}" in
+				case "$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" || true)" in
 					freebsd|FreeBSD) _shell_binary="${_chsh_shell}" ;;
 				esac
 				;;
-			ksh)
-				# ksh e nativo e suportado no OpenBSD
-				_shell_binary="${_chsh_shell}"
-				;;
-			zsh|bash)
-				_shell_binary="${_chsh_shell}"
-				;;
+			zsh|bash|ksh) _shell_binary="${_chsh_shell}" ;;
 		esac
 	fi
 
-	# 2. Cascata canonica do ecossistema: Zsh -> Bash -> Ksh (OpenBSD) -> Sh (FreeBSD)
-	if [ -z "${_shell_binary}" ]; then
-		_shell_binary="$(command -v zsh 2> "/dev/null" || true)"
-	fi
-	if [ -z "${_shell_binary}" ]; then
-		_shell_binary="$(command -v bash 2> "/dev/null" || true)"
-	fi
-	if [ -z "${_shell_binary}" ]; then
-		_shell_binary="$(command -v ksh 2> "/dev/null" || true)"
-	fi
+	[ -z "${_shell_binary}" ] && _shell_binary="$(command -v zsh 2> "/dev/null" || true)"
+	[ -z "${_shell_binary}" ] && _shell_binary="$(command -v bash 2> "/dev/null" || true)"
+	[ -z "${_shell_binary}" ] && _shell_binary="$(command -v ksh 2> "/dev/null" || true)"
 	if [ -z "${_shell_binary}" ]; then
 		local _sh_bin="$(command -v sh 2> "/dev/null" || true)"
 		if [ -n "${_sh_bin}" ]; then
 			local _real_sh="${_sh_bin}"
-			if [ -L "${_sh_bin}" ]; then
-				_real_sh="$(readlink -f "${_sh_bin}" 2> "/dev/null" || echo "${_sh_bin}")"
-			fi
+			[ -L "${_sh_bin}" ] && _real_sh="$(readlink -f "${_sh_bin}" 2> "/dev/null" || echo "${_sh_bin}")"
 			case "${_real_sh##*/}" in
-				dash) ;; # Expurga estritamente o Debian dash
-				*) _shell_binary="${_sh_bin}" ;;
+				dash) ;;
+				*)    _shell_binary="${_sh_bin}" ;;
 			esac
 		fi
 	fi
-
-	# 3. Fallback defensivo
 	[ -z "${_shell_binary}" ] && _shell_binary="${SHELL:-/bin/sh}"
 
 	case "${_target}" in
@@ -310,18 +265,12 @@ _detect_distro() {
 			esac
 		fi
 		_DETECTED_DISTRO="${_os_id:-unknown}"
-	elif [ -f "/etc/arch-release" ]; then
-		_DETECTED_DISTRO="arch"
-	elif [ -f "/etc/devuan_version" ]; then
-		_DETECTED_DISTRO="devuan"
-	elif [ -f "/etc/oracle-release" ]; then
-		_DETECTED_DISTRO="ol"
-	elif [ -f "/etc/debian_version" ]; then
-		_DETECTED_DISTRO="debian"
-	elif [ -f "/etc/ghostbsd-version" ] || [ -f "/usr/local/etc/ghostbsd-version" ]; then
-		_DETECTED_DISTRO="ghostbsd"
-	elif [ -f "/etc/nomadbsd-version" ]; then
-		_DETECTED_DISTRO="nomadbsd"
+	elif [ -f "/etc/arch-release" ]; then _DETECTED_DISTRO="arch"
+	elif [ -f "/etc/devuan_version" ]; then _DETECTED_DISTRO="devuan"
+	elif [ -f "/etc/oracle-release" ]; then _DETECTED_DISTRO="ol"
+	elif [ -f "/etc/debian_version" ]; then _DETECTED_DISTRO="debian"
+	elif [ -f "/etc/ghostbsd-version" ] || [ -f "/usr/local/etc/ghostbsd-version" ]; then _DETECTED_DISTRO="ghostbsd"
+	elif [ -f "/etc/nomadbsd-version" ]; then _DETECTED_DISTRO="nomadbsd"
 	elif [ -f "/etc/release" ]; then
 		case "$(command cat /etc/release 2> "/dev/null")" in
 			*OmniOS*)      _DETECTED_DISTRO="omnios" ;;
@@ -456,447 +405,16 @@ _detect_distro_icon() {
 		windows)                            _DETECTED_DISTRO_ICON=" " ;;
 		*)
 			case "$(_detect_os)" in
-				linux)   _DETECTED_DISTRO_ICON=" " ;;
-				freebsd) _DETECTED_DISTRO_ICON=" " ;;
-				dragonfly) _DETECTED_DISTRO_ICON=" " ;;
-				openbsd) _DETECTED_DISTRO_ICON=" " ;;
-				netbsd)  _DETECTED_DISTRO_ICON=" " ;;
-				solaris|sunos) _DETECTED_DISTRO_ICON="󰖨 " ;;
-				illumos) _DETECTED_DISTRO_ICON=" " ;;
-				macos)   _DETECTED_DISTRO_ICON=" " ;;
-				windows) _DETECTED_DISTRO_ICON=" " ;;
-				*)       _DETECTED_DISTRO_ICON=" " ;;
+				linux) _DETECTED_DISTRO_ICON=" " ;; freebsd) _DETECTED_DISTRO_ICON=" " ;;
+				dragonfly) _DETECTED_DISTRO_ICON=" " ;; openbsd) _DETECTED_DISTRO_ICON=" " ;;
+				netbsd) _DETECTED_DISTRO_ICON=" " ;; solaris|sunos) _DETECTED_DISTRO_ICON="󰖨 " ;;
+				illumos) _DETECTED_DISTRO_ICON=" " ;; macos) _DETECTED_DISTRO_ICON=" " ;;
+				windows) _DETECTED_DISTRO_ICON=" " ;; *) _DETECTED_DISTRO_ICON=" " ;;
 			esac
 			;;
 	esac
 	_cache_write "distro_icon" "${_DETECTED_DISTRO_ICON}"
 	echo "${_DETECTED_DISTRO_ICON}"
-}
-
-### --------------------------------
-### Detect Desktop Environment
-### --------------------------------
-_detect_desktop_environment() {
-	[ -n "${_DETECTED_DESKTOP_ENV+x}" ] && echo "${_DETECTED_DESKTOP_ENV}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/desktop_env" ]; then
-		_DETECTED_DESKTOP_ENV="$(_cache_read "desktop_env")"
-		echo "${_DETECTED_DESKTOP_ENV}"
-		return 0
-	fi
-
-	local _desktop="${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION}}"
-	case "${_desktop}" in
-		*[Kk][Dd][Ee]*|*[Pp]lasma*)                                            _DETECTED_DESKTOP_ENV="kde" ;;
-		*[Gg][Nn][Oo][Mm][Ee]*)                                                _DETECTED_DESKTOP_ENV="gnome" ;;
-		*[Xx][Ff][Cc][Ee]*)                                                    _DETECTED_DESKTOP_ENV="xfce" ;;
-		*[Cc][Ii][Nn][Nn][Aa][Mm][Oo][Nn]*)                                    _DETECTED_DESKTOP_ENV="cinnamon" ;;
-		*[Mm][Aa][Tt][Ee]*)                                                    _DETECTED_DESKTOP_ENV="mate" ;;
-		*[Cc][Oo][Ss][Mm][Ii][Cc]*)                                            _DETECTED_DESKTOP_ENV="cosmic" ;;
-		*[Ll][Xx][Qq][Tt]*)                                                    _DETECTED_DESKTOP_ENV="lxqt" ;;
-		*[Ss][Ww][Aa][Yy]*)                                                    _DETECTED_DESKTOP_ENV="sway" ;;
-		*[Hh][Yy][Pp][Rr][Ll][Aa][Nn][Dd]*)                                    _DETECTED_DESKTOP_ENV="hyprland" ;;
-		*[Ii]3*|*[Bb][Ss][Pp][Ww][Mm]*|*[Rr][Ii][Vv][Ee][Rr]*|*[Dd][Ww][Mm]*) _DETECTED_DESKTOP_ENV="wm" ;;
-		*)                                                                     _DETECTED_DESKTOP_ENV="unknown" ;;
-	esac
-	_cache_write "desktop_env" "${_DETECTED_DESKTOP_ENV}"
-	echo "${_DETECTED_DESKTOP_ENV}"
-}
-
-### --------------------------------
-### Detect Color Scheme
-### --------------------------------
-_detect_color_scheme() {
-	[ -n "${_DETECTED_COLOR_SCHEME+x}" ] && echo "${_DETECTED_COLOR_SCHEME}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/color_scheme" ]; then
-		_DETECTED_COLOR_SCHEME="$(_cache_read "color_scheme")"
-		echo "${_DETECTED_COLOR_SCHEME}"
-		return 0
-	fi
-
-	_DETECTED_COLOR_SCHEME="dark"
-	if command -v gdbus > "/dev/null" 2>&1; then
-		local _portal_scheme
-		_portal_scheme="$(gdbus call --session --dest org.freedesktop.portal.Desktop \
-			--object-path /org/freedesktop/portal/desktop \
-			--method org.freedesktop.portal.Settings.Read \
-			"org.freedesktop.appearance" "color-scheme" 2> "/dev/null")"
-		case "${_portal_scheme}" in
-			*uint32\ 1*) _DETECTED_COLOR_SCHEME="dark" ;;
-			*uint32\ 2*) _DETECTED_COLOR_SCHEME="light" ;;
-		esac
-	elif command -v gsettings > "/dev/null" 2>&1; then
-		local _gnome_scheme
-		_gnome_scheme="$(gsettings get org.gnome.desktop.interface color-scheme 2> "/dev/null")"
-		case "${_gnome_scheme}" in
-			*prefer-dark*)  _DETECTED_COLOR_SCHEME="dark" ;;
-			*prefer-light*) _DETECTED_COLOR_SCHEME="light" ;;
-		esac
-	elif command -v kreadconfig6 > "/dev/null" 2>&1; then
-		local _kde_scheme
-		_kde_scheme="$(kreadconfig6 --group General --key ColorScheme 2> "/dev/null")"
-		case "${_kde_scheme}" in
-			*[Dd]ark*)  _DETECTED_COLOR_SCHEME="dark" ;;
-			*[Ll]ight*) _DETECTED_COLOR_SCHEME="light" ;;
-		esac
-	elif command -v kreadconfig5 > "/dev/null" 2>&1; then
-		local _kde_scheme5
-		_kde_scheme5="$(kreadconfig5 --group General --key ColorScheme 2> "/dev/null")"
-		case "${_kde_scheme5}" in
-			*[Dd]ark*)  _DETECTED_COLOR_SCHEME="dark" ;;
-			*[Ll]ight*) _DETECTED_COLOR_SCHEME="light" ;;
-		esac
-	elif [ -f "${HOME}/.config/kdeglobals" ]; then
-		if grep -qi "ColorScheme=.*Dark" "${HOME}/.config/kdeglobals" 2> "/dev/null"; then
-			_DETECTED_COLOR_SCHEME="dark"
-		elif grep -qi "ColorScheme=.*Light" "${HOME}/.config/kdeglobals" 2> "/dev/null"; then
-			_DETECTED_COLOR_SCHEME="light"
-		fi
-	fi
-
-	_cache_write "color_scheme" "${_DETECTED_COLOR_SCHEME}"
-	echo "${_DETECTED_COLOR_SCHEME}"
-}
-
-### --------------------------------
-### Detect GTK Theme
-### --------------------------------
-_detect_gtk_theme() {
-	[ -n "${_DETECTED_GTK_THEME:-}" ] && echo "${_DETECTED_GTK_THEME}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/gtk_theme" ]; then
-		_DETECTED_GTK_THEME="$(_cache_read "gtk_theme")"
-		if [ -n "${_DETECTED_GTK_THEME}" ]; then
-			echo "${_DETECTED_GTK_THEME}"
-			return 0
-		fi
-	fi
-
-	local _desktop_env="$(_detect_desktop_environment)"
-	local _color_scheme="$(_detect_color_scheme)"
-
-	case "${_desktop_env}" in
-		kde)
-			if [ "${_color_scheme}" = "dark" ]; then
-				if [ -d "/usr/local/share/themes/Breeze-Dark" ] || [ -d "/usr/share/themes/Breeze-Dark" ] || [ -d "${HOME}/.themes/Breeze-Dark" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/Breeze-Dark" ]; then
-					_DETECTED_GTK_THEME="Breeze-Dark"
-				else
-					_DETECTED_GTK_THEME="Adwaita:dark"
-				fi
-			else
-				if [ -d "/usr/local/share/themes/Breeze" ] || [ -d "/usr/share/themes/Breeze" ] || [ -d "${HOME}/.themes/Breeze" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/Breeze" ]; then
-					_DETECTED_GTK_THEME="Breeze"
-				else
-					_DETECTED_GTK_THEME="Adwaita"
-				fi
-			fi
-			;;
-		gnome)
-			if command -v gsettings > "/dev/null" 2>&1; then
-				local _gset_theme=""
-				_gset_theme="$(command gsettings get org.gnome.desktop.interface gtk-theme 2> "/dev/null" | tr -d "'" || true)"
-				if [ -n "${_gset_theme}" ]; then
-					if [ -d "/usr/share/themes/${_gset_theme}" ] || [ -d "/usr/local/share/themes/${_gset_theme}" ] || [ -d "${HOME}/.themes/${_gset_theme}" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/${_gset_theme}" ]; then
-						_DETECTED_GTK_THEME="${_gset_theme}"
-					fi
-				fi
-			fi
-			if [ -z "${_DETECTED_GTK_THEME:-}" ]; then
-				if [ "${_color_scheme}" = "dark" ]; then
-					if [ -d "/usr/local/share/themes/adw-gtk3-dark" ] || [ -d "/usr/share/themes/adw-gtk3-dark" ] || [ -d "${HOME}/.themes/adw-gtk3-dark" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/adw-gtk3-dark" ]; then
-						_DETECTED_GTK_THEME="adw-gtk3-dark"
-					elif [ -d "/usr/share/themes/Adwaita-dark" ] || [ -d "/usr/local/share/themes/Adwaita-dark" ]; then
-						_DETECTED_GTK_THEME="Adwaita-dark"
-					else
-						_DETECTED_GTK_THEME="Adwaita:dark"
-					fi
-				else
-					if [ -d "/usr/local/share/themes/adw-gtk3" ] || [ -d "/usr/share/themes/adw-gtk3" ] || [ -d "${HOME}/.themes/adw-gtk3" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/adw-gtk3" ]; then
-						_DETECTED_GTK_THEME="adw-gtk3"
-					else
-						_DETECTED_GTK_THEME="Adwaita"
-					fi
-				fi
-			fi
-			;;
-		*)
-			if [ "${_color_scheme}" = "dark" ]; then
-				if [ -d "/usr/local/share/themes/adw-gtk3-dark" ] || [ -d "/usr/share/themes/adw-gtk3-dark" ] || [ -d "${HOME}/.themes/adw-gtk3-dark" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/adw-gtk3-dark" ]; then
-					_DETECTED_GTK_THEME="adw-gtk3-dark"
-				else
-					_DETECTED_GTK_THEME="Adwaita:dark"
-				fi
-			else
-				if [ -d "/usr/local/share/themes/adw-gtk3" ] || [ -d "/usr/share/themes/adw-gtk3" ] || [ -d "${HOME}/.themes/adw-gtk3" ] || [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/adw-gtk3" ]; then
-					_DETECTED_GTK_THEME="adw-gtk3"
-				else
-					_DETECTED_GTK_THEME="Adwaita"
-				fi
-			fi
-			;;
-	esac
-	_cache_write "gtk_theme" "${_DETECTED_GTK_THEME}"
-	echo "${_DETECTED_GTK_THEME}"
-}
-
-### --------------------------------
-### Detect Qt Theme
-### --------------------------------
-_detect_qt_theme() {
-	[ -n "${_DETECTED_QT_THEME+x}" ] && echo "${_DETECTED_QT_THEME}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/qt_theme" ]; then
-		_DETECTED_QT_THEME="$(_cache_read "qt_theme")"
-		echo "${_DETECTED_QT_THEME}"
-		return 0
-	fi
-
-	local _desktop_env="$(_detect_desktop_environment)"
-	local _color_scheme="$(_detect_color_scheme)"
-
-	if [ "${_desktop_env}" = "kde" ]; then
-		if [ "${_color_scheme}" = "dark" ]; then
-			_DETECTED_QT_THEME="Breeze-Dark"
-		else
-			_DETECTED_QT_THEME="Breeze"
-		fi
-	else
-		_DETECTED_QT_THEME=""
-	fi
-	_cache_write "qt_theme" "${_DETECTED_QT_THEME}"
-	echo "${_DETECTED_QT_THEME}"
-}
-
-### --------------------------------
-### Detect Qt Platform Theme
-### --------------------------------
-_detect_qt_platform_theme() {
-	[ -n "${_DETECTED_QT_PLATFORM_THEME+x}" ] && echo "${_DETECTED_QT_PLATFORM_THEME}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/qt_platform_theme" ]; then
-		_DETECTED_QT_PLATFORM_THEME="$(_cache_read "qt_platform_theme")"
-		echo "${_DETECTED_QT_PLATFORM_THEME}"
-		return 0
-	fi
-
-	local _desktop_env="$(_detect_desktop_environment)"
-
-	case "${_desktop_env}" in
-		kde)
-			_DETECTED_QT_PLATFORM_THEME="xdgdesktopportal"
-			;;
-		gnome|sway|hyprland)
-			if command -v qt6ct > "/dev/null" 2>&1; then
-				_DETECTED_QT_PLATFORM_THEME="qt6ct"
-			elif command -v qt5ct > "/dev/null" 2>&1; then
-				_DETECTED_QT_PLATFORM_THEME="qt5ct"
-			else
-				_DETECTED_QT_PLATFORM_THEME="xdgdesktopportal"
-			fi
-			;;
-		xfce|mate|cinnamon)
-			_DETECTED_QT_PLATFORM_THEME="gtk3"
-			;;
-		*)
-			if command -v qt6ct > "/dev/null" 2>&1; then
-				_DETECTED_QT_PLATFORM_THEME="qt6ct"
-			elif command -v qt5ct > "/dev/null" 2>&1; then
-				_DETECTED_QT_PLATFORM_THEME="qt5ct"
-			else
-				_DETECTED_QT_PLATFORM_THEME=""
-			fi
-			;;
-	esac
-	_cache_write "qt_platform_theme" "${_DETECTED_QT_PLATFORM_THEME}"
-	echo "${_DETECTED_QT_PLATFORM_THEME}"
-}
-
-### --------------------------------
-### Detect Eza/Exa Binary
-### --------------------------------
-_detect_eza() {
-	[ -n "${_DETECTED_EZA+x}" ] && echo "${_DETECTED_EZA}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/eza" ]; then
-		_DETECTED_EZA="$(_cache_read "eza")"
-		echo "${_DETECTED_EZA}"
-		return 0
-	fi
-
-	if command -v eza > "/dev/null" 2>&1; then
-		_DETECTED_EZA="eza"
-	elif command -v exa > "/dev/null" 2>&1; then
-		_DETECTED_EZA="exa"
-	elif [ -x "${HOME}/.cargo/bin/eza" ]; then
-		_DETECTED_EZA="${HOME}/.cargo/bin/eza"
-	elif [ -x "${HOME}/.cargo/bin/exa" ]; then
-		_DETECTED_EZA="${HOME}/.cargo/bin/exa"
-	else
-		_DETECTED_EZA=""
-	fi
-	_cache_write "eza" "${_DETECTED_EZA}"
-	echo "${_DETECTED_EZA}"
-}
-
-### --------------------------------
-### Detect Bat/Batcat Binary
-### --------------------------------
-_detect_bat() {
-	[ -n "${_DETECTED_BAT+x}" ] && echo "${_DETECTED_BAT}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/bat" ]; then
-		_DETECTED_BAT="$(_cache_read "bat")"
-		echo "${_DETECTED_BAT}"
-		return 0
-	fi
-
-	if command -v bat > "/dev/null" 2>&1; then
-		_DETECTED_BAT="bat"
-	elif command -v batcat > "/dev/null" 2>&1; then
-		_DETECTED_BAT="batcat"
-	elif [ -x "${HOME}/.cargo/bin/bat" ]; then
-		_DETECTED_BAT="${HOME}/.cargo/bin/bat"
-	else
-		_DETECTED_BAT=""
-	fi
-	_cache_write "bat" "${_DETECTED_BAT}"
-	echo "${_DETECTED_BAT}"
-}
-
-### --------------------------------
-### Detect Ripgrep Binary
-### --------------------------------
-_detect_rg() {
-	[ -n "${_DETECTED_RG+x}" ] && echo "${_DETECTED_RG}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/rg" ]; then
-		_DETECTED_RG="$(_cache_read "rg")"
-		echo "${_DETECTED_RG}"
-		return 0
-	fi
-
-	if command -v rg > "/dev/null" 2>&1; then
-		_DETECTED_RG="rg"
-	elif command -v ripgrep > "/dev/null" 2>&1; then
-		_DETECTED_RG="ripgrep"
-	elif [ -x "${HOME}/.cargo/bin/rg" ]; then
-		_DETECTED_RG="${HOME}/.cargo/bin/rg"
-	else
-		_DETECTED_RG=""
-	fi
-	_cache_write "rg" "${_DETECTED_RG}"
-	echo "${_DETECTED_RG}"
-}
-
-### --------------------------------
-### Detect Rust Fd-Find Binary
-### --------------------------------
-_detect_fd() {
-	[ -n "${_DETECTED_FD+x}" ] && echo "${_DETECTED_FD}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/fd" ]; then
-		_DETECTED_FD="$(_cache_read "fd")"
-		echo "${_DETECTED_FD}"
-		return 0
-	fi
-
-	if command -v fd > "/dev/null" 2>&1; then
-		_DETECTED_FD="fd"
-	elif command -v fdfind > "/dev/null" 2>&1; then
-		_DETECTED_FD="fdfind"
-	elif command -v fd-find > "/dev/null" 2>&1; then
-		_DETECTED_FD="fd-find"
-	elif [ -x "${HOME}/.cargo/bin/fd" ]; then
-		_DETECTED_FD="${HOME}/.cargo/bin/fd"
-	else
-		_DETECTED_FD=""
-	fi
-	_cache_write "fd" "${_DETECTED_FD}"
-	echo "${_DETECTED_FD}"
-}
-
-### --------------------------------
-### Detect Dust Binary
-### --------------------------------
-_detect_dust() {
-	[ -n "${_DETECTED_DUST+x}" ] && echo "${_DETECTED_DUST}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/dust" ]; then
-		_DETECTED_DUST="$(_cache_read "dust")"
-		echo "${_DETECTED_DUST}"
-		return 0
-	fi
-
-	if command -v dust > "/dev/null" 2>&1; then
-		_DETECTED_DUST="dust"
-	elif [ -x "${HOME}/.cargo/bin/dust" ]; then
-		_DETECTED_DUST="${HOME}/.cargo/bin/dust"
-	else
-		_DETECTED_DUST=""
-	fi
-	_cache_write "dust" "${_DETECTED_DUST}"
-	echo "${_DETECTED_DUST}"
-}
-
-### --------------------------------
-### Detect Procs Binary
-### --------------------------------
-_detect_procs() {
-	[ -n "${_DETECTED_PROCS+x}" ] && echo "${_DETECTED_PROCS}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/procs" ]; then
-		_DETECTED_PROCS="$(_cache_read "procs")"
-		echo "${_DETECTED_PROCS}"
-		return 0
-	fi
-
-	if command -v procs > "/dev/null" 2>&1; then
-		_DETECTED_PROCS="procs"
-	elif [ -x "${HOME}/.cargo/bin/procs" ]; then
-		_DETECTED_PROCS="${HOME}/.cargo/bin/procs"
-	else
-		_DETECTED_PROCS=""
-	fi
-	_cache_write "procs" "${_DETECTED_PROCS}"
-	echo "${_DETECTED_PROCS}"
-}
-
-### --------------------------------
-### Detect Bottom Binary
-### --------------------------------
-_detect_bottom() {
-	[ -n "${_DETECTED_BOTTOM+x}" ] && echo "${_DETECTED_BOTTOM}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/bottom" ]; then
-		_DETECTED_BOTTOM="$(_cache_read "bottom")"
-		echo "${_DETECTED_BOTTOM}"
-		return 0
-	fi
-
-	if command -v btm > "/dev/null" 2>&1; then
-		_DETECTED_BOTTOM="btm"
-	elif command -v bottom > "/dev/null" 2>&1; then
-		_DETECTED_BOTTOM="bottom"
-	elif [ -x "${HOME}/.cargo/bin/btm" ]; then
-		_DETECTED_BOTTOM="${HOME}/.cargo/bin/btm"
-	else
-		_DETECTED_BOTTOM=""
-	fi
-	_cache_write "bottom" "${_DETECTED_BOTTOM}"
-	echo "${_DETECTED_BOTTOM}"
-}
-
-### --------------------------------
-### Detect Zoxide Binary
-### --------------------------------
-_detect_zoxide() {
-	[ -n "${_DETECTED_ZOXIDE+x}" ] && echo "${_DETECTED_ZOXIDE}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/zoxide" ]; then
-		_DETECTED_ZOXIDE="$(_cache_read "zoxide")"
-		echo "${_DETECTED_ZOXIDE}"
-		return 0
-	fi
-
-	if command -v zoxide > "/dev/null" 2>&1; then
-		_DETECTED_ZOXIDE="zoxide"
-	elif [ -x "${HOME}/.cargo/bin/zoxide" ]; then
-		_DETECTED_ZOXIDE="${HOME}/.cargo/bin/zoxide"
-	elif [ -x "/usr/local/bin/zoxide" ]; then
-		_DETECTED_ZOXIDE="/usr/local/bin/zoxide"
-	else
-		_DETECTED_ZOXIDE=""
-	fi
-	_cache_write "zoxide" "${_DETECTED_ZOXIDE}"
-	echo "${_DETECTED_ZOXIDE}"
 }
 
 ### --------------------------------
@@ -910,15 +428,10 @@ _detect_privilege_escalator() {
 		return 0
 	fi
 
-	if [ "$(id -u)" -eq 0 ]; then
-		_DETECTED_ESCALATOR="root"
-	elif command -v doas > "/dev/null" 2>&1; then
-		_DETECTED_ESCALATOR="doas"
-	elif command -v sudo > "/dev/null" 2>&1; then
-		_DETECTED_ESCALATOR="sudo"
-	else
-		_DETECTED_ESCALATOR=""
-	fi
+	if [ "$(id -u)" -eq 0 ]; then _DETECTED_ESCALATOR="root"
+	elif command -v doas > "/dev/null" 2>&1; then _DETECTED_ESCALATOR="doas"
+	elif command -v sudo > "/dev/null" 2>&1; then _DETECTED_ESCALATOR="sudo"
+	else _DETECTED_ESCALATOR=""; fi
 	_cache_write "escalator" "${_DETECTED_ESCALATOR}"
 	echo "${_DETECTED_ESCALATOR}"
 }
@@ -929,64 +442,26 @@ _detect_privilege_escalator() {
 _is_raw_tty() {
 	[ -n "${_IS_RAW_TTY_CACHED+x}" ] && return "${_IS_RAW_TTY_CACHED}"
 
-	case "${RAW_TTY:-}" in
-		1|true|yes)
-			_IS_RAW_TTY_CACHED=0
-			return 0
-			;;
-		0|false|no)
-			_IS_RAW_TTY_CACHED=1
-			return 1
-			;;
-	esac
-
-	case "${LC_RAW_TTY:-}" in
-		1|true|yes)
-			_IS_RAW_TTY_CACHED=0
-			return 0
-			;;
-		0|false|no)
-			_IS_RAW_TTY_CACHED=1
-			return 1
-			;;
-	esac
-
-	case "${UNIVERSAL_RAW_TTY:-}" in
-		1|true|yes)
-			_IS_RAW_TTY_CACHED=0
-			return 0
-			;;
-		0|false|no)
-			_IS_RAW_TTY_CACHED=1
-			return 1
-			;;
+	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
+		*1*|*true*|*yes*) _IS_RAW_TTY_CACHED=0; return 0 ;;
+		*0*|*false*|*no*) _IS_RAW_TTY_CACHED=1; return 1 ;;
 	esac
 
 	case "$(command tty 2> "/dev/null")" in
 		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/ttyC*|/dev/ttyE*|/dev/console)
-			_IS_RAW_TTY_CACHED=0
-			return 0
-			;;
+			_IS_RAW_TTY_CACHED=0; return 0 ;;
 	esac
 
 	case "${TERM:-}" in
-		linux|dumb|vt100|cons25*|wvt25*)
-			_IS_RAW_TTY_CACHED=0
-			return 0
-			;;
+		linux|dumb|vt100|cons25*|wvt25*) _IS_RAW_TTY_CACHED=0; return 0 ;;
 	esac
-
-	if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ] || [ -n "${SSH_TTY:-}" ] || [ -n "${TERM_PROGRAM:-}" ] || [ -n "${WT_SESSION:-}" ]; then
-		_IS_RAW_TTY_CACHED=1
-		return 1
-	fi
 
 	_IS_RAW_TTY_CACHED=1
 	return 1
 }
 
 ### --------------------------------
-### Detect Kernel Release
+### Detect Kernel & Distro Version
 ### --------------------------------
 _detect_kernel_release() {
 	[ -n "${_DETECTED_KERNEL_RELEASE+x}" ] && echo "${_DETECTED_KERNEL_RELEASE}" && return 0
@@ -995,18 +470,12 @@ _detect_kernel_release() {
 		echo "${_DETECTED_KERNEL_RELEASE}"
 		return 0
 	fi
-
-	if [ -r "/proc/sys/kernel/osrelease" ]; then
-		read -r _DETECTED_KERNEL_RELEASE < "/proc/sys/kernel/osrelease" 2> "/dev/null"
-	fi
+	[ -r "/proc/sys/kernel/osrelease" ] && read -r _DETECTED_KERNEL_RELEASE < "/proc/sys/kernel/osrelease" 2> "/dev/null"
 	[ -z "${_DETECTED_KERNEL_RELEASE:-}" ] && _DETECTED_KERNEL_RELEASE="$(uname -r 2> "/dev/null" || echo "unknown")"
 	_cache_write "kernel_release" "${_DETECTED_KERNEL_RELEASE}"
 	echo "${_DETECTED_KERNEL_RELEASE}"
 }
 
-### --------------------------------
-### Detect Distro Version
-### --------------------------------
 _detect_distro_version() {
 	[ -n "${_DETECTED_DISTRO_VERSION+x}" ] && echo "${_DETECTED_DISTRO_VERSION}" && return 0
 	if [ -f "${_SHELL_CACHE_DIR}/distro_version" ]; then
@@ -1014,28 +483,29 @@ _detect_distro_version() {
 		echo "${_DETECTED_DISTRO_VERSION}"
 		return 0
 	fi
-
 	if [ -f "/etc/os-release" ]; then
 		_DETECTED_DISTRO_VERSION="$(. /etc/os-release 2> "/dev/null" && echo "${VERSION_ID:-${BUILD_ID:-}}")"
 	elif [ -f "/etc/debian_version" ]; then
 		_DETECTED_DISTRO_VERSION="$(cat /etc/debian_version 2> "/dev/null")"
 	fi
-
 	if [ -z "${_DETECTED_DISTRO_VERSION:-}" ]; then
 		case "$(_detect_distro)" in
-			arch|void|gentoo) _DETECTED_DISTRO_VERSION="rolling" ;;
-			freebsd|openbsd|netbsd|dragonfly)
-				_DETECTED_DISTRO_VERSION="$(uname -r 2> "/dev/null" | cut -d'-' -f1)"
-				;;
-			macos)
-				_DETECTED_DISTRO_VERSION="$(sw_vers -productVersion 2> "/dev/null" || uname -r)"
-				;;
-			*)
-				_DETECTED_DISTRO_VERSION="$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "UNIX")"
-				;;
+			arch|void|gentoo)                 _DETECTED_DISTRO_VERSION="rolling" ;;
+			freebsd|openbsd|netbsd|dragonfly) _DETECTED_DISTRO_VERSION="$(uname -r 2> "/dev/null" | cut -d'-' -f1)" ;;
+			macos)                            _DETECTED_DISTRO_VERSION="$(sw_vers -productVersion 2> "/dev/null" || uname -r)" ;;
+			*)                                _DETECTED_DISTRO_VERSION="$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "UNIX")" ;;
 		esac
 	fi
-
 	_cache_write "distro_version" "${_DETECTED_DISTRO_VERSION}"
 	echo "${_DETECTED_DISTRO_VERSION}"
 }
+
+if ! command -v _detect_eza > "/dev/null" 2>&1; then
+	for _det_mod in "${SHELL_REPO_DIR:-}/library/detect-desktop.sh" "./library/detect-desktop.sh"; do
+		if [ -f "${_det_mod}" ]; then
+			. "${_det_mod}"
+			break
+		fi
+	done
+	unset _det_mod
+fi

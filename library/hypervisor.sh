@@ -3,7 +3,7 @@
 # ----------------------------------------------------------------
 
 ### ================================
-# HELPERS DE HIPERVISOR & CONEXÃO
+### HELPERS DE HIPERVISOR E CONEXÃO
 ### ================================
 
 _hyp_get_os() {
@@ -47,7 +47,7 @@ _hyp_resolve_kvm_ip() {
 _hyp_ssh_connect() {
 	_user="$1"
 	_host="$2"
-	shift 2
+	[ "$#" -ge 2 ] && shift 2
 
 	_tty=""
 	[ -t 0 ] && [ -t 1 ] && _tty="-t"
@@ -72,6 +72,86 @@ _hyp_ssh_connect() {
 		# shellcheck disable=SC2086
 		ssh ${_ssh_opts} -t "${_user}@${_host}" "${_tty_env}exec \${SHELL:-/bin/sh} -l"
 	fi
+}
+
+_hyp_bhyve_dispatch() {
+	_label="$1"
+	_vm_name="$2"
+	_vm_user="$3"
+	_vm_ip="$4"
+	_action="$5"
+	[ "$#" -ge 5 ] && shift 5
+
+	case "${_action}" in
+		start)
+			_ui_step "Iniciando VM ${_label} no Bhyve (${_vm_name})..."
+			_as_root vm start "${_vm_name}"
+			;;
+		stop)
+			_ui_step "Desligando VM ${_label} no Bhyve (${_vm_name})..."
+			_as_root vm poweroff "${_vm_name}"
+			;;
+		restart)
+			_ui_step "Reiniciando VM ${_label} no Bhyve (${_vm_name})..."
+			_as_root vm restart "${_vm_name}"
+			;;
+		status|list)
+			_as_root vm list
+			;;
+		console)
+			_as_root vm console "${_vm_name}"
+			;;
+		ssh)
+			_hyp_ssh_connect "${_vm_user}" "${_vm_ip}" "$@"
+			;;
+		*)
+			_hyp_ssh_connect "${_vm_user}" "${_vm_ip}" "${_action}" "$@"
+			;;
+	esac
+}
+
+_hyp_kvm_dispatch() {
+	_label="$1"
+	_vm_name="$2"
+	_vm_user="$3"
+	_vm_ip="$4"
+	_action="$5"
+	[ "$#" -ge 5 ] && shift 5
+
+	if ! command -v virsh > "/dev/null" 2>&1; then
+		_ui_err "virsh (libvirt) não encontrado. Instale o stack QEMU/KVM ou configure o hypervisor."
+		return 1
+	fi
+
+	case "${_action}" in
+		start)
+			_ui_step "Iniciando VM ${_label} no KVM (${_vm_name})..."
+			_hyp_virsh_cmd start "${_vm_name}"
+			;;
+		stop)
+			_ui_step "Desligando VM ${_label} no KVM (${_vm_name})..."
+			_hyp_virsh_cmd shutdown "${_vm_name}"
+			;;
+		restart)
+			_ui_step "Reiniciando VM ${_label} no KVM (${_vm_name})..."
+			_hyp_virsh_cmd reboot "${_vm_name}"
+			;;
+		status|info)
+			_hyp_virsh_cmd dominfo "${_vm_name}" 2> "/dev/null" || true
+			_hyp_virsh_cmd domifaddr "${_vm_name}" 2> "/dev/null" || true
+			;;
+		console)
+			_hyp_virsh_cmd console "${_vm_name}"
+			;;
+		ssh)
+			_target_ip="$(_hyp_resolve_kvm_ip "${_vm_name}" "${_vm_ip}")"
+			_hyp_ssh_connect "${_vm_user}" "${_target_ip}" "$@"
+			;;
+		*)
+			_target_ip="$(_hyp_resolve_kvm_ip "${_vm_name}" "${_vm_ip}")"
+			_hyp_ssh_connect "${_vm_user}" "${_target_ip}" "${_action}" "$@"
+			;;
+	esac
 }
 
 ### ================================
@@ -146,44 +226,9 @@ freebsd() {
 		_vm_name="${FREEBSD_VM_NAME:-FreeBSD}"
 		_fb_ip="${FREEBSD_HOST_IP:-${FREEBSD_IP:-192.168.8.3}}"
 		_fb_user="${FREEBSD_HOST_USER:-${FREEBSD_USER:-freebsd}}"
-
-		if ! command -v virsh > "/dev/null" 2>&1; then
-			_ui_err "virsh (libvirt) não encontrado. Instale o stack QEMU/KVM ou configure o hypervisor."
-			return 1
-		fi
-
 		_action="${1:-ssh}"
 		[ "$#" -gt 0 ] && shift
-
-		case "${_action}" in
-			start)
-				_ui_step "Iniciando VM FreeBSD no KVM (${_vm_name})..."
-				_hyp_virsh_cmd start "${_vm_name}"
-				;;
-			stop)
-				_ui_step "Desligando VM FreeBSD no KVM (${_vm_name})..."
-				_hyp_virsh_cmd shutdown "${_vm_name}"
-				;;
-			restart)
-				_ui_step "Reiniciando VM FreeBSD no KVM (${_vm_name})..."
-				_hyp_virsh_cmd reboot "${_vm_name}"
-				;;
-			status|info)
-				_hyp_virsh_cmd dominfo "${_vm_name}" 2> "/dev/null" || true
-				_hyp_virsh_cmd domifaddr "${_vm_name}" 2> "/dev/null" || true
-				;;
-			console)
-				_hyp_virsh_cmd console "${_vm_name}"
-				;;
-			ssh)
-				_target_ip="$(_hyp_resolve_kvm_ip "${_vm_name}" "${_fb_ip}")"
-				_hyp_ssh_connect "${_fb_user}" "${_target_ip}" "$@"
-				;;
-			*)
-				_target_ip="$(_hyp_resolve_kvm_ip "${_vm_name}" "${_fb_ip}")"
-				_hyp_ssh_connect "${_fb_user}" "${_target_ip}" "${_action}" "$@"
-				;;
-		esac
+		_hyp_kvm_dispatch "FreeBSD" "${_vm_name}" "${_fb_user}" "${_fb_ip}" "${_action}" "$@"
 	fi
 }
 fb() { freebsd "$@"; }
@@ -339,72 +384,13 @@ openbsd() {
 	_vm_name="${OPENBSD_VM_NAME:-OpenBSD}"
 	_ob_ip="${OPENBSD_HOST_IP:-${OPENBSD_IP:-192.168.8.4}}"
 	_ob_user="${OPENBSD_HOST_USER:-${OPENBSD_USER:-openbsd}}"
-
 	_action="${1:-ssh}"
 	[ "$#" -gt 0 ] && shift
 
 	if [ "${_host_os}" = "freebsd" ]; then
-		case "${_action}" in
-			start)
-				_ui_step "Iniciando VM OpenBSD no Bhyve (${_vm_name})..."
-				_as_root vm start "${_vm_name}"
-				;;
-			stop)
-				_ui_step "Desligando VM OpenBSD no Bhyve (${_vm_name})..."
-				_as_root vm poweroff "${_vm_name}"
-				;;
-			restart)
-				_ui_step "Reiniciando VM OpenBSD no Bhyve (${_vm_name})..."
-				_as_root vm restart "${_vm_name}"
-				;;
-			status|list)
-				_as_root vm list
-				;;
-			console)
-				_as_root vm console "${_vm_name}"
-				;;
-			ssh)
-				_hyp_ssh_connect "${_ob_user}" "${_ob_ip}" "$@"
-				;;
-			*)
-				_hyp_ssh_connect "${_ob_user}" "${_ob_ip}" "${_action}" "$@"
-				;;
-		esac
+		_hyp_bhyve_dispatch "OpenBSD" "${_vm_name}" "${_ob_user}" "${_ob_ip}" "${_action}" "$@"
 	else
-		if ! command -v virsh > "/dev/null" 2>&1; then
-			_ui_err "virsh (libvirt) não encontrado. Instale o stack QEMU/KVM ou configure o hypervisor."
-			return 1
-		fi
-
-		case "${_action}" in
-			start)
-				_ui_step "Iniciando VM OpenBSD no KVM (${_vm_name})..."
-				_hyp_virsh_cmd start "${_vm_name}"
-				;;
-			stop)
-				_ui_step "Desligando VM OpenBSD no KVM (${_vm_name})..."
-				_hyp_virsh_cmd shutdown "${_vm_name}"
-				;;
-			restart)
-				_ui_step "Reiniciando VM OpenBSD no KVM (${_vm_name})..."
-				_hyp_virsh_cmd reboot "${_vm_name}"
-				;;
-			status|info)
-				_hyp_virsh_cmd dominfo "${_vm_name}" 2> "/dev/null" || true
-				_hyp_virsh_cmd domifaddr "${_vm_name}" 2> "/dev/null" || true
-				;;
-			console)
-				_hyp_virsh_cmd console "${_vm_name}"
-				;;
-			ssh)
-				_target_ip="$(_hyp_resolve_kvm_ip "${_vm_name}" "${_ob_ip}")"
-				_hyp_ssh_connect "${_ob_user}" "${_target_ip}" "$@"
-				;;
-			*)
-				_target_ip="$(_hyp_resolve_kvm_ip "${_vm_name}" "${_ob_ip}")"
-				_hyp_ssh_connect "${_ob_user}" "${_target_ip}" "${_action}" "$@"
-				;;
-		esac
+		_hyp_kvm_dispatch "OpenBSD" "${_vm_name}" "${_ob_user}" "${_ob_ip}" "${_action}" "$@"
 	fi
 }
 ob() { openbsd "$@"; }
@@ -443,72 +429,13 @@ netbsd() {
 	_vm_name="${NETBSD_VM_NAME:-NetBSD}"
 	_nt_ip="${NETBSD_HOST_IP:-${NETBSD_IP:-192.168.8.5}}"
 	_nt_user="${NETBSD_HOST_USER:-${NETBSD_USER:-netbsd}}"
-
 	_action="${1:-ssh}"
 	[ "$#" -gt 0 ] && shift
 
 	if [ "${_host_os}" = "freebsd" ]; then
-		case "${_action}" in
-			start)
-				_ui_step "Iniciando VM NetBSD no Bhyve (${_vm_name})..."
-				_as_root vm start "${_vm_name}"
-				;;
-			stop)
-				_ui_step "Desligando VM NetBSD no Bhyve (${_vm_name})..."
-				_as_root vm poweroff "${_vm_name}"
-				;;
-			restart)
-				_ui_step "Reiniciando VM NetBSD no Bhyve (${_vm_name})..."
-				_as_root vm restart "${_vm_name}"
-				;;
-			status|list)
-				_as_root vm list
-				;;
-			console)
-				_as_root vm console "${_vm_name}"
-				;;
-			ssh)
-				_hyp_ssh_connect "${_nt_user}" "${_nt_ip}" "$@"
-				;;
-			*)
-				_hyp_ssh_connect "${_nt_user}" "${_nt_ip}" "${_action}" "$@"
-				;;
-		esac
+		_hyp_bhyve_dispatch "NetBSD" "${_vm_name}" "${_nt_user}" "${_nt_ip}" "${_action}" "$@"
 	else
-		if ! command -v virsh > "/dev/null" 2>&1; then
-			_ui_err "virsh (libvirt) não encontrado. Instale o stack QEMU/KVM ou configure o hypervisor."
-			return 1
-		fi
-
-		case "${_action}" in
-			start)
-				_ui_step "Iniciando VM NetBSD no KVM (${_vm_name})..."
-				_hyp_virsh_cmd start "${_vm_name}"
-				;;
-			stop)
-				_ui_step "Desligando VM NetBSD no KVM (${_vm_name})..."
-				_hyp_virsh_cmd shutdown "${_vm_name}"
-				;;
-			restart)
-				_ui_step "Reiniciando VM NetBSD no KVM (${_vm_name})..."
-				_hyp_virsh_cmd reboot "${_vm_name}"
-				;;
-			status|info)
-				_hyp_virsh_cmd dominfo "${_vm_name}" 2> "/dev/null" || true
-				_hyp_virsh_cmd domifaddr "${_vm_name}" 2> "/dev/null" || true
-				;;
-			console)
-				_hyp_virsh_cmd console "${_vm_name}"
-				;;
-			ssh)
-				_target_ip="$(_hyp_resolve_kvm_ip "${_vm_name}" "${_nt_ip}")"
-				_hyp_ssh_connect "${_nt_user}" "${_target_ip}" "$@"
-				;;
-			*)
-				_target_ip="$(_hyp_resolve_kvm_ip "${_vm_name}" "${_nt_ip}")"
-				_hyp_ssh_connect "${_nt_user}" "${_target_ip}" "${_action}" "$@"
-				;;
-		esac
+		_hyp_kvm_dispatch "NetBSD" "${_vm_name}" "${_nt_user}" "${_nt_ip}" "${_action}" "$@"
 	fi
 }
 nt() { netbsd "$@"; }

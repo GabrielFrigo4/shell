@@ -376,133 +376,68 @@ if command -v shopt > "/dev/null" 2>&1; then
 else
 	alias /="cd /" 2> "/dev/null" || true
 fi
-alias ~="cd ~"
-alias ..="cd .."
-alias ...="cd ../.."
-alias ....="cd ../../.."
-alias -- -="cd -"
-alias take="take-dir"
-alias mkcd="take-dir"
-alias cdb="cd-git-root"
+alias ~="cd ~" ..="cd .." ...="cd ../.." ....="cd ../../.." -- -="cd -"
+alias take="take-dir" mkcd="take-dir" cdb="cd-git-root"
 alias clear="echo -n $'\e[2J\e[3J\e[H'"
 
 ### --------------------------------
-### Utility & History Aliases
+### Utility & Benchmark Aliases
 ### --------------------------------
-alias hist="hist-search"
-alias hg="hist-search"
-alias extract="extract-archive"
-alias x="extract-archive"
-
-### --------------------------------
-### Universal Benchmark Aliases
-### --------------------------------
-alias bsh="bench-shell"
-alias shell-bench="bench-shell"
+alias hist="hist-search" hg="hist-search"
+alias extract="extract-archive" x="extract-archive"
+alias bsh="bench-shell" shell-bench="bench-shell"
 
 ### --------------------------------
 ### Universal Update Aliases
 ### --------------------------------
-alias u="update-all"
-alias upall="update-all"
-alias upsys="update-system"
-alias upsh="update-shell"
-alias uped="update-editors"
-alias upmodes="update-emacs-modes"
-alias uprc="update-profile"
-alias upprofile="update-profile"
-alias sync-profile="update-profile"
-alias upext="sync-extensions"
-alias update-extensions="sync-extensions"
-alias upgit="update-git"
-alias plgit="pull-git"
-alias psgit="push-git"
-alias resh="reinstall-shell"
-alias ccache="clean-cache"
-alias cleancache="clean-cache"
-alias cleansys="clean-system"
-alias clearsys="clean-system"
-alias sysclean="clean-system"
-alias syscls="clean-system"
-alias clear-system="clean-system"
-alias upwf="update-wifi"
-alias upnet="update-network"
-alias uplx="update-linux"
-alias updeb="update-linux"
+alias u="update-all" upall="update-all" upsys="update-system"
+alias upsh="update-shell" uped="update-editors" upmodes="update-emacs-modes"
+alias uprc="update-profile" upprofile="update-profile" sync-profile="update-profile"
+alias upext="sync-extensions" update-extensions="sync-extensions"
+alias upgit="update-git" plgit="pull-git" psgit="push-git"
+alias resh="reinstall-shell" ccache="clean-cache" cleancache="clean-cache"
+alias cleansys="clean-system" clearsys="clean-system" sysclean="clean-system"
+alias syscls="clean-system" clear-system="clean-system"
+alias upwf="update-wifi" upnet="update-network" uplx="update-linux" updeb="update-linux"
 
 ### --------------------------------
 ### Package Managers
 ### --------------------------------
-alias upman="update-pacman"
-alias upapt="update-apt"
-alias updnf="update-dnf"
-alias upzyp="update-zypper"
-alias upxbps="update-xbps"
-alias upapk="update-apk"
-alias uppkg="update-pkg"
-alias upp="update-ports"
-alias upport="update-ports"
-alias upadd="update-pkg-add"
-alias uppkgadd="update-pkg-add"
-alias upin="update-pkgin"
-alias uppkgin="update-pkgin"
-alias upips="update-ips"
-alias uptdnf="update-tdnf"
-alias upguix="update-guix"
-alias upopkg="update-opkg"
-alias upemerge="update-emerge"
-alias upnix="update-nix"
-alias upeopkg="update-eopkg"
-alias upslack="update-slackpkg"
-alias upbrew="update-brew"
-alias upmas="update-mas"
-alias upaur="update-aur"
-alias upyay="update-aur"
-alias upparu="update-aur"
-alias update-yay="update-aur"
-alias update-paru="update-aur"
-alias upflat="update-flatpak"
-alias upsnap="update-snap"
+alias upman="update-pacman" upapt="update-apt" updnf="update-dnf"
+alias upzyp="update-zypper" upxbps="update-xbps" upapk="update-apk"
+alias uppkg="update-pkg" upp="update-ports" upport="update-ports"
+alias upadd="update-pkg-add" uppkgadd="update-pkg-add"
+alias upin="update-pkgin" uppkgin="update-pkgin" upips="update-ips"
+alias uptdnf="update-tdnf" upguix="update-guix" upopkg="update-opkg"
+alias upemerge="update-emerge" upnix="update-nix" upeopkg="update-eopkg"
+alias upslack="update-slackpkg" upbrew="update-brew" upmas="update-mas"
+alias upaur="update-aur" upyay="update-aur" upparu="update-aur"
+alias update-yay="update-aur" update-paru="update-aur"
+alias upflat="update-flatpak" upsnap="update-snap"
 
 ### ================================
 ### Version Control Aliases
 ### ================================
-alias gs="vcs-status"
-alias gd="vcs-diff"
-alias gst="git status"
-alias gco="git checkout"
-alias gcb="git checkout -b"
-alias gsw="git switch"
-alias gswc="git switch -c"
-alias gcm="git commit -m"
-alias gaa="git add --all"
-alias gl="git pull"
-alias gp="git push"
+alias gs="vcs-status" gd="vcs-diff" gst="git status"
+alias gco="git checkout" gcb="git checkout -b"
+alias gsw="git switch" gswc="git switch -c"
+alias gcm="git commit -m" gaa="git add --all"
+alias gl="git pull" gp="git push"
 alias glog="git log --oneline --decorate --graph -n 20"
 
 if command -v tog > "/dev/null" 2>&1; then
-	alias tg="tog"
-	alias tgl="tog log"
-	alias tgd="tog diff"
-	alias tgb="tog blame"
-	alias tgt="tog tree"
+	alias tg="tog" tgl="tog log" tgd="tog diff" tgb="tog blame" tgt="tog tree"
 fi
 
 ### ================================
 ### Google Antigravity CLI & Aliases
 ### ================================
-alias agy-continue="agy -c"
-alias agyc="agy -c"
-
-alias agy-auto="agy --dangerously-skip-permissions"
-alias agy-danger="agy --dangerously-skip-permissions"
-alias agya="agy --dangerously-skip-permissions"
-alias agyd="agy --dangerously-skip-permissions"
-
+alias agy-continue="agy -c" agyc="agy -c"
+alias agy-auto="agy --dangerously-skip-permissions" agy-danger="agy --dangerously-skip-permissions"
+alias agya="agy --dangerously-skip-permissions" agyd="agy --dangerously-skip-permissions"
 alias agy-continue-auto="agy -c --dangerously-skip-permissions"
 alias agy-continue-danger="agy -c --dangerously-skip-permissions"
-alias agyca="agy -c --dangerously-skip-permissions"
-alias agycd="agy -c --dangerously-skip-permissions"
+alias agyca="agy -c --dangerously-skip-permissions" agycd="agy -c --dangerously-skip-permissions"
 
 eval 'agy() {
 	if [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
