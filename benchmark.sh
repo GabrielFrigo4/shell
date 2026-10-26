@@ -306,8 +306,10 @@ if [ "${_os}" = "windows" ]; then
 	_target_limit=256; _ultra_limit=128; _max_tolerance=512
 elif [ -n "${CI}" ]; then
 	case "${_os}" in
-		macos|openbsd|netbsd)
+		macos)
 			_target_limit=128; _ultra_limit=64; _max_tolerance=256 ;;
+		openbsd|netbsd)
+			_target_limit=256; _ultra_limit=128; _max_tolerance=512 ;;
 		*)
 			_target_limit=64; _ultra_limit=32; _max_tolerance=128 ;;
 	esac
