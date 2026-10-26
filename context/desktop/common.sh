@@ -11,10 +11,10 @@ _restore_tty_cursor() {
 			if [ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ]; then
 				echo -n $'\e%G\e[?16;238;0c'
 			else
-				echo -n $'\e]112\7'
+				echo -n $'\e]112\a\e]112\e\\'
 			fi
 		else
-			echo -n $'\e[1 q\e]112\7'
+			echo -n $'\e[1 q\e]112\a\e]112\e\\'
 		fi
 	fi
 }
@@ -244,12 +244,12 @@ emacs() {
 	local _status=0
 	case "${1:-}" in
 		client)
-			shift 1
+			[ "$#" -ge 1 ] && shift 1
 			emacs-client "$@"
 			_status=$?
 			;;
 		-nw | --no-window-system | -t | --tty)
-			shift 1
+			[ "$#" -ge 1 ] && shift 1
 			emacs-nw "$@"
 			_status=$?
 			;;
