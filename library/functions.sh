@@ -222,7 +222,7 @@ update-git() {
 				Opções:
 				  -s, --status        Audita status de branches, commits divergentes e alterações
 				  -n, --dry-run       Simula a sincronização sem efetuar git pull
-				  --depth=N           Profundidade máxima de busca no diretório (padrão: 3)
+				  --depth=N           Profundidade máxima de busca no diretório (padrão: ilimitada)
 				  -h, --help          Exibe esta ajuda
 				EOF
 				return 0
@@ -232,7 +232,7 @@ update-git() {
 
 	_target_root="${PWD}"
 	_git_mode="pull"
-	_max_depth=3
+	_max_depth=""
 
 	for _arg in "$@"; do
 		case "${_arg}" in
@@ -249,16 +249,22 @@ update-git() {
 		return 1
 	fi
 
+	_depth_label="${_max_depth:-ilimitada}"
 	if [ "${_git_mode}" = "status" ]; then
-		_ui_step "Auditando status Git em: ${_target_root} (profundidade: ${_max_depth})"
+		_ui_step "Auditando status Git em: ${_target_root} (profundidade: ${_depth_label})"
 	elif [ "${_git_mode}" = "dry-run" ]; then
-		_ui_step "Simulando atualização Git em: ${_target_root} (profundidade: ${_max_depth})"
+		_ui_step "Simulando atualização Git em: ${_target_root} (profundidade: ${_depth_label})"
 	else
-		_ui_step "Buscando e atualizando repositórios Git em: ${_target_root}"
+		_ui_step "Buscando e atualizando repositórios Git em: ${_target_root} (profundidade: ${_depth_label})"
 	fi
 	echo ""
 
-	find "${_target_root}" -maxdepth "${_max_depth}" -name ".git" 2> "/dev/null" | \
+	set -- "${_target_root}"
+	if [ -n "${_max_depth}" ]; then
+		set -- "$@" -maxdepth "$(( _max_depth + 1 ))"
+	fi
+
+	find "$@" \( -type d -name ".git" -print -prune \) -o \( -type f -name ".git" -print \) 2> "/dev/null" | \
 		awk '{ n=split($0, a, "/"); print n, $0 }' | \
 		sort -n -k1,1 | \
 		cut -d' ' -f2- | while read -r _git_entry; do
@@ -294,7 +300,7 @@ update-git() {
 
 	echo ""
 	_ui_ok "Operação Git (${_git_mode}) concluída!"
-	unset _target_root _git_mode _max_depth _arg _git_entry _repo_dir _branch _status _ahead_behind
+	unset _target_root _git_mode _max_depth _depth_label _arg _git_entry _repo_dir _branch _status _ahead_behind _diverged _status_line
 }
 alias plgit="update-git"
 alias upgit="update-git"
@@ -315,7 +321,7 @@ push-git() {
 				Opções:
 				  -s, --status        Audita commits locais pendentes de envio (cherry -v)
 				  -n, --dry-run       Simula o push sem enviar commits
-				  --depth=N           Profundidade máxima de busca no diretório (padrão: 3)
+				  --depth=N           Profundidade máxima de busca no diretório (padrão: ilimitada)
 				  -h, --help          Exibe esta ajuda
 				EOF
 				return 0
@@ -325,7 +331,7 @@ push-git() {
 
 	_target_root="${PWD}"
 	_git_mode="push"
-	_max_depth=3
+	_max_depth=""
 
 	for _arg in "$@"; do
 		case "${_arg}" in
@@ -342,16 +348,22 @@ push-git() {
 		return 1
 	fi
 
+	_depth_label="${_max_depth:-ilimitada}"
 	if [ "${_git_mode}" = "status" ]; then
-		_ui_step "Auditando commits pendentes de envio em: ${_target_root}"
+		_ui_step "Auditando commits pendentes de envio em: ${_target_root} (profundidade: ${_depth_label})"
 	elif [ "${_git_mode}" = "dry-run" ]; then
-		_ui_step "Simulando push de repositórios Git em: ${_target_root}"
+		_ui_step "Simulando push de repositórios Git em: ${_target_root} (profundidade: ${_depth_label})"
 	else
-		_ui_step "Buscando e enviando repositórios Git em: ${_target_root}"
+		_ui_step "Buscando e enviando repositórios Git em: ${_target_root} (profundidade: ${_depth_label})"
 	fi
 	echo ""
 
-	find "${_target_root}" -maxdepth "${_max_depth}" -name ".git" 2> "/dev/null" | \
+	set -- "${_target_root}"
+	if [ -n "${_max_depth}" ]; then
+		set -- "$@" -maxdepth "$(( _max_depth + 1 ))"
+	fi
+
+	find "$@" \( -type d -name ".git" -print -prune \) -o \( -type f -name ".git" -print \) 2> "/dev/null" | \
 		awk '{ n=split($0, a, "/"); print n, $0 }' | \
 		sort -nr -k1,1 | \
 		cut -d' ' -f2- | while read -r _git_entry; do
@@ -376,7 +388,7 @@ push-git() {
 
 	echo ""
 	_ui_ok "Operação Push Git (${_git_mode}) concluída!"
-	unset _target_root _git_mode _max_depth _arg _git_entry _repo_dir _unpushed _branch _commit_line
+	unset _target_root _git_mode _max_depth _depth_label _arg _git_entry _repo_dir _unpushed _branch _commit_line
 }
 alias psgit="push-git"
 
