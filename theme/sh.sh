@@ -188,8 +188,8 @@ _update_prompt() {
 	fi
 
 	if [ -t 1 ]; then
-		if [ -n "${RAW_TTY:-}" ]; then
-			[ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
+		if [ "${_mode}" = "tty" ]; then
+			[ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
 		else
 			echo -n $'\e[1 q'
 		fi

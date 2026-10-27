@@ -84,8 +84,8 @@ _ksh_prompt() {
 		_theme_render
 	fi
 	if [ -t 1 ]; then
-		if [ -n "${RAW_TTY:-}" ]; then
-			[ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c' >&2
+		if [ "${_mode}" = "tty" ]; then
+			[ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c' >&2
 		else
 			echo -n $'\e[1 q' >&2
 		fi
