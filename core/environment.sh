@@ -316,7 +316,7 @@ if command -v shopt > "/dev/null" 2>&1; then
 else
 	alias /="cd /" 2> "/dev/null" || true
 fi
-alias ~="cd ~" ..="cd .." ...="cd ../.." ....="cd ../../.." -- -="cd -"
+alias -- ~="cd ~" ..="cd .." ...="cd ../.." ....="cd ../../.." -="cd -"
 alias take="take-dir" mkcd="take-dir" cdb="cd-git-root"
 alias clear="printf '\033[2J\033[3J\033[H'"
 
