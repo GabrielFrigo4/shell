@@ -223,6 +223,7 @@ graphical-launcher-x11() {
 	local _display="$(_resolve_free_display)"
 	export DISPLAY="${_display}"
 	_x11_session_env "${_flavor}"
+	_x11_driver_preflight
 
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
 	if [ ! -f "${_kiosk_theme_dir}/themerc" ]; then
@@ -363,35 +364,40 @@ EOF
 	rm -f "${_persistent_kiosk_log}" 2> "/dev/null" || true
 	local _server_auth="${XDG_RUNTIME_DIR:-/tmp}/.serverauth-gui-$$"
 	local _xinit_ret=0
+	local _auth_args=""
 
-	if command -v startx > "/dev/null" 2>&1; then
-		command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} >| "${_persistent_kiosk_log}" 2>&1
-		_xinit_ret=$?
-	elif command -v xinit > "/dev/null" 2>&1; then
-		local _auth_args=""
-		if command -v xauth > "/dev/null" 2>&1; then
-			local _cookie=""
-			if command -v mcookie > "/dev/null" 2>&1; then
-				_cookie="$(command mcookie 2> "/dev/null" || true)"
-			elif [ -r "/dev/urandom" ]; then
-				_cookie="$(command dd if=/dev/urandom bs=16 count=1 2> "/dev/null" | command hexdump -e '16/1 "%02x"' 2> "/dev/null" || true)"
-			fi
-			if [ -n "${_cookie}" ]; then
-				command xauth -q -f "${_server_auth}" add "${_display}" . "${_cookie}" 2> "/dev/null" || true
-				command xauth -q add "${_display}" . "${_cookie}" 2> "/dev/null" || true
-				_auth_args="-auth ${_server_auth}"
-			fi
+	if command -v xauth > "/dev/null" 2>&1; then
+		( umask 0077; : >> "${_server_auth}"; [ -f "${HOME}/.Xauthority" ] || : >> "${HOME}/.Xauthority" ) 2> "/dev/null" || true
+		local _cookie=""
+		if command -v mcookie > "/dev/null" 2>&1; then
+			_cookie="$(command mcookie 2> "/dev/null" || true)"
+		elif [ -r "/dev/urandom" ]; then
+			_cookie="$(command dd if=/dev/urandom bs=16 count=1 2> "/dev/null" | command hexdump -e '16/1 "%02x"' 2> "/dev/null" || true)"
 		fi
+		if [ -n "${_cookie}" ]; then
+			command xauth -q -f "${_server_auth}" add "${_display}" . "${_cookie}" 2> "/dev/null" || true
+			command xauth -q add "${_display}" . "${_cookie}" 2> "/dev/null" || true
+			_auth_args="-auth ${_server_auth}"
+		fi
+	fi
+
+	if command -v xinit > "/dev/null" 2>&1 && [ -n "${_auth_args}" ]; then
 		command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} >| "${_persistent_kiosk_log}" 2>&1
 		_xinit_ret=$?
-		rm -f "${_server_auth}" 2> "/dev/null" || true
-		command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" 2> "/dev/null" || true
+	elif command -v startx > "/dev/null" 2>&1; then
+		command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} >| "${_persistent_kiosk_log}" 2>&1
+		_xinit_ret=$?
+	else
+		command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} >| "${_persistent_kiosk_log}" 2>&1
+		_xinit_ret=$?
 	fi
+	rm -f "${_server_auth}" 2> "/dev/null" || true
+	command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" 2> "/dev/null" || true
 
 	if [ -f "${_persistent_kiosk_log}" ] && [ -s "${_persistent_kiosk_log}" ]; then
 		if [ "${_xinit_ret}" -ne 0 ]; then
 			_ui_warn "Xorg encerrou com código ${_xinit_ret}. Diagnóstico:"
-			command tail -n 15 "${_persistent_kiosk_log}" 2> "/dev/null" || true
+			_filter_xorg_noise < "${_persistent_kiosk_log}" | command tail -n 15
 		fi
 	fi
 	rm -f "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-$$.xml" 2> "/dev/null" || true
@@ -438,19 +444,28 @@ emacs-window-manager-wayland() {
 	fi
 
 	if [ -n "${_ewm_so}" ]; then
-		if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -e "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus" ]; then
+		if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus" ]; then
 			export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus"
+		fi
+		local _bus_wrapper=""
+		if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+			if command -v dbus-run-session > "/dev/null" 2>&1; then
+				_bus_wrapper="dbus-run-session --"
+			elif command -v dbus-launch > "/dev/null" 2>&1; then
+				_bus_wrapper="dbus-launch --exit-with-session"
+			fi
 		fi
 		export EWM_MODULE_PATH="${_ewm_so}"
 		export EMACSLOADPATH="${HOME}/.local/share/emacs/site-lisp/ewm:${EMACSLOADPATH:-}:"
+		export RUST_LOG="${RUST_LOG:-ewm=info,ewm_core::dbus_login1=error,ewm_core::xwayland::satellite=error,smithay=warn}"
 		rm -f "${XDG_RUNTIME_DIR:-/tmp}/emacs/ewm" 2> "/dev/null" || true
 
 		local _ewm_log="${XDG_RUNTIME_DIR:-/tmp}/ewm-$$.log"
-		command emacs --fg-daemon=ewm -L "${HOME}/.local/share/emacs/site-lisp/ewm" -l ewm -f ewm-start-module "$@" 2> "${_ewm_log}"
+		${_bus_wrapper:-command} emacs --fg-daemon=ewm -L "${HOME}/.local/share/emacs/site-lisp/ewm" -l ewm -f ewm-start-module "$@" 2> "${_ewm_log}"
 		local _emacs_ret=$?
 
 		if [ "${_emacs_ret}" -ne 0 ] && [ -f "${_ewm_log}" ]; then
-			command grep -v "Due to a limitation in GTK 3" "${_ewm_log}" 2> "/dev/null" | command grep -v "unlikely ever to be able" | command grep -v "display connection is closed" | command grep -v "Failed to connect to user scope bus" | command tail -n 10
+			command grep -v -E "Due to a limitation in GTK 3|unlikely ever to be able|display connection is closed|Failed to connect to user scope bus|org.freedesktop.login1|xwayland-satellite" "${_ewm_log}" 2> "/dev/null" | command tail -n 10
 		fi
 		rm -f "${_ewm_log}" 2> "/dev/null" || true
 	else

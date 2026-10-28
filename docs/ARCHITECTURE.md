@@ -223,7 +223,7 @@ O ecossistema impõe uma regra inegociável de separação entre funções de ru
 
 Ao iniciar compositores Wayland a partir do console puro (TTY), o encapsulamento de barramento e assento segue três vias adaptativas:
 
-1. **FreeBSD Workstation:** Encapsulado via `ck-launch-session dbus-launch --exit-with-session` para vincular ao assento ConsoleKit2 e gerenciar hardware DRM via `seatd`.
+1. **FreeBSD Workstation:** Encapsulado via `dbus-run-session -- ck-launch-session <script>` (fallback `dbus-launch --exit-with-session`) para vincular ao assento ConsoleKit2 e gerenciar hardware DRM via `seatd`. O `ck-launch-session` rejeita qualquer argumento iniciado por `-`, por isso recebe apenas um script de comando sem opções.
 2. **Linux com systemd (Fedora/Debian/Arch):** O socket `/run/user/$(id -u)/bus` gerado pelo PAM/systemd é detectado e preservado intacto, exportando `DBUS_SESSION_BUS_ADDRESS`. Isso previne a criação de barramentos isolados que causam falhas fatais em alvos de sessão do GNOME (`gnome-session@gnome.target`).
 3. **OpenBSD & Linux sem systemd (Devuan/Alpine/Void):** Invocado via `dbus-run-session` ou fallback defensivo `dbus-launch --exit-with-session`, garantindo que sessões em sistemas sem daemon de usuário recebam IPC funcional.
 

@@ -211,15 +211,50 @@ _is_terminal_app() {
 }
 
 ### --------------------------------
+### Session Command Quoting
+### --------------------------------
+# ck-launch-session rejects any dash-prefixed argument (including the
+# ones meant for its child), so its command line must be option-free.
+_session_quote_args() {
+	local _arg _line=""
+	for _arg in "$@"; do
+		_line="${_line} '$(printf '%s' "${_arg}" | sed "s/'/'\\\\''/g")'"
+	done
+	printf '%s\n' "${_line# }"
+}
+
+_session_cmd_file() {
+	local _file="${XDG_RUNTIME_DIR:-/tmp}/session-cmd-$$.sh"
+	printf '#!/bin/sh\nrm -f "$0"\nexec %s\n' "$(_session_quote_args "$@")" > "${_file}"
+	chmod 0700 "${_file}"
+	printf '%s\n' "${_file}"
+}
+
+### --------------------------------
+### Xorg Diagnostics
+### --------------------------------
+_filter_xorg_noise() {
+	command grep -v -E '^> |XKEYBOARD keymap compiler|Errors from xkbcomp are not fatal|^scfb trace:|^[[:space:]]*$' 2> "/dev/null" || true
+}
+
+_x11_driver_preflight() {
+	[ "$(_detect_os)" = "freebsd" ] || return 0
+	[ -c "/dev/dri/card0" ] && return 0
+	_ui_warn "/dev/dri/card0 ausente: Xorg usará o fallback scfb (sem aceleração). Verifique kld_list (i915kms/amdgpu)."
+}
+
+### --------------------------------
 ### Graphical Session Launchers
 ### --------------------------------
 _exec_wayland() {
 	if [ "$(_detect_os)" = "freebsd" ]; then
 		if command -v ck-launch-session > "/dev/null" 2>&1; then
-			command -v dbus-launch > "/dev/null" 2>&1 && exec ck-launch-session dbus-launch --exit-with-session "$@"
-			exec ck-launch-session "$@"
+			local _ck_cmd="$(_session_cmd_file "$@")"
+			command -v dbus-run-session > "/dev/null" 2>&1 && exec dbus-run-session -- ck-launch-session "${_ck_cmd}"
+			command -v dbus-launch > "/dev/null" 2>&1 && exec dbus-launch --exit-with-session ck-launch-session "${_ck_cmd}"
+			exec ck-launch-session "${_ck_cmd}"
 		fi
-		command -v dbus-run-session > "/dev/null" 2>&1 && exec dbus-run-session "$@"
+		command -v dbus-run-session > "/dev/null" 2>&1 && exec dbus-run-session -- "$@"
 		exec "$@"
 	fi
 	if [ -S "/run/user/$(id -u)/bus" ]; then
@@ -268,10 +303,38 @@ _exec_x11() {
 	export DISPLAY="${_display}"
 	_x11_session_env "${_X11_FLAVOR_OVERRIDE:-}"
 
+	_x11_driver_preflight
+
+	local _session_cmd=""
+	if [ "$#" -gt 0 ]; then
+		_session_cmd="$(_session_quote_args "$@")"
+	else
+		local _rc
+		for _rc in "${HOME}/.xinitrc" "${HOME}/.xsession" "${HOME}/.Xclients"; do
+			[ -f "${_rc}" ] && { _session_cmd="$(_session_quote_args sh "${_rc}")"; break; }
+		done
+		[ -z "${_session_cmd}" ] && _session_cmd="'xterm'"
+	fi
+
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-session-$$.sh"
 	cat << EOF > "${_xinit_script}"
 #!/bin/sh
+if [ -z "\${ENVIRONMENT_SESSION_WRAPPED:-}" ]; then
+	export ENVIRONMENT_SESSION_WRAPPED=1
+	if [ -z "\${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -S "\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}/bus" ]; then
+		export DBUS_SESSION_BUS_ADDRESS="unix:path=\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}/bus"
+	fi
+	_ck=""
+	[ "\$(uname -s)" = "FreeBSD" ] && command -v ck-launch-session > "/dev/null" 2>&1 && _ck="ck-launch-session"
+	if [ -z "\${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+		command -v dbus-run-session > "/dev/null" 2>&1 && exec dbus-run-session -- \${_ck} "\$0"
+		command -v dbus-launch > "/dev/null" 2>&1 && exec dbus-launch --exit-with-session \${_ck} "\$0"
+	fi
+	[ -n "\${_ck}" ] && exec ck-launch-session "\$0"
+fi
+unset ENVIRONMENT_SESSION_WRAPPED
+
 export XDG_SESSION_TYPE="x11"
 unset WAYLAND_DISPLAY
 export GDK_BACKEND="x11"
@@ -282,10 +345,6 @@ export GTK_THEME="${GTK_THEME:-Adwaita:dark}"
 export GTK_APPLICATION_PREFER_DARK_THEME=1
 export XCURSOR_THEME="${XCURSOR_THEME:-Adwaita}"
 export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
-
-if [ -z "\${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -e "\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}/bus" ]; then
-	export DBUS_SESSION_BUS_ADDRESS="unix:path=\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}/bus"
-fi
 
 if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
@@ -306,14 +365,7 @@ if command -v numlockx > "/dev/null" 2>&1; then
 	numlockx on 2> "/dev/null" || true
 fi
 
-if command -v dbus-launch > "/dev/null" 2>&1 && [ -z "\${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
-	if [ "\$(uname -s)" = "FreeBSD" ] && command -v ck-launch-session > "/dev/null" 2>&1; then
-		exec ck-launch-session dbus-launch --exit-with-session "\$@"
-	fi
-	exec dbus-launch --exit-with-session "\$@"
-else
-	exec "\$@"
-fi
+exec ${_session_cmd}
 EOF
 	chmod 0755 "${_xinit_script}"
 
@@ -325,6 +377,7 @@ EOF
 	local _auth_args=""
 
 	if command -v xauth > "/dev/null" 2>&1; then
+		( umask 0077; : >> "${_server_auth}"; [ -f "${HOME}/.Xauthority" ] || : >> "${HOME}/.Xauthority" ) 2> "/dev/null" || true
 		local _cookie=""
 		if command -v mcookie > "/dev/null" 2>&1; then
 			_cookie="$(command mcookie 2> "/dev/null" || true)"
@@ -338,11 +391,14 @@ EOF
 		fi
 	fi
 
-	if command -v startx > "/dev/null" 2>&1; then
-		command startx "${_xinit_script}" "$@" -- "${_display}" ${_vt_arg} >| "${_persistent_log}" 2>&1
+	if command -v xinit > "/dev/null" 2>&1 && [ -n "${_auth_args}" ]; then
+		command xinit "${_xinit_script}" -- "${_display}" ${_vt_arg} ${_auth_args} >| "${_persistent_log}" 2>&1
 		_xinit_ret=$?
-	elif command -v xinit > "/dev/null" 2>&1; then
-		command xinit "${_xinit_script}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} >| "${_persistent_log}" 2>&1
+	elif command -v startx > "/dev/null" 2>&1; then
+		command startx "${_xinit_script}" -- "${_display}" ${_vt_arg} >| "${_persistent_log}" 2>&1
+		_xinit_ret=$?
+	else
+		command xinit "${_xinit_script}" -- "${_display}" ${_vt_arg} >| "${_persistent_log}" 2>&1
 		_xinit_ret=$?
 	fi
 	rm -f "${_server_auth}" "${_xinit_script}" 2> "/dev/null" || true
@@ -354,7 +410,7 @@ EOF
 		else
 			_ui_info "Log da sessão Xorg preservado em: ${_persistent_log}"
 		fi
-		command tail -n 15 "${_persistent_log}" 2> "/dev/null" || true
+		_filter_xorg_noise < "${_persistent_log}" | command tail -n 15
 	fi
 
 	[ "${_had_display}" -eq 0 ] && unset DISPLAY

@@ -1,5 +1,43 @@
-# Temporary files and compiled zsh scripts
+# ----------------------------------------------------------------
+# Git Ignore: Universal Shell Engine
+# ----------------------------------------------------------------
+
+### --------------------------------
+### Compiled Zsh & Benchmark Output
+### --------------------------------
+*.zwc
+*.zwc.old
+.zcompdump*
+
+### --------------------------------
+### Temporary Files & Logs
+### --------------------------------
+*.log
+*.tmp
+*.bak
+*.orig
+*.rej
+.cache/
+
+### --------------------------------
+### Editor Backups & Swap Files
+### --------------------------------
 *~
 *.swp
-*.zwc
+*.swo
+*.kate-swp
+\#*\#
+.#*
+
+### --------------------------------
+### Operating System Cruft
+### --------------------------------
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.directory
+Thumbs.db
+ehthumbs.db
+Desktop.ini

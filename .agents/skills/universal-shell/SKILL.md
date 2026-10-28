@@ -135,7 +135,7 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
     - _Funções Canônicas (Kebab-Case por Extenso):_ `<função>` universal com autoseleção inteligente (`window-manager`, `graphical-launcher`, `emacs-window-manager`), despachando via `_dispatch_display_server "<função>"`; variantes especializadas com sufixo `<função>-wayland` e `<função>-x11`. O uso do sufixo garante agrupamento no `<TAB>` autocompletion.
     - _Aliases Ergonômicos (CLI):_ `<comando>` universal (`wm`, `win`, `gui`, `ewm`, `ew`); prefixo `w` para Wayland (`wwm`, `way`, `wgui`, `wewm`, `wew`); prefixo `x` para X11 (`xwm`, `xorg`, `x11`, `xgui`, `xewm`, `xew`, `exwm`). Proibição de colisões com utilitários de sistema (ex: `wg` do WireGuard).
 - **Inicialização Wayland (`_exec_wayland`):**
-    - _FreeBSD Workstation:_ Encapsula via `ck-launch-session dbus-launch --exit-with-session` vinculado ao ConsoleKit2 e `seatd`.
+    - _FreeBSD Workstation:_ Encapsula via `dbus-run-session -- ck-launch-session <script>` vinculado ao ConsoleKit2 e `seatd` (o `ck-launch-session` nunca recebe flags; argumentos vão num script gerado).
     - _Linux com systemd:_ Detecta e preserva `/run/user/$(id -u)/bus`, exportando `DBUS_SESSION_BUS_ADDRESS` sem criar instâncias efêmeras de `dbus-run-session` que quebrem alvos do GNOME (`gnome-session@gnome.target`).
     - _OpenBSD & Linux sem systemd (Devuan/Alpine/Void):_ Dispara via `dbus-run-session` com fallback para `dbus-launch --exit-with-session` e execução direta.
 - **Inicialização X11 / Xenocara (`_exec_x11`):**
