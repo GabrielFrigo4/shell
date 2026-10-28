@@ -158,6 +158,11 @@ _is_terminal_app() {
 	[ -z "${_target}" ] && return 0
 
 	local _base="${_target##*/}"
+	case "${_base}" in
+		firefox*|chrome*|chromium*|google-chrome*|brave*|microsoft-edge*|vivaldi*|opera*|librewolf*|zen*|epiphany*|falkon*|qutebrowser*|code|code-oss|vscode|codium|emacs|emacs-*|gimp*|inkscape*|blender*|libreoffice*|soffice*|onlyoffice*|desktopeditors*|vlc*|mpv*|celluloid*|wireshark*|kate*|geany*|zed*|antigravity*|kdeconnect*|thunderbird*|telegram*|discord*|vesktop*|slack*|spotify*|steam*|obs*|zathura*|evince*|papers*|okular*|pcmanfm*|thunar*|dolphin*|nautilus*|nemo*|caja*|pavucontrol*|pwvucontrol*|wezterm*|alacritty*|kitty*|foot*|xterm*|konsole*)
+			return 1
+			;;
+	esac
 	local _bin_path=""
 	if [ -f "${_target}" ] && [ -x "${_target}" ]; then
 		_bin_path="${_target}"
@@ -555,11 +560,40 @@ start-session() {
 	esac
 }
 
-window-manager-wayland() { start-session way "$@"; }
-alias wwm="window-manager-wayland" way="window-manager-wayland" wayland="window-manager-wayland" start-way="window-manager-wayland" start-wayland="window-manager-wayland"
+desktop-session-wayland() { start-session way "$@"; }
+alias way="desktop-session-wayland" wayland="desktop-session-wayland" start-way="desktop-session-wayland" start-wayland="desktop-session-wayland"
 
-window-manager-x11() { start-session xorg "$@"; }
-alias xwm="window-manager-x11" xorg="window-manager-x11" x11="window-manager-x11" start-xorg="window-manager-x11" start-x11="window-manager-x11"
+desktop-session-x11() { start-session xorg "$@"; }
+alias xorg="desktop-session-x11" x11="desktop-session-x11" start-xorg="desktop-session-x11" start-x11="desktop-session-x11"
+
+window-manager-wayland() {
+	if [ "$#" -gt 0 ]; then
+		start-session way "$@"
+		return $?
+	fi
+	_wayland_session_env ""
+	if command -v sway > "/dev/null" 2>&1; then
+		_exec_wayland sway
+	elif command -v labwc > "/dev/null" 2>&1; then
+		_exec_wayland labwc
+	elif command -v river > "/dev/null" 2>&1; then
+		_exec_wayland river
+	elif command -v cage > "/dev/null" 2>&1; then
+		_exec_wayland cage -s -- foot
+	else
+		start-session way
+	fi
+}
+alias wwm="window-manager-wayland"
+
+window-manager-x11() {
+	if [ "$#" -gt 0 ]; then
+		start-session xorg "$@"
+		return $?
+	fi
+	_try_xorg i3 openbox-session openbox bspwm awesome dwm xmonad qtile startfluxbox fluxbox || start-session xorg
+}
+alias xwm="window-manager-x11"
 
 window-manager() { _dispatch_display_server "window-manager" "$@"; }
 alias wm="window-manager" win="window-manager" win-man="window-manager" window="window-manager"

@@ -6,12 +6,13 @@
 ### Terminal Editors
 ### --------------------------------
 _restore_tty_cursor() {
+	if [ -t 0 ]; then
+		command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
+	fi
 	if [ -t 1 ]; then
 		if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 			if [ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ]; then
 				echo -n $'\e%G\e[?16;238;0c'
-			else
-				echo -n $'\e]112\a\e]112\e\\'
 			fi
 		else
 			echo -n $'\e[1 q\e]112\a\e]112\e\\'

@@ -107,7 +107,7 @@ default_floating_border none
 titlebar_border_thickness 0
 seat * xcursor_theme ${_cur_theme} ${_cur_size}
 seat * fallback true
-seat * hide_cursor_when_typing no
+seat * hide_cursor when-typing disable
 seat * pointer_constraint enable
 input type:pointer {
     accel_profile flat
@@ -120,10 +120,15 @@ input type:touchpad {
 }
 focus_follows_mouse yes
 xwayland enable
-for_window [app_id=".*"] fullscreen enable
+for_window [app_id=".*" tiling] fullscreen enable
 for_window [app_id=".*"] focus
-for_window [class=".*"] fullscreen enable
+for_window [class=".*" window_type="normal" tiling] fullscreen enable
 for_window [class=".*"] focus
+for_window [window_type="dialog"] floating enable, fullscreen disable
+for_window [window_type="utility"] floating enable, fullscreen disable
+for_window [window_type="popup_menu"] floating enable, fullscreen disable
+for_window [window_type="dropdown_menu"] floating enable, fullscreen disable
+for_window [floating] fullscreen disable
 bindsym Mod4+Shift+q exec swaymsg exit
 bindsym Mod4+q exec swaymsg exit
 input type:keyboard {
