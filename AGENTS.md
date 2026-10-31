@@ -62,4 +62,4 @@ Antes de qualquer modificação neste ecossistema, consulte:
 - **[PRINCIPLES.md](PRINCIPLES.md)**: Os 22 Princípios de Engenharia UNIX + Clean Code
 - **[TODO.md](TODO.md)**: Planejamento estratégico e matriz de status operacional
 - **[.agents/rules/principles.md](.agents/rules/principles.md)**: Regras específicas do Shell
-- **[.agents/skills/](.agents/skills/)**: Runbooks operacionais (`universal-shell`, `os-shell-targets`, `proactive-guardian`, `deep-investigation`)
+- **[.agents/skills/](.agents/skills/)**: Runbook operacional (`universal-shell`)

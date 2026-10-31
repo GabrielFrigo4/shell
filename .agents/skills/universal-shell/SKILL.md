@@ -2,8 +2,7 @@
 name: universal-shell
 description: >-
     Comprehensive guide and operational runbook for extending, refactoring, and auditing the Universal Shell repository.
-    Use when adding new commands, aliases, contexts, targets, or auditing shell scripts for FreeBSD /bin/sh parity,
-    defensive guards, and Clean Code standards.
+    Covers interactive target matrix across operating systems, defensive guards, Clean Code standards, and FreeBSD /bin/sh parity.
 ---
 
 # Universal Shell — Development & Architecture Runbook
@@ -18,7 +17,7 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
 
 | Camada         | Diretório  | Papel & Responsabilidade                                                                                                                            | Exemplos                                                             |
 | :------------- | :--------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------- |
-| **Biblioteca** | `library/` | Funções puras reutilizáveis, detecção de ambiente e utilitários globais. Não deve conter aliases.                                                   | `_detect_os`, `_as_root`, `path-front`, `update-all`, `clean-system` |
+| **Biblioteca** | `library/` | Funções puras reutilizáveis, detecção de ambiente e utilitários globais. NÃO DEVE conter aliases.                                                   | `_detect_os`, `_as_root`, `path-front`, `update-all`, `clean-system` |
 | **Núcleo**     | `core/`    | Variáveis essenciais de ambiente, cascatas de editores/ferramentas e integração com o Vault (`vault.sh`).                                           | `editor()`, aliases universais (`u`, `l`, `g`, `c`, `f`)             |
 | **Contextos**  | `context/` | Especializações por propósito da máquina (`desktop`, `server`, `container` — WSL unificado com auto-detecção). Dividido em `common.sh` e `<os>.sh`. | Editores gráficos (`open-*`), montagem móvel (`mount-device`), emacs |
 | **Targets**    | `target/`  | Especializações por SO (`linux`, `freebsd`, `windows`, `openbsd`, `netbsd`, `illumos`, `macos`). Injeta variáveis e caminhos.                       | `PROMPT_OS_*`, `clear` no FreeBSD, `incus` no Linux                  |
@@ -26,11 +25,33 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
 
 ---
 
-## 2. Invariantes Arquiteturais Inegociáveis
+## 2. Matriz Canônica de Alvos Interativos por SO (`target/<os>/<shell>`)
+
+Nem todo shell é suportado como alvo interativo em todos os sistemas operacionais. O ecossistema adota uma especialização cirúrgica por SO:
+
+| Sistema Operacional | Alvos Interativos Suportados (`target/`) | Justificativa Arquitetural                                                                            |
+| :------------------ | :--------------------------------------: | :---------------------------------------------------------------------------------------------------- |
+| **FreeBSD**         |         `zsh`, `bash`, **`sh`**          | **Único SO com `sh` interativo**. Parser C aceita `kebab-case`. Buffer restrito a 192 bytes.          |
+| **OpenBSD**         |         `zsh`, `bash`, **`ksh`**         | **Único SO com `ksh` interativo**. Parser pdksh com `kebab-case`. Largura zero delimitada por `\x01`. |
+| **Linux**           |              `zsh`, `bash`               | `/bin/sh` (Dash ou Bash `--posix`) rejeita `kebab-case` e NÃO DEVE ser interativo de usuário.         |
+| **macOS**           |              `zsh`, `bash`               | Zsh padrão; `/bin/sh` é Bash 3.2 obsoleto com `posixly_correct` que rejeita hífens.                   |
+| **illumos**         |              `zsh`, `bash`               | `/bin/sh` (Ksh93) rejeita hífens em funções. Suíte GNU em `/usr/gnu/bin`.                             |
+| **NetBSD**          |              `zsh`, `bash`               | `/bin/sh` ash puro rejeita hífens (`goodname()`). Berço histórico da `libedit`.                       |
+| **Windows (MSYS2)** |              `zsh`, `bash`               | Camada de emulação POSIX sobre NT. Penalidade severa de `fork()` (20-60ms). Zero subshells no boot.   |
+
+Em benchmarks, testes automatizados e documentações, a ordem de precedência ergonômica DEVE respeitar estritamente:
+
+1. **`zsh`:** Topo da ergonomia, auto-completar visual e renderização de prompts complexos.
+2. **`bash`:** Padrão corporativo universal e compatibilidade retroativa sólida.
+3. **`sh` / `ksh`:** Shells nativos do base system exclusivos de FreeBSD (`sh`) e OpenBSD (`ksh`).
+
+---
+
+## 3. Invariantes Arquiteturais Inegociáveis
 
 1. **Linha de Base FreeBSD `/bin/sh` & Alvos Nativos de Sistema Exclusivos:**
     - O `/bin/sh` do FreeBSD é a referência canônica para scripts compartilhados em `library/`, `core/` e `install.sh`.
-    - **Alvos Nativos de Sistema Exclusivos:** O alvo interativo `sh` existe unicamente no FreeBSD (`target/freebsd/sh`), e o alvo interativo `ksh` existe unicamente no OpenBSD (`target/openbsd/ksh`). Todos os demais SOs possuem exclusivamente `bash` e `zsh` como alvos interativos.
+    - **Alvos Nativos de Sistema Exclusivos:** O alvo interativo `sh` existe unicamente no FreeBSD (`target/freebsd/sh`), e o alvo interativo `ksh` existe unicamente no OpenBSD (`target/openbsd/ksh`). Todos os demais SOs DEVEM utilizar exclusivamente `bash` e `zsh` como alvos interativos.
     - O formato `echo -n $'\e...'` é universalmente suportado em todo o ecossistema (FreeBSD `/bin/sh`, Zsh, Bash e Dash moderno, além do padrão POSIX Issue 8). No OpenBSD `ksh`, sequências de controle adotam bytes octais `\033` (via `printf '\033'`).
     - Use expressamente `echo -n $'\e...'` para sequências de controle de terminal (ex: `alias clear="echo -n $'\e[2J\e[3J\e[H'"`), priorizando a clareza e legibilidade do `$'\e'` sobre o octal arcaico.
 
@@ -76,76 +97,66 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
     - `echo -n $'\e...'`: Padrão canônico e preferido para sequências ANSI em terminais interativos (`[ -t 1 ]`).
     - `printf`: Exclusivo para alinhamento de colunas e tabelas (`scripts/benchmark.sh`).
 8. **Guarda de Interatividade e Auto-Correção de `$SHELL`:**
-    - Todo RC gerado deve iniciar com `case "$-" in *i*) ;; *) return ;; esac`.
-    - Auto-correção de `$SHELL` deve usar casamento de padrão em memória (`case "${SHELL:-}" in *"/${_current_sh}") ;; ...`).
+    - Todo RC gerado DEVE iniciar com `case "$-" in *i*) ;; *) return ;; esac`.
+    - Auto-correção de `$SHELL` DEVE usar casamento de padrão em memória (`case "${SHELL:-}" in *"/${_current_sh}") ;; ...`).
 9. **Execução pelo Shell Ativo (Active Shell Invocation):**
-    - Ao disparar sub-scripts a partir de funções do shell (`install.sh`, `benchmark.sh`), execute sempre através da cascata canônica: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`.
+    - Ao disparar sub-scripts a partir de funções do shell (`install.sh`, `benchmark.sh`), execute SEMPRE através da cascata canônica: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`.
     - NUNCA use `sh <script>` hardcoded: em Linux, `/bin/sh` pode ser `dash`, que rejeita a taxonomia canônica `kebab-case`. Em scripts utilitários, garanta guard de auto-elevação para `zsh`/`bash` no topo.
 
 10. **Engenharia de Performance e Boot Ultra-Rápido (< 20ms):**
-
-- **Zero Subshells no Boot-Time:** É expressamente vedado o uso de `find`, `sed`, `awk`, `grep`, `dd` e `ps` no carregamento interativo de qualquer shell. Cada fork de processo externo custa entre 2ms e 7ms.
-- **Globbing Nativo:** Varreduras de arquivos de configuração, temas e chaves devem usar exclusivamente loops com globbing nativo (`for _f in "${DIR}"/*/*.env; do [ -f "${_f}" ] && . "${_f}"; done`).
-- **Expansão de Parâmetros com Fallback:** Sempre utilize `${VAR:-$(fallback)}` para que a captura de saída por subshell ocorra apenas se a variável não tiver sido carregada do cache.
+    - **Zero Subshells no Boot-Time:** É expressamente VEDADO o uso de `find`, `sed`, `awk`, `grep`, `dd` e `ps` no carregamento interativo de qualquer shell. Cada fork de processo externo custa entre 2ms e 7ms.
+    - **Globbing Nativo:** Varreduras de arquivos de configuração, temas e chaves DEVEM usar exclusivamente loops com globbing nativo (`for _f in "${DIR}"/*/*.env; do [ -f "${_f}" ] && . "${_f}"; done`).
+    - **Expansão de Parâmetros com Fallback:** Utilize SEMPRE `${VAR:-$(fallback)}` para que a captura de saída por subshell ocorra apenas se a variável não tiver sido carregada do cache.
 
 11. **Detecção Resiliente de Shell em Cascata (Multi-Shell):**
-
-- A detecção de shell ativo (`_detect_shell`) deve ser determinística, rápida (< 0.1ms) e tolerante a shells aninhados (`zsh` -> `bash` -> `zsh` -> `sh`).
-- Priorize a leitura direta de `/proc/$$/comm` (via builtin `read`, sem pipes ou subshell) e a checagem de variáveis nativas do interpretador (`$ZSH_VERSION`, `$BASH_VERSION`, `$KSH_VERSION`, `$FISH_VERSION`, `$NU_VERSION`, `$YASH_VERSION`, `$NETBSD_SHELL`).
-- **Proibição de Cache em Disco Compartilhado para Shells:** A variável `_DETECTED_SHELL` DEVE existir estritamente em memória do processo corrente. NUNCA a grave em arquivo de cache compartilhado no disco (`cache.env`), sob pena de contaminar subshells de tipos diferentes abertos em cascata.
+    - A detecção de shell ativo (`_detect_shell`) DEVE ser determinística, rápida (< 0.1ms) e tolerante a shells aninhados (`zsh` -> `bash` -> `zsh` -> `sh`).
+    - Priorize a leitura direta de `/proc/$$/comm` (via builtin `read`, sem pipes ou subshell) e a checagem de variáveis nativas do interpretador (`$ZSH_VERSION`, `$BASH_VERSION`, `$KSH_VERSION`, `$FISH_VERSION`, `$NU_VERSION`, `$YASH_VERSION`, `$NETBSD_SHELL`).
+    - **Proibição de Cache em Disco Compartilhado para Shells:** A variável `_DETECTED_SHELL` DEVE existir estritamente em memória do processo corrente. NUNCA a grave em arquivo de cache compartilhado no disco (`cache.env`), sob pena de contaminar subshells de tipos diferentes abertos em cascata.
 
 12. **Lazy Completion no Zsh (`_lazy_compinit`):**
-
-- A inicialização da engine de completion do Zsh (`compinit`) NÃO deve rodar sincronicamente no boot, pois adiciona de 5ms a 7ms de latência.
-- Implemente o carregamento sob demanda (_Lazy Evaluation_) interceptando o widget da tecla `<Tab>` (`bindkey '^I' _lazy_compinit`). No primeiro toque, o completion é inicializado de forma imperceptível e o widget `expand-or-complete` é restaurado para as próximas chamadas.
+    - A inicialização da engine de completion do Zsh (`compinit`) NÃO DEVE rodar sincronicamente no boot, pois adiciona de 5ms a 7ms de latência.
+    - Implemente o carregamento sob demanda (_Lazy Evaluation_) interceptando o widget da tecla `<Tab>` (`bindkey '^I' _lazy_compinit`). No primeiro toque, o completion é inicializado de forma imperceptível e o widget `expand-or-complete` é restaurado para as próximas chamadas.
 
 13. **Lançadores Efêmeros Multi-TTY (`gui`, `wgui`, `xgui`) e Quiosque Soberano:**
+    - Processos gráficos lançados por TTY são instâncias efêmeras atreladas ao terminal virtual ativo (`/dev/ttyN` no Linux ou `/dev/ttyvN` no FreeBSD), dispensando Display Managers monolíticos.
+    - A tétrade Wayland (`sway`, `labwc`, `river`, `cage`) opera com auto-maximização/fullscreen para evitar divisões de tela (split 50/50 indesejado) e garantir foco total na aplicação lançada, preservando a troca livre de TTY (`Ctrl+Alt+F1..F12`).
+    - No X11 (`xgui`), o `xterm` herda paridade estética com o `foot` (Adwaita Dark, `JetBrainsMono Nerd Font` e 16px padding), carregado via `xrdb -merge` efêmero no `xinit` e executado com `-maximized`.
+    - Ao término do ciclo da aplicação, o compositor gráfico é encerrado instantaneamente e o terminal retorna ao prompt interativo, com redesenho limpo de framebuffer (`_freebsd_vt_bounce`).
 
-- Processos gráficos lançados por TTY são instâncias efêmeras atreladas ao terminal virtual ativo (`/dev/ttyN` no Linux ou `/dev/ttyvN` no FreeBSD), dispensando Display Managers monolíticos.
-- A tétrade Wayland (`sway`, `labwc`, `river`, `cage`) opera com auto-maximização/fullscreen para evitar divisões de tela (split 50/50 indesejado) e garantir foco total na aplicação lançada, preservando a troca livre de TTY (`Ctrl+Alt+F1..F12`).
-- No X11 (`xgui`), o `xterm` herda paridade estética com o `foot` (Adwaita Dark, `JetBrainsMono Nerd Font` e 16px padding), carregado via `xrdb -merge` efêmero no `xinit` e executado com `-maximized`.
-- Ao término do ciclo da aplicação, o compositor gráfico é encerrado instantaneamente e o terminal retorna ao prompt interativo, com redesenho limpo de framebuffer (`_freebsd_vt_bounce`).
+14. **Otimização de Prompts e Cores ANSI:**
+    - NÃO DEVE utilizar repetitivamente `zstyle` em loops de renderização de prompt (`theme/zsh.sh`). Declare e utilize diretamente variáveis locais de cores ANSI.
+    - Para checar privilégios de root no prompt, utilize a variável nativa `${EUID:-$(id -u)}`, eliminando a invocação do executável externo `id`.
 
-13. **Otimização de Prompts e Cores ANSI:**
+15. **Invariante de Aliases Não-Circulares no PowerShell:**
+    - No PowerShell, nomes de funções e aliases são case-insensitive. Criar um alias com o mesmo nome da função (ex: `New-Alias "clean-system" "Clean-System"`) cria um loop circular auto-referencial que suprime a função e tenta executar um binário `.exe` inexistente no PATH. Funções NUNCA DEVEM ter aliases homônimos. Aliases de atalho DEVEM usar `Set-Alias -Force -Option AllScope` para garantir reentrância sem colisões.
 
-- Evite o uso repetitivo de `zstyle` em loops de renderização de prompt (`theme/zsh.sh`). Declare e utilize diretamente variáveis locais de cores ANSI.
-- Para checar privilégios de root no prompt, utilize a variável nativa `${EUID:-$(id -u)}`, eliminando a invocação do executável externo `id`.
+16. **Invariante Dual `Path` / `PATH` & Injeção de Helpers no NuShell:**
+    - O Windows NT armazena caminhos em `Path`, enquanto NuShell é case-sensitive em `$env`. No NuShell no Windows, configure `$env.ENV_CONVERSIONS` para ambas as chaves e sincronize `$env.Path` e `$env.PATH`. Em comandos de atualização Git (`upvt`), injete o helper explicitamente via `-c credential.https://github.com.helper=!"(get-gh-cmd)" auth git-credential` para imunidade a subprocessos.
 
-14. **Invariante de Aliases Não-Circulares no PowerShell:**
+17. **Auto-Cura Reentrante de Perfis Físicos Cross-Shell:**
+    - Em conformidade com o Princípio 19 (Autonomia Reentrante) e Princípio 7 (Zero-Tweaks), `upsh` e `resh` executados em qualquer shell no Windows (PowerShell, NuShell, CMD) sincronizam atomicamente os perfis físicos em disco de todos os demais (`Documents\PowerShell`, `%APPDATA%\nushell`, `%LOCALAPPDATA%\clink`), sem qualquer intervenção manual.
 
-- No PowerShell, nomes de funções e aliases são case-insensitive. Criar um alias com o mesmo nome da função (ex: `New-Alias "clean-system" "Clean-System"`) cria um loop circular auto-referencial que suprime a função e tenta executar um binário `.exe` inexistente no PATH. Funções nunca devem ter aliases homônimos. Aliases de atalho devem usar `Set-Alias -Force -Option AllScope` para garantir reentrância sem colisões.
+18. **Ciclo Sagrado de Propagação & Invariante de Produção Imaculada (Zero-Dirty):**
+    - O clone de produção `/usr/local/share/shell` (ou `~/.local/share/shell`) é estritamente downstream e atualizado exclusivamente via `git pull` ou comando `upsh`.
+    - Regra Invariante: NUNCA copie arquivos avulsos (`cp`, `rsync`) da bancada para a produção, mesmo durante testes rápidos ou diagnósticos. Modificações manuais tornam a working tree de produção suja (`dirty`), quebrando a soberania do DVCS e impedindo atualizações limpas.
+    - Toda modificação DEVE ser desenvolvida e validada na bancada (`~/Documents/Environment/Shell`), comitada e enviada via `git push`. A árvore de produção DEVE manter `git status` 100% limpo em todo momento.
 
-15. **Invariante Dual `Path` / `PATH` & Injeção de Helpers no NuShell:**
-
-- O Windows NT armazena caminhos em `Path`, enquanto NuShell é case-sensitive em `$env`. No NuShell no Windows, configure `$env.ENV_CONVERSIONS` para ambas as chaves e sincronize `$env.Path` e `$env.PATH`. Em comandos de atualização Git (`upvt`), injete o helper explicitamente via `-c credential.https://github.com.helper=!"(get-gh-cmd)" auth git-credential` para imunidade a subprocessos.
-
-16. **Auto-Cura Reentrante de Perfis Físicos Cross-Shell:**
-
-- Em conformidade com o Princípio 19 (Autonomia Reentrante) e Princípio 7 (Zero-Tweaks), `upsh` e `resh` executados em qualquer shell no Windows (PowerShell, NuShell, CMD) sincronizam atomicamente os perfis físicos em disco de todos os demais (`Documents\PowerShell`, `%APPDATA%\nushell`, `%LOCALAPPDATA%\clink`), sem qualquer intervenção manual.
-
-17. **Ciclo Sagrado de Propagação & Invariante de Produção Imaculada (Zero-Dirty):**
-
-- O clone de produção `/usr/local/share/shell` (ou `~/.local/share/shell`) é estritamente downstream e atualizado exclusivamente via `git pull` ou comando `upsh`.
-- Regra Invariante: Nunca copie arquivos avulsos (`cp`, `rsync`) da bancada para a produção, mesmo durante testes rápidos ou diagnósticos. Modificações manuais tornam a working tree de produção suja (`dirty`), quebrando a soberania do DVCS e impedindo atualizações limpas.
-- Toda modificação deve ser desenvolvida e validada na bancada (`~/Documents/Environment/Shell`), comitada e enviada via `git push`. A árvore de produção deve manter `git status` 100% limpo em todo momento.
-
-18. **Padrão Display Server Dispatcher & Ciclo de Vida Multi-SO (Linux, FreeBSD & OpenBSD):**
-
-- **Simetria Canônica de Nomenclatura em 3 Camadas:**
-    - _Funções Canônicas (Kebab-Case por Extenso):_ `<função>` universal com autoseleção inteligente (`window-manager`, `graphical-launcher`, `emacs-window-manager`), despachando via `_dispatch_display_server "<função>"`; variantes especializadas com sufixo `<função>-wayland` e `<função>-x11`. O uso do sufixo garante agrupamento no `<TAB>` autocompletion.
-    - _Aliases Ergonômicos (CLI):_ `<comando>` universal (`wm`, `win`, `gui`, `ewm`, `ew`); prefixo `w` para Wayland (`wwm`, `way`, `wgui`, `wewm`, `wew`); prefixo `x` para X11 (`xwm`, `xorg`, `x11`, `xgui`, `xewm`, `xew`, `exwm`). Proibição de colisões com utilitários de sistema (ex: `wg` do WireGuard).
-- **Inicialização Wayland (`_exec_wayland`):**
-    - _FreeBSD Workstation:_ Encapsula via `dbus-run-session -- ck-launch-session <script>` vinculado ao ConsoleKit2 e `seatd` (o `ck-launch-session` nunca recebe flags; argumentos vão num script gerado).
-    - _Linux com systemd:_ Detecta e preserva `/run/user/$(id -u)/bus`, exportando `DBUS_SESSION_BUS_ADDRESS` sem criar instâncias efêmeras de `dbus-run-session` que quebrem alvos do GNOME (`gnome-session@gnome.target`).
-    - _OpenBSD & Linux sem systemd (Devuan/Alpine/Void):_ Dispara via `dbus-run-session` com fallback para `dbus-launch --exit-with-session` e execução direta.
-- **Inicialização X11 / Xenocara (`_exec_x11`):**
-    - _Fusão de Recursos:_ Aplica `xrdb -merge ~/.Xresources` automaticamente se o arquivo e utilitário existirem.
-    - _Mapeamento de VT:_ Mapeia consoles virtuais Linux (`/dev/tty*`), FreeBSD (`/dev/ttyv*`) e OpenBSD wscons (`/dev/ttyC*`) para o argumento `vtN` correspondente.
-    - _Cascata Executiva:_ Executa prioritariamente `startx` com fallback para `xinit` e preservação de `${DISPLAY:-:0}`.
+19. **Padrão Display Server Dispatcher & Ciclo de Vida Multi-SO (Linux, FreeBSD & OpenBSD):**
+    - **Simetria Canônica de Nomenclatura em 3 Camadas:**
+        - _Funções Canônicas (Kebab-Case por Extenso):_ `<função>` universal com autoseleção inteligente (`window-manager`, `graphical-launcher`, `emacs-window-manager`), despachando via `_dispatch_display_server "<função>"`; variantes especializadas com sufixo `<função>-wayland` e `<função>-x11`. O uso do sufixo garante agrupamento no `<TAB>` autocompletion.
+        - _Aliases Ergonômicos (CLI):_ `<comando>` universal (`wm`, `win`, `gui`, `ewm`, `ew`); prefixo `w` para Wayland (`wwm`, `way`, `wgui`, `wewm`, `wew`); prefixo `x` para X11 (`xwm`, `xorg`, `x11`, `xgui`, `xewm`, `xew`, `exwm`). Proibição de colisões com utilitários de sistema (ex: `wg` do WireGuard).
+    - **Inicialização Wayland (`_exec_wayland`):**
+        - _FreeBSD Workstation:_ Encapsula via `dbus-run-session -- ck-launch-session <script>` vinculado ao ConsoleKit2 e `seatd` (o `ck-launch-session` NUNCA recebe flags; argumentos vão num script gerado).
+        - _Linux com systemd:_ Detecta e preserva `/run/user/$(id -u)/bus`, exportando `DBUS_SESSION_BUS_ADDRESS` sem criar instâncias efêmeras de `dbus-run-session` que quebrem alvos do GNOME (`gnome-session@gnome.target`).
+        - _OpenBSD & Linux sem systemd (Devuan/Alpine/Void):_ Dispara via `dbus-run-session` com fallback para `dbus-launch --exit-with-session` e execução direta.
+    - **Inicialização X11 / Xenocara (`_exec_x11`):**
+        - _Fusão de Recursos:_ Aplica `xrdb -merge ~/.Xresources` automaticamente se o arquivo e utilitário existirem.
+        - _Mapeamento de VT:_ Mapeia consoles virtuais Linux (`/dev/tty*`), FreeBSD (`/dev/ttyv*`) e OpenBSD wscons (`/dev/ttyC*`) para o argumento `vtN` correspondente.
+        - _Cascata Executiva:_ Executa prioritariamente `startx` com fallback para `xinit` e preservação de `${DISPLAY:-:0}`.
 
 ---
 
-## 3. Procedimento para Criar um Novo Comando / Editor
+## 4. Procedimento para Criar um Novo Comando / Editor
 
 Quando criar uma nova função de abertura de editor ou utilitário interativo:
 
@@ -184,7 +195,7 @@ Quando criar uma nova função de abertura de editor ou utilitário interativo:
 
 ---
 
-## 4. Checklist de Qualidade e Gates de Validação
+## 5. Checklist de Qualidade e Gates de Validação
 
 Ao concluir qualquer alteração em arquivos `.sh` ou `.md`, execute obrigatoriamente:
 
