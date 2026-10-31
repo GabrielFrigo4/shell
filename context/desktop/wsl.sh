@@ -26,7 +26,7 @@ cmd() {
 }
 
 ### --------------------------------
-### Windows Clipboard
+### WINDOWS CLIPBOARD
 ### --------------------------------
 clip() {
 	if command -v win32yank.exe > "/dev/null" 2>&1; then
@@ -51,7 +51,7 @@ paste() {
 }
 
 ### --------------------------------
-### Path Converters
+### PATH CONVERTERS
 ### --------------------------------
 win-path() {
 	command -v wslpath > "/dev/null" 2>&1 || { echo "❌ wslpath not found." >&2; return 127; }
@@ -64,7 +64,7 @@ wsl-path() {
 }
 
 ### --------------------------------
-### Windows Navigation
+### WINDOWS NAVIGATION
 ### --------------------------------
 cd-win() {
 	local _win_user="${USER}"
@@ -80,7 +80,7 @@ cd-win() {
 }
 
 ### --------------------------------
-### Windows File Launcher
+### WINDOWS FILE LAUNCHER
 ### --------------------------------
 open-win() {
 	if command -v wslpath > "/dev/null" 2>&1 && command -v explorer.exe > "/dev/null" 2>&1; then

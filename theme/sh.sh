@@ -197,7 +197,7 @@ _update_prompt() {
 }
 
 ### --------------------------------
-### Precision Triggers
+### PRECISION TRIGGERS
 ### --------------------------------
 _create_trigger() {
 	for _command in "$@"; do

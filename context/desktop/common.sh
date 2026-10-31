@@ -3,7 +3,7 @@
 ### ================================
 
 ### --------------------------------
-### Terminal Editors
+### TERMINAL EDITORS
 ### --------------------------------
 _restore_tty_cursor() {
 	if [ -t 0 ]; then
@@ -68,7 +68,7 @@ micro() {
 }
 
 ### --------------------------------
-### GUI Editors
+### GUI EDITORS
 ### --------------------------------
 open-kate() {
 	command -v kate > "/dev/null" 2>&1 || { _ui_err "kate not found."; return 127; }
@@ -139,7 +139,7 @@ open-zed() {
 alias oz="open-zed"
 
 ### --------------------------------
-### Desktop Applications
+### DESKTOP APPLICATIONS
 ### --------------------------------
 open-vlc() {
 	command -v vlc > "/dev/null" 2>&1 || { _ui_err "vlc not found."; return 127; }
@@ -258,7 +258,7 @@ alias omail="open-thunderbird"
 alias oth="open-thunderbird"
 
 ### --------------------------------
-### Modern Rust CLI Tools
+### MODERN RUST CLI TOOLS
 ### --------------------------------
 if command -v rg > "/dev/null" 2>&1 && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
 	alias r="rg --smart-case"
@@ -271,7 +271,7 @@ if ! command -v delta > "/dev/null" 2>&1 && command -v git-delta > "/dev/null" 2
 fi
 
 ### --------------------------------
-### Emacs Daemon & Client
+### EMACS DAEMON & CLIENT
 ### --------------------------------
 export EMACS_SOCKET_NAME="${HOME}/.emacs.d/var/server/auth/server"
 
@@ -448,7 +448,7 @@ alias oes="emacs-eshell"
 alias esh="emacs-eshell"
 
 ### --------------------------------
-### GUI Integration
+### GUI INTEGRATION
 ### --------------------------------
 if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 	if [ -z "${GTK_THEME:-}" ]; then
@@ -492,53 +492,78 @@ if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 	unset _default_cursor_paths
 
 	if [ -z "${XCURSOR_THEME:-}" ] || [ -z "${XCURSOR_SIZE:-}" ]; then
-		if [ -n "${_DETECTED_XCURSOR_THEME+x}" ] && [ -n "${_DETECTED_XCURSOR_SIZE+x}" ]; then
-			[ -z "${XCURSOR_THEME:-}" ] && export XCURSOR_THEME="${_DETECTED_XCURSOR_THEME}"
-			[ -z "${XCURSOR_SIZE:-}" ] && export XCURSOR_SIZE="${_DETECTED_XCURSOR_SIZE}"
-		else
-			_cursor_theme=""
-			_cursor_size=""
+		_cursor_theme=""
+		_cursor_size="${XCURSOR_SIZE:-24}"
 
-			if [ -z "${_cursor_theme}" ] && [ -f "${HOME}/.icons/default/index.theme" ]; then
-				_cursor_theme=$(awk -F= '/^[[:space:]]*Inherits[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.icons/default/index.theme" 2> "/dev/null")
-			fi
-			if [ -z "${_cursor_theme}" ] && [ -f "${HOME}/.config/kcminputrc" ]; then
+		if command -v plasmashell > "/dev/null" 2>&1 || command -v startplasma-wayland > "/dev/null" 2>&1 || command -v startplasma-x11 > "/dev/null" 2>&1; then
+			if [ -f "${HOME}/.config/kcminputrc" ]; then
 				_cursor_theme=$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")
-				[ -z "${_cursor_size}" ] && _cursor_size=$(awk -F= '/^[[:space:]]*cursorSize[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")
+				_cursor_size=$(awk -F= '/^[[:space:]]*cursorSize[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")
 			fi
-			if [ -z "${_cursor_theme}" ] && [ -f "${HOME}/.config/kdedefaults/kcminputrc" ]; then
-				_cursor_theme=$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kdedefaults/kcminputrc" 2> "/dev/null")
-			fi
-			if [ -z "${_cursor_theme}" ] && [ -f "${HOME}/.config/gtk-4.0/settings.ini" ]; then
-				_cursor_theme=$(awk -F= '/^[[:space:]]*gtk-cursor-theme-name[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/gtk-4.0/settings.ini" 2> "/dev/null")
-				[ -z "${_cursor_size}" ] && _cursor_size=$(awk -F= '/^[[:space:]]*gtk-cursor-theme-size[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/gtk-4.0/settings.ini" 2> "/dev/null")
-			fi
-			if [ -z "${_cursor_theme}" ] && command -v gsettings > "/dev/null" 2>&1; then
+			[ -z "${_cursor_theme}" ] && _cursor_theme="breeze_cursors"
+		elif command -v gnome-shell > "/dev/null" 2>&1; then
+			if command -v gsettings > "/dev/null" 2>&1; then
 				_cursor_theme=$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")
-				[ -z "${_cursor_size}" ] && _cursor_size=$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")
+				_cursor_size=$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+		elif command -v mate-session > "/dev/null" 2>&1; then
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme=$(gsettings get org.mate.peripherals-mouse cursor-theme 2> "/dev/null" | tr -d "'\"")
 			fi
 			if [ -z "${_cursor_theme}" ]; then
-				case "${XDG_CURRENT_DESKTOP:-}" in
-					*KDE*)   _cursor_theme="breeze_cursors" ;;
-					*GNOME*) _cursor_theme="Adwaita" ;;
-					*)       _cursor_theme="default" ;;
-				esac
+				for _cand in mate Mate Adwaita; do
+					for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
+						if [ -d "${_p}/${_cand}/cursors" ]; then
+							_cursor_theme="${_cand}"
+							break 2
+						fi
+					done
+				done
 			fi
-
-			[ -z "${_cursor_size}" ] && _cursor_size="24"
-			[ -z "${XCURSOR_THEME:-}" ] && export XCURSOR_THEME="${_cursor_theme}"
-			[ -z "${XCURSOR_SIZE:-}" ] && export XCURSOR_SIZE="${_cursor_size}"
-			if command -v _cache_write > "/dev/null" 2>&1; then
-				_cache_write "xcursor_theme" "${_cursor_theme}"
-				_cache_write "xcursor_size" "${_cursor_size}"
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+		elif command -v cinnamon-session > "/dev/null" 2>&1; then
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme=$(gsettings get org.cinnamon.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")
 			fi
-			unset _cursor_theme _cursor_size
+			if [ -z "${_cursor_theme}" ]; then
+				for _cand in Bibata-Modern-Classic DMZ-White Adwaita; do
+					for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
+						if [ -d "${_p}/${_cand}/cursors" ]; then
+							_cursor_theme="${_cand}"
+							break 2
+						fi
+					done
+				done
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+		elif command -v xfce4-session > "/dev/null" 2>&1; then
+			_cursor_theme="Adwaita"
+		elif command -v lxqt-session > "/dev/null" 2>&1; then
+			_cursor_theme="breeze_cursors"
 		fi
+
+		if [ -z "${_cursor_theme}" ]; then
+			for _cand in Bibata-Modern-Classic Adwaita breeze_cursors DMZ-White default; do
+				for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
+					if [ -d "${_p}/${_cand}/cursors" ]; then
+						_cursor_theme="${_cand}"
+						break 2
+					fi
+				done
+			done
+		fi
+
+		[ -z "${_cursor_theme}" ] && _cursor_theme="default"
+		[ -z "${_cursor_size}" ] && _cursor_size="24"
+		[ -z "${XCURSOR_THEME:-}" ] && export XCURSOR_THEME="${_cursor_theme}"
+		[ -z "${XCURSOR_SIZE:-}" ] && export XCURSOR_SIZE="${_cursor_size}"
+		unset _cursor_theme _cursor_size _cand _p
 	fi
 fi
 
 ### --------------------------------
-### Python Zero-Cruft Policy
+### PYTHON ZERO-CRUFT POLICY
 ### --------------------------------
 export PYTHONDONTWRITEBYTECODE=1
 unset PYTHONPYCACHEPREFIX

@@ -14,14 +14,14 @@ if command -v zonename > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### Zone Identity
+### ZONE IDENTITY
 ### --------------------------------
 zid() {
 	command zonename 2> "/dev/null" || echo "unknown"
 }
 
 ### --------------------------------
-### Process Inspector
+### PROCESS INSPECTOR
 ### --------------------------------
 cprocs() {
 	command ps -ef 2> "/dev/null" || command ps aux 2> "/dev/null"

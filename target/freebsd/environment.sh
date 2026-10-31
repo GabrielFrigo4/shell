@@ -10,7 +10,7 @@ path-front "${HOME}/.cargo/bin"
 path-dedup
 
 ### --------------------------------
-### Housekeeping
+### HOUSEKEEPING
 ### --------------------------------
 for _sock in 0 1 2 3 4 5 6 7 8 9; do
 	[ -e "${HOME}/:${_sock}" ] && rm -f "${HOME}/:${_sock}" 2> "/dev/null"
@@ -18,17 +18,17 @@ done
 unset -v _sock
 
 ### --------------------------------
-### FreeBSD Compat Layer
+### FREEBSD COMPAT LAYER
 ### --------------------------------
 [ -f "${SHELL_REPO_DIR}/target/freebsd/compat.sh" ] && . "${SHELL_REPO_DIR}/target/freebsd/compat.sh"
 
 ### --------------------------------
-### Bhyve Linux Runtime
+### BHYVE LINUX RUNTIME
 ### --------------------------------
 [ -f "${SHELL_REPO_DIR}/target/freebsd/bhyve.sh" ] && . "${SHELL_REPO_DIR}/target/freebsd/bhyve.sh"
 
 ### --------------------------------
-### ZFS Diagnostics
+### ZFS DIAGNOSTICS
 ### --------------------------------
 alias zarcstat="arcstat"
 alias arcstats="arcstat"

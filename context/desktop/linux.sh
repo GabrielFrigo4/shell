@@ -32,7 +32,7 @@ paste() {
 }
 
 ### --------------------------------
-### File Opener
+### FILE OPENER
 ### --------------------------------
 o() {
 	command -v xdg-open > "/dev/null" 2>&1 || { echo "❌ xdg-open not found." >&2; return 127; }
@@ -40,7 +40,7 @@ o() {
 }
 
 ### --------------------------------
-### WSL Subsystem Extensions
+### WSL SUBSYSTEM EXTENSIONS
 ### --------------------------------
 if _is_wsl; then
 	[ -f "${SHELL_REPO_DIR}/context/desktop/wsl.sh" ] && \

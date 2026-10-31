@@ -12,7 +12,7 @@ path-back "$(cygpath -u "${LOCALAPPDATA}")/Coursier/data/bin"
 path-dedup
 
 ### --------------------------------
-### Variables
+### VARIABLES
 ### --------------------------------
 export CYG_SYS_BASHRC="1"
 export C_INCLUDE_PATH="$(cygpath -m /usr/local/include)"

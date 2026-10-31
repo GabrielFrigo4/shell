@@ -104,7 +104,7 @@ agy() {
 }
 
 ### --------------------------------
-### Aliases
+### ALIASES
 ### --------------------------------
 alias debian="linux"
 alias deb="linux"

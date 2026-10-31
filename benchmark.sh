@@ -4,7 +4,7 @@
 # ----------------------------------------------------------------
 
 ### --------------------------------
-### Environment Setup
+### ENVIRONMENT SETUP
 ### --------------------------------
 _repo_dir="$(cd "$(dirname "${0}")" && pwd)"
 
@@ -78,7 +78,7 @@ fi
 printf "%b⚡ Shell Startup Latency Benchmark%b (iters: %s, standard: 2^n)\n\n" "${_ui_color_bold}${_ui_color_cyan}" "${_ui_color_reset}" "${_iterations}"
 
 ### --------------------------------
-### Measurement Runner
+### MEASUREMENT RUNNER
 ### --------------------------------
 _measure_cmd() {
 	_cmd="${1}"
@@ -248,7 +248,7 @@ except Exception:
 }
 
 ### --------------------------------
-### Binary Resolver
+### BINARY RESOLVER
 ### --------------------------------
 _resolve_shell_bin() {
 	local _target="${1}"
@@ -270,7 +270,7 @@ _resolve_shell_bin() {
 }
 
 ### --------------------------------
-### Benchmark Interactive Shells
+### BENCHMARK INTERACTIVE SHELLS
 ### --------------------------------
 printf "%b%-12s %-12s %-10s %s%b\n" "${_ui_color_bold}" "SHELL" "LATENCY" "STATUS" "TARGET (PASS / ULTRA / WARN)" "${_ui_color_reset}"
 printf "%s\n" "----------------------------------------------------------------"
@@ -358,7 +358,7 @@ for _shell in "$@"; do
 done
 
 ### --------------------------------
-### Benchmark Ecosystem Modules
+### BENCHMARK ECOSYSTEM MODULES
 ### --------------------------------
 printf "\n%b📦 Ecosystem Modules Latency%b\n" "${_ui_color_bold}${_ui_color_cyan}" "${_ui_color_reset}"
 printf "%s\n" "----------------------------------------------------------------"
@@ -411,7 +411,7 @@ if [ "${_os}" = "openbsd" ]; then
 fi
 
 ### --------------------------------
-### Benchmark Navigation
+### BENCHMARK NAVIGATION
 ### --------------------------------
 printf "\n%b🧭 Interactive Navigation Latency (cd)%b\n" "${_ui_color_bold}${_ui_color_cyan}" "${_ui_color_reset}"
 printf "%s\n" "----------------------------------------------------------------"
@@ -425,7 +425,7 @@ for _nav_shell in zsh bash; do
 done
 
 ### --------------------------------
-### Benchmark Prompt Render
+### BENCHMARK PROMPT RENDER
 ### --------------------------------
 printf "\n%b🎨 Prompt & VCS Render Latency%b\n" "${_ui_color_bold}${_ui_color_cyan}" "${_ui_color_reset}"
 printf "%s\n" "----------------------------------------------------------------"

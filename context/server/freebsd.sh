@@ -10,7 +10,7 @@ duse() {
 }
 
 ### --------------------------------
-### Memory Usage
+### MEMORY USAGE
 ### --------------------------------
 muse() {
 	command sysctl -h hw.physmem hw.usermem 2> "/dev/null" ||
@@ -18,7 +18,7 @@ muse() {
 }
 
 ### --------------------------------
-### Log Search
+### LOG SEARCH
 ### --------------------------------
 logsearch() {
 	if [ -z "${1:-}" ]; then

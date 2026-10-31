@@ -14,6 +14,6 @@ path-back  "${HOME}/.cargo/bin"
 path-dedup
 
 ### --------------------------------
-### Variables
+### VARIABLES
 ### --------------------------------
 export HOMEBREW_NO_ANALYTICS=1

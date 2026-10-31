@@ -10,7 +10,7 @@ if command sysctl -n security.jail.jailed 2> "/dev/null" | command grep -qF '1';
 fi
 
 ### --------------------------------
-### Jail Identity
+### JAIL IDENTITY
 ### --------------------------------
 jid() {
 	command sysctl -n security.jail.param.id 2> "/dev/null" ||
@@ -19,7 +19,7 @@ jid() {
 }
 
 ### --------------------------------
-### Process Inspector
+### PROCESS INSPECTOR
 ### --------------------------------
 cprocs() {
 	command ps aux 2> "/dev/null" || command ps -ef 2> "/dev/null"

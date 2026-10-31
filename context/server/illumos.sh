@@ -10,7 +10,7 @@ duse() {
 }
 
 ### --------------------------------
-### Memory Usage
+### MEMORY USAGE
 ### --------------------------------
 muse() {
 	command prtconf 2> "/dev/null" | command grep -i "Memory size" ||
@@ -19,7 +19,7 @@ muse() {
 }
 
 ### --------------------------------
-### Log Search
+### LOG SEARCH
 ### --------------------------------
 logsearch() {
 	if [ -z "${1:-}" ]; then

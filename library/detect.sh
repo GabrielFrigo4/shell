@@ -20,7 +20,7 @@ if [ -z "${_DETECTED_SHELL:-}" ]; then
 fi
 
 ### --------------------------------
-### Cache Read
+### CACHE READ
 ### --------------------------------
 _cache_read() {
 	local _file="${_SHELL_CACHE_DIR}/${1}"
@@ -34,7 +34,7 @@ _cache_read() {
 }
 
 ### --------------------------------
-### Cache Write
+### CACHE WRITE
 ### --------------------------------
 _cache_write() {
 	[ -d "${_SHELL_CACHE_DIR}" ] || command mkdir -p "${_SHELL_CACHE_DIR}" 2> "/dev/null" || return 1
@@ -47,7 +47,7 @@ _cache_write() {
 }
 
 ### --------------------------------
-### Cache Clean
+### CACHE CLEAN
 ### --------------------------------
 _cache_clean() {
 	[ -d "${_SHELL_CACHE_DIR}" ] && command rm -rf "${_SHELL_CACHE_DIR}" 2> "/dev/null" || true
@@ -63,7 +63,7 @@ _cache_clean() {
 ### ================================
 
 ### --------------------------------
-### Detect OS
+### DETECT OS
 ### --------------------------------
 _detect_os() {
 	[ -n "${_DETECTED_OS+x}" ] && echo "${_DETECTED_OS}" && return 0
@@ -89,7 +89,7 @@ _detect_os() {
 }
 
 ### --------------------------------
-### Detect WSL
+### DETECT WSL
 ### --------------------------------
 _is_wsl() {
 	[ -n "${WSL_DISTRO_NAME:-}" ] || [ -n "${WSL_INTEROP:-}" ] && return 0
@@ -104,14 +104,14 @@ _is_wsl() {
 }
 
 ### --------------------------------
-### Detect SSH / Remote Session
+### DETECT SSH / REMOTE SESSION
 ### --------------------------------
 _is_ssh() {
 	[ -n "${SSH_CLIENT:-}" ] || [ -n "${SSH_TTY:-}" ] || [ -n "${SSH_CONNECTION:-}" ]
 }
 
 ### --------------------------------
-### Detect Shell
+### DETECT SHELL
 ### --------------------------------
 _detect_shell() {
 	[ -n "${_DETECTED_SHELL:-}" ] && echo "${_DETECTED_SHELL}" && return 0
@@ -197,7 +197,7 @@ _detect_shell() {
 }
 
 ### --------------------------------
-### Detect Enabled Shell
+### DETECT ENABLED SHELL
 ### --------------------------------
 _detect_enabled_shell() {
 	local _target="${1:-path}"
@@ -245,7 +245,7 @@ _detect_enabled_shell() {
 }
 
 ### --------------------------------
-### Detect Distro
+### DETECT DISTRO
 ### --------------------------------
 _detect_distro() {
 	[ -n "${_DETECTED_DISTRO+x}" ] && echo "${_DETECTED_DISTRO}" && return 0
@@ -294,7 +294,7 @@ _detect_distro() {
 }
 
 ### --------------------------------
-### Detect Distro Family
+### DETECT DISTRO FAMILY
 ### --------------------------------
 _detect_distro_family() {
 	[ -n "${_DETECTED_DISTRO_FAMILY+x}" ] && echo "${_DETECTED_DISTRO_FAMILY}" && return 0
@@ -340,7 +340,7 @@ _detect_distro_family() {
 }
 
 ### --------------------------------
-### Detect Distro Icon
+### DETECT DISTRO ICON
 ### --------------------------------
 _detect_distro_icon() {
 	[ -n "${_DETECTED_DISTRO_ICON+x}" ] && echo "${_DETECTED_DISTRO_ICON}" && return 0
@@ -418,7 +418,7 @@ _detect_distro_icon() {
 }
 
 ### --------------------------------
-### Detect Privilege Escalator
+### DETECT PRIVILEGE ESCALATOR
 ### --------------------------------
 _detect_privilege_escalator() {
 	[ -n "${_DETECTED_ESCALATOR+x}" ] && echo "${_DETECTED_ESCALATOR}" && return 0
@@ -437,7 +437,7 @@ _detect_privilege_escalator() {
 }
 
 ### --------------------------------
-### Detect Raw TTY
+### DETECT RAW TTY
 ### --------------------------------
 _is_raw_tty() {
 	[ -n "${_IS_RAW_TTY_CACHED+x}" ] && return "${_IS_RAW_TTY_CACHED}"
@@ -484,7 +484,7 @@ _is_raw_tty() {
 }
 
 ### --------------------------------
-### Detect Kernel & Distro Version
+### DETECT KERNEL & DISTRO VERSION
 ### --------------------------------
 _detect_kernel_release() {
 	[ -n "${_DETECTED_KERNEL_RELEASE+x}" ] && echo "${_DETECTED_KERNEL_RELEASE}" && return 0

@@ -9,7 +9,7 @@ setopt SH_WORD_SPLIT
 unset IFS
 
 ### --------------------------------
-### History
+### HISTORY
 ### --------------------------------
 HISTSIZE=50000
 SAVEHIST=50000
@@ -20,7 +20,7 @@ setopt HIST_IGNORE_DUPS HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_REDUCE_BLANK
 setopt HIST_EXPIRE_DUPS_FIRST HIST_FIND_NO_DUPS HIST_SAVE_NO_DUPS HIST_VERIFY
 
 ### --------------------------------
-### Interaction & Safety
+### INTERACTION & SAFETY
 ### --------------------------------
 unsetopt CORRECT BEEP
 setopt INTERACTIVE_COMMENTS RM_STAR_WAIT NO_CLOBBER
@@ -33,7 +33,7 @@ elif command -v grep > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### Keybindings & Line Editing
+### KEYBINDINGS & LINE EDITING
 ### --------------------------------
 bindkey -e
 
@@ -130,17 +130,17 @@ bindkey -s '^[Om' '-' 2> "/dev/null" || true
 bindkey -s '^[Oo' '/' 2> "/dev/null" || true
 
 ### --------------------------------
-### Navigation
+### NAVIGATION
 ### --------------------------------
 setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS PUSHD_SILENT COMPLETE_IN_WORD
 
 ### --------------------------------
-### Globbing
+### GLOBBING
 ### --------------------------------
 setopt EXTENDED_GLOB GLOB_DOTS NULL_GLOB KSH_GLOB
 
 ### --------------------------------
-### Completion Engine
+### COMPLETION ENGINE
 ### --------------------------------
 zmodload -i zsh/complist 2> "/dev/null" || true
 
@@ -194,7 +194,7 @@ bindkey -M menuselect '^[[Z' reverse-menu-complete 2> "/dev/null" || true
 bindkey -M menuselect '^?' undo 2> "/dev/null" || true
 
 ### --------------------------------
-### Native History Autosuggestions
+### NATIVE HISTORY AUTOSUGGESTIONS
 ### --------------------------------
 if [ -t 0 ] && [ -t 1 ]; then
 	_zsh_suggest_fetch() {

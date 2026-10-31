@@ -14,7 +14,7 @@ elif [ -n "${container:-}" ]; then
 fi
 
 ### --------------------------------
-### Process Inspector
+### PROCESS INSPECTOR
 ### --------------------------------
 cprocs() {
 	if command -v ps > "/dev/null" 2>&1; then

@@ -11,7 +11,7 @@ duse() {
 }
 
 ### --------------------------------
-### Memory Usage
+### MEMORY USAGE
 ### --------------------------------
 muse() {
 	if command -v free > "/dev/null" 2>&1; then
@@ -22,7 +22,7 @@ muse() {
 }
 
 ### --------------------------------
-### Log Search
+### LOG SEARCH
 ### --------------------------------
 logsearch() {
 	if [ -z "${1:-}" ]; then
@@ -39,7 +39,7 @@ logsearch() {
 }
 
 ### --------------------------------
-### WSL Subsystem Extensions
+### WSL SUBSYSTEM EXTENSIONS
 ### --------------------------------
 if _is_wsl; then
 	[ -f "${SHELL_REPO_DIR}/context/server/wsl.sh" ] && \

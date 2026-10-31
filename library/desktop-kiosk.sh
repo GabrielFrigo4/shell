@@ -3,11 +3,11 @@
 # ----------------------------------------------------------------
 
 ### --------------------------------
-### Graphical Helpers
+### GRAPHICAL HELPERS
 ### --------------------------------
 if ! command -v _sanitize_graphical_env > "/dev/null" 2>&1; then
 	_sanitize_graphical_env() {
-		unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED
+		unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED EMACS_OS_MODE
 		export COLORTERM="truecolor"
 		export MICRO_TRUECOLOR=1
 	}
@@ -51,9 +51,10 @@ if ! command -v _resolve_graphical_app > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### Ephemeral Graphical Launchers
+### EPHEMERAL GRAPHICAL LAUNCHERS
 ### --------------------------------
 graphical-launcher-wayland() {
+	unset EMACS_OS_MODE
 	_sanitize_graphical_env
 
 	local _flavor=""
@@ -80,8 +81,6 @@ graphical-launcher-wayland() {
 	export GTK_THEME="${GTK_THEME:-Breeze-Dark:dark}"
 	export GTK_APPLICATION_PREFER_DARK_THEME=1 ADW_DEBUG_COLOR_SCHEME="prefer-dark"
 	export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
-	export XCURSOR_THEME="${XCURSOR_THEME:-breeze_cursors}"
-	export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
 
 	local _is_terminal=0
 	_is_terminal_app "${_app}" && _is_terminal=1
@@ -156,18 +155,33 @@ EOF
 		fi
 	fi
 
-	local _cur_theme="${XCURSOR_THEME:-breeze_cursors}"
+	local _cur_theme="${XCURSOR_THEME}"
 	local _cur_size="${XCURSOR_SIZE:-24}"
 	local _log_dir="$(_get_shell_log_dir)"
 	local _log_file="${_log_dir}/wayland-kiosk.log"
 	local _ret=0
 
+	unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
+	export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
+
+	local _dbus_run=""
+	if command -v dbus-run-session > "/dev/null" 2>&1; then
+		_dbus_run="dbus-run-session --"
+	elif command -v dbus-launch > "/dev/null" 2>&1; then
+		_dbus_run="dbus-launch --exit-with-session"
+	fi
+
 	if command -v sway > "/dev/null" 2>&1; then
 		local _sway_cfg="${XDG_RUNTIME_DIR:-/tmp}/sway-gui-$$.conf"
 		cat << EOF > "${_sway_cfg}"
 default_border none
-default_floating_border none
+default_floating_border pixel 1
 titlebar_border_thickness 0
+gaps inner 0
+gaps outer 0
+workspace_layout tabbed
+hide_edge_borders both
+popup_during_fullscreen smart
 seat * xcursor_theme ${_cur_theme} ${_cur_size}
 seat * fallback true
 seat * hide_cursor when-typing disable
@@ -186,15 +200,17 @@ input type:touchpad {
 }
 focus_follows_mouse yes
 xwayland enable
-for_window [app_id=".*" tiling] fullscreen enable
+for_window [window_type="dialog"] floating enable
+for_window [window_type="utility"] floating enable
+for_window [window_type="toolbar"] floating enable
+for_window [window_type="splash"] floating enable
+for_window [window_type="menu"] floating enable
+for_window [window_role="pop-up"] floating enable
+for_window [window_role="bubble"] floating enable
+for_window [window_role="dialog"] floating enable
 for_window [app_id=".*"] focus
-for_window [class=".*" window_type="normal" tiling] fullscreen enable
-for_window [class=".*"] focus
-for_window [window_type="dialog"] floating enable, fullscreen disable
-for_window [window_type="utility"] floating enable, fullscreen disable
-for_window [window_type="popup_menu"] floating enable, fullscreen disable
-for_window [window_type="dropdown_menu"] floating enable, fullscreen disable
-for_window [floating] fullscreen disable
+bindsym Mod1+Tab focus next
+bindsym Mod4+Tab focus next
 bindsym Mod4+Shift+q exec swaymsg exit
 bindsym Mod4+q exec swaymsg exit
 input type:keyboard {
@@ -207,7 +223,7 @@ input type:keyboard {
 }
 exec ${_exec_invocation}
 EOF
-		command sway -c "${_sway_cfg}" >| "${_log_file}" 2>&1
+		${_dbus_run} command sway -c "${_sway_cfg}" >| "${_log_file}" 2>&1
 		_ret=$?
 		rm -f "${_sway_cfg}" 2> "/dev/null" || true
 	elif command -v labwc > "/dev/null" 2>&1; then
@@ -300,7 +316,7 @@ EOF
   </windowRules>
 </labwc_config>
 EOF
-		command labwc -C "${_labwc_dir}" -s "${_exec_invocation}" >| "${_log_file}" 2>&1
+		${_dbus_run} command labwc -C "${_labwc_dir}" -s "${_exec_invocation}" >| "${_log_file}" 2>&1
 		_ret=$?
 		rm -rf "${_labwc_dir}" 2> "/dev/null" || true
 	elif command -v river > "/dev/null" 2>&1; then
@@ -323,17 +339,14 @@ riverctl map normal Super Q spawn "riverctl exit"
 ${_exec_invocation} &
 EOF
 		chmod 0755 "${_river_init}"
-		command river -c "${_river_init}" >| "${_log_file}" 2>&1
+		${_dbus_run} command river -c "${_river_init}" >| "${_log_file}" 2>&1
 		_ret=$?
 		rm -f "${_river_init}" 2> "/dev/null" || true
 	elif command -v cage > "/dev/null" 2>&1; then
-		command cage -s -- ${_exec_invocation} >| "${_log_file}" 2>&1
-		_ret=$?
-	elif command -v emacs > "/dev/null" 2>&1 || [ -f "${HOME}/.local/lib/libewm_core.so" ] || [ -f "${HOME}/.local/lib/libewm.so" ]; then
-		emacs-window-manager-wayland "${_app}" "$@"
+		${_dbus_run} command cage -s -- ${_exec_invocation} >| "${_log_file}" 2>&1
 		_ret=$?
 	else
-		_ui_err "Nenhum compositor Wayland (sway, labwc, river, cage, ewm) encontrado."
+		_ui_err "Nenhum compositor Wayland (sway, labwc, river, cage) encontrado."
 		rm -f "${_wayland_runner}" 2> "/dev/null" || true
 		return 1
 	fi
@@ -356,6 +369,7 @@ graphical-launcher-x11() {
 		return 1
 	}
 
+	unset EMACS_OS_MODE
 	_sanitize_graphical_env
 
 	local _flavor=""
@@ -378,12 +392,8 @@ graphical-launcher-x11() {
 	[ "$#" -ge 1 ] && shift
 	local _app="$(_resolve_graphical_app "${_raw_app}")"
 
-	if ! command -v openbox > "/dev/null" 2>&1 && ! command -v matchbox-window-manager > "/dev/null" 2>&1 && ! command -v cwm > "/dev/null" 2>&1; then
-		if command -v emacs > "/dev/null" 2>&1; then
-			emacs-window-manager-x11 "${_app}" "$@"
-			return $?
-		fi
-	fi
+	unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
+	export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
 
 	local _display="$(_resolve_free_display)"
 	export DISPLAY="${_display}"
@@ -393,8 +403,6 @@ graphical-launcher-x11() {
 	export GTK_THEME="${GTK_THEME:-Breeze-Dark:dark}"
 	export GTK_APPLICATION_PREFER_DARK_THEME=1
 	export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
-	export XCURSOR_THEME="${XCURSOR_THEME:-breeze_cursors}"
-	export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
 
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
 	if [ ! -f "${_kiosk_theme_dir}/themerc" ]; then
@@ -427,6 +435,23 @@ OTM
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-gui-$$.sh"
 	cat << EOF > "${_xinit_script}"
 #!/bin/sh
+unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
+export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
+
+if [ -z "\${ENVIRONMENT_SESSION_WRAPPED:-}" ]; then
+	export ENVIRONMENT_SESSION_WRAPPED=1
+	_ck=""
+	[ "\$(uname -s)" = "FreeBSD" ] && command -v ck-launch-session > "/dev/null" 2>&1 && _ck="ck-launch-session"
+	if command -v dbus-run-session > "/dev/null" 2>&1; then
+		exec dbus-run-session -- \${_ck} "\$0" "\$@"
+	elif command -v dbus-launch > "/dev/null" 2>&1; then
+		exec dbus-launch --exit-with-session \${_ck} "\$0" "\$@"
+	elif [ -n "\${_ck}" ]; then
+		exec ck-launch-session "\$0" "\$@"
+	fi
+fi
+unset ENVIRONMENT_SESSION_WRAPPED
+
 export XDG_SESSION_TYPE="x11"
 unset WAYLAND_DISPLAY
 export GDK_BACKEND="x11"
@@ -434,17 +459,13 @@ export QT_QPA_PLATFORM="xcb"
 export SDL_VIDEODRIVER="x11"
 export CLUTTER_BACKEND="x11"
 export GTK_CSD=0
-export GTK_THEME="${GTK_THEME:-Breeze-Dark:dark}"
+export GTK_THEME="\${GTK_THEME:-Breeze-Dark:dark}"
 export GTK_APPLICATION_PREFER_DARK_THEME=1
-export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
-export XCURSOR_THEME="${XCURSOR_THEME:-breeze_cursors}"
-export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
+export QT_QPA_PLATFORMTHEME="\${QT_QPA_PLATFORMTHEME:-qt6ct}"
+export XCURSOR_THEME="\${XCURSOR_THEME}"
+export XCURSOR_SIZE="\${XCURSOR_SIZE:-24}"
 export MOZ_GTK_TITLEBAR_DECORATION="system"
 export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
-
-if [ -z "\${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -e "\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}/bus" ]; then
-	export DBUS_SESSION_BUS_ADDRESS="unix:path=\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}/bus"
-fi
 
 if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
@@ -452,7 +473,7 @@ fi
 if command -v xrdb > "/dev/null" 2>&1; then
 	printf "Xcursor.theme: %s\nXcursor.size: %s\n" "\${XCURSOR_THEME}" "\${XCURSOR_SIZE}" | xrdb -merge - 2> "/dev/null" || true
 fi
-command -v xsetroot > "/dev/null" 2>&1 && xsetroot -cursor_name left_ptr 2> "/dev/null" || true
+command -v xsetroot > "/dev/null" 2>&1 && xsetroot -solid "#16161e" -cursor_name left_ptr 2> "/dev/null" || true
 
 if command -v setxkbmap > "/dev/null" 2>&1; then
 	setxkbmap -model abnt2 -layout br -option numpad:mac 2> "/dev/null" || true
@@ -592,7 +613,7 @@ graphical-launcher() {
 alias gui="graphical-launcher"
 
 ### --------------------------------
-### Emacs OS Window Managers
+### EMACS OS WINDOW MANAGERS
 ### --------------------------------
 emacs-window-manager-wayland() {
 	_sanitize_graphical_env
@@ -613,8 +634,10 @@ emacs-window-manager-wayland() {
 	_wayland_session_env "${_flavor}"
 	export EMACS_OS_MODE="wayland"
 
-	if ! command -v emacs > "/dev/null" 2>&1; then
+	local _ewm_emacs_bin="$(command -v emacs-pgtk 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
+	if [ -z "${_ewm_emacs_bin}" ]; then
 		_ui_err "emacs não encontrado."
+		unset EMACS_OS_MODE
 		return 127
 	fi
 
@@ -626,16 +649,13 @@ emacs-window-manager-wayland() {
 	fi
 
 	if [ -n "${_ewm_so}" ]; then
-		if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus" ]; then
-			export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus"
-		fi
+		unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
+		export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
 		local _bus_wrapper=""
-		if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
-			if command -v dbus-run-session > "/dev/null" 2>&1; then
-				_bus_wrapper="dbus-run-session --"
-			elif command -v dbus-launch > "/dev/null" 2>&1; then
-				_bus_wrapper="dbus-launch --exit-with-session"
-			fi
+		if command -v dbus-run-session > "/dev/null" 2>&1; then
+			_bus_wrapper="dbus-run-session --"
+		elif command -v dbus-launch > "/dev/null" 2>&1; then
+			_bus_wrapper="dbus-launch --exit-with-session"
 		fi
 		export EWM_MODULE_PATH="${_ewm_so}"
 		export EMACSLOADPATH="${HOME}/.local/share/emacs/site-lisp/ewm:${EMACSLOADPATH:-}:"
@@ -644,7 +664,7 @@ emacs-window-manager-wayland() {
 
 		local _log_dir="$(_get_shell_log_dir)"
 		local _ewm_log="${_log_dir}/ewm-wayland.log"
-		${_bus_wrapper:-command} emacs --fg-daemon=ewm -L "${HOME}/.local/share/emacs/site-lisp/ewm" -l ewm -f ewm-start-module "$@" >| "${_ewm_log}" 2>&1
+		${_bus_wrapper:-command} "${_ewm_emacs_bin}" --fg-daemon=ewm -L "${HOME}/.local/share/emacs/site-lisp/ewm" -l ewm -f ewm-start-module "$@" >| "${_ewm_log}" 2>&1
 		local _emacs_ret=$?
 
 		if [ "${_emacs_ret}" -ne 0 ]; then
@@ -654,6 +674,7 @@ emacs-window-manager-wayland() {
 		graphical-launcher-wayland emacs "$@"
 	fi
 
+	unset EMACS_OS_MODE
 	_restore_tty_cursor 2> "/dev/null" || true
 	_freebsd_vt_bounce
 }
@@ -682,12 +703,15 @@ emacs-window-manager-x11() {
 	local _emacs_bin="$(command -v emacs-gtk+x11 2> "/dev/null" || command -v emacs-gtk 2> "/dev/null" || command -v emacs 2> "/dev/null" || command -v emacs-lucid 2> "/dev/null" || true)"
 	if [ -z "${_emacs_bin}" ]; then
 		_ui_err "emacs não encontrado."
-		unset _X11_FLAVOR_OVERRIDE
+		unset _X11_FLAVOR_OVERRIDE EMACS_OS_MODE
 		return 127
 	fi
 
+	unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
+	export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
+
 	_exec_x11 "${_emacs_bin}" -mm "$@"
-	unset _X11_FLAVOR_OVERRIDE
+	unset _X11_FLAVOR_OVERRIDE EMACS_OS_MODE
 	_restore_tty_cursor 2> "/dev/null" || true
 	_freebsd_vt_bounce
 }

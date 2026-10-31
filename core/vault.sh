@@ -18,12 +18,12 @@ fi
 export VAULT_DIR
 
 ### --------------------------------
-### Vault Environment
+### VAULT ENVIRONMENT
 ### --------------------------------
 [ -f "${VAULT_DIR}/vault.sh" ] && . "${VAULT_DIR}/vault.sh"
 
 ### --------------------------------
-### SSH Keys
+### SSH KEYS
 ### --------------------------------
 _ssh_cache="${_SHELL_CACHE_DIR:-${XDG_RUNTIME_DIR:-/tmp}/.universal_shell_cache_${USER:-user}}/ssh_agent_verified"
 if [ -n "${SSH_AUTH_SOCK}" ] && [ -S "${SSH_AUTH_SOCK}" ]; then
@@ -39,7 +39,7 @@ unset _ssh_cache
 
 
 ### --------------------------------
-### Update Vault
+### UPDATE VAULT
 ### --------------------------------
 update-vault() {
 	for _arg in "$@"; do

@@ -8,7 +8,7 @@
 unset IFS
 
 ### --------------------------------
-### Line Editing & History
+### LINE EDITING & HISTORY
 ### --------------------------------
 set -o emacs 2> "/dev/null" || true
 
@@ -17,12 +17,12 @@ export HISTSIZE=50000
 [ -f "${HISTFILE}" ] || { : > "${HISTFILE}" && chmod 0600 "${HISTFILE}"; } 2> "/dev/null"
 
 ### --------------------------------
-### Interaction & Safety
+### INTERACTION & SAFETY
 ### --------------------------------
 set -o noclobber 2> "/dev/null" || true
 
 ### --------------------------------
-### Standard Aliases
+### STANDARD ALIASES
 ### --------------------------------
 alias h='fc -l'
 alias j='jobs'

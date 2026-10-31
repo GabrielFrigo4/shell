@@ -214,19 +214,19 @@ flowchart TD
 
 ### 🪟 Sessão Gráfica, Lançadores e Navegação
 
-| Comando / Alias                                              | Descrição                                                                                                          | Ferramenta Alvo & Fallback                                  |
-| :----------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------- |
-| `window-manager [env]` / `wm` / `win` / `win-man` / `window` | Despachante universal de sessão gráfica/WM (prioriza Wayland, fallback para X11).                                  | `_dispatch_display_server window-manager`                   |
-| `window-manager-wayland [env]` / `wwm` / `way` / `wayland`   | Inicia sessão/compositor gráfico Wayland nativo.                                                                   | `start-session way`                                         |
-| `window-manager-x11 [env]` / `xwm` / `xorg` / `x11`          | Inicia sessão/ambiente gráfico X11 (Xorg / Xenocara).                                                              | `start-session xorg`                                        |
-| `graphical-launcher [-g/-k/-x/-m/-c] [app]` / `gui`          | Lançador universal efêmero de app gráfico por TTY (Wayland/X11 com flags de DE: GNOME, KDE, XFCE, MATE, Cinnamon). | `_dispatch_display_server graphical-launcher`               |
-| `graphical-launcher-wayland [-g/-k/-x/-m/-c] [app]` / `wgui` | Lançador Wayland efêmero por TTY (sway/river/labwc/cage; padrão: `foot`; estilização por DE).                      | Sessão Wayland efêmera com auto-exit                        |
-| `graphical-launcher-x11 [-g/-k/-x/-m/-c] [app]` / `xgui`     | Lançador Xorg efêmero por TTY via `xinit` (padrão: `xterm` maximizado com Adwaita Dark via Xresources).            | Sessão X11 efêmera (`xinit`) com auto-exit                  |
-| `take <dir>` / `mkcd`                                        | Cria o diretório (incluindo intermediários) e entra nele.                                                          | `take-dir` (`mkdir -p && cd`)                               |
-| `cdb`                                                        | Retorna para o diretório raiz do repositório Git atual.                                                            | `cd-git-root` (`git rev-parse --show-toplevel`)             |
-| `hist [termo]` / `hg`                                        | Busca interativa no histórico por palavra-chave.                                                                   | `hist-search` (com suporte unificado a `zsh`, `bash`, `sh`) |
-| `extract <arquivo>` / `x`                                    | Descompacta automaticamente qualquer arquivo comprimido.                                                           | `extract-archive` (`tar`, `zip`, `7z`, `gz`, `xz`, etc.)    |
-| `~`, `/`, `..`, `...`, `....`, `-- -`                        | Atalhos rápidos de navegação no sistema de arquivos.                                                               | `cd ~`, `cd /`, `cd ..`, `cd ../..`, `cd ../../..`, `cd -`  |
+| Comando / Alias                                              | Descrição                                                                                                        | Ferramenta Alvo & Fallback                                  |
+| :----------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------- |
+| `window-manager [env]` / `wm` / `win` / `win-man` / `window` | Despachante universal de sessão gráfica/WM (prioriza Wayland, fallback para X11).                                | `_dispatch_display_server window-manager`                   |
+| `window-manager-wayland [env]` / `wwm` / `way` / `wayland`   | Inicia sessão/compositor Wayland nativo (Sway Kanagawa dark, swaybar, atalhos completos, isolamento D-Bus).      | `start-session way`                                         |
+| `window-manager-x11 [env]` / `xwm` / `xorg` / `x11`          | Inicia ambiente gráfico X11 (Openbox via `--config-file` dark Kanagawa, menu raiz, `cwm -c`, isolamento D-Bus).  | `start-session xorg`                                        |
+| `graphical-launcher [-g/-k/-x/-m/-c] [app]` / `gui`          | Lançador universal efêmero quiosque (Wayland/X11 com flags de DE e isolamento estrito multi-TTY de D-Bus).       | `_dispatch_display_server graphical-launcher`               |
+| `graphical-launcher-wayland [-g/-k/-x/-m/-c] [app]` / `wgui` | Lançador Wayland efêmero quiosque (sway/labwc/river/cage; popups flutuantes focados, sem travar Emacs/sub-apps). | Sessão Wayland efêmera com auto-exit                        |
+| `graphical-launcher-x11 [-g/-k/-x/-m/-c] [app]` / `xgui`     | Lançador Xorg efêmero quiosque via `xinit` (padrão: `xterm` maximizado, Openbox/cwm, sem delegação para EXWM).   | Sessão X11 efêmera (`xinit`) com auto-exit                  |
+| `take <dir>` / `mkcd`                                        | Cria o diretório (incluindo intermediários) e entra nele.                                                        | `take-dir` (`mkdir -p && cd`)                               |
+| `cdb`                                                        | Retorna para o diretório raiz do repositório Git atual.                                                          | `cd-git-root` (`git rev-parse --show-toplevel`)             |
+| `hist [termo]` / `hg`                                        | Busca interativa no histórico por palavra-chave.                                                                 | `hist-search` (com suporte unificado a `zsh`, `bash`, `sh`) |
+| `extract <arquivo>` / `x`                                    | Descompacta automaticamente qualquer arquivo comprimido.                                                         | `extract-archive` (`tar`, `zip`, `7z`, `gz`, `xz`, etc.)    |
+| `~`, `/`, `..`, `...`, `....`, `-- -`                        | Atalhos rápidos de navegação no sistema de arquivos.                                                             | `cd ~`, `cd /`, `cd ..`, `cd ../..`, `cd ../../..`, `cd -`  |
 
 ---
 

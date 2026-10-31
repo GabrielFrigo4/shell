@@ -8,7 +8,7 @@
 unset IFS
 
 ### --------------------------------
-### Shell Options & History
+### SHELL OPTIONS & HISTORY
 ### --------------------------------
 HISTCONTROL=ignoreboth:erasedups
 HISTSIZE=50000
@@ -24,12 +24,12 @@ case "${PROMPT_COMMAND:-}" in
 esac
 
 ### --------------------------------
-### Interaction & Safety
+### INTERACTION & SAFETY
 ### --------------------------------
 set -o noclobber
 
 ### --------------------------------
-### Keybindings & Line Editing
+### KEYBINDINGS & LINE EDITING
 ### --------------------------------
 if case "$-" in *i*) true;; *) false;; esac; then
 	bind 'set bell-style none' 2> "/dev/null" || true
@@ -111,20 +111,20 @@ if case "$-" in *i*) true;; *) false;; esac; then
 fi
 
 ### --------------------------------
-### Navigation
+### NAVIGATION
 ### --------------------------------
 shopt -s autocd 2> "/dev/null" || true
 shopt -s cdspell 2> "/dev/null" || true
 shopt -s dirspell 2> "/dev/null" || true
 
 ### --------------------------------
-### Globbing
+### GLOBBING
 ### --------------------------------
 shopt -s globstar 2> "/dev/null" || true
 shopt -s extglob  2> "/dev/null" || true
 
 ### --------------------------------
-### System Completions
+### SYSTEM COMPLETIONS
 ### --------------------------------
 if ! shopt -oq posix; then
 	if ! declare -F _init_completion > "/dev/null" 2>&1; then

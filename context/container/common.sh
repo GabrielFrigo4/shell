@@ -25,7 +25,7 @@ cenv() {
 }
 
 ### --------------------------------
-### Container Runtime Detection
+### CONTAINER RUNTIME DETECTION
 ### --------------------------------
 chost() {
 	if [ -f /run/host/container-manager ]; then
@@ -50,7 +50,7 @@ chost() {
 }
 
 ### --------------------------------
-### Python Ephemeral Policy
+### PYTHON EPHEMERAL POLICY
 ### --------------------------------
 export PYTHONDONTWRITEBYTECODE=1
 unset PYTHONPYCACHEPREFIX

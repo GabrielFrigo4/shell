@@ -8,7 +8,7 @@ unset IFS
 [ -n "${ZSH_VERSION:-}" ] && setopt SH_WORD_SPLIT 2> "/dev/null" || true
 
 ### --------------------------------
-### Active Shell Elevation Guard
+### ACTIVE SHELL ELEVATION GUARD
 ### --------------------------------
 if [ -z "${ZSH_VERSION:-}" ]; then
 	_esc_test=$'\e'
@@ -25,7 +25,7 @@ fi
 
 
 ### --------------------------------
-### Help Documentation
+### HELP DOCUMENTATION
 ### --------------------------------
 _show_help() {
 	cat <<- EOF
@@ -60,7 +60,7 @@ _show_help() {
 }
 
 ### --------------------------------
-### Parse Arguments
+### PARSE ARGUMENTS
 ### --------------------------------
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
 SHELL_TARGET="${SHELL_TARGET:-all}"
@@ -137,7 +137,7 @@ case "${SHELL_USERLAND}" in
 esac
 
 ### --------------------------------
-### Detect Environment
+### DETECT ENVIRONMENT
 ### --------------------------------
 for _lib in "${SHELL_REPO_DIR}/library/"*.sh; do
 	[ -f "${_lib}" ] && . "${_lib}"
@@ -148,7 +148,7 @@ OS_NAME="$(_detect_os)"
 SHELL_NAME="$(_detect_shell)"
 
 ### --------------------------------
-### Determine Target Shells
+### DETERMINE TARGET SHELLS
 ### --------------------------------
 if [ "${SHELL_TARGET}" != "all" ]; then
 	TARGET_SHELLS="${SHELL_TARGET}"
@@ -204,7 +204,7 @@ else
 fi
 
 ### --------------------------------
-### Repository Permissions
+### REPOSITORY PERMISSIONS
 ### --------------------------------
 if [ "${OS_NAME}" != "windows" ]; then
 	_real_user="${SUDO_USER:-${DOAS_USER:-$(id -un)}}"
@@ -232,7 +232,7 @@ if [ -d "${SHELL_REPO_DIR}/.git" ] && command -v git > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### Standalone Base Template
+### STANDALONE BASE TEMPLATE
 ### --------------------------------
 _generate_rc_pure() {
 	local _target="${1:-}"
@@ -283,7 +283,7 @@ _generate_rc_pure() {
 }
 
 ### --------------------------------
-### Target Shell Installer
+### TARGET SHELL INSTALLER
 ### --------------------------------
 _install_shell_target() {
 	local _target_shell="${1}"
@@ -533,7 +533,7 @@ _install_shell_target() {
 }
 
 ### --------------------------------
-### Execute Installation
+### EXECUTE INSTALLATION
 ### --------------------------------
 for _target in ${TARGET_SHELLS}; do
 	echo ""

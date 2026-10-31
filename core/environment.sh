@@ -31,7 +31,7 @@ fi
 [ -z "${LC_CTYPE:-}" ] && export LC_CTYPE="${LANG}"
 
 ### --------------------------------
-### Graphics Acceleration
+### GRAPHICS ACCELERATION
 ### --------------------------------
 _env_os_name="${_DETECTED_OS-$(_detect_os)}"
 case "${_env_os_name}" in
@@ -50,7 +50,7 @@ esac
 unset _env_os_name
 
 ### --------------------------------
-### Python Bytecode & Cache Policy
+### PYTHON BYTECODE & CACHE POLICY
 ### --------------------------------
 case "${SHELL_CONTEXT:-desktop}" in
 	server)
@@ -64,7 +64,7 @@ case "${SHELL_CONTEXT:-desktop}" in
 esac
 
 ### --------------------------------
-### Auto-Correct SHELL
+### AUTO-CORRECT SHELL
 ### --------------------------------
 _current_sh="${_DETECTED_SHELL:-$(_detect_shell)}"
 case "${SHELL:-}" in
@@ -74,7 +74,7 @@ esac
 unset _current_sh
 
 ### --------------------------------
-### Privilege Escalation Aliases
+### PRIVILEGE ESCALATION ALIASES
 ### --------------------------------
 if command -v doas > "/dev/null" 2>&1; then
 	if ! command -v sudo > "/dev/null" 2>&1; then
@@ -87,7 +87,7 @@ elif command -v sudo > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### AUR Compatibility Aliases
+### AUR COMPATIBILITY ALIASES
 ### --------------------------------
 if command -v paru > "/dev/null" 2>&1; then
 	if ! command -v yay > "/dev/null" 2>&1; then
@@ -100,7 +100,7 @@ elif command -v yay > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### Default Editor
+### DEFAULT EDITOR
 ### --------------------------------
 _is_generic_editor() {
 	case "${1:-}" in
@@ -121,7 +121,7 @@ if _is_generic_editor "${EDITOR:-}"; then
 fi
 
 ### --------------------------------
-### Universal Editor
+### UNIVERSAL EDITOR
 ### --------------------------------
 editor() {
 	if [ "$#" -eq 0 ]; then
@@ -138,7 +138,7 @@ if [ -n "${DISPLAY:-}" ] && [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/
 fi
 
 ### --------------------------------
-### Package Compatibility Aliases
+### PACKAGE COMPATIBILITY ALIASES
 ### --------------------------------
 _env_os="${_DETECTED_OS-$(_detect_os)}"
 _bat_bin="${_DETECTED_BAT-$(_detect_bat)}"
@@ -151,7 +151,7 @@ _rg_bin="${_DETECTED_RG-$(_detect_rg)}"
 [ "${_fd_bin}" = "fd-find" ] && alias fd="fd-find"
 
 ### --------------------------------
-### Directory Listing
+### DIRECTORY LISTING
 ### --------------------------------
 unalias ls grep cat find ssh agy 2> "/dev/null" || true
 unset -f ls grep cat find 2> "/dev/null" || true
@@ -200,7 +200,7 @@ fi
 unset _ls_l _ls_ll _ls_la _eza_bin
 
 ### --------------------------------
-### Search in Files
+### SEARCH IN FILES
 ### --------------------------------
 case "${_env_os}" in
 	freebsd|dragonfly*|openbsd|netbsd|illumos|solaris|sunos) ;;
@@ -215,7 +215,7 @@ fi
 unset _rg_bin
 
 ### --------------------------------
-### File Preview
+### FILE PREVIEW
 ### --------------------------------
 if [ -n "${_bat_bin}" ] && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
 	alias c="${_bat_bin} --paging=never"
@@ -227,7 +227,7 @@ fi
 unset _bat_bin
 
 ### --------------------------------
-### File & Path Search
+### FILE & PATH SEARCH
 ### --------------------------------
 if [ -n "${_fd_bin}" ] && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
 	alias f="${_fd_bin}"
@@ -239,7 +239,7 @@ fi
 unset _fd_bin _env_os
 
 ### --------------------------------
-### SSH Client TTY Propagation
+### SSH CLIENT TTY PROPAGATION
 ### --------------------------------
 eval 'ssh() {
 	_is_raw=0
@@ -259,7 +259,7 @@ eval 'ssh() {
 }'
 
 ### --------------------------------
-### Dust Disk Usage
+### DUST DISK USAGE
 ### --------------------------------
 _dust_bin="${_DETECTED_DUST-$(_detect_dust)}"
 if [ -n "${_dust_bin}" ]; then
@@ -271,7 +271,7 @@ fi
 unset _dust_bin
 
 ### --------------------------------
-### Procs Process Inspection
+### PROCS PROCESS INSPECTION
 ### --------------------------------
 _procs_bin="${_DETECTED_PROCS-$(_detect_procs)}"
 if [ -n "${_procs_bin}" ]; then
@@ -284,7 +284,7 @@ fi
 unset _procs_bin
 
 ### --------------------------------
-### Bottom System Monitor
+### BOTTOM SYSTEM MONITOR
 ### --------------------------------
 _btm_bin="${_DETECTED_BOTTOM-$(_detect_bottom)}"
 if [ -n "${_btm_bin}" ]; then
@@ -300,7 +300,7 @@ fi
 unset _btm_bin
 
 ### --------------------------------
-### Zoxide Smart Navigation
+### ZOXIDE SMART NAVIGATION
 ### --------------------------------
 _zoxide_bin="${_DETECTED_ZOXIDE-$(_detect_zoxide)}"
 if [ -n "${_zoxide_bin}" ]; then
@@ -328,7 +328,7 @@ fi
 unset _zoxide_bin
 
 ### --------------------------------
-### Navigation Aliases
+### NAVIGATION ALIASES
 ### --------------------------------
 if command -v shopt > "/dev/null" 2>&1; then
 	shopt -s autocd 2> "/dev/null" || true
@@ -340,14 +340,14 @@ alias take="take-dir" mkcd="take-dir" cdb="cd-git-root"
 alias clear="printf '\x1b[2J\x1b[3J\x1b[H'"
 
 ### --------------------------------
-### Utility & Benchmark Aliases
+### UTILITY & BENCHMARK ALIASES
 ### --------------------------------
 alias hist="hist-search" hg="hist-search"
 alias extract="extract-archive" x="extract-archive"
 alias bsh="bench-shell" shell-bench="bench-shell"
 
 ### --------------------------------
-### Universal Update Aliases
+### UNIVERSAL UPDATE ALIASES
 ### --------------------------------
 alias u="update-all" upall="update-all" upsys="update-system"
 alias upsh="update-shell" uped="update-editors" upmodes="update-emacs-modes"
@@ -360,7 +360,7 @@ alias syscls="clean-system" clear-system="clean-system"
 alias upwf="update-wifi" upnet="update-network" uplx="update-linux" updeb="update-linux"
 
 ### --------------------------------
-### Package Managers
+### PACKAGE MANAGERS
 ### --------------------------------
 alias upman="update-pacman" upapt="update-apt" updnf="update-dnf"
 alias upzyp="update-zypper" upxbps="update-xbps" upapk="update-apk"
@@ -375,7 +375,7 @@ alias update-yay="update-aur" update-paru="update-aur"
 alias upflat="update-flatpak" upsnap="update-snap"
 
 ### ================================
-### Version Control Aliases
+### VERSION CONTROL ALIASES
 ### ================================
 alias gs="vcs-status" gd="vcs-diff" gst="git status"
 alias gco="git checkout" gcb="git checkout -b"
@@ -389,7 +389,7 @@ if command -v tog > "/dev/null" 2>&1; then
 fi
 
 ### ================================
-### Google Antigravity CLI & Aliases
+### GOOGLE ANTIGRAVITY CLI & ALIASES
 ### ================================
 eval 'agy() {
 	if [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then

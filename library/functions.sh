@@ -18,7 +18,7 @@ _as_root() {
 }
 
 ### --------------------------------
-### Path Manipulation
+### PATH MANIPULATION
 ### --------------------------------
 path-front() {
 	case ":${PATH}:" in
@@ -63,7 +63,7 @@ path-dedup() {
 }
 
 ### --------------------------------
-### Clean Cache
+### CLEAN CACHE
 ### --------------------------------
 clean-cache() {
 	_ui_step "Limpando cache do Universal Shell..."
@@ -74,7 +74,7 @@ alias cleancache="clean-cache"
 alias ccache="clean-cache"
 
 ### --------------------------------
-### Resilient Git Pull & Push
+### RESILIENT GIT PULL & PUSH
 ### --------------------------------
 _git_pull_resilient() {
 	local _dir="$1"
@@ -245,7 +245,7 @@ _git_push_resilient() {
 }
 
 ### --------------------------------
-### Update & Push Git Repositories
+### UPDATE & PUSH GIT REPOSITORIES
 ### --------------------------------
 update-git() {
 	for _arg in "$@"; do
@@ -433,7 +433,7 @@ push-git() {
 alias psgit="push-git"
 
 ### --------------------------------
-### Poweroff & Reboot System
+### POWEROFF & REBOOT SYSTEM
 ### --------------------------------
 poweroff() {
 	case "$(_detect_os)" in
@@ -453,7 +453,7 @@ reboot() {
 }
 
 ### ================================
-### Version Control: Got & Git
+### VERSION CONTROL - GOT & GIT
 ### ================================
 vcs-status() {
 	if [ -d ".got" ] || [ -f ".got/base-commit" ]; then
@@ -498,7 +498,7 @@ got-init() {
 }
 
 ### --------------------------------
-### Navigation, History & Archives
+### NAVIGATION HISTORY & ARCHIVES
 ### --------------------------------
 take-dir() {
 	if [ "$#" -eq 0 ]; then

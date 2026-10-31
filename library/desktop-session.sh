@@ -3,11 +3,11 @@
 # ----------------------------------------------------------------
 
 ### --------------------------------
-### Graphical Helpers
+### GRAPHICAL HELPERS
 ### --------------------------------
 if ! command -v _sanitize_graphical_env > "/dev/null" 2>&1; then
 	_sanitize_graphical_env() {
-		unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED
+		unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED EMACS_OS_MODE
 		export COLORTERM="truecolor"
 		export MICRO_TRUECOLOR=1
 	}
@@ -51,7 +51,7 @@ if ! command -v _resolve_graphical_app > "/dev/null" 2>&1; then
 fi
 
 ### --------------------------------
-### Console & Cursor Helpers
+### CONSOLE & CURSOR HELPERS
 ### --------------------------------
 _enable_numlock_console() {
 	if [ -t 0 ] || [ -c "/dev/tty" ]; then
@@ -61,40 +61,144 @@ _enable_numlock_console() {
 }
 
 _setup_cursor_env() {
+	local _flavor="${1:-}"
 	export XCURSOR_PATH="${HOME}/.local/share/icons:${HOME}/.icons:/usr/local/share/icons:/usr/share/icons"
 	export WLR_NO_HARDWARE_CURSORS=1
 
-	local _candidate="" _found_theme="" _p=""
-	local _de_hint="${XDG_CURRENT_DESKTOP:-$(_detect_desktop_theme 2> "/dev/null" || true)}"
-	local _primary_cursor="Adwaita" _secondary_cursor="breeze_cursors"
-	case "${_de_hint}" in
-		*[Kk][Dd][Ee]*|*[Pp]lasma*) _primary_cursor="breeze_cursors"; _secondary_cursor="Adwaita" ;;
+	local _cursor_theme="" _target_size="${XCURSOR_SIZE:-24}"
+	case "${_flavor}" in
+		kde|plasma)
+			_cursor_theme="breeze_cursors"
+			;;
+		gnome)
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+			;;
+		mate)
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme="$(gsettings get org.mate.peripherals-mouse cursor-theme 2> "/dev/null" | tr -d "'\"")"
+			fi
+			if [ -z "${_cursor_theme}" ]; then
+				for _c in mate Mate Adwaita; do
+					for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
+						if [ -d "${_p}/${_c}/cursors" ]; then
+							_cursor_theme="${_c}"
+							break 2
+						fi
+					done
+				done
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+			;;
+		cinnamon)
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme="$(gsettings get org.cinnamon.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+			fi
+			if [ -z "${_cursor_theme}" ]; then
+				for _c in Bibata-Modern-Classic DMZ-White Adwaita; do
+					for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
+						if [ -d "${_p}/${_c}/cursors" ]; then
+							_cursor_theme="${_c}"
+							break 2
+						fi
+					done
+				done
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+			;;
+		xfce)
+			_cursor_theme="Adwaita"
+			;;
 	esac
 
-	for _candidate in "${XCURSOR_THEME:-}" "${_primary_cursor}" "${_secondary_cursor}" "Bibata-Modern-Classic" "default"; do
-		[ -z "${_candidate}" ] && continue
+	if [ -z "${_cursor_theme}" ]; then
+		if command -v plasmashell > "/dev/null" 2>&1 || command -v startplasma-wayland > "/dev/null" 2>&1 || command -v startplasma-x11 > "/dev/null" 2>&1; then
+			_cursor_theme="breeze_cursors"
+		elif command -v gnome-shell > "/dev/null" 2>&1; then
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+		elif command -v mate-session > "/dev/null" 2>&1; then
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme="$(gsettings get org.mate.peripherals-mouse cursor-theme 2> "/dev/null" | tr -d "'\"")"
+			fi
+			if [ -z "${_cursor_theme}" ]; then
+				for _c in mate Mate Adwaita; do
+					for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
+						if [ -d "${_p}/${_c}/cursors" ]; then
+							_cursor_theme="${_c}"
+							break 2
+						fi
+					done
+				done
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+		elif command -v cinnamon-session > "/dev/null" 2>&1; then
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme="$(gsettings get org.cinnamon.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+			fi
+			if [ -z "${_cursor_theme}" ]; then
+				for _c in Bibata-Modern-Classic DMZ-White Adwaita; do
+					for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
+						if [ -d "${_p}/${_c}/cursors" ]; then
+							_cursor_theme="${_c}"
+							break 2
+						fi
+					done
+				done
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+		elif command -v xfce4-session > "/dev/null" 2>&1; then
+			_cursor_theme="Adwaita"
+		elif command -v lxqt-session > "/dev/null" 2>&1; then
+			_cursor_theme="breeze_cursors"
+		fi
+	fi
+
+	local _valid_theme=""
+	if [ -n "${_cursor_theme}" ]; then
 		for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
-			if [ -d "${_p}/${_candidate}/cursors" ]; then
-				_found_theme="${_candidate}"
-				break 2
+			if [ -d "${_p}/${_cursor_theme}/cursors" ]; then
+				_valid_theme="${_cursor_theme}"
+				break
 			fi
 		done
-	done
+	fi
 
-	[ -z "${_found_theme}" ] && _found_theme="default"
-	local _target_size="${XCURSOR_SIZE:-24}"
-	export XCURSOR_THEME="${_found_theme}" XCURSOR_SIZE="${_target_size}"
+	if [ -z "${_valid_theme}" ]; then
+		for _c in "Bibata-Modern-Classic" "Adwaita" "breeze_cursors" "DMZ-White" "default"; do
+			for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
+				if [ -d "${_p}/${_c}/cursors" ]; then
+					_valid_theme="${_c}"
+					break 2
+				fi
+			done
+		done
+	fi
+	[ -z "${_valid_theme}" ] && _valid_theme="default"
+
+	export XCURSOR_THEME="${_valid_theme}" XCURSOR_SIZE="${_target_size}"
 
 	mkdir -p "${HOME}/.icons/default" 2> "/dev/null" || true
-	printf '[Icon Theme]\nInherits=%s\n' "${_found_theme}" >| "${HOME}/.icons/default/index.theme" 2> "/dev/null" || true
+	printf '[Icon Theme]\nInherits=%s\n' "${_valid_theme}" >| "${HOME}/.icons/default/index.theme" 2> "/dev/null" || true
 
-	if [ -n "${DISPLAY:-}" ] && command -v xrdb > "/dev/null" 2>&1; then
-		printf "Xcursor.theme: %s\nXcursor.size: %s\n" "${_found_theme}" "${_target_size}" | xrdb -merge - 2> "/dev/null" || true
+	if [ -n "${DISPLAY:-}" ]; then
+		if command -v xrdb > "/dev/null" 2>&1; then
+			printf "Xcursor.theme: %s\nXcursor.size: %s\n" "${_valid_theme}" "${_target_size}" | xrdb -merge - 2> "/dev/null" || true
+		fi
+		command -v xsetroot > "/dev/null" 2>&1 && xsetroot -cursor_name left_ptr 2> "/dev/null" || true
+	fi
+	if command -v gsettings > "/dev/null" 2>&1; then
+		gsettings set org.gnome.desktop.interface cursor-theme "${_valid_theme}" 2> "/dev/null" || true
+		gsettings set org.gnome.desktop.interface cursor-size "${_target_size}" 2> "/dev/null" || true
 	fi
 }
 
 ### --------------------------------
-### Wayland & X11 Session Env
+### WAYLAND & X11 SESSION ENV
 ### --------------------------------
 _wayland_session_env() {
 	local _target_flavor="${1:-}"
@@ -118,7 +222,7 @@ _wayland_session_env() {
 	export QT_QPA_PLATFORM="wayland;xcb"
 	case "${_theme_flavor}" in
 		kde)
-			export XDG_CURRENT_DESKTOP="KDE" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze" XCURSOR_THEME="breeze_cursors"
+			export XDG_CURRENT_DESKTOP="KDE" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze"
 			;;
 		*)
 			case "${_theme_flavor}" in
@@ -135,11 +239,10 @@ _wayland_session_env() {
 			else
 				export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
 			fi
-			export XCURSOR_THEME="${XCURSOR_THEME:-breeze_cursors}"
 			;;
 	esac
 
-	_setup_cursor_env
+	_setup_cursor_env "${_target_flavor}"
 	_enable_numlock_console
 }
 
@@ -160,7 +263,7 @@ _x11_session_env() {
 	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="Breeze-Dark:dark"
 	case "${_theme_flavor}" in
 		kde)
-			export XDG_CURRENT_DESKTOP="KDE" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze" XCURSOR_THEME="breeze_cursors"
+			export XDG_CURRENT_DESKTOP="KDE" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze"
 			;;
 		*)
 			case "${_theme_flavor}" in
@@ -175,7 +278,6 @@ _x11_session_env() {
 			else
 				export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
 			fi
-			export XCURSOR_THEME="${XCURSOR_THEME:-breeze_cursors}"
 			;;
 	esac
 
@@ -191,7 +293,7 @@ _x11_session_env() {
 		fi
 	fi
 
-	_setup_cursor_env
+	_setup_cursor_env "${_target_flavor}"
 	_enable_numlock_console
 }
 
@@ -281,7 +383,7 @@ _is_terminal_app() {
 }
 
 ### --------------------------------
-### Session Command Quoting
+### SESSION COMMAND QUOTING
 ### --------------------------------
 _session_quote_args() {
 	local _arg _line=""
@@ -299,7 +401,7 @@ _session_cmd_file() {
 }
 
 ### --------------------------------
-### Xorg Diagnostics
+### XORG DIAGNOSTICS
 ### --------------------------------
 _filter_xorg_noise() {
 	command grep -v -E '^> |XKEYBOARD keymap compiler|Errors from xkbcomp are not fatal|^scfb trace:|^[[:space:]]*$' 2> "/dev/null" || true
@@ -312,13 +414,16 @@ _x11_driver_preflight() {
 }
 
 ### --------------------------------
-### Graphical Session Launchers
+### GRAPHICAL SESSION LAUNCHERS
 ### --------------------------------
 _exec_wayland() {
 	_sanitize_graphical_env
 	local _log_dir="$(_get_shell_log_dir)"
 	local _log_file="${_log_dir}/wayland-session.log"
 	local _ret=0
+
+	unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
+	export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
 
 	if [ "$(_detect_os)" = "freebsd" ]; then
 		if command -v ck-launch-session > "/dev/null" 2>&1; then
@@ -336,17 +441,16 @@ _exec_wayland() {
 		elif command -v dbus-run-session > "/dev/null" 2>&1; then
 			dbus-run-session -- "$@" >| "${_log_file}" 2>&1
 			_ret=$?
+		elif command -v dbus-launch > "/dev/null" 2>&1; then
+			dbus-launch --exit-with-session "$@" >| "${_log_file}" 2>&1
+			_ret=$?
 		else
 			"$@" >| "${_log_file}" 2>&1
 			_ret=$?
 		fi
 	else
-		if [ -S "/run/user/$(id -u)/bus" ]; then
-			export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
-			"$@" >| "${_log_file}" 2>&1
-			_ret=$?
-		elif command -v dbus-run-session > "/dev/null" 2>&1; then
-			dbus-run-session "$@" >| "${_log_file}" 2>&1
+		if command -v dbus-run-session > "/dev/null" 2>&1; then
+			dbus-run-session -- "$@" >| "${_log_file}" 2>&1
 			_ret=$?
 		elif command -v dbus-launch > "/dev/null" 2>&1; then
 			dbus-launch --exit-with-session "$@" >| "${_log_file}" 2>&1
@@ -400,6 +504,9 @@ _exec_x11() {
 	local _had_display=1
 	[ -z "${DISPLAY:-}" ] && _had_display=0
 
+	unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
+	export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
+
 	local _display="$(_resolve_free_display)"
 	export DISPLAY="${_display}"
 	_x11_session_env "${_X11_FLAVOR_OVERRIDE:-}"
@@ -421,18 +528,20 @@ _exec_x11() {
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-session-$$.sh"
 	cat << EOF > "${_xinit_script}"
 #!/bin/sh
+unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
+export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
+
 if [ -z "\${ENVIRONMENT_SESSION_WRAPPED:-}" ]; then
 	export ENVIRONMENT_SESSION_WRAPPED=1
-	if [ -z "\${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -S "\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}/bus" ]; then
-		export DBUS_SESSION_BUS_ADDRESS="unix:path=\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}/bus"
-	fi
 	_ck=""
 	[ "\$(uname -s)" = "FreeBSD" ] && command -v ck-launch-session > "/dev/null" 2>&1 && _ck="ck-launch-session"
-	if [ -z "\${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
-		command -v dbus-run-session > "/dev/null" 2>&1 && exec dbus-run-session -- \${_ck} "\$0"
-		command -v dbus-launch > "/dev/null" 2>&1 && exec dbus-launch --exit-with-session \${_ck} "\$0"
+	if command -v dbus-run-session > "/dev/null" 2>&1; then
+		exec dbus-run-session -- \${_ck} "\$0" "\$@"
+	elif command -v dbus-launch > "/dev/null" 2>&1; then
+		exec dbus-launch --exit-with-session \${_ck} "\$0" "\$@"
+	elif [ -n "\${_ck}" ]; then
+		exec ck-launch-session "\$0" "\$@"
 	fi
-	[ -n "\${_ck}" ] && exec ck-launch-session "\$0"
 fi
 unset ENVIRONMENT_SESSION_WRAPPED
 
@@ -442,11 +551,11 @@ export GDK_BACKEND="x11"
 export QT_QPA_PLATFORM="xcb"
 export SDL_VIDEODRIVER="x11"
 export CLUTTER_BACKEND="x11"
-export GTK_THEME="${GTK_THEME:-Breeze-Dark:dark}"
+export GTK_THEME="\${GTK_THEME:-Breeze-Dark:dark}"
 export GTK_APPLICATION_PREFER_DARK_THEME=1
-export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
-export XCURSOR_THEME="${XCURSOR_THEME:-breeze_cursors}"
-export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
+export QT_QPA_PLATFORMTHEME="\${QT_QPA_PLATFORMTHEME:-qt6ct}"
+export XCURSOR_THEME="\${XCURSOR_THEME}"
+export XCURSOR_SIZE="\${XCURSOR_SIZE:-24}"
 
 if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
@@ -454,7 +563,9 @@ fi
 if command -v xrdb > "/dev/null" 2>&1; then
 	printf "Xcursor.theme: %s\nXcursor.size: %s\n" "\${XCURSOR_THEME}" "\${XCURSOR_SIZE}" | xrdb -merge - 2> "/dev/null" || true
 fi
-command -v xsetroot > "/dev/null" 2>&1 && xsetroot -cursor_name left_ptr 2> "/dev/null" || true
+if command -v xsetroot > "/dev/null" 2>&1; then
+	xsetroot -solid "#16161e" -cursor_name left_ptr 2> "/dev/null" || true
+fi
 
 if command -v setxkbmap > "/dev/null" 2>&1; then
 	setxkbmap -model abnt2 -layout br -option numpad:mac 2> "/dev/null" || true
@@ -660,12 +771,25 @@ window-manager-wayland() {
 	fi
 	_wayland_session_env ""
 
-	local _cur_theme="${XCURSOR_THEME:-breeze_cursors}"
+	local _cur_theme="${XCURSOR_THEME}"
 	local _cur_size="${XCURSOR_SIZE:-24}"
+
+	local _wm_term="foot -o dpi-aware=no"
+	for _t in foot alacritty kitty xterm; do
+		if command -v "${_t}" > "/dev/null" 2>&1; then
+			[ "${_t}" = "foot" ] && _wm_term="foot -o dpi-aware=no" || _wm_term="${_t}"
+			break
+		fi
+	done
+
+	local _wm_browser="sh -c 'command -v firefox >/dev/null 2>&1 && exec firefox || command -v chromium >/dev/null 2>&1 && exec chromium || command -v google-chrome-stable >/dev/null 2>&1 && exec google-chrome-stable || command -v google-chrome >/dev/null 2>&1 && exec google-chrome'"
+	local _wm_emacs="sh -c 'command -v emacs-pgtk >/dev/null 2>&1 && exec emacs-pgtk || exec emacs'"
+	local _wm_launcher="sh -c 'command -v wofi >/dev/null 2>&1 && exec wofi --show drun || command -v fuzzel >/dev/null 2>&1 && exec fuzzel || command -v rofi >/dev/null 2>&1 && exec rofi -show drun || command -v bemenu-run >/dev/null 2>&1 && exec bemenu-run || command -v dmenu_run >/dev/null 2>&1 && exec dmenu_run || exec ${_wm_term}'"
 
 	if command -v sway > "/dev/null" 2>&1; then
 		local _sway_cfg="${XDG_RUNTIME_DIR:-/tmp}/sway-wm-$$.conf"
 		cat << EOF > "${_sway_cfg}"
+output * bg #16161e solid_color
 default_border pixel 1
 default_floating_border pixel 1
 client.focused #7e9cd8 #1f1f28 #dcd7ba #7e9cd8 #7e9cd8
@@ -698,9 +822,52 @@ input type:keyboard {
 }
 focus_follows_mouse yes
 xwayland enable
-bindsym Mod4+Return exec foot -o dpi-aware=no
-bindsym Mod4+Shift+q exec swaymsg exit
+bindsym Mod4+Return exec ${_wm_term}
+bindsym Ctrl+Mod1+t exec ${_wm_term}
+bindsym Mod4+b exec ${_wm_browser}
+bindsym Mod4+e exec ${_wm_emacs}
+bindsym Mod4+d exec ${_wm_launcher}
+bindsym Mod4+1 workspace number 1
+bindsym Mod4+2 workspace number 2
+bindsym Mod4+3 workspace number 3
+bindsym Mod4+4 workspace number 4
+bindsym Mod4+5 workspace number 5
+bindsym Mod4+6 workspace number 6
+bindsym Mod4+7 workspace number 7
+bindsym Mod4+8 workspace number 8
+bindsym Mod4+9 workspace number 9
+bindsym Mod4+Shift+1 move container to workspace number 1
+bindsym Mod4+Shift+2 move container to workspace number 2
+bindsym Mod4+Shift+3 move container to workspace number 3
+bindsym Mod4+Shift+4 move container to workspace number 4
+bindsym Mod4+Shift+5 move container to workspace number 5
+bindsym Mod4+Shift+6 move container to workspace number 6
+bindsym Mod4+Shift+7 move container to workspace number 7
+bindsym Mod4+Shift+8 move container to workspace number 8
+bindsym Mod4+Shift+9 move container to workspace number 9
+bindsym Mod4+f fullscreen toggle
+bindsym Mod4+Shift+space floating toggle
+bindsym Mod4+Left focus left
+bindsym Mod4+Down focus down
+bindsym Mod4+Up focus up
+bindsym Mod4+Right focus right
+bindsym Mod1+Tab focus next
+bindsym Mod4+Tab focus next
 bindsym Mod4+q kill
+bindsym Mod1+F4 kill
+bindsym Mod4+Shift+q exec swaymsg exit
+
+bar {
+    position bottom
+    status_command while :; do printf "Super+Enter:Term | Super+B:Browser | Super+E:Emacs | Super+D:Menu | Super+Q:Close | %s\\n" "\$(date "+%Y-%m-%d %H:%M:%S")"; sleep 1; done
+    colors {
+        background #16161e
+        statusline #dcd7ba
+        separator #54546d
+        focused_workspace #7e9cd8 #1f1f28 #dcd7ba
+        inactive_workspace #16161e #16161e #727169
+    }
+}
 EOF
 		_exec_wayland sway -c "${_sway_cfg}"
 		local _sway_ret=$?
@@ -840,34 +1007,142 @@ window-manager-x11() {
 	_x11_session_env ""
 
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
-	if [ ! -f "${_kiosk_theme_dir}/themerc" ]; then
-		mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
-		cat << 'OTM' > "${_kiosk_theme_dir}/themerc"
+	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
+	cat << 'OTM' >| "${_kiosk_theme_dir}/themerc"
 border.width: 1
 border.color: #54546d
-padding.width: 1
-padding.height: 1
+padding.width: 2
+padding.height: 2
 window.handle.width: 0
 window.client.padding.width: 0
 window.active.title.bg.color: #1f1f28
 window.active.label.text.color: #dcd7ba
 window.inactive.title.bg.color: #16161e
 window.inactive.label.text.color: #727169
+window.active.button.unpressed.bg.color: #1f1f28
+window.active.button.unpressed.image.color: #dcd7ba
+window.inactive.button.unpressed.bg.color: #16161e
+window.inactive.button.unpressed.image.color: #727169
 menu.border.width: 1
 menu.border.color: #54546d
 menu.items.bg.color: #1f1f28
 menu.items.text.color: #dcd7ba
 menu.items.active.bg.color: #2a2a37
 menu.items.active.text.color: #e6c384
+menu.title.bg.color: #16161e
+menu.title.text.color: #7e9cd8
 OTM
-	fi
+
+	local _wm_x11_term="xterm"
+	for _t in alacritty kitty xterm; do
+		if command -v "${_t}" > "/dev/null" 2>&1; then
+			_wm_x11_term="${_t}"
+			break
+		fi
+	done
+
+	local _wm_browser="sh -c 'command -v firefox >/dev/null 2>&1 && exec firefox || command -v chromium >/dev/null 2>&1 && exec chromium || command -v google-chrome-stable >/dev/null 2>&1 && exec google-chrome-stable || command -v google-chrome >/dev/null 2>&1 && exec google-chrome'"
+	local _wm_emacs="sh -c 'command -v emacs-gtk+x11 >/dev/null 2>&1 && exec emacs-gtk+x11 || command -v emacs >/dev/null 2>&1 && exec emacs'"
 
 	if command -v openbox > "/dev/null" 2>&1; then
-		_exec_x11 openbox
+		local _ob_menu_cfg="${XDG_RUNTIME_DIR:-/tmp}/openbox-menu-$$.xml"
+		local _ob_wm_cfg="${XDG_RUNTIME_DIR:-/tmp}/openbox-wm-$$.xml"
+		cat << EOF > "${_ob_menu_cfg}"
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="Universal Environment">
+    <item label="Terminal">
+      <action name="Execute"><command>${_wm_x11_term}</command></action>
+    </item>
+    <item label="Emacs">
+      <action name="Execute"><command>${_wm_emacs}</command></action>
+    </item>
+    <item label="Web Browser">
+      <action name="Execute"><command>${_wm_browser}</command></action>
+    </item>
+    <separator/>
+    <item label="Reconfigure">
+      <action name="Reconfigure"/>
+    </item>
+    <item label="Exit">
+      <action name="Exit"/>
+    </item>
+  </menu>
+</openbox_menu>
+EOF
+		cat << EOF > "${_ob_wm_cfg}"
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <theme>
+    <name>kiosk</name>
+    <titleLayout>NLIMC</titleLayout>
+    <keepBorder>yes</keepBorder>
+    <animateIconify>no</animateIconify>
+  </theme>
+  <font place="ActiveWindowTitle"><name>sans</name><size>10</size><weight>bold</weight></font>
+  <font place="InactiveWindowTitle"><name>sans</name><size>10</size><weight>normal</weight></font>
+  <font place="MenuHeader"><name>sans</name><size>10</size><weight>bold</weight></font>
+  <font place="MenuItem"><name>sans</name><size>10</size><weight>normal</weight></font>
+  <mouse>
+    <dragThreshold>1</dragThreshold>
+    <doubleClickTime>500</doubleClickTime>
+    <screenEdgeWarpTime>0</screenEdgeWarpTime>
+    <screenEdgeWarpMouse>false</screenEdgeWarpMouse>
+    <context name="Root">
+      <mousebind button="Right" action="Press">
+        <action name="ShowMenu"><menu>root-menu</menu></action>
+      </mousebind>
+    </context>
+    <context name="Titlebar">
+      <mousebind button="Left" action="Drag"><action name="Move"/></mousebind>
+      <mousebind button="Left" action="DoubleClick"><action name="ToggleMaximize"/></mousebind>
+    </context>
+    <context name="Client">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Middle" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Right" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+    </context>
+  </mouse>
+  <menu>
+    <file>${_ob_menu_cfg}</file>
+  </menu>
+  <keyboard>
+    <keybind key="W-Return"><action name="Execute"><command>${_wm_x11_term}</command></action></keybind>
+    <keybind key="C-A-t"><action name="Execute"><command>${_wm_x11_term}</command></action></keybind>
+    <keybind key="W-b"><action name="Execute"><command>${_wm_browser}</command></action></keybind>
+    <keybind key="W-e"><action name="Execute"><command>${_wm_emacs}</command></action></keybind>
+    <keybind key="A-F4"><action name="Close"/></keybind>
+    <keybind key="W-q"><action name="Close"/></keybind>
+    <keybind key="A-Tab"><action name="NextWindow"/></keybind>
+    <keybind key="W-S-q"><action name="Exit"/></keybind>
+  </keyboard>
+</openbox_config>
+EOF
+		_exec_x11 openbox --config-file "${_ob_wm_cfg}"
+		local _ob_ret=$?
+		rm -f "${_ob_menu_cfg}" "${_ob_wm_cfg}" 2> "/dev/null" || true
+		return "${_ob_ret}"
 	elif command -v openbox-session > "/dev/null" 2>&1; then
 		_exec_x11 openbox-session
 	elif command -v cwm > "/dev/null" 2>&1; then
-		_exec_x11 cwm
+		local _cwm_cfg="${XDG_RUNTIME_DIR:-/tmp}/cwmrc-wm-$$"
+		cat << EOF > "${_cwm_cfg}"
+color activeborder "#7e9cd8"
+color inactiveborder "#1f1f28"
+color menubg "#16161e"
+color menufg "#dcd7ba"
+bind-key 4-Return "${_wm_x11_term}"
+bind-key CM-t "${_wm_x11_term}"
+bind-key 4-b "${_wm_browser}"
+bind-key 4-e "${_wm_emacs}"
+bind-key 4-q window-close
+bind-key M-F4 window-close
+bind-key 4S-q quit
+EOF
+		_exec_x11 cwm -c "${_cwm_cfg}"
+		local _cwm_ret=$?
+		rm -f "${_cwm_cfg}" 2> "/dev/null" || true
+		return "${_cwm_ret}"
 	elif command -v matchbox-window-manager > "/dev/null" 2>&1; then
 		_exec_x11 sh -c '(command -v xterm > "/dev/null" 2>&1 && xterm &); exec matchbox-window-manager'
 	elif command -v emacs > "/dev/null" 2>&1; then

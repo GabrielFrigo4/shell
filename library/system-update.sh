@@ -157,7 +157,7 @@ update-slackpkg() {
 }
 
 ### --------------------------------
-### Update System
+### UPDATE SYSTEM
 ### --------------------------------
 update-system() {
 	_ui_step "Atualizando pacotes do sistema operacional..."
@@ -220,7 +220,7 @@ update-system() {
 }
 
 ### --------------------------------
-### Clean System
+### CLEAN SYSTEM
 ### --------------------------------
 clean-system() {
 	for _arg in "$@"; do

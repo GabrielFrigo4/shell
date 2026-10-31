@@ -72,7 +72,7 @@ venture-server() {
 }
 
 ### --------------------------------
-### Mobile Device Management
+### MOBILE DEVICE MANAGEMENT
 ### --------------------------------
 _find_desktop_device() {
 	local _rt _found

@@ -18,7 +18,7 @@ fi
 unset _wsl_kw _wsl_val _wsl_rest _wsl_host
 
 ### --------------------------------
-### Windows Clipboard
+### WINDOWS CLIPBOARD
 ### --------------------------------
 clip() {
 	if command -v win32yank.exe > "/dev/null" 2>&1; then
@@ -32,7 +32,7 @@ clip() {
 }
 
 ### --------------------------------
-### Virtual Machine Helpers
+### VIRTUAL MACHINE HELPERS
 ### --------------------------------
 wsl-ip() {
 	command hostname -I 2> "/dev/null" || command ip -4 addr show eth0 2> "/dev/null"

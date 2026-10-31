@@ -10,7 +10,7 @@ ctwm-reload() {
 }
 
 ### --------------------------------
-### NetBSD Software
+### NETBSD SOFTWARE
 ### --------------------------------
 code() {
 	if command -v code > "/dev/null" 2>&1; then

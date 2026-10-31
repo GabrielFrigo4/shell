@@ -11,7 +11,7 @@ export COMPAT_GOGC=8
 export COMPAT_GOMEMLIMIT="1GiB"
 
 ### --------------------------------
-### Antigravity under Linux Compat
+### ANTIGRAVITY UNDER LINUX COMPAT
 ### --------------------------------
 agy-compat() {
 	_ncpu="$(sysctl -n hw.ncpu 2> "/dev/null" || echo 4)"
@@ -47,6 +47,6 @@ agy-compat() {
 }
 
 ### --------------------------------
-### Aliases
+### ALIASES
 ### --------------------------------
 alias agy-cp="agy-compat"

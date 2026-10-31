@@ -154,7 +154,7 @@ update-wifi() {
 }
 
 ### --------------------------------
-### Update Network
+### UPDATE NETWORK
 ### --------------------------------
 update-network() {
 	_ui_step "Atualizando subsistema de rede..."
@@ -163,7 +163,7 @@ update-network() {
 }
 
 ### --------------------------------
-### Update Linux Host Bhyve
+### UPDATE LINUX HOST BHYVE
 ### --------------------------------
 update-linux() {
 	for _arg in "$@"; do
@@ -227,7 +227,7 @@ update-linux() {
 }
 
 ### --------------------------------
-### Update FreeBSD Ports Tree
+### UPDATE FREEBSD PORTS TREE
 ### --------------------------------
 update-ports() {
 	_ports_branch=""
@@ -321,7 +321,7 @@ alias upp="update-ports"
 alias upport="update-ports"
 
 ### --------------------------------
-### Update All Packages
+### UPDATE ALL PACKAGES
 ### --------------------------------
 update-all() {
 	for _arg in "$@"; do

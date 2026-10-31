@@ -10,7 +10,7 @@ cwm-reload() {
 }
 
 ### --------------------------------
-### OpenBSD Software
+### OPENBSD SOFTWARE
 ### --------------------------------
 code() {
 	if command -v code > "/dev/null" 2>&1; then

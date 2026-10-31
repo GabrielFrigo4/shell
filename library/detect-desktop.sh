@@ -32,7 +32,7 @@ _detect_desktop_environment() {
 }
 
 ### --------------------------------
-### Detect Color Scheme
+### DETECT COLOR SCHEME
 ### --------------------------------
 _detect_color_scheme() {
 	[ -n "${_DETECTED_COLOR_SCHEME+x}" ] && echo "${_DETECTED_COLOR_SCHEME}" && return 0
@@ -87,7 +87,7 @@ _detect_color_scheme() {
 }
 
 ### --------------------------------
-### Detect Desktop Theme Flavor
+### DETECT DESKTOP THEME FLAVOR
 ### --------------------------------
 _detect_desktop_theme() {
 	if [ -n "${1:-}" ]; then
@@ -138,7 +138,7 @@ _detect_desktop_theme() {
 }
 
 ### --------------------------------
-### Resolve & Detect GTK Theme
+### RESOLVE & DETECT GTK THEME
 ### --------------------------------
 _resolve_gtk_theme() {
 	local _flavor="${1:-$(_detect_desktop_theme)}"
@@ -224,7 +224,7 @@ _detect_gtk_theme() {
 }
 
 ### --------------------------------
-### Detect Qt Theme & Platform
+### DETECT QT THEME & PLATFORM
 ### --------------------------------
 _detect_qt_theme() {
 	[ -n "${_DETECTED_QT_THEME+x}" ] && echo "${_DETECTED_QT_THEME}" && return 0
@@ -293,7 +293,7 @@ _detect_qt_platform_theme() {
 }
 
 ### --------------------------------
-### Detect Modern CLI Binaries
+### DETECT MODERN CLI BINARIES
 ### --------------------------------
 _detect_eza() {
 	[ -n "${_DETECTED_EZA+x}" ] && echo "${_DETECTED_EZA}" && return 0

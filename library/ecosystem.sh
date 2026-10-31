@@ -94,7 +94,7 @@ update-shell() {
 }
 
 ### --------------------------------
-### Update Editors
+### UPDATE EDITORS
 ### --------------------------------
 update-editors() {
 	for _arg in "$@"; do
@@ -214,7 +214,7 @@ update-editors() {
 }
 
 ### --------------------------------
-### Update Emacs Modes
+### UPDATE EMACS MODES
 ### --------------------------------
 update-emacs-modes() {
 	_target=""
@@ -240,7 +240,7 @@ update-emacs-modes() {
 }
 
 ### --------------------------------
-### Update Profile
+### UPDATE PROFILE
 ### --------------------------------
 update-profile() {
 	for _arg in "$@"; do
@@ -318,7 +318,7 @@ update-profile() {
 }
 
 ### --------------------------------
-### Synchronize IDE Extensions
+### SYNCHRONIZE IDE EXTENSIONS
 ### --------------------------------
 sync-extensions() {
 	for _arg in "$@"; do
@@ -393,7 +393,7 @@ alias update-extensions="sync-extensions"
 alias upext="sync-extensions"
 
 ### --------------------------------
-### Reinstall & Benchmark Shell
+### REINSTALL & BENCHMARK SHELL
 ### --------------------------------
 reinstall-shell() {
 	if [ -z "${SHELL_REPO_DIR}" ] || [ ! -d "${SHELL_REPO_DIR}" ]; then

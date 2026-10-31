@@ -19,7 +19,7 @@ ports() {
 }
 
 ### --------------------------------
-### Active Connections
+### ACTIVE CONNECTIONS
 ### --------------------------------
 conns() {
 	if command -v ss > "/dev/null" 2>&1; then
@@ -35,7 +35,7 @@ conns() {
 }
 
 ### --------------------------------
-### Log Stream
+### LOG STREAM
 ### --------------------------------
 logs() {
 	if command -v journalctl > "/dev/null" 2>&1; then
@@ -53,7 +53,7 @@ logs() {
 }
 
 ### --------------------------------
-### Service Status
+### SERVICE STATUS
 ### --------------------------------
 services() {
 	if command -v systemctl > "/dev/null" 2>&1; then
@@ -73,13 +73,13 @@ services() {
 }
 
 ### --------------------------------
-### Server Aliases
+### SERVER ALIASES
 ### --------------------------------
 alias p="ports"
 alias svc="services"
 
 ### --------------------------------
-### SSH & Remote Session
+### SSH & REMOTE SESSION
 ### --------------------------------
 if _is_ssh; then
 	export REMOTE_SESSION=1
@@ -92,7 +92,7 @@ if _is_ssh; then
 fi
 
 ### --------------------------------
-### Python Performance Cache
+### PYTHON PERFORMANCE CACHE
 ### --------------------------------
 unset PYTHONDONTWRITEBYTECODE
 export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/cpython"

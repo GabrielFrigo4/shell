@@ -15,7 +15,7 @@ path-back "${HOME}/.cargo/bin"
 path-dedup
 
 ### --------------------------------
-### illumos Environment
+### ILLUMOS ENVIRONMENT
 ### --------------------------------
 export PAGER="${PAGER:-less}"
 export MANPATH="/usr/gnu/share/man:/usr/share/man:${MANPATH:-}"

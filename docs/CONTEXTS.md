@@ -30,6 +30,8 @@ Projetado para estações de trabalho de desenvolvimento:
 - **Editores e IDEs:** Suporte completo à cascata de editores gráficos e de terminal (`code`, `codium`, `antigravity-ide`, `zed`, `kate`, `nvim`, `hx`, `micro`).
 - **Dispositivos Móveis:** Comandos `mount-device` (`mntdev`) e `umount-device` (`umdev`) para montagem FUSE automática de smartphones Android via MTP (GNOME GVfs, KDE KIO-FUSE, GSConnect ou ADB).
 - **Gerenciadores de Janelas:** Funções `start-session`, `start-way` e `start-xorg` para inicialização direta de ambientes gráficos (GNOME, Plasma, Hyprland, Sway) a partir de TTYs.
+- **Pipeline Determinístico de Cursor:** Hierarquia `KDE > GNOME > MATE > Cinnamon > XFCE > LXQt > Fallback` verificando binários reais de DE, sincronizada entre TTY, X11 (`xrdb`, `xsetroot`) e Wayland (`seat * xcursor_theme`).
+- **Isolamento Multi-TTY de D-Bus:** Servidores gráficos e quiosques (`wwm`, `xwm`, `wgui`, `xgui`, `ewm`, `exwm`) operam em barramentos D-Bus privados (`dbus-run-session`), prevenindo vazamento de janelas para sessões ativas em outros TTYs.
 - **Extensão WSL (`wsl.sh`):** Se executado sob WSL (`_is_wsl`), incorpora automaticamente atalhos do Windows (`explorer`, `pwsh`, `powershell`, `cmd`), sincronização de clipboard (`clip`, `paste`), navegação rápida (`cd-win`), tradução de caminhos (`win-path`, `wsl-path`) e inicialização de arquivos (`open-win`).
 - **Política Python Zero-Cruft:** Exporta `PYTHONDONTWRITEBYTECODE=1` para manter o código dos projetos, árvores Git e a home 100% limpos de pastas `__pycache__` durante desenvolvimento.
 
