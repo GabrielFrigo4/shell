@@ -126,7 +126,7 @@ Antes de escrever qualquer código, posicione-o na camada correta do ciclo de vi
 17. **Ciclo Sagrado de Propagação & Invariante de Produção Imaculada (Zero-Dirty):**
 
 - O clone de produção `/usr/local/share/shell` (ou `~/.local/share/shell`) é estritamente downstream e atualizado exclusivamente via `git pull` ou comando `upsh`.
-- É TERMINANTEMENTE PROIBIDO copiar arquivos avulsos (`cp`, `rsync`) da bancada para a produção, mesmo durante testes rápidos ou diagnósticos. Modificações manuais tornam a working tree de produção suja (`dirty`), quebrando a soberania do DVCS e impedindo atualizações limpas.
+- Regra Invariante: Nunca copie arquivos avulsos (`cp`, `rsync`) da bancada para a produção, mesmo durante testes rápidos ou diagnósticos. Modificações manuais tornam a working tree de produção suja (`dirty`), quebrando a soberania do DVCS e impedindo atualizações limpas.
 - Toda modificação deve ser desenvolvida e validada na bancada (`~/Documents/Environment/Shell`), comitada e enviada via `git push`. A árvore de produção deve manter `git status` 100% limpo em todo momento.
 
 18. **Padrão Display Server Dispatcher & Ciclo de Vida Multi-SO (Linux, FreeBSD & OpenBSD):**
