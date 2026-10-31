@@ -15,9 +15,9 @@ if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 	unset COLORTERM
 	unset MICRO_TRUECOLOR
 else
+	unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST
 	export COLORTERM="truecolor"
 	export MICRO_TRUECOLOR=1
-	unset NVIM_NOTTYFAST
 fi
 
 if [ -z "${LANG:-}" ] || [ "${LANG}" = "C" ] || [ "${LANG}" = "POSIX" ]; then
@@ -29,6 +29,25 @@ if [ -z "${LANG:-}" ] || [ "${LANG}" = "C" ] || [ "${LANG}" = "POSIX" ]; then
 	[ -z "${LANG:-}" ] && export LANG="pt_BR.UTF-8"
 fi
 [ -z "${LC_CTYPE:-}" ] && export LC_CTYPE="${LANG}"
+
+### --------------------------------
+### Graphics Acceleration
+### --------------------------------
+_env_os_name="${_DETECTED_OS-$(_detect_os)}"
+case "${_env_os_name}" in
+	freebsd)
+		[ -z "${LIBVA_DRIVER_NAME:-}" ] && export LIBVA_DRIVER_NAME="iHD"
+		[ -z "${KDEVARTMP:-}" ] && export KDEVARTMP="/tmp"
+		;;
+	linux)
+		if [ -z "${LIBVA_DRIVER_NAME:-}" ] && [ -d "/dev/dri" ]; then
+			if [ -r "/sys/class/drm/card0/device/vendor" ] && [ "$(cat /sys/class/drm/card0/device/vendor 2> "/dev/null")" = "0x8086" ]; then
+				export LIBVA_DRIVER_NAME="iHD"
+			fi
+		fi
+		;;
+esac
+unset _env_os_name
 
 ### --------------------------------
 ### Python Bytecode & Cache Policy
@@ -318,7 +337,7 @@ else
 fi
 alias -- ~="cd ~" ..="cd .." ...="cd ../.." ....="cd ../../.." -="cd -"
 alias take="take-dir" mkcd="take-dir" cdb="cd-git-root"
-alias clear="printf '\033[2J\033[3J\033[H'"
+alias clear="printf '\x1b[2J\x1b[3J\x1b[H'"
 
 ### --------------------------------
 ### Utility & Benchmark Aliases
@@ -396,10 +415,184 @@ alias agyra="agy -c --dangerously-skip-permissions" agyrd="agy -c --dangerously-
 if [ -t 1 ]; then
 	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 		if [ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ]; then
-			printf '\033%%G\033[?16;238;0c\033]P0000000\033]P17f0000\033]P2007f00\033]P3c4a100\033]P43366a3\033]P57f007f\033]P6007f7f\033]P7bfbfbf\033]P873828a\033]P9ff0000\033]Pa00ff00\033]Pbffff00\033]Pc739ecf\033]Pdff00ff\033]Pe00ffff\033]Pfffffff'
+			printf '\x1b%%G\x1b[?16;238;0c\x1b]P0000000\x1b]P17f0000\x1b]P2007f00\x1b]P3c4a100\x1b]P43366a3\x1b]P57f007f\x1b]P6007f7f\x1b]P7bfbfbf\x1b]P873828a\x1b]P9ff0000\x1b]Pa00ff00\x1b]Pbffff00\x1b]Pc739ecf\x1b]Pdff00ff\x1b]Pe00ffff\x1b]Pfffffff'
 			command -v stty > "/dev/null" 2>&1 && stty iutf8 2> "/dev/null" || true
 		fi
 	else
-		printf '\033[1 q'
+		printf '\x1b[1 q'
 	fi
 fi
+
+### ================================
+### USERLAND MANAGEMENT
+### ================================
+
+_userland_set_gnu() {
+	_silent="${1:-}"
+	export SHELL_USERLAND="gnu"
+	_u_os="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+	case "${_u_os}" in
+		freebsd|openbsd|netbsd|dragonfly*|macos|darwin)
+			for _gnubin in "/usr/local/libexec/gnubin" "/opt/homebrew/opt/coreutils/libexec/gnubin" "/usr/local/opt/coreutils/libexec/gnubin"; do
+				if [ -d "${_gnubin}" ]; then
+					case ":${PATH}:" in
+						*":${_gnubin}:"*) ;;
+						*) export PATH="${_gnubin}:${PATH}" ;;
+					esac
+				fi
+			done
+			command -v gsed > "/dev/null" 2>&1 && alias sed="gsed"
+			command -v gawk > "/dev/null" 2>&1 && alias awk="gawk"
+			command -v ggrep > "/dev/null" 2>&1 && alias grep="ggrep"
+			command -v gtar > "/dev/null" 2>&1 && alias tar="gtar"
+			command -v gfind > "/dev/null" 2>&1 && alias find="gfind"
+			command -v gmake > "/dev/null" 2>&1 && alias make="gmake"
+			command -v gstat > "/dev/null" 2>&1 && alias stat="gstat"
+			command -v gdate > "/dev/null" 2>&1 && alias date="gdate"
+			command -v gls > "/dev/null" 2>&1 && alias ls="gls --color=auto"
+			;;
+		*)
+			unalias make tar cpio cat nc man 2> "/dev/null" || true
+			alias ls="command ls --color=auto"
+			alias grep="command grep --color=auto"
+			;;
+	esac
+	unset _u_os _gnubin
+	if [ "${_silent}" != "--silent" ]; then
+		if command -v _ui_ok > "/dev/null" 2>&1; then
+			_ui_ok "Userland alternado para GNU."
+		else
+			echo "Userland alternado para GNU."
+		fi
+	fi
+}
+
+_userland_set_bsd() {
+	_silent="${1:-}"
+	export SHELL_USERLAND="bsd"
+	_u_os="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+	case "${_u_os}" in
+		freebsd|openbsd|netbsd|dragonfly*|macos|darwin)
+			_clean_p=""
+			_old_ifs="${IFS+x}"
+			_saved_ifs="${IFS:-}"
+			IFS=":"
+			for _entry in ${PATH}; do
+				case "${_entry}" in
+					*/gnubin) continue ;;
+					"") continue ;;
+				esac
+				_clean_p="${_clean_p:+${_clean_p}:}${_entry}"
+			done
+			if [ -n "${_old_ifs}" ]; then IFS="${_saved_ifs}"; else unset IFS; fi
+			export PATH="${_clean_p}"
+			unset _clean_p _old_ifs _saved_ifs _entry
+			unalias sed awk grep tar find make stat date ls 2> "/dev/null" || true
+			case "${_u_os}" in
+				openbsd|illumos|solaris|sunos) alias ls="command ls -l" ;;
+				*)                             alias ls="command ls -G" ;;
+			esac
+			;;
+		*)
+			command -v bmake > "/dev/null" 2>&1 && alias make="bmake"
+			command -v bsdtar > "/dev/null" 2>&1 && alias tar="bsdtar"
+			command -v bsdcpio > "/dev/null" 2>&1 && alias cpio="bsdcpio"
+			command -v bsdcat > "/dev/null" 2>&1 && alias cat="bsdcat"
+			command -v nc.openbsd > "/dev/null" 2>&1 && alias nc="nc.openbsd"
+			command -v mandoc > "/dev/null" 2>&1 && alias man="mandoc"
+			;;
+	esac
+	unset _u_os
+	if [ "${_silent}" != "--silent" ]; then
+		if command -v _ui_ok > "/dev/null" 2>&1; then
+			_ui_ok "Userland alternado para BSD."
+		else
+			echo "Userland alternado para BSD."
+		fi
+	fi
+}
+
+_userland_set_default() {
+	_silent="${1:-}"
+	export SHELL_USERLAND="default"
+	_u_os="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+	_clean_p=""
+	_old_ifs="${IFS+x}"
+	_saved_ifs="${IFS:-}"
+	IFS=":"
+	for _entry in ${PATH}; do
+		case "${_entry}" in
+			*/gnubin) continue ;;
+			"") continue ;;
+		esac
+		_clean_p="${_clean_p:+${_clean_p}:}${_entry}"
+	done
+	if [ -n "${_old_ifs}" ]; then IFS="${_saved_ifs}"; else unset IFS; fi
+	export PATH="${_clean_p}"
+	unset _clean_p _old_ifs _saved_ifs _entry
+
+	unalias sed awk grep tar find make stat date ls cpio cat nc man 2> "/dev/null" || true
+	case "${_u_os}" in
+		freebsd|dragonfly*|macos|darwin|netbsd)
+			alias ls="command ls -G"
+			;;
+		openbsd|illumos|solaris|sunos)
+			alias ls="command ls -l"
+			;;
+		*)
+			alias ls="command ls --color=auto"
+			alias grep="command grep --color=auto"
+			;;
+	esac
+	unset _u_os
+	if [ "${_silent}" != "--silent" ]; then
+		if command -v _ui_ok > "/dev/null" 2>&1; then
+			_ui_ok "Userland restaurado para o padrão do SO hospedeiro."
+		else
+			echo "Userland restaurado para o padrão do SO hospedeiro."
+		fi
+	fi
+}
+
+userland() {
+	case "${1:-}" in
+		gnu|GNU)
+			_userland_set_gnu "${2:-}"
+			;;
+		bsd|BSD)
+			_userland_set_bsd "${2:-}"
+			;;
+		default|DEFAULT|native)
+			_userland_set_default "${2:-}"
+			;;
+		status)
+			if command -v _ui_info > "/dev/null" 2>&1; then
+				_ui_info "Userland ativo: ${SHELL_USERLAND:-default}"
+			else
+				echo "Userland ativo: ${SHELL_USERLAND:-default}"
+			fi
+			;;
+		*)
+			cat <<- EOF
+				Uso: userland [gnu|bsd|default|status]
+				  gnu      Ativa userland GNU (gnubin / g-prefixed tools)
+				  bsd      Ativa userland BSD (bmake, bsdtar, mandoc, etc)
+				  default  Restaura o userland nativo do sistema operacional
+				  status   Exibe o modo de userland configurado
+			EOF
+			;;
+	esac
+}
+
+gnu() { userland gnu "$@"; }
+bsd() { userland bsd "$@"; }
+default() { userland default "$@"; }
+
+case "$-" in
+	*i*)
+		case "${SHELL_USERLAND:-default}" in
+			gnu|GNU|1) userland gnu --silent ;;
+			bsd|BSD)   userland bsd --silent ;;
+		esac
+		;;
+esac

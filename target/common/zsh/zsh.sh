@@ -15,26 +15,22 @@ HISTSIZE=50000
 SAVEHIST=50000
 HISTFILE="${HOME}/.zsh_history"
 
-setopt APPEND_HISTORY
-setopt SHARE_HISTORY
-setopt EXTENDED_HISTORY
-setopt HIST_IGNORE_DUPS
-setopt HIST_IGNORE_ALL_DUPS
-setopt HIST_IGNORE_SPACE
-setopt HIST_REDUCE_BLANKS
-setopt HIST_EXPIRE_DUPS_FIRST
-setopt HIST_FIND_NO_DUPS
-setopt HIST_SAVE_NO_DUPS
-setopt HIST_VERIFY
+setopt APPEND_HISTORY SHARE_HISTORY EXTENDED_HISTORY
+setopt HIST_IGNORE_DUPS HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_REDUCE_BLANKS
+setopt HIST_EXPIRE_DUPS_FIRST HIST_FIND_NO_DUPS HIST_SAVE_NO_DUPS HIST_VERIFY
 
 ### --------------------------------
 ### Interaction & Safety
 ### --------------------------------
-unsetopt CORRECT
-setopt INTERACTIVE_COMMENTS
-setopt RM_STAR_WAIT
-setopt NO_CLOBBER
-unsetopt BEEP
+unsetopt CORRECT BEEP
+setopt INTERACTIVE_COMMENTS RM_STAR_WAIT NO_CLOBBER
+disable r 2> "/dev/null" || true
+
+if command -v rg > "/dev/null" 2>&1; then
+	alias r="rg --smart-case"
+elif command -v grep > "/dev/null" 2>&1; then
+	alias r="grep -Ei"
+fi
 
 ### --------------------------------
 ### Keybindings & Line Editing
@@ -92,6 +88,10 @@ bindkey '^[[1;3C' forward-word 2> "/dev/null" || true
 bindkey '^[[1;3D' backward-word 2> "/dev/null" || true
 bindkey '^[[5C' forward-word 2> "/dev/null" || true
 bindkey '^[[5D' backward-word 2> "/dev/null" || true
+bindkey '^[Oc' forward-word 2> "/dev/null" || true
+bindkey '^[OC' forward-word 2> "/dev/null" || true
+bindkey '^[Od' backward-word 2> "/dev/null" || true
+bindkey '^[OD' backward-word 2> "/dev/null" || true
 bindkey '^[^[[C' forward-word 2> "/dev/null" || true
 bindkey '^[^[[D' backward-word 2> "/dev/null" || true
 
@@ -132,19 +132,12 @@ bindkey -s '^[Oo' '/' 2> "/dev/null" || true
 ### --------------------------------
 ### Navigation
 ### --------------------------------
-setopt AUTO_CD
-setopt AUTO_PUSHD
-setopt PUSHD_IGNORE_DUPS
-setopt PUSHD_SILENT
-setopt COMPLETE_IN_WORD
+setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS PUSHD_SILENT COMPLETE_IN_WORD
 
 ### --------------------------------
 ### Globbing
 ### --------------------------------
-setopt EXTENDED_GLOB
-setopt GLOB_DOTS
-setopt NULL_GLOB
-setopt KSH_GLOB
+setopt EXTENDED_GLOB GLOB_DOTS NULL_GLOB KSH_GLOB
 
 ### --------------------------------
 ### Completion Engine

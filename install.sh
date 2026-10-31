@@ -37,6 +37,7 @@ _show_help() {
 		Options:
 		  -c, --context <CTX>      Context profile: desktop, server, container (default: desktop)
 		  -s, --shell <SHELL>      Target shell: all, zsh, bash, sh, ksh, fish, pwsh, nu, cmd (default: all)
+		  -u, --userland <MODE>    Userland mode: default, gnu, bsd (default: default)
 		      --pure               Native standalone templates, zero overhead (default)
 		      --no-framework       Alias for --pure
 		      --framework          Enable external frameworks (Oh-My-Zsh, Oh-My-Bash)
@@ -64,6 +65,7 @@ _show_help() {
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
 SHELL_TARGET="${SHELL_TARGET:-all}"
 SHELL_FRAMEWORK="${SHELL_FRAMEWORK:-0}"
+SHELL_USERLAND="${SHELL_USERLAND:-default}"
 
 for arg in "$@"; do
 	case "${arg}" in
@@ -71,10 +73,12 @@ for arg in "$@"; do
 			_show_help
 			exit 0
 			;;
-		--context=*) SHELL_CONTEXT="${arg#*=}" ;;
-		-c=*)        SHELL_CONTEXT="${arg#*=}" ;;
-		--shell=*)   SHELL_TARGET="${arg#*=}" ;;
-		-s=*)        SHELL_TARGET="${arg#*=}" ;;
+		--context=*)  SHELL_CONTEXT="${arg#*=}" ;;
+		-c=*)         SHELL_CONTEXT="${arg#*=}" ;;
+		--shell=*)    SHELL_TARGET="${arg#*=}" ;;
+		-s=*)         SHELL_TARGET="${arg#*=}" ;;
+		--userland=*) SHELL_USERLAND="${arg#*=}" ;;
+		-u=*)         SHELL_USERLAND="${arg#*=}" ;;
 		--framework|--with-framework|--oh-my-shell|--ohmysh|--omz|--omb) SHELL_FRAMEWORK=1 ;;
 		--pure|--no-framework) SHELL_FRAMEWORK=0 ;;
 	esac
@@ -92,9 +96,15 @@ for arg in "$@"; do
 		_skip_next=0
 		continue
 	fi
+	if [ "${_skip_next}" -eq 3 ]; then
+		SHELL_USERLAND="${arg}"
+		_skip_next=0
+		continue
+	fi
 	case "${arg}" in
-		--context|-c) _skip_next=1 ;;
-		--shell|-s)   _skip_next=2 ;;
+		--context|-c)  _skip_next=1 ;;
+		--shell|-s)    _skip_next=2 ;;
+		--userland|-u) _skip_next=3 ;;
 	esac
 done
 unset _skip_next
@@ -112,6 +122,15 @@ case "${SHELL_TARGET}" in
 	all|zsh|bash|sh|ksh|fish|pwsh|powershell|nu|nushell|cmd) ;;
 	*)
 		echo "❌ ERROR: Invalid shell '${SHELL_TARGET}'. Use 'all', 'zsh', 'bash', 'sh', 'ksh', 'fish', 'pwsh', 'nu' or 'cmd'." >&2
+		echo "   Run '$0 --help' for usage instructions." >&2
+		exit 1
+		;;
+esac
+
+case "${SHELL_USERLAND}" in
+	default|gnu|bsd) ;;
+	*)
+		echo "❌ ERROR: Invalid userland '${SHELL_USERLAND}'. Use 'default', 'gnu' or 'bsd'." >&2
 		echo "   Run '$0 --help' for usage instructions." >&2
 		exit 1
 		;;
@@ -177,6 +196,7 @@ echo "Detected OS:     ${OS_NAME}"
 echo "Current shell:   ${SHELL_NAME}"
 echo "Target shell(s): ${TARGET_SHELLS}"
 echo "Context:         ${SHELL_CONTEXT}"
+echo "Userland:        ${SHELL_USERLAND}"
 if [ "${SHELL_FRAMEWORK}" -eq 1 ]; then
 	echo "Mode:            framework (Oh-My-Bash / Oh-My-Zsh enabled)"
 else
@@ -187,13 +207,24 @@ fi
 ### Repository Permissions
 ### --------------------------------
 if [ "${OS_NAME}" != "windows" ]; then
-	_as_root chown -R "$(id -un):$(id -gn)" "${SHELL_REPO_DIR}" 2> "/dev/null" || true
-	_as_root find "${SHELL_REPO_DIR}" -type d -exec chmod 0755 {} + 2> "/dev/null" || true
-	_as_root find "${SHELL_REPO_DIR}" -type f -exec chmod 0644 {} + 2> "/dev/null" || true
+	_real_user="${SUDO_USER:-${DOAS_USER:-$(id -un)}}"
+	_real_group="$(id -gn "${_real_user}" 2> "/dev/null" || id -gn)"
+	if [ "$(id -u)" -eq 0 ]; then
+		if [ -n "${_real_user}" ] && [ "${_real_user}" != "root" ]; then
+			chown -R "${_real_user}:${_real_group}" "${SHELL_REPO_DIR}" 2> "/dev/null" || true
+		fi
+	elif command -v _as_root > "/dev/null" 2>&1; then
+		_as_root chown -R "${_real_user}:${_real_group}" "${SHELL_REPO_DIR}" 2> "/dev/null" || true
+	else
+		chown -R "${_real_user}:${_real_group}" "${SHELL_REPO_DIR}" 2> "/dev/null" || true
+	fi
+	find "${SHELL_REPO_DIR}" -type d -exec chmod 0755 {} + 2> "/dev/null" || true
+	find "${SHELL_REPO_DIR}" -type f -exec chmod 0644 {} + 2> "/dev/null" || true
 	[ -f "${SHELL_REPO_DIR}/shell.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/shell.sh" 2> "/dev/null" || true
 	[ -f "${SHELL_REPO_DIR}/install.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/install.sh" 2> "/dev/null" || true
 	[ -f "${SHELL_REPO_DIR}/benchmark.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/benchmark.sh" 2> "/dev/null" || true
 	[ -d "${SHELL_REPO_DIR}/.githooks" ] && chmod 0755 "${SHELL_REPO_DIR}/.githooks/"* 2> "/dev/null" || true
+	command git config --global --add safe.directory "${SHELL_REPO_DIR}" 2> "/dev/null" || true
 fi
 
 if [ -d "${SHELL_REPO_DIR}/.git" ] && command -v git > "/dev/null" 2>&1; then
@@ -327,20 +358,27 @@ _install_shell_target() {
 		local _root_profile="/root/.profile"
 		local _rc_name=".${_target_shell}rc"
 		local _env_line="export ENV=\"\${HOME}/${_rc_name}\""
+		local _userland_env_line="export SHELL_USERLAND=\"${SHELL_USERLAND}\""
 		if [ -f "${_profile}" ]; then
 			if ! grep -qF "export ENV=" "${_profile}" 2> "/dev/null"; then
 				echo "${_env_line}" >> "${_profile}"
 			fi
+			if ! grep -qF "export SHELL_USERLAND=" "${_profile}" 2> "/dev/null"; then
+				echo "${_userland_env_line}" >> "${_profile}"
+			fi
 		else
-			echo "${_env_line}" >| "${_profile}"
+			printf '%s\n%s\n' "${_env_line}" "${_userland_env_line}" >| "${_profile}"
 		fi
 		if [ "${OS_NAME}" != "windows" ]; then
 			if _as_root test -f "${_root_profile}" 2> "/dev/null"; then
 				if ! _as_root grep -qF "export ENV=" "${_root_profile}" 2> "/dev/null"; then
 					echo "export ENV=\"/root/${_rc_name}\"" | _as_root tee -a "${_root_profile}" > "/dev/null" 2>&1 || true
 				fi
+				if ! _as_root grep -qF "export SHELL_USERLAND=" "${_root_profile}" 2> "/dev/null"; then
+					echo "${_userland_env_line}" | _as_root tee -a "${_root_profile}" > "/dev/null" 2>&1 || true
+				fi
 			else
-				echo "export ENV=\"/root/${_rc_name}\"" | _as_root tee "${_root_profile}" > "/dev/null" 2>&1 || true
+				printf 'export ENV="/root/%s"\n%s\n' "${_rc_name}" "${_userland_env_line}" | _as_root tee "${_root_profile}" > "/dev/null" 2>&1 || true
 			fi
 		fi
 	fi
@@ -453,6 +491,7 @@ _install_shell_target() {
 	local _source_cmd="."
 	local _repo_dir_line="export SHELL_REPO_DIR=\"${SHELL_REPO_DIR}\""
 	local _context_line="export SHELL_CONTEXT=\"${SHELL_CONTEXT}\""
+	local _userland_line="export SHELL_USERLAND=\"${SHELL_USERLAND}\""
 	local _source_line="${_source_cmd} \"\${SHELL_REPO_DIR}/target/${OS_NAME}/${_target_shell}/prompt.sh\""
 	local _setup_block
 
@@ -463,6 +502,7 @@ _install_shell_target() {
 		### ================================
 		${_repo_dir_line}
 		${_context_line}
+		${_userland_line}
 		export SHELL_FRAMEWORK=${SHELL_FRAMEWORK}
 
 		for _file in "\${SHELL_REPO_DIR}/library/"*.sh; do [ -f "\${_file}" ] && ${_source_cmd} "\${_file}"; done
@@ -499,8 +539,22 @@ for _target in ${TARGET_SHELLS}; do
 	echo ""
 	echo "🔧 Configuring for shell: ${_target}"
 	case "${_target}" in
-		fish|pwsh|powershell|nu|nushell|cmd) _install_extended_shell "${_target}" ;;
-		*)                                   _install_shell_target "${_target}" ;;
+		fish|pwsh|powershell|nu|nushell|cmd)
+			_install_extended_shell "${_target}"
+			if [ "${_target}" = "fish" ]; then
+				_fish_cfg="${XDG_CONFIG_HOME:-${HOME}/.config}/fish/config.fish"
+				if [ -f "${_fish_cfg}" ]; then
+					if grep -qF "SHELL_USERLAND" "${_fish_cfg}" 2> "/dev/null"; then
+						sed -i.bak "s/^set -gx SHELL_USERLAND .*/set -gx SHELL_USERLAND \"${SHELL_USERLAND}\"/" "${_fish_cfg}" 2> "/dev/null" && rm -f "${_fish_cfg}.bak"
+					else
+						printf '\nset -gx SHELL_USERLAND "%s"\n' "${SHELL_USERLAND}" >> "${_fish_cfg}"
+					fi
+				fi
+			fi
+			;;
+		*)
+			_install_shell_target "${_target}"
+			;;
 	esac
 done
 

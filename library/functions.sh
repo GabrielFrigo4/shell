@@ -80,14 +80,52 @@ _git_pull_resilient() {
 	local _dir="$1"
 	[ -d "${_dir}/.git" ] || [ -f "${_dir}/.git" ] || return 1
 
+	local _real_u="${SUDO_USER:-${DOAS_USER:-$(id -un 2> "/dev/null")}}"
+	local _real_g="$(id -gn "${_real_u}" 2> "/dev/null" || id -gn 2> "/dev/null")"
+	local _cur_uid="$(id -u 2> "/dev/null" || echo 1000)"
+	local _ran_as_root=0
+
+	if [ "${_cur_uid}" -ne 0 ]; then
+		local _needs_heal=0
+		if [ ! -w "${_dir}" ] || [ ! -w "${_dir}/.git" ] || [ ! -w "${_dir}/.git/objects" ]; then
+			_needs_heal=1
+		elif find "${_dir}/.git" -maxdepth 2 \( -user 0 -o ! -writable \) -print -quit 2> "/dev/null" | grep -q .; then
+			_needs_heal=1
+		fi
+		if [ "${_needs_heal}" -eq 1 ]; then
+			_ui_sub "Auto-curando permissões de ${_dir}..."
+			_as_root chown -R "${_real_u}:${_real_g}" "${_dir}" 2> "/dev/null" || true
+			_as_root chmod -R u+rwX,go+rX "${_dir}" 2> "/dev/null" || true
+			command git config --global --add safe.directory "${_dir}" 2> "/dev/null" || true
+		fi
+	fi
+
 	local _cmd="command git -C \"${_dir}\""
 	if [ ! -w "${_dir}" ]; then
 		_as_root true || return 1
 		local _escalator="$(_detect_privilege_escalator)"
 		case "${_escalator}" in
-			sudo|doas) _cmd="${_escalator} git -C \"${_dir}\"" ;;
+			sudo|doas)
+				_cmd="${_escalator} git -C \"${_dir}\""
+				_ran_as_root=1
+				;;
 		esac
 	fi
+
+	_heal_final_perms() {
+		if [ "${_cur_uid}" -eq 0 ] || [ "${_ran_as_root}" -eq 1 ]; then
+			if [ -n "${_real_u}" ] && [ "${_real_u}" != "root" ]; then
+				if [ "${_cur_uid}" -eq 0 ]; then
+					chown -R "${_real_u}:${_real_g}" "${_dir}" 2> "/dev/null" || true
+					chmod -R u+rwX,go+rX "${_dir}" 2> "/dev/null" || true
+				else
+					_as_root chown -R "${_real_u}:${_real_g}" "${_dir}" 2> "/dev/null" || true
+					_as_root chmod -R u+rwX,go+rX "${_dir}" 2> "/dev/null" || true
+				fi
+			fi
+		fi
+		command git config --global --add safe.directory "${_dir}" 2> "/dev/null" || true
+	}
 
 	eval "${_cmd} diff --numstat" 2> "/dev/null" | while IFS="$(printf '\t')" read -r _additions _deletions _file; do
 		if [ "${_additions}" = "0" ] && [ "${_deletions}" = "0" ] && [ -n "${_file}" ]; then
@@ -159,9 +197,11 @@ _git_pull_resilient() {
 		if [ -f "${_dir}/.gitmodules" ]; then
 			eval "${_cmd} submodule update --init --recursive" > "/dev/null" 2>&1 || true
 		fi
+		_heal_final_perms
 		return 0
 	fi
 
+	_heal_final_perms
 	_ui_err "Falha na sincronização Git de ${_dir}."
 	return 1
 }

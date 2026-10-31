@@ -44,13 +44,13 @@ Para ferramentas e comandos com ciclo de vida gráfico, o ecossistema segue a si
 
 ## 2. 📝 Editores de Texto & Terminal
 
+> [!NOTE]
+> Os editores TUI nativos (`nvim`, `vim`, `hx`, `micro`) são invocados diretamente sem wrappers obsoletos (`open-vim`/`ov`, `open-neovim`/`on`, `open-micro`/`om`). O alias `on` encontra-se 100% livre no namespace.
+
 | Comando Canônico / Alias                                     | Descrição                                                                              | Editor Alvo                                                                                           |
 | :----------------------------------------------------------- | :------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------- |
 | `editor [alvo]` / `e [alvo]`                                 | Abre o editor padrão configurado (se sem argumentos, abre `.`).                        | `$VISUAL` / `$EDITOR` (com cascata Neovim > Helix > Micro > Kakoune > Nano > EE > MG > Vim > MC > VI) |
-| `open-neovim` / `open-nvim` / `on [alvo]`                    | Abre o Neovim no diretório ou arquivo especificado (padrão: `.`).                      | `nvim`                                                                                                |
-| `open-vim` / `ov [alvo]`                                     | Abre o Vim no diretório ou arquivo especificado (padrão: `.`).                         | `vim`                                                                                                 |
 | `open-helix` / `open-hx` / `oh` / `h [alvo]`                 | Abre o Helix no diretório ou arquivo especificado (padrão: `.`), restaurando o cursor. | `hx` (com wrapper defensivo de cursor)                                                                |
-| `open-micro` / `om [alvo]`                                   | Abre o Micro no diretório ou arquivo especificado (padrão: `.`).                       | `micro`                                                                                               |
 | `open-code` / `oc [alvo]`                                    | Abre o VS Code no diretório ou arquivo especificado (padrão: `.`).                     | `code` / `vscode`                                                                                     |
 | `open-codium` / `ocm [alvo]`                                 | Abre o VSCodium no diretório ou arquivo especificado (padrão: `.`).                    | `codium`                                                                                              |
 | `open-antigravity` / `open-ant` / `oa [alvo]`                | Abre o Antigravity IDE (padrão: `.`).                                                  | `antigravity-ide`                                                                                     |
@@ -74,7 +74,30 @@ Para ferramentas e comandos com ciclo de vida gráfico, o ecossistema segue a si
 
 ---
 
-## 3. 📦 Atualização de Pacotes & Sistema Operacional
+## 3. 🖥️ Aplicações Desktop & Navegadores (Família `o*` / `open-*`)
+
+| Comando Canônico / Alias                                  | Descrição                                                                                           | Aplicação Alvo & Cascata de Fallback                                                                                                                                |
+| :-------------------------------------------------------- | :-------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `open-vlc` / `ov [mídia]`                                 | Abre o reprodutor VLC em background (desacoplado) ou via `graphical-launcher` em Raw TTY.           | `vlc`                                                                                                                                                               |
+| `open-mpv` / `om [mídia]`                                 | Abre o reprodutor multimídia MPV no terminal ou janela desacoplada.                                 | `mpv`                                                                                                                                                               |
+| `open-wireshark` / `open-shark` / `os [captura]`          | Abre o analisador de pacotes de rede Wireshark em background.                                       | `wireshark`                                                                                                                                                         |
+| `open-firefox` / `of [url]`                               | Abre o navegador Mozilla Firefox em background.                                                     | `firefox`                                                                                                                                                           |
+| `open-browser` / `open-web` / `ow [url]`                  | Abre o navegador universal resolvendo estritamente a cascata de preferência de ponta a ponta.       | `google-chrome` / `google-chrome-stable` > `brave-browser` / `brave` > `chromium` / `chromium-browser` / `chrome` (FreeBSD) > `microsoft-edge` > `firefox` > Safari |
+| `open-onlyoffice` / `oo [doc]`                            | Abre a suíte OnlyOffice Desktop Editors em background.                                              | `onlyoffice-desktopeditors` > `desktopeditors`                                                                                                                      |
+| `open-libreoffice` / `ol [doc]`                           | Abre a suíte de produtividade LibreOffice em background.                                            | `libreoffice` > `soffice`                                                                                                                                           |
+| `open-terminal` / `ot [dir]`                              | Abre uma nova janela de emulador de terminal desacoplada.                                           | UNIX: `konsole > kgx > gnome-terminal > xfce4-terminal > foot > alacritty > kitty > wezterm > xterm`; Windows: `wt.exe`                                             |
+| `open-thunderbird` / `open-mail` / `omail` / `oth [args]` | Abre o cliente de e-mail Thunderbird desacoplado (evitando colisão de namespace com terminal `ot`). | `thunderbird`                                                                                                                                                       |
+| `open-kate` / `ok [alvo]`                                 | Abre o editor Kate em segundo plano (padrão: `.`).                                                  | `kate`                                                                                                                                                              |
+| `open-geany` / `og [alvo]`                                | Abre o Geany em segundo plano (padrão: `.`).                                                        | `geany`                                                                                                                                                             |
+| `open-code` / `oc [alvo]`                                 | Abre o Visual Studio Code (padrão: `.`).                                                            | `code` / `vscode`                                                                                                                                                   |
+| `open-codium` / `ocm [alvo]`                              | Abre o VSCodium (padrão: `.`).                                                                      | `codium`                                                                                                                                                            |
+| `open-antigravity` / `open-ant` / `oa [alvo]`             | Abre o Google Antigravity IDE (padrão: `.`).                                                        | `antigravity-ide`                                                                                                                                                   |
+| `open-zed` / `oz [alvo]`                                  | Abre o editor Zed (padrão: `.`).                                                                    | `zed`                                                                                                                                                               |
+| `emacs-open` / `open-emacs` / `oe [alvo]`                 | Abre o Emacs GUI desacoplado no alvo (padrão: `.`).                                                 | `emacsclient` / `emacsclientw`                                                                                                                                      |
+
+---
+
+## 4. 📦 Atualização de Pacotes & Sistema Operacional
 
 ```mermaid
 flowchart TD
@@ -140,7 +163,7 @@ flowchart TD
 
 ---
 
-## 4. 🌐 Rede & Wi-Fi
+## 5. 🌐 Rede & Wi-Fi
 
 | Comando Canônico / Alias   | Descrição                                                                 | Backend Nativo                                                           |
 | :------------------------- | :------------------------------------------------------------------------ | :----------------------------------------------------------------------- |
@@ -149,7 +172,7 @@ flowchart TD
 
 ---
 
-## 5. ⚡ Controle de Energia
+## 6. ⚡ Controle de Energia
 
 | Comando    | Descrição                                           | Ação Nativa                                                                              |
 | :--------- | :-------------------------------------------------- | :--------------------------------------------------------------------------------------- |
@@ -158,7 +181,7 @@ flowchart TD
 
 ---
 
-## 6. 📱 Gestão de Dispositivos Móveis _(Contexto Desktop)_
+## 7. 📱 Gestão de Dispositivos Móveis _(Contexto Desktop)_
 
 | Comando / Alias                                | Descrição                                                             | Tecnologias Suportadas                                                                               |
 | :--------------------------------------------- | :-------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- |
@@ -167,36 +190,47 @@ flowchart TD
 
 ---
 
-## 7. ⚡ Utilitários Modernos, Atalhos & Navegação
+## 8. ⚡ Utilitários Modernos, Ferramentas Rust & Navegação
+
+### 🦀 Tabela de Ferramentas Modernas em Rust & Aliases de 1 Caractere
+
+| Alias / Atalho       | Ferramenta Canônica | Papel & Fallback Resiliente                                                       | Origem / Ecossistema |
+| :------------------- | :------------------ | :-------------------------------------------------------------------------------- | :------------------- |
+| `r <termo>`          | `ripgrep` (`rg`)    | Busca textual com smart-case (`rg --smart-case` > `grep -Ei`).                    | Rust                 |
+| `g <termo>`          | `ripgrep` (`rg`)    | Busca rápida de texto em arquivos (`rg --smart-case` > `grep -Ei`).               | Rust                 |
+| `l`                  | `eza`               | Listagem enxuta com ícones e agrupamento de diretórios (`eza` > `exa` > `ls`).    | Rust                 |
+| `ll`                 | `eza`               | Listagem detalhada com metadados, permissões e Git (`eza -la --git` > `ls -laF`). | Rust                 |
+| `la`                 | `eza`               | Listagem completa incluindo arquivos ocultos (`eza -a` > `ls -a`).                | Rust                 |
+| `lt`                 | `eza`               | Exibição em árvore estruturada (`eza --tree` > `tree`).                           | Rust                 |
+| `c <arquivo>`        | `bat`               | Visualização com destaque sintático sem paginação (`bat --paging=never` > `cat`). | Rust                 |
+| `b <arquivo>`        | `bat`               | Paginação com destaque sintático de código (`bat` > `less`).                      | Rust                 |
+| `f <nome>` / `ff`    | `fd`                | Busca ultrarrápida de arquivos (`fd` / `fd --hidden --no-ignore` > `find`).       | Rust                 |
+| `d [dir]`            | `dust`              | Análise interativa e visual de consumo de disco (`dust` > `du -h`).               | Rust                 |
+| `p` / `pst`          | `procs`             | Inspeção de processos com suporte a árvore (`procs` / `procs --tree` > `ps`).     | Rust                 |
+| `t`                  | `bottom` (`btm`)    | Monitor do sistema em TUI Rust (`btm` > `btop` > `htop` > `top`).                 | Rust                 |
+| `z [termo]` / `zi`   | `zoxide`            | Navegação inteligente rápida por frequência e recência (`zoxide` > `cd`).         | Rust                 |
+| `delta`              | `git-delta`         | Pager sintático e comparador de diffs Git com syntax highlighting.                | Rust                 |
+| `sd <busca> <troca>` | `sd`                | Substituição intuitiva e veloz baseada em regex (alternativa moderna ao `sed`).   | Rust                 |
+
+### 🪟 Sessão Gráfica, Lançadores e Navegação
 
 | Comando / Alias                                              | Descrição                                                                                                          | Ferramenta Alvo & Fallback                                  |
 | :----------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------- |
-| `l`                                                          | Listagem enxuta com ícones e agrupamento de diretórios.                                                            | `eza` > `exa` > `ls` (usa `ls` nativo em TTY bruto)         |
-| `ll`                                                         | Listagem detalhada com metadados, permissões e status Git.                                                         | `eza -la --git` > `exa -la --git` > `ls -laF`               |
-| `la`                                                         | Listagem incluindo arquivos ocultos.                                                                               | `eza -a` > `exa -a` > `ls -a`                               |
-| `lt`                                                         | Exibição da árvore de diretórios (_tree view_).                                                                    | `eza --tree` > `exa --tree` > `tree`                        |
-| `g <termo>`                                                  | Busca rápida de texto em arquivos.                                                                                 | `rg --smart-case` > `grep -Ei`                              |
-| `c <arquivo>` / `b`                                          | Visualização formatada com destaque de sintaxe.                                                                    | `bat --paging=never` > `cat` (usa `cat` em TTY bruto)       |
-| `f <nome>` / `ff`                                            | Busca rápida de arquivos e diretórios.                                                                             | `fd` / `fd --hidden --no-ignore` > `find`                   |
-| `du` / `dust`                                                | Análise moderna e interativa de consumo de disco.                                                                  | `dust` > `ncdu` > `du`                                      |
-| `procs` / `pst`                                              | Inspeção avançada de processos com visão em árvore.                                                                | `procs` / `procs --tree` > `ps aux`                         |
-| `top` / `btm`                                                | Monitoramento moderno de sistema em TUI Rust.                                                                      | `btm` > `btop` > `htop` > `top`                             |
-| `z [termo]` / `zi`                                           | Navegação inteligente rápida por frequência e recência.                                                            | `zoxide` (fallback: `cd`)                                   |
-| `take <dir>` / `mkcd`                                        | Cria o diretório (incluindo intermediários) e entra nele.                                                          | `take-dir` (`mkdir -p && cd`)                               |
-| `cdb`                                                        | Retorna para o diretório raiz do repositório Git atual.                                                            | `cd-git-root` (`git rev-parse --show-toplevel`)             |
-| `hist [termo]` / `hg`                                        | Busca interativa no histórico por palavra-chave.                                                                   | `hist-search` (com suporte unificado a `zsh`, `bash`, `sh`) |
-| `extract <arquivo>` / `x`                                    | Descompacta automaticamente qualquer arquivo comprimido.                                                           | `extract-archive` (`tar`, `zip`, `7z`, `gz`, `xz`, etc.)    |
 | `window-manager [env]` / `wm` / `win` / `win-man` / `window` | Despachante universal de sessão gráfica/WM (prioriza Wayland, fallback para X11).                                  | `_dispatch_display_server window-manager`                   |
 | `window-manager-wayland [env]` / `wwm` / `way` / `wayland`   | Inicia sessão/compositor gráfico Wayland nativo.                                                                   | `start-session way`                                         |
 | `window-manager-x11 [env]` / `xwm` / `xorg` / `x11`          | Inicia sessão/ambiente gráfico X11 (Xorg / Xenocara).                                                              | `start-session xorg`                                        |
 | `graphical-launcher [-g/-k/-x/-m/-c] [app]` / `gui`          | Lançador universal efêmero de app gráfico por TTY (Wayland/X11 com flags de DE: GNOME, KDE, XFCE, MATE, Cinnamon). | `_dispatch_display_server graphical-launcher`               |
 | `graphical-launcher-wayland [-g/-k/-x/-m/-c] [app]` / `wgui` | Lançador Wayland efêmero por TTY (sway/river/labwc/cage; padrão: `foot`; estilização por DE).                      | Sessão Wayland efêmera com auto-exit                        |
 | `graphical-launcher-x11 [-g/-k/-x/-m/-c] [app]` / `xgui`     | Lançador Xorg efêmero por TTY via `xinit` (padrão: `xterm` maximizado com Adwaita Dark via Xresources).            | Sessão X11 efêmera (`xinit`) com auto-exit                  |
+| `take <dir>` / `mkcd`                                        | Cria o diretório (incluindo intermediários) e entra nele.                                                          | `take-dir` (`mkdir -p && cd`)                               |
+| `cdb`                                                        | Retorna para o diretório raiz do repositório Git atual.                                                            | `cd-git-root` (`git rev-parse --show-toplevel`)             |
+| `hist [termo]` / `hg`                                        | Busca interativa no histórico por palavra-chave.                                                                   | `hist-search` (com suporte unificado a `zsh`, `bash`, `sh`) |
+| `extract <arquivo>` / `x`                                    | Descompacta automaticamente qualquer arquivo comprimido.                                                           | `extract-archive` (`tar`, `zip`, `7z`, `gz`, `xz`, etc.)    |
 | `~`, `/`, `..`, `...`, `....`, `-- -`                        | Atalhos rápidos de navegação no sistema de arquivos.                                                               | `cd ~`, `cd /`, `cd ..`, `cd ../..`, `cd ../../..`, `cd -`  |
 
 ---
 
-## 8. 🌳 Controle de Versão: Git & Game of Trees (Got/tog)
+## 9. 🌳 Controle de Versão: Git & Game of Trees (Got/tog)
 
 | Comando Canônico / Alias | Descrição                                                                          | Ferramenta Alvo / Comportamento              |
 | :----------------------- | :--------------------------------------------------------------------------------- | :------------------------------------------- |
@@ -221,7 +255,7 @@ flowchart TD
 
 ---
 
-## 9. 📦 Virtualização, Hipervisores & Containers
+## 10. 📦 Virtualização, Hipervisores & Containers
 
 | Comando Canônico / Alias                            | Descrição                                                                        | Ferramenta Alvo / Comportamento                      |
 | :-------------------------------------------------- | :------------------------------------------------------------------------------- | :--------------------------------------------------- |
@@ -237,12 +271,12 @@ flowchart TD
 | `lx [cmd...]`                                       | Executa comando transparente no container (Incus) ou na VM (Bhyve com PWD sync). | `incus exec` / `linux-host` (FreeBSD)                |
 | `openbsd` / `ob`                                    | Conecta ou orquestra a VM OpenBSD.                                               | KVM no Linux (`virsh`); Bhyve no FreeBSD (`vm`)      |
 | `ob start` / `ob stop` / `ob restart` / `ob status` | Ciclo de vida da VM OpenBSD.                                                     | KVM (`virsh`) / Bhyve (`vm`)                         |
-| `netbsd` / `nt`                                     | Conecta ou orquestra a VM NetBSD.                                                | KVM no Linux (`virsh`); Bhyve no FreeBSD (`vm`)      |
-| `nt start` / `nt stop` / `nt restart` / `nt status` | Ciclo de vida da VM NetBSD.                                                      | KVM (`virsh`) / Bhyve (`vm`)                         |
+| `netbsd` / `nb`                                     | Conecta ou orquestra a VM NetBSD.                                                | KVM no Linux (`virsh`); Bhyve no FreeBSD (`vm`)      |
+| `nb start` / `nb stop` / `nb restart` / `nb status` | Ciclo de vida da VM NetBSD.                                                      | KVM (`virsh`) / Bhyve (`vm`)                         |
 
 ---
 
-## 10. 🌐 Variáveis de Ambiente & Configurações Globais
+## 11. 🌐 Variáveis de Ambiente & Configurações Globais
 
 | Variável                                 | Descrição / Propósito                                                        | Origem / Padrão                                                             |
 | :--------------------------------------- | :--------------------------------------------------------------------------- | :-------------------------------------------------------------------------- |
@@ -265,4 +299,4 @@ flowchart TD
 | `FREEBSD_HOST_IP` / `FREEBSD_VM_NAME`    | IP e nome da VM (KVM) ou Jail (Bastille) para o orquestrador `fb`.           | Injetados pelo `Vault` / Auto-detectados (`192.168.8.3`)                    |
 | `LINUX_HOST_IP` / `LINUX_CONTAINER_NAME` | IP e nome do container Incus ou VM Bhyve para o orquestrador `lx`.           | Injetados pelo `Vault` / Auto-detectados (`192.168.8.2`)                    |
 | `OPENBSD_HOST_IP` / `OPENBSD_VM_NAME`    | IP e nome da VM OpenBSD para o orquestrador `ob`.                            | Injetados pelo `Vault` (`192.168.8.4`)                                      |
-| `NETBSD_HOST_IP` / `NETBSD_VM_NAME`      | IP e nome da VM NetBSD para o orquestrador `nt`.                             | Injetados pelo `Vault` (`192.168.8.5`)                                      |
+| `NETBSD_HOST_IP` / `NETBSD_VM_NAME`      | IP e nome da VM NetBSD para o orquestrador `nb`.                             | Injetados pelo `Vault` (`192.168.8.5`)                                      |

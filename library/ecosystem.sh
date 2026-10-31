@@ -403,7 +403,7 @@ reinstall-shell() {
 	fi
 
 	_ui_step "Atualizando repositório do Universal Shell em ${SHELL_REPO_DIR}..."
-	command git -C "${SHELL_REPO_DIR}" pull || {
+	_git_pull_resilient "${SHELL_REPO_DIR}" || {
 		_ui_err "git pull failed."
 		return 1
 	}

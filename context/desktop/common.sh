@@ -28,29 +28,6 @@ nvim() {
 	return ${_status}
 }
 
-open-neovim() {
-	if [ "$#" -eq 0 ]; then
-		nvim .
-	else
-		nvim "$@"
-	fi
-}
-alias open-nvim="open-neovim"
-alias on="open-neovim"
-
-open-vim() {
-	command -v vim > "/dev/null" 2>&1 || { _ui_err "vim not found."; return 127; }
-	if [ "$#" -eq 0 ]; then
-		command vim .
-	else
-		command vim "$@"
-	fi
-	local _status=$?
-	_restore_tty_cursor
-	return ${_status}
-}
-alias ov="open-vim"
-
 hx() {
 	command -v hx > "/dev/null" 2>&1 || { _ui_err "hx not found."; return 127; }
 	local _status=0
@@ -89,15 +66,6 @@ micro() {
 	_restore_tty_cursor
 	return ${_status}
 }
-
-open-micro() {
-	if [ "$#" -eq 0 ]; then
-		micro .
-	else
-		micro "$@"
-	fi
-}
-alias om="open-micro"
 
 ### --------------------------------
 ### GUI Editors
@@ -169,6 +137,138 @@ open-zed() {
 	fi
 }
 alias oz="open-zed"
+
+### --------------------------------
+### Desktop Applications
+### --------------------------------
+open-vlc() {
+	command -v vlc > "/dev/null" 2>&1 || { _ui_err "vlc not found."; return 127; }
+	if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty && [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+		if command -v graphical-launcher > "/dev/null" 2>&1; then
+			graphical-launcher vlc "$@"
+			return $?
+		fi
+	fi
+	(command nohup vlc "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+}
+alias ov="open-vlc"
+
+open-mpv() {
+	command -v mpv > "/dev/null" 2>&1 || { _ui_err "mpv not found."; return 127; }
+	if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty && [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+		if command -v graphical-launcher > "/dev/null" 2>&1; then
+			graphical-launcher mpv "$@"
+			return $?
+		fi
+	fi
+	command mpv "$@"
+}
+alias om="open-mpv"
+
+open-wireshark() {
+	command -v wireshark > "/dev/null" 2>&1 || { _ui_err "wireshark not found."; return 127; }
+	(command nohup wireshark "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+}
+alias open-shark="open-wireshark"
+alias os="open-wireshark"
+
+open-firefox() {
+	command -v firefox > "/dev/null" 2>&1 || { _ui_err "firefox not found."; return 127; }
+	(command nohup firefox "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+}
+alias of="open-firefox"
+
+open-browser() {
+	local _browser=""
+	if command -v google-chrome > "/dev/null" 2>&1; then
+		_browser="google-chrome"
+	elif command -v google-chrome-stable > "/dev/null" 2>&1; then
+		_browser="google-chrome-stable"
+	elif command -v brave-browser > "/dev/null" 2>&1; then
+		_browser="brave-browser"
+	elif command -v brave > "/dev/null" 2>&1; then
+		_browser="brave"
+	elif command -v chromium > "/dev/null" 2>&1; then
+		_browser="chromium"
+	elif command -v chromium-browser > "/dev/null" 2>&1; then
+		_browser="chromium-browser"
+	elif [ "$(uname -s 2> "/dev/null")" = "FreeBSD" ] && command -v chrome > "/dev/null" 2>&1; then
+		_browser="chrome"
+	elif command -v microsoft-edge > "/dev/null" 2>&1; then
+		_browser="microsoft-edge"
+	elif command -v firefox > "/dev/null" 2>&1; then
+		_browser="firefox"
+	elif [ "$(uname -s 2> "/dev/null")" = "Darwin" ]; then
+		if [ "$#" -eq 0 ]; then
+			open -a Safari
+		else
+			open -a Safari "$@"
+		fi
+		return $?
+	fi
+	[ -z "${_browser}" ] && { _ui_err "No supported web browser found."; return 127; }
+	(command nohup "${_browser}" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+}
+alias open-web="open-browser"
+alias ow="open-browser"
+
+open-onlyoffice() {
+	local _bin=""
+	if command -v onlyoffice-desktopeditors > "/dev/null" 2>&1; then
+		_bin="onlyoffice-desktopeditors"
+	elif command -v desktopeditors > "/dev/null" 2>&1; then
+		_bin="desktopeditors"
+	fi
+	[ -z "${_bin}" ] && { _ui_err "OnlyOffice not found."; return 127; }
+	(command nohup "${_bin}" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+}
+alias oo="open-onlyoffice"
+
+open-libreoffice() {
+	local _bin=""
+	if command -v libreoffice > "/dev/null" 2>&1; then
+		_bin="libreoffice"
+	elif command -v soffice > "/dev/null" 2>&1; then
+		_bin="soffice"
+	fi
+	[ -z "${_bin}" ] && { _ui_err "LibreOffice not found."; return 127; }
+	(command nohup "${_bin}" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+}
+alias ol="open-libreoffice"
+
+open-terminal() {
+	local _term=""
+	for _t in konsole kgx gnome-terminal xfce4-terminal foot alacritty kitty wezterm xterm; do
+		if command -v "${_t}" > "/dev/null" 2>&1; then
+			_term="${_t}"
+			break
+		fi
+	done
+	[ -z "${_term}" ] && { _ui_err "No supported terminal found."; return 127; }
+	(command nohup "${_term}" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+}
+alias ot="open-terminal"
+
+open-thunderbird() {
+	command -v thunderbird > "/dev/null" 2>&1 || { _ui_err "thunderbird not found."; return 127; }
+	(command nohup thunderbird "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+}
+alias open-mail="open-thunderbird"
+alias omail="open-thunderbird"
+alias oth="open-thunderbird"
+
+### --------------------------------
+### Modern Rust CLI Tools
+### --------------------------------
+if command -v rg > "/dev/null" 2>&1 && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
+	alias r="rg --smart-case"
+else
+	alias r="grep -Ei"
+fi
+
+if ! command -v delta > "/dev/null" 2>&1 && command -v git-delta > "/dev/null" 2>&1; then
+	alias delta="git-delta"
+fi
 
 ### --------------------------------
 ### Emacs Daemon & Client

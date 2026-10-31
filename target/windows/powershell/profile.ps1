@@ -1220,52 +1220,231 @@ function oe {
 }
 
 ### ================================
-### CODE EDITORS ALIASES
+### CODE EDITORS & APPS ALIASES
 ### ================================
 
-function on {
-	$app = "nvim"
-	$target = if ($args) { $args } else { "." }
-	& $app $target
+function Invoke-OpenVlc {
+	$target = if ($args) { $args } else { @() }
+	Start-Process -FilePath "vlc" -ArgumentList $target
 }
+Set-Alias "open-vlc" "Invoke-OpenVlc" -Force -Option AllScope
+Set-Alias "ov" "Invoke-OpenVlc" -Force -Option AllScope
 
-function ov {
-	$app = "vim"
-	$target = if ($args) { $args } else { "." }
-	& $app $target
-}
-
-function oc {
-	$app = "code"
-	$target = if ($args) { $args } else { "." }
-	Start-Process -FilePath $app -ArgumentList $target -WindowStyle Hidden
-}
-
-function ocm {
-	$app = "codium"
-	$target = if ($args) { $args } else { "." }
-	Start-Process -FilePath $app -ArgumentList $target -WindowStyle Hidden
-}
-
-function oz {
-	$app = "zed"
-	$target = if ($args) { $args } else { "." }
-	Start-Process -FilePath $app -ArgumentList $target -WindowStyle Hidden
-}
-
-function oa {
-	$app = "antigravity-ide"
-	$target = if ($args) { $args } else { "." }
-	Start-Process -FilePath $app -ArgumentList $target -WindowStyle Hidden
-}
-
-function ant {
-	$app = "antigravity-ide"
+function Invoke-OpenMpv {
 	if ($args) {
-		Start-Process -FilePath $app -ArgumentList $args -WindowStyle Hidden
+		& mpv @args
 	} else {
-		Start-Process -FilePath $app -WindowStyle Hidden
+		& mpv .
 	}
+}
+Set-Alias "open-mpv" "Invoke-OpenMpv" -Force -Option AllScope
+Set-Alias "om" "Invoke-OpenMpv" -Force -Option AllScope
+
+function Invoke-OpenWireshark {
+	$target = if ($args) { $args } else { @() }
+	Start-Process -FilePath "wireshark" -ArgumentList $target
+}
+Set-Alias "open-wireshark" "Invoke-OpenWireshark" -Force -Option AllScope
+Set-Alias "open-shark" "Invoke-OpenWireshark" -Force -Option AllScope
+Set-Alias "os" "Invoke-OpenWireshark" -Force -Option AllScope
+
+function Invoke-OpenFirefox {
+	$target = if ($args) { $args } else { @() }
+	Start-Process -FilePath "firefox" -ArgumentList $target
+}
+Set-Alias "open-firefox" "Invoke-OpenFirefox" -Force -Option AllScope
+Set-Alias "of" "Invoke-OpenFirefox" -Force -Option AllScope
+
+function Invoke-OpenBrowser {
+	$candidates = @(
+		"google-chrome", "google-chrome-stable", "chrome",
+		"brave-browser", "brave",
+		"chromium", "chromium-browser",
+		"microsoft-edge", "msedge",
+		"firefox"
+	)
+	$browser = $null
+	foreach ($b in $candidates) {
+		if (Get-Command $b -ErrorAction SilentlyContinue) {
+			$browser = $b
+			break
+		}
+	}
+	if (-not $browser) {
+		$browserPaths = @(
+			"${env:ProgramFiles}\Google\Chrome\Application\chrome.exe",
+			"${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+			"${env:LOCALAPPDATA}\Google\Chrome\Application\chrome.exe",
+			"${env:ProgramFiles}\BraveSoftware\Brave-Browser\Application\brave.exe",
+			"${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
+			"${env:ProgramFiles}\Mozilla Firefox\firefox.exe"
+		)
+		foreach ($bp in $browserPaths) {
+			if (Test-Path $bp) { $browser = $bp; break }
+		}
+	}
+	if ($browser) {
+		$target = if ($args) { $args } else { @() }
+		Start-Process -FilePath $browser -ArgumentList $target
+	} else {
+		_ui_err "Nenhum navegador suportado encontrado."
+	}
+}
+Set-Alias "open-browser" "Invoke-OpenBrowser" -Force -Option AllScope
+Set-Alias "open-web" "Invoke-OpenBrowser" -Force -Option AllScope
+Set-Alias "ow" "Invoke-OpenBrowser" -Force -Option AllScope
+
+function Invoke-OpenOnlyOffice {
+	$candidates = @("onlyoffice-desktopeditors", "desktopeditors")
+	$bin = $candidates | Where-Object { Get-Command $_ -ErrorAction SilentlyContinue } | Select-Object -First 1
+	if (-not $bin) {
+		$ooPath = "${env:ProgramFiles}\ONLYOFFICE\DesktopEditors\DesktopEditors.exe"
+		if (Test-Path $ooPath) { $bin = $ooPath }
+	}
+	if ($bin) {
+		$target = if ($args) { $args } else { @() }
+		Start-Process -FilePath $bin -ArgumentList $target
+	} else {
+		_ui_err "OnlyOffice não encontrado."
+	}
+}
+Set-Alias "open-onlyoffice" "Invoke-OpenOnlyOffice" -Force -Option AllScope
+Set-Alias "oo" "Invoke-OpenOnlyOffice" -Force -Option AllScope
+
+function Invoke-OpenLibreOffice {
+	$candidates = @("libreoffice", "soffice")
+	$bin = $candidates | Where-Object { Get-Command $_ -ErrorAction SilentlyContinue } | Select-Object -First 1
+	if (-not $bin) {
+		$loPath = "${env:ProgramFiles}\LibreOffice\program\soffice.exe"
+		if (Test-Path $loPath) { $bin = $loPath }
+	}
+	if ($bin) {
+		$target = if ($args) { $args } else { @() }
+		Start-Process -FilePath $bin -ArgumentList $target
+	} else {
+		_ui_err "LibreOffice não encontrado."
+	}
+}
+Set-Alias "open-libreoffice" "Invoke-OpenLibreOffice" -Force -Option AllScope
+Set-Alias "ol" "Invoke-OpenLibreOffice" -Force -Option AllScope
+
+function Invoke-OpenTerminal {
+	$target = if ($args) { $args } else { @() }
+	if (Get-Command wt.exe -ErrorAction SilentlyContinue) {
+		Start-Process -FilePath "wt.exe" -ArgumentList $target
+	} elseif (Get-Command alacritty -ErrorAction SilentlyContinue) {
+		Start-Process -FilePath "alacritty" -ArgumentList $target
+	} else {
+		Start-Process -FilePath "powershell.exe"
+	}
+}
+Set-Alias "open-terminal" "Invoke-OpenTerminal" -Force -Option AllScope
+Set-Alias "ot" "Invoke-OpenTerminal" -Force -Option AllScope
+
+function Invoke-OpenThunderbird {
+	$bin = if (Get-Command thunderbird -ErrorAction SilentlyContinue) { "thunderbird" }
+		elseif (Test-Path "${env:ProgramFiles}\Mozilla Thunderbird\thunderbird.exe") { "${env:ProgramFiles}\Mozilla Thunderbird\thunderbird.exe" }
+		else { $null }
+	if ($bin) {
+		$target = if ($args) { $args } else { @() }
+		Start-Process -FilePath $bin -ArgumentList $target
+	} else {
+		_ui_err "Thunderbird não encontrado."
+	}
+}
+Set-Alias "open-thunderbird" "Invoke-OpenThunderbird" -Force -Option AllScope
+Set-Alias "omail" "Invoke-OpenThunderbird" -Force -Option AllScope
+Set-Alias "oth" "Invoke-OpenThunderbird" -Force -Option AllScope
+
+function Invoke-OpenKate {
+	$target = if ($args) { $args } else { "." }
+	Start-Process -FilePath "kate" -ArgumentList $target -WindowStyle Hidden
+}
+Set-Alias "open-kate" "Invoke-OpenKate" -Force -Option AllScope
+Set-Alias "ok" "Invoke-OpenKate" -Force -Option AllScope
+
+function Invoke-OpenGeany {
+	$target = if ($args) { $args } else { "." }
+	Start-Process -FilePath "geany" -ArgumentList $target -WindowStyle Hidden
+}
+Set-Alias "open-geany" "Invoke-OpenGeany" -Force -Option AllScope
+Set-Alias "og" "Invoke-OpenGeany" -Force -Option AllScope
+
+function Invoke-OpenCode {
+	$target = if ($args) { $args } else { "." }
+	Start-Process -FilePath "code" -ArgumentList $target -WindowStyle Hidden
+}
+Set-Alias "open-code" "Invoke-OpenCode" -Force -Option AllScope
+Set-Alias "oc" "Invoke-OpenCode" -Force -Option AllScope
+
+function Invoke-OpenCodium {
+	$target = if ($args) { $args } else { "." }
+	Start-Process -FilePath "codium" -ArgumentList $target -WindowStyle Hidden
+}
+Set-Alias "open-codium" "Invoke-OpenCodium" -Force -Option AllScope
+Set-Alias "ocm" "Invoke-OpenCodium" -Force -Option AllScope
+
+function Invoke-OpenZed {
+	$target = if ($args) { $args } else { "." }
+	Start-Process -FilePath "zed" -ArgumentList $target -WindowStyle Hidden
+}
+Set-Alias "open-zed" "Invoke-OpenZed" -Force -Option AllScope
+Set-Alias "oz" "Invoke-OpenZed" -Force -Option AllScope
+
+function Invoke-OpenAntigravity {
+	$target = if ($args) { $args } else { "." }
+	Start-Process -FilePath "antigravity-ide" -ArgumentList $target -WindowStyle Hidden
+}
+Set-Alias "open-antigravity" "Invoke-OpenAntigravity" -Force -Option AllScope
+Set-Alias "open-ant" "Invoke-OpenAntigravity" -Force -Option AllScope
+Set-Alias "oa" "Invoke-OpenAntigravity" -Force -Option AllScope
+Set-Alias "ant" "Invoke-OpenAntigravity" -Force -Option AllScope
+Set-Alias "open-emacs" "oe" -Force -Option AllScope
+
+### ================================
+### MODERN RUST TOOLS ALIASES
+### ================================
+
+if (Get-Command rg -ErrorAction SilentlyContinue) {
+	Set-Alias "r" "rg" -Force -Option AllScope
+	Set-Alias "g" "rg" -Force -Option AllScope
+}
+
+if (Get-Command eza -ErrorAction SilentlyContinue) {
+	function Invoke-EzaCompact { eza --icons=auto --group-directories-first @args }
+	function Invoke-EzaLong { eza -la --icons=auto --group-directories-first --git @args }
+	function Invoke-EzaAll { eza -a --icons=auto --group-directories-first @args }
+	function Invoke-EzaTree { eza --tree --icons=auto --group-directories-first @args }
+	Set-Alias "l" "Invoke-EzaCompact" -Force -Option AllScope
+	Set-Alias "ll" "Invoke-EzaLong" -Force -Option AllScope
+	Set-Alias "la" "Invoke-EzaAll" -Force -Option AllScope
+	Set-Alias "lt" "Invoke-EzaTree" -Force -Option AllScope
+}
+
+if (Get-Command bat -ErrorAction SilentlyContinue) {
+	function Invoke-BatPlain { bat --paging=never @args }
+	Set-Alias "c" "Invoke-BatPlain" -Force -Option AllScope
+	Set-Alias "b" "bat" -Force -Option AllScope
+}
+
+if (Get-Command fd -ErrorAction SilentlyContinue) {
+	Set-Alias "f" "fd" -Force -Option AllScope
+}
+
+if (Get-Command dust -ErrorAction SilentlyContinue) {
+	Set-Alias "d" "dust" -Force -Option AllScope
+}
+
+if (Get-Command procs -ErrorAction SilentlyContinue) {
+	Set-Alias "p" "procs" -Force -Option AllScope
+}
+
+if (Get-Command btm -ErrorAction SilentlyContinue) {
+	Set-Alias "t" "btm" -Force -Option AllScope
+}
+
+if (-not (Get-Command delta -ErrorAction SilentlyContinue) -and (Get-Command git-delta -ErrorAction SilentlyContinue)) {
+	Set-Alias "delta" "git-delta" -Force -Option AllScope
 }
 
 ### ================================

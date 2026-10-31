@@ -261,13 +261,231 @@ alias enw = emacs-nw;
 alias oen = emacs-open-nw;
 alias oenw = emacs-open-nw;
 alias open-emacs-nw = emacs-open-nw;
-alias ov = vim .;
-alias on = nvim .;
+def open-vlc [...args: string] {
+	let target = if ($args | is-empty) { "" } else { $args | str join " " }
+	^pwsh -NoProfile -Command $"Start-Process -FilePath 'vlc' -ArgumentList '($target)'"
+}
+alias ov = open-vlc;
+
+def open-mpv [...args: string] {
+	if ($args | is-empty) {
+		^mpv .
+	} else {
+		^mpv ...$args
+	}
+}
+alias om = open-mpv;
+
+def open-wireshark [...args: string] {
+	let target = if ($args | is-empty) { "" } else { $args | str join " " }
+	^pwsh -NoProfile -Command $"Start-Process -FilePath 'wireshark' -ArgumentList '($target)'"
+}
+alias open-shark = open-wireshark;
+alias os = open-wireshark;
+
+def open-firefox [...args: string] {
+	let target = if ($args | is-empty) { "" } else { $args | str join " " }
+	^pwsh -NoProfile -Command $"Start-Process -FilePath 'firefox' -ArgumentList '($target)'"
+}
+alias of = open-firefox;
+
+def open-browser [...args: string] {
+	let candidates = [
+		"google-chrome", "google-chrome-stable", "chrome",
+		"brave-browser", "brave",
+		"chromium", "chromium-browser",
+		"microsoft-edge", "msedge",
+		"firefox"
+	]
+	mut chosen = ""
+	for b in $candidates {
+		if (which $b | is-not-empty) {
+			$chosen = $b
+			break
+		}
+	}
+	if ($chosen | is-empty) {
+		let paths = [
+			"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+			"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+			(if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "Google", "Chrome", "Application", "chrome.exe"] | path join } else { "" }),
+			"C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+			"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+			"C:\\Program Files\\Mozilla Firefox\\firefox.exe"
+		]
+		for p in $paths {
+			if ($p | is-not-empty) and ($p | path exists) {
+				$chosen = $p
+				break
+			}
+		}
+	}
+	if ($chosen | is-not-empty) {
+		let target = if ($args | is-empty) { "" } else { $args | str join " " }
+		^pwsh -NoProfile -Command $"Start-Process -FilePath '($chosen)' -ArgumentList '($target)'"
+	} else {
+		_ui_err "Nenhum navegador suportado encontrado."
+	}
+}
+alias open-web = open-browser;
+alias ow = open-browser;
+
+def open-onlyoffice [...args: string] {
+	mut bin = ""
+	for b in ["onlyoffice-desktopeditors", "desktopeditors"] {
+		if (which $b | is-not-empty) { $bin = $b; break }
+	}
+	if ($bin | is-empty) and ("C:\\Program Files\\ONLYOFFICE\\DesktopEditors\\DesktopEditors.exe" | path exists) {
+		$bin = "C:\\Program Files\\ONLYOFFICE\\DesktopEditors\\DesktopEditors.exe"
+	}
+	if ($bin | is-not-empty) {
+		let target = if ($args | is-empty) { "" } else { $args | str join " " }
+		^pwsh -NoProfile -Command $"Start-Process -FilePath '($bin)' -ArgumentList '($target)'"
+	} else {
+		_ui_err "OnlyOffice não encontrado."
+	}
+}
+alias oo = open-onlyoffice;
+
+def open-libreoffice [...args: string] {
+	mut bin = ""
+	for b in ["libreoffice", "soffice"] {
+		if (which $b | is-not-empty) { $bin = $b; break }
+	}
+	if ($bin | is-empty) and ("C:\\Program Files\\LibreOffice\\program\\soffice.exe" | path exists) {
+		$bin = "C:\\Program Files\\LibreOffice\\program\\soffice.exe"
+	}
+	if ($bin | is-not-empty) {
+		let target = if ($args | is-empty) { "" } else { $args | str join " " }
+		^pwsh -NoProfile -Command $"Start-Process -FilePath '($bin)' -ArgumentList '($target)'"
+	} else {
+		_ui_err "LibreOffice não encontrado."
+	}
+}
+alias ol = open-libreoffice;
+
+def open-terminal [...args: string] {
+	let target = if ($args | is-empty) { "" } else { $args | str join " " }
+	if (which wt.exe | is-not-empty) or (which wt | is-not-empty) {
+		^pwsh -NoProfile -Command $"Start-Process -FilePath 'wt.exe' -ArgumentList '($target)'"
+	} else {
+		^pwsh -NoProfile -Command "Start-Process -FilePath 'powershell.exe'"
+	}
+}
+alias ot = open-terminal;
+
+def open-thunderbird [...args: string] {
+	mut bin = if (which thunderbird | is-not-empty) { "thunderbird" } else { "" }
+	if ($bin | is-empty) and ("C:\\Program Files\\Mozilla Thunderbird\\thunderbird.exe" | path exists) {
+		$bin = "C:\\Program Files\\Mozilla Thunderbird\\thunderbird.exe"
+	}
+	if ($bin | is-not-empty) {
+		let target = if ($args | is-empty) { "" } else { $args | str join " " }
+		^pwsh -NoProfile -Command $"Start-Process -FilePath '($bin)' -ArgumentList '($target)'"
+	} else {
+		_ui_err "Thunderbird não encontrado."
+	}
+}
+alias open-mail = open-thunderbird;
+alias omail = open-thunderbird;
+alias oth = open-thunderbird;
+
+alias open-emacs = oe;
+alias open-code = code .;
 alias oc = code .;
+alias open-codium = codium .;
 alias ocm = codium .;
+alias open-zed = zed .;
 alias oz = zed .;
+alias open-antigravity = antigravity-ide .;
+alias open-ant = antigravity-ide .;
 alias oa = antigravity-ide .;
 alias ant = antigravity-ide;
+
+def --wrapped r [...rest] {
+	if (which rg | is-not-empty) {
+		^rg --smart-case ...$rest
+	} else {
+		find ...$rest
+	}
+}
+def --wrapped g [...rest] {
+	if (which rg | is-not-empty) {
+		^rg --smart-case ...$rest
+	} else {
+		find ...$rest
+	}
+}
+def --wrapped l [...rest] {
+	if (which eza | is-not-empty) {
+		^eza --icons=auto --group-directories-first ...$rest
+	} else {
+		ls ...$rest
+	}
+}
+def --wrapped ll [...rest] {
+	if (which eza | is-not-empty) {
+		^eza -la --icons=auto --group-directories-first --git ...$rest
+	} else {
+		ls -l ...$rest
+	}
+}
+def --wrapped la [...rest] {
+	if (which eza | is-not-empty) {
+		^eza -a --icons=auto --group-directories-first ...$rest
+	} else {
+		ls -a ...$rest
+	}
+}
+def --wrapped lt [...rest] {
+	if (which eza | is-not-empty) {
+		^eza --tree --icons=auto --group-directories-first ...$rest
+	} else {
+		ls ...$rest
+	}
+}
+def --wrapped c [...rest] {
+	if (which bat | is-not-empty) {
+		^bat --paging=never ...$rest
+	} else {
+		open ...$rest
+	}
+}
+def --wrapped b [...rest] {
+	if (which bat | is-not-empty) {
+		^bat ...$rest
+	} else {
+		open ...$rest
+	}
+}
+def --wrapped f [...rest] {
+	if (which fd | is-not-empty) {
+		^fd ...$rest
+	} else {
+		find ...$rest
+	}
+}
+def --wrapped d [...rest] {
+	if (which dust | is-not-empty) {
+		^dust ...$rest
+	} else {
+		ls ...$rest
+	}
+}
+def --wrapped p [...rest] {
+	if (which procs | is-not-empty) {
+		^procs ...$rest
+	} else {
+		ps
+	}
+}
+def --wrapped t [...rest] {
+	if (which btm | is-not-empty) {
+		^btm ...$rest
+	} else {
+		ps
+	}
+}
 
 ### ================================
 ### GOOGLE ANTIGRAVITY CLI ALIASES

@@ -614,6 +614,24 @@ end
 -- ALIASES
 -- ================================
 
+local function get_web_browser_cmd()
+	local cands = { "google-chrome", "google-chrome-stable", "chrome", "brave", "chromium", "msedge", "firefox" }
+	for _, c in ipairs(cands) do
+		if has_cmd(c) then return c end
+	end
+	local paths = {
+		[[C:\Program Files\Google\Chrome\Application\chrome.exe]],
+		[[C:\Program Files (x86)\Google\Chrome\Application\chrome.exe]],
+		[[C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe]],
+		[[C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe]],
+		[[C:\Program Files\Mozilla Firefox\firefox.exe]],
+	}
+	for _, p in ipairs(paths) do
+		if is_file(p) then return [["]] .. p .. [["]] end
+	end
+	return "explorer"
+end
+
 local aliases = {
 	-- --------------------------------
 	-- My Shortcuts
@@ -654,13 +672,47 @@ local aliases = {
 	["enw"] = [[emacsclient.exe -t --alternate-editor ""]],
 	["oen"] = [[emacsclient.exe -t --alternate-editor "" .]],
 	["oenw"] = [[emacsclient.exe -t --alternate-editor "" .]],
-	["ov"] = [[vim .]],
-	["on"] = [[nvim .]],
-	['oc'] = [[code .]],
-	['ocm'] = [[codium .]],
-	['oa'] = [[antigravity-ide .]],
-	['oz'] = [[zed .]],
-	['ant'] = [[antigravity-ide]],
+	["open-emacs"] = [[emacsclientw.exe --create-frame --alternate-editor "" .]],
+
+	-- --------------------------------
+	-- Desktop Applications & Editors
+	-- --------------------------------
+	["open-vlc"] = [[start "" vlc]],
+	["ov"] = [[start "" vlc]],
+	["open-mpv"] = [[mpv]],
+	["om"] = [[mpv]],
+	["open-wireshark"] = [[start "" wireshark]],
+	["open-shark"] = [[start "" wireshark]],
+	["os"] = [[start "" wireshark]],
+	["open-firefox"] = [[start "" firefox]],
+	["of"] = [[start "" firefox]],
+	["open-browser"] = [[start "" ]] .. get_web_browser_cmd(),
+	["open-web"] = [[start "" ]] .. get_web_browser_cmd(),
+	["ow"] = [[start "" ]] .. get_web_browser_cmd(),
+	["open-onlyoffice"] = [[start "" desktopeditors]],
+	["oo"] = [[start "" desktopeditors]],
+	["open-libreoffice"] = [[start "" soffice]],
+	["ol"] = [[start "" soffice]],
+	["open-terminal"] = [[start "" wt.exe]],
+	["ot"] = [[start "" wt.exe]],
+	["open-thunderbird"] = [[start "" thunderbird]],
+	["omail"] = [[start "" thunderbird]],
+	["oth"] = [[start "" thunderbird]],
+
+	["open-kate"] = [[start "" kate]],
+	["ok"] = [[start "" kate]],
+	["open-geany"] = [[start "" geany]],
+	["og"] = [[start "" geany]],
+	["open-code"] = [[code .]],
+	["oc"] = [[code .]],
+	["open-codium"] = [[codium .]],
+	["ocm"] = [[codium .]],
+	["open-antigravity"] = [[antigravity-ide .]],
+	["open-ant"] = [[antigravity-ide .]],
+	["oa"] = [[antigravity-ide .]],
+	["open-zed"] = [[zed .]],
+	["oz"] = [[zed .]],
+	["ant"] = [[antigravity-ide]],
 
 	-- --------------------------------
 	-- Google Antigravity CLI
@@ -735,6 +787,20 @@ local aliases = {
 	["wget"] = [[curl -O]],
 	["env"] = [[set]],
 	["export"] = [[set]],
+
+	-- --------------------------------
+	-- Modern Rust CLI Tools
+	-- --------------------------------
+	["r"] = has_cmd("rg") and [[rg --smart-case]] or [[findstr /I]],
+	["g"] = has_cmd("rg") and [[rg --smart-case]] or [[findstr /I]],
+	["l"] = has_cmd("eza") and [[eza --icons=auto --group-directories-first]] or [[busybox ls -F --color=auto]],
+	["c"] = has_cmd("bat") and [[bat --paging=never]] or [[busybox cat]],
+	["b"] = has_cmd("bat") and [[bat]] or [[busybox less -R]],
+	["f"] = has_cmd("fd") and [[fd]] or [[busybox find]],
+	["d"] = has_cmd("dust") and [[dust]] or [[busybox free -m]],
+	["p"] = has_cmd("procs") and [[procs]] or [[tasklist]],
+	["t"] = has_cmd("btm") and [[btm]] or [[taskmgr]],
+	["delta"] = has_cmd("delta") and [[delta]] or (has_cmd("git-delta") and [[git-delta]] or [[busybox diff --color=auto]]),
 }
 
 for alias, _ in pairs(aliases) do
@@ -760,7 +826,7 @@ end
 
 local lua_commands = {
 	["lc"] = true,
-	["l"] = true,
+	["lua"] = true,
 }
 
 local parser = clink.arg.new_parser()

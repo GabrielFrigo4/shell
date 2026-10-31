@@ -3,12 +3,58 @@
 # ----------------------------------------------------------------
 
 ### --------------------------------
+### Graphical Helpers
+### --------------------------------
+if ! command -v _sanitize_graphical_env > "/dev/null" 2>&1; then
+	_sanitize_graphical_env() {
+		unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED
+		export COLORTERM="truecolor"
+		export MICRO_TRUECOLOR=1
+	}
+fi
+
+if ! command -v _get_shell_log_dir > "/dev/null" 2>&1; then
+	_get_shell_log_dir() {
+		local _log_dir="${XDG_STATE_HOME:-${HOME}/.local/state}/shell/logs"
+		[ -d "${_log_dir}" ] || mkdir -p "${_log_dir}" 2> "/dev/null" || true
+		printf '%s\n' "${_log_dir}"
+	}
+fi
+
+if ! command -v _resolve_graphical_app > "/dev/null" 2>&1; then
+	_resolve_graphical_app() {
+		local _target="${1:-}"
+		case "${_target}" in
+			vscode|code|code-oss|codium)
+				if ! command -v "${_target}" > "/dev/null" 2>&1; then
+					for _c in code code-oss codium vscode; do
+						if command -v "${_c}" > "/dev/null" 2>&1; then
+							echo "${_c}"
+							return 0
+						fi
+					done
+				fi
+				;;
+			chrome|chromium|google-chrome)
+				if ! command -v "${_target}" > "/dev/null" 2>&1; then
+					for _c in chrome chromium google-chrome brave-browser brave; do
+						if command -v "${_c}" > "/dev/null" 2>&1; then
+							echo "${_c}"
+							return 0
+						fi
+					done
+				fi
+				;;
+		esac
+		echo "${_target}"
+	}
+fi
+
+### --------------------------------
 ### Ephemeral Graphical Launchers
 ### --------------------------------
 graphical-launcher-wayland() {
-	unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST
-	export COLORTERM="truecolor"
-	export MICRO_TRUECOLOR=1
+	_sanitize_graphical_env
 
 	local _flavor=""
 	local _had_wayland=1
@@ -25,10 +71,17 @@ graphical-launcher-wayland() {
 		esac
 	done
 
-	local _app="${1:-foot}"
+	local _raw_app="${1:-foot}"
 	[ "$#" -ge 1 ] && shift
+	local _app="$(_resolve_graphical_app "${_raw_app}")"
 
 	_wayland_session_env "${_flavor}"
+
+	export GTK_THEME="${GTK_THEME:-Breeze-Dark:dark}"
+	export GTK_APPLICATION_PREFER_DARK_THEME=1 ADW_DEBUG_COLOR_SCHEME="prefer-dark"
+	export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
+	export XCURSOR_THEME="${XCURSOR_THEME:-breeze_cursors}"
+	export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
 
 	local _is_terminal=0
 	_is_terminal_app "${_app}" && _is_terminal=1
@@ -43,16 +96,18 @@ _app_target="\$1"
 
 if [ -z "\${_app_target}" ] || [ "\${_app_target}" = "foot" ]; then
 	if [ "\$#" -eq 0 ]; then
-		foot
+		foot -o dpi-aware=no
 	else
-		foot "\$@"
+		foot -o dpi-aware=no "\$@"
 	fi
 elif [ "${_is_terminal}" -eq 1 ]; then
 	if command -v "\${_app_target}" > "/dev/null" 2>&1; then
-		foot "\${_app_target}" "\$@"
+		foot -o dpi-aware=no "\${_app_target}" "\$@"
 	else
-		foot "${_sh}" -i -c "\${_app_target} \$*"
+		foot -o dpi-aware=no "${_sh}" -i -c "\${_app_target} \$*"
 	fi
+elif [ "\${_app_target}" = "code" ] || [ "\${_app_target}" = "code-oss" ] || [ "\${_app_target}" = "vscode" ] || [ "\${_app_target}" = "codium" ]; then
+	"\${_app_target}" --ozone-platform-hint=auto "\$@"
 elif [ "\${_app_target}" = "emacs" ]; then
 	_emacs_wayland_bin="\$(command -v emacs-pgtk 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
 	"\${_emacs_wayland_bin}" -mm "\$@"
@@ -94,13 +149,21 @@ EOF
 				cp -f "${_foot_src}" "${_foot_target}" 2> "/dev/null" || true
 			fi
 		fi
+		if [ -f "${_foot_target}" ]; then
+			if ! grep -q "^dpi-aware" "${_foot_target}" 2> "/dev/null"; then
+				printf '\ndpi-aware=no\n' >> "${_foot_target}" 2> "/dev/null" || true
+			fi
+		fi
 	fi
 
-	local _cur_theme="${XCURSOR_THEME:-default}"
+	local _cur_theme="${XCURSOR_THEME:-breeze_cursors}"
 	local _cur_size="${XCURSOR_SIZE:-24}"
+	local _log_dir="$(_get_shell_log_dir)"
+	local _log_file="${_log_dir}/wayland-kiosk.log"
+	local _ret=0
 
 	if command -v sway > "/dev/null" 2>&1; then
-		local _sway_cfg="${XDG_RUNTIME_DIR}/sway-gui-$$.conf"
+		local _sway_cfg="${XDG_RUNTIME_DIR:-/tmp}/sway-gui-$$.conf"
 		cat << EOF > "${_sway_cfg}"
 default_border none
 default_floating_border none
@@ -110,10 +173,13 @@ seat * fallback true
 seat * hide_cursor when-typing disable
 seat * pointer_constraint enable
 input type:pointer {
-    accel_profile flat
-    pointer_accel 0
+    accel_profile adaptive
+    pointer_accel 0.35
+    natural_scroll disabled
 }
 input type:touchpad {
+    accel_profile adaptive
+    pointer_accel 0.4
     tap enabled
     natural_scroll enabled
     dwt enabled
@@ -141,14 +207,114 @@ input type:keyboard {
 }
 exec ${_exec_invocation}
 EOF
-		command sway -c "${_sway_cfg}" > "/dev/null" 2>&1
-		rm -f "${_sway_cfg}"
+		command sway -c "${_sway_cfg}" >| "${_log_file}" 2>&1
+		_ret=$?
+		rm -f "${_sway_cfg}" 2> "/dev/null" || true
+	elif command -v labwc > "/dev/null" 2>&1; then
+		local _labwc_dir="${XDG_RUNTIME_DIR:-/tmp}/labwc-gui-$$"
+		mkdir -p "${_labwc_dir}"
+		cat << 'EOF' > "${_labwc_dir}/themerc"
+window.active.title.bg.color: #1f1f28
+window.active.label.text.color: #dcd7ba
+window.inactive.title.bg.color: #16161e
+window.inactive.label.text.color: #727169
+border.width: 1
+border.color: #54546d
+window.active.border.color: #7e9cd8
+window.inactive.border.color: #54546d
+menu.border.width: 1
+menu.border.color: #54546d
+menu.items.bg.color: #1f1f28
+menu.items.text.color: #dcd7ba
+menu.items.active.bg.color: #2a2a37
+menu.items.active.text.color: #e6c384
+EOF
+		cat << 'EOF' > "${_labwc_dir}/menu.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="Universal Labwc">
+    <item label="Terminal (foot)">
+      <action name="Execute" command="foot -o dpi-aware=no"/>
+    </item>
+    <item label="Web Browser">
+      <action name="Execute" command="sh -c 'command -v firefox >/dev/null 2>&amp;1 &amp;&amp; exec firefox || command -v chrome >/dev/null 2>&amp;1 &amp;&amp; exec chrome || command -v chromium >/dev/null 2>&amp;1 &amp;&amp; exec chromium'"/>
+    </item>
+    <item label="Emacs">
+      <action name="Execute" command="sh -c 'command -v emacs-pgtk >/dev/null 2>&amp;1 &amp;&amp; exec emacs-pgtk || exec emacs'"/>
+    </item>
+    <item label="File Manager">
+      <action name="Execute" command="sh -c 'command -v pcmanfm >/dev/null 2>&amp;1 &amp;&amp; exec pcmanfm || command -v thunar >/dev/null 2>&amp;1 &amp;&amp; exec thunar || exec dolphin'"/>
+    </item>
+    <separator/>
+    <item label="Reconfigure">
+      <action name="Reconfigure"/>
+    </item>
+    <item label="Exit">
+      <action name="Exit"/>
+    </item>
+  </menu>
+</openbox_menu>
+EOF
+		cat << EOF > "${_labwc_dir}/rc.xml"
+<?xml version="1.0"?>
+<labwc_config>
+  <theme>
+    <name>kiosk</name>
+    <cornerRadius>0</cornerRadius>
+    <border.width>1</border.width>
+    <border.color>#54546d</border.color>
+  </theme>
+  <keyboard>
+    <repeatRate>50</repeatRate>
+    <repeatDelay>200</repeatDelay>
+    <numlock>on</numlock>
+    <keybind key="W-Return"><action name="Execute" command="foot -o dpi-aware=no"/></keybind>
+    <keybind key="W-q"><action name="Close"/></keybind>
+    <keybind key="W-S-q"><action name="Exit"/></keybind>
+    <keybind key="A-F4"><action name="Close"/></keybind>
+  </keyboard>
+  <mouse>
+    <context name="Root">
+      <mousebind button="Right" action="Press">
+        <action name="ShowMenu"><menu>root-menu</menu></action>
+      </mousebind>
+    </context>
+  </mouse>
+  <libinput>
+    <device category="default">
+      <accelProfile>adaptive</accelProfile>
+      <accelSpeed>0.35</accelSpeed>
+      <tap>yes</tap>
+    </device>
+    <device category="touchpad">
+      <accelProfile>adaptive</accelProfile>
+      <accelSpeed>0.4</accelSpeed>
+      <tap>yes</tap>
+      <naturalScroll>yes</naturalScroll>
+    </device>
+  </libinput>
+  <windowRules>
+    <windowRule identifier="*" serverDecoration="no">
+      <action name="Maximize"/>
+    </windowRule>
+  </windowRules>
+</labwc_config>
+EOF
+		command labwc -C "${_labwc_dir}" -s "${_exec_invocation}" >| "${_log_file}" 2>&1
+		_ret=$?
+		rm -rf "${_labwc_dir}" 2> "/dev/null" || true
 	elif command -v river > "/dev/null" 2>&1; then
 		local _river_init="${XDG_RUNTIME_DIR:-/tmp}/river-gui-$$.sh"
 		cat << EOF > "${_river_init}"
 #!/bin/sh
 riverctl border-width 0
 riverctl xcursor-theme "${_cur_theme}" "${_cur_size}"
+riverctl input pointer-* accel-profile adaptive
+riverctl input pointer-* pointer-accel 0.35
+riverctl input touchpad-* accel-profile adaptive
+riverctl input touchpad-* pointer-accel 0.4
+riverctl input touchpad-* tap enabled
+riverctl input touchpad-* natural-scroll enabled
 riverctl keyboard-layout -model abnt2 -options numpad:mac br
 riverctl set-repeat 50 200
 riverctl default-attach-mode top
@@ -157,35 +323,17 @@ riverctl map normal Super Q spawn "riverctl exit"
 ${_exec_invocation} &
 EOF
 		chmod 0755 "${_river_init}"
-		command river -c "${_river_init}" > "/dev/null" 2>&1
-		rm -f "${_river_init}"
-	elif command -v labwc > "/dev/null" 2>&1; then
-		local _labwc_dir="${XDG_RUNTIME_DIR:-/tmp}/labwc-gui-$$"
-		mkdir -p "${_labwc_dir}"
-		cat << EOF > "${_labwc_dir}/rc.xml"
-<?xml version="1.0"?>
-<labwc_config>
-  <theme>
-    <cornerRadius>0</cornerRadius>
-  </theme>
-  <keyboard>
-    <repeatRate>50</repeatRate>
-    <repeatDelay>200</repeatDelay>
-    <numlock>on</numlock>
-  </keyboard>
-  <windowRules>
-    <windowRule identifier="*" serverDecoration="no">
-      <action name="Maximize"/>
-    </windowRule>
-  </windowRules>
-</labwc_config>
-EOF
-		command labwc -C "${_labwc_dir}" -s "${_exec_invocation}" > "/dev/null" 2>&1
-		rm -rf "${_labwc_dir}"
+		command river -c "${_river_init}" >| "${_log_file}" 2>&1
+		_ret=$?
+		rm -f "${_river_init}" 2> "/dev/null" || true
 	elif command -v cage > "/dev/null" 2>&1; then
-		command cage -s -- ${_exec_invocation} > "/dev/null" 2>&1
+		command cage -s -- ${_exec_invocation} >| "${_log_file}" 2>&1
+		_ret=$?
+	elif command -v emacs > "/dev/null" 2>&1 || [ -f "${HOME}/.local/lib/libewm_core.so" ] || [ -f "${HOME}/.local/lib/libewm.so" ]; then
+		emacs-window-manager-wayland "${_app}" "$@"
+		_ret=$?
 	else
-		_ui_err "Nenhum micro-compositor Wayland (sway, river, labwc, cage) foi encontrado."
+		_ui_err "Nenhum compositor Wayland (sway, labwc, river, cage, ewm) encontrado."
 		rm -f "${_wayland_runner}" 2> "/dev/null" || true
 		return 1
 	fi
@@ -193,6 +341,12 @@ EOF
 	rm -f "${_wayland_runner}" 2> "/dev/null" || true
 	[ "${_had_wayland}" -eq 0 ] && unset WAYLAND_DISPLAY
 	_freebsd_vt_bounce
+
+	if [ "${_ret}" -ne 0 ]; then
+		_ui_err "Lançador Wayland encerrou com erro (código ${_ret}). Log: ${_log_file}"
+		return "${_ret}"
+	fi
+	return 0
 }
 alias wgui="graphical-launcher-wayland"
 
@@ -202,9 +356,7 @@ graphical-launcher-x11() {
 		return 1
 	}
 
-	unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST
-	export COLORTERM="truecolor"
-	export MICRO_TRUECOLOR=1
+	_sanitize_graphical_env
 
 	local _flavor=""
 	local _had_display=1
@@ -222,25 +374,48 @@ graphical-launcher-x11() {
 		esac
 	done
 
-	local _app="${1:-xterm}"
+	local _raw_app="${1:-xterm}"
 	[ "$#" -ge 1 ] && shift
+	local _app="$(_resolve_graphical_app "${_raw_app}")"
+
+	if ! command -v openbox > "/dev/null" 2>&1 && ! command -v matchbox-window-manager > "/dev/null" 2>&1 && ! command -v cwm > "/dev/null" 2>&1; then
+		if command -v emacs > "/dev/null" 2>&1; then
+			emacs-window-manager-x11 "${_app}" "$@"
+			return $?
+		fi
+	fi
 
 	local _display="$(_resolve_free_display)"
 	export DISPLAY="${_display}"
 	_x11_session_env "${_flavor}"
 	_x11_driver_preflight
 
+	export GTK_THEME="${GTK_THEME:-Breeze-Dark:dark}"
+	export GTK_APPLICATION_PREFER_DARK_THEME=1
+	export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
+	export XCURSOR_THEME="${XCURSOR_THEME:-breeze_cursors}"
+	export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
+
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
 	if [ ! -f "${_kiosk_theme_dir}/themerc" ]; then
 		mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
 		cat << 'OTM' > "${_kiosk_theme_dir}/themerc"
-border.width: 0
-padding.width: 0
-padding.height: 0
+border.width: 1
+border.color: #54546d
+padding.width: 1
+padding.height: 1
 window.handle.width: 0
 window.client.padding.width: 0
+window.active.title.bg.color: #1f1f28
+window.active.label.text.color: #dcd7ba
+window.inactive.title.bg.color: #16161e
+window.inactive.label.text.color: #727169
 menu.border.width: 1
-menu.border.color: #2b2b2b
+menu.border.color: #54546d
+menu.items.bg.color: #1f1f28
+menu.items.text.color: #dcd7ba
+menu.items.active.bg.color: #2a2a37
+menu.items.active.text.color: #e6c384
 OTM
 	fi
 
@@ -259,9 +434,10 @@ export QT_QPA_PLATFORM="xcb"
 export SDL_VIDEODRIVER="x11"
 export CLUTTER_BACKEND="x11"
 export GTK_CSD=0
-export GTK_THEME="${GTK_THEME:-Adwaita:dark}"
+export GTK_THEME="${GTK_THEME:-Breeze-Dark:dark}"
 export GTK_APPLICATION_PREFER_DARK_THEME=1
-export XCURSOR_THEME="${XCURSOR_THEME:-Adwaita}"
+export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
+export XCURSOR_THEME="${XCURSOR_THEME:-breeze_cursors}"
 export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
 export MOZ_GTK_TITLEBAR_DECORATION="system"
 export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
@@ -364,8 +540,9 @@ fi
 EOF
 	chmod 0755 "${_xinit_script}"
 
-	local _persistent_kiosk_log="${HOME}/.local/state/environment/xorg-kiosk.log"
-	mkdir -p "${HOME}/.local/state/environment" 2> "/dev/null" || true
+	local _log_dir="$(_get_shell_log_dir)"
+	local _persistent_kiosk_log="${_log_dir}/xorg-kiosk.log"
+	mkdir -p "${_log_dir}" 2> "/dev/null" || true
 	rm -f "${_persistent_kiosk_log}" 2> "/dev/null" || true
 	local _server_auth="${XDG_RUNTIME_DIR:-/tmp}/.serverauth-gui-$$"
 	local _xinit_ret=0
@@ -399,15 +576,13 @@ EOF
 	rm -f "${_server_auth}" 2> "/dev/null" || true
 	command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" 2> "/dev/null" || true
 
-	if [ -f "${_persistent_kiosk_log}" ] && [ -s "${_persistent_kiosk_log}" ]; then
-		if [ "${_xinit_ret}" -ne 0 ]; then
-			_ui_warn "Xorg encerrou com código ${_xinit_ret}. Diagnóstico:"
-			_filter_xorg_noise < "${_persistent_kiosk_log}" | command tail -n 15
-		fi
+	if [ "${_xinit_ret}" -ne 0 ] && [ -f "${_persistent_kiosk_log}" ] && [ -s "${_persistent_kiosk_log}" ]; then
+		_ui_err "Lançador Xorg encerrou com erro (código ${_xinit_ret}). Log: ${_persistent_kiosk_log}"
 	fi
 	rm -f "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-$$.xml" 2> "/dev/null" || true
 	[ "${_had_display}" -eq 0 ] && unset DISPLAY
 	_freebsd_vt_bounce
+	return "${_xinit_ret}"
 }
 alias xgui="graphical-launcher-x11"
 
@@ -420,6 +595,8 @@ alias gui="graphical-launcher"
 ### Emacs OS Window Managers
 ### --------------------------------
 emacs-window-manager-wayland() {
+	_sanitize_graphical_env
+
 	local _flavor=""
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
@@ -465,25 +642,27 @@ emacs-window-manager-wayland() {
 		export RUST_LOG="${RUST_LOG:-ewm=info,ewm_core::dbus_login1=error,ewm_core::xwayland::satellite=error,smithay=warn}"
 		rm -f "${XDG_RUNTIME_DIR:-/tmp}/emacs/ewm" 2> "/dev/null" || true
 
-		local _ewm_log="${XDG_RUNTIME_DIR:-/tmp}/ewm-$$.log"
-		${_bus_wrapper:-command} emacs --fg-daemon=ewm -L "${HOME}/.local/share/emacs/site-lisp/ewm" -l ewm -f ewm-start-module "$@" 2> "${_ewm_log}"
+		local _log_dir="$(_get_shell_log_dir)"
+		local _ewm_log="${_log_dir}/ewm-wayland.log"
+		${_bus_wrapper:-command} emacs --fg-daemon=ewm -L "${HOME}/.local/share/emacs/site-lisp/ewm" -l ewm -f ewm-start-module "$@" >| "${_ewm_log}" 2>&1
 		local _emacs_ret=$?
 
-		if [ "${_emacs_ret}" -ne 0 ] && [ -f "${_ewm_log}" ]; then
-			command grep -v -E "Due to a limitation in GTK 3|unlikely ever to be able|display connection is closed|Failed to connect to user scope bus|org.freedesktop.login1|xwayland-satellite" "${_ewm_log}" 2> "/dev/null" | command tail -n 10
+		if [ "${_emacs_ret}" -ne 0 ]; then
+			_ui_err "EWM Wayland encerrou com erro (código ${_emacs_ret}). Log: ${_ewm_log}"
 		fi
-		rm -f "${_ewm_log}" 2> "/dev/null" || true
 	else
 		graphical-launcher-wayland emacs "$@"
 	fi
 
-	_restore_tty_cursor
+	_restore_tty_cursor 2> "/dev/null" || true
 	_freebsd_vt_bounce
 }
 alias wewm="emacs-window-manager-wayland"
 alias wew="emacs-window-manager-wayland"
 
 emacs-window-manager-x11() {
+	_sanitize_graphical_env
+
 	local _flavor=""
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
@@ -509,7 +688,7 @@ emacs-window-manager-x11() {
 
 	_exec_x11 "${_emacs_bin}" -mm "$@"
 	unset _X11_FLAVOR_OVERRIDE
-	_restore_tty_cursor
+	_restore_tty_cursor 2> "/dev/null" || true
 	_freebsd_vt_bounce
 }
 alias xewm="emacs-window-manager-x11"

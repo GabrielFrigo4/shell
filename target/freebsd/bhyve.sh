@@ -8,7 +8,7 @@ _ensure_debian_running() {
 	fi
 
 	if ! pgrep -f "bhyve.*debian" > "/dev/null" 2>&1; then
-		_ui_step "Iniciando máquina virtual Debian no Bhyve..."
+		_ui_step "Iniciando máquina virtual Debian no Bhyve sob demanda..."
 		if command -v _as_root > "/dev/null" 2>&1; then
 			_as_root vm start debian > "/dev/null" 2>&1 || true
 		else
@@ -17,7 +17,7 @@ _ensure_debian_running() {
 	fi
 
 	_wait_count=0
-	while [ "${_wait_count}" -lt 10 ]; do
+	while [ "${_wait_count}" -lt 15 ]; do
 		if nc -z -w 1 192.168.8.2 22 > "/dev/null" 2>&1; then
 			return 0
 		fi
@@ -39,15 +39,15 @@ linux-host() {
 	_tty=""
 	[ -t 0 ] && [ -t 1 ] && _tty="-t"
 
-	_tty_env=""
-	_ssh_opts=""
+	_tty_env="export HOST_OS=FreeBSD; "
+	_ssh_opts="-o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -o SendEnv=HOST_OS -o SetEnv=HOST_OS=FreeBSD"
 	_is_raw=0
 	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
 		*1*|*true*|*yes*) _is_raw=1 ;;
 	esac
 	if [ "${_is_raw}" -eq 1 ] || { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
-		_tty_env="export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; unset COLORTERM; "
-		_ssh_opts="-o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
+		_tty_env="${_tty_env}export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; unset COLORTERM; "
+		_ssh_opts="${_ssh_opts} -o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
 	fi
 
 	if [ $# -gt 0 ]; then
@@ -79,15 +79,15 @@ agy-lx() {
 	_tty=""
 	[ -t 0 ] && [ -t 1 ] && _tty="-t"
 
-	_tty_env=""
-	_ssh_opts=""
+	_tty_env="export HOST_OS=FreeBSD; "
+	_ssh_opts="-o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -o SendEnv=HOST_OS -o SetEnv=HOST_OS=FreeBSD"
 	_is_raw=0
 	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
 		*1*|*true*|*yes*) _is_raw=1 ;;
 	esac
 	if [ "${_is_raw}" -eq 1 ] || { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
-		_tty_env="export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; unset COLORTERM; "
-		_ssh_opts="-o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
+		_tty_env="${_tty_env}export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; unset COLORTERM; "
+		_ssh_opts="${_ssh_opts} -o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
 	fi
 
 	_prefix="${_tty_env}export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"

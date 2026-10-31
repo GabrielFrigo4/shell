@@ -277,3 +277,259 @@ function update-all -d "Orquestra atualização completa do sistema e ecossistem
     _ui_banner "Atualização Global Concluída com Sucesso"
 end
 alias upall="update-all"
+
+# ----------------------------------------------------------------
+# Module: Desktop Applications & Editor Aliases
+# ----------------------------------------------------------------
+
+function open-vlc -d "Abre o VLC media player"
+    if type -q vlc
+        vlc $argv >/dev/null 2>&1 &
+        disown 2>/dev/null
+    else
+        _ui_err "vlc não encontrado."
+        return 127
+    end
+end
+alias ov="open-vlc"
+
+function open-mpv -d "Abre o MPV media player"
+    if type -q mpv
+        mpv $argv
+    else
+        _ui_err "mpv não encontrado."
+        return 127
+    end
+end
+alias om="open-mpv"
+
+function open-wireshark -d "Abre o Wireshark analisador de rede"
+    if type -q wireshark
+        wireshark $argv >/dev/null 2>&1 &
+        disown 2>/dev/null
+    else
+        _ui_err "wireshark não encontrado."
+        return 127
+    end
+end
+alias open-shark="open-wireshark"
+alias os="open-wireshark"
+
+function open-firefox -d "Abre o navegador Mozilla Firefox"
+    if type -q firefox
+        firefox $argv >/dev/null 2>&1 &
+        disown 2>/dev/null
+    else
+        _ui_err "firefox não encontrado."
+        return 127
+    end
+end
+alias of="open-firefox"
+
+function open-browser -d "Abre o navegador web universal via cascata de preferência"
+    set -l browser ""
+    for cand in google-chrome google-chrome-stable brave-browser brave chromium chromium-browser
+        if type -q $cand
+            set browser $cand
+            break
+        end
+    end
+    if test -z "$browser"; and test (uname -s 2>/dev/null) = "FreeBSD"; and type -q chrome
+        set browser "chrome"
+    end
+    if test -z "$browser"
+        for cand in microsoft-edge firefox
+            if type -q $cand
+                set browser $cand
+                break
+            end
+        end
+    end
+    if test -z "$browser"; and test (uname -s 2>/dev/null) = "Darwin"
+        open -a Safari $argv
+        return 0
+    end
+    if test -n "$browser"
+        $browser $argv >/dev/null 2>&1 &
+        disown 2>/dev/null
+    else
+        _ui_err "Nenhum navegador web suportado encontrado."
+        return 127
+    end
+end
+alias open-web="open-browser"
+alias ow="open-browser"
+
+function open-onlyoffice -d "Abre o OnlyOffice Desktop Editors"
+    set -l bin ""
+    for cand in onlyoffice-desktopeditors desktopeditors
+        if type -q $cand
+            set bin $cand
+            break
+        end
+    end
+    if test -n "$bin"
+        $bin $argv >/dev/null 2>&1 &
+        disown 2>/dev/null
+    else
+        _ui_err "OnlyOffice não encontrado."
+        return 127
+    end
+end
+alias oo="open-onlyoffice"
+
+function open-libreoffice -d "Abre a suíte LibreOffice"
+    set -l bin ""
+    for cand in libreoffice soffice
+        if type -q $cand
+            set bin $cand
+            break
+        end
+    end
+    if test -n "$bin"
+        $bin $argv >/dev/null 2>&1 &
+        disown 2>/dev/null
+    else
+        _ui_err "LibreOffice não encontrado."
+        return 127
+    end
+end
+alias ol="open-libreoffice"
+
+function open-terminal -d "Abre novo emulador de terminal"
+    set -l term ""
+    for cand in konsole kgx gnome-terminal xfce4-terminal foot alacritty kitty wezterm xterm
+        if type -q $cand
+            set term $cand
+            break
+        end
+    end
+    if test -n "$term"
+        $term $argv >/dev/null 2>&1 &
+        disown 2>/dev/null
+    else
+        _ui_err "Nenhum emulador de terminal suportado encontrado."
+        return 127
+    end
+end
+alias ot="open-terminal"
+
+function open-thunderbird -d "Abre o cliente de e-mail Mozilla Thunderbird"
+    if type -q thunderbird
+        thunderbird $argv >/dev/null 2>&1 &
+        disown 2>/dev/null
+    else
+        _ui_err "thunderbird não encontrado."
+        return 127
+    end
+end
+alias open-mail="open-thunderbird"
+alias omail="open-thunderbird"
+alias oth="open-thunderbird"
+
+function open-kate -d "Abre o editor Kate"
+    if type -q kate; kate $argv >/dev/null 2>&1 &; disown 2>/dev/null; else; _ui_err "kate não encontrado."; return 127; end
+end
+alias ok="open-kate"
+
+function open-geany -d "Abre o editor Geany"
+    if type -q geany; geany $argv >/dev/null 2>&1 &; disown 2>/dev/null; else; _ui_err "geany não encontrado."; return 127; end
+end
+alias og="open-geany"
+
+function open-code -d "Abre o Visual Studio Code"
+    set -l bin ""
+    for cand in vscode code
+        if type -q $cand; set bin $cand; break; end
+    end
+    if test -n "$bin"; $bin $argv; else; _ui_err "VS Code não encontrado."; return 127; end
+end
+alias oc="open-code"
+
+function open-codium -d "Abre o VSCodium"
+    if type -q codium; codium $argv; else; _ui_err "codium não encontrado."; return 127; end
+end
+alias ocm="open-codium"
+
+function open-antigravity -d "Abre o Google Antigravity IDE"
+    if type -q antigravity-ide; antigravity-ide $argv; else; _ui_err "antigravity-ide não encontrado."; return 127; end
+end
+alias open-ant="open-antigravity"
+alias oa="open-antigravity"
+alias ant="antigravity-ide"
+
+function open-zed -d "Abre o editor Zed"
+    if type -q zed; zed $argv; else; _ui_err "zed não encontrado."; return 127; end
+end
+alias oz="open-zed"
+
+# ----------------------------------------------------------------
+# Module: Modern Single-Character & Rust CLI Tools
+# ----------------------------------------------------------------
+
+if type -q rg
+    alias r="rg --smart-case"
+    alias g="rg --smart-case"
+else
+    alias r="grep -Ei"
+    alias g="grep -Ei"
+end
+
+if type -q eza
+    alias l="eza --icons=auto --group-directories-first"
+    alias ll="eza -la --icons=auto --group-directories-first --git"
+    alias la="eza -a --icons=auto --group-directories-first"
+    alias lt="eza --tree --icons=auto --group-directories-first"
+else if type -q exa
+    alias l="exa --group-directories-first"
+    alias ll="exa -la --group-directories-first --git"
+    alias la="exa -a --group-directories-first"
+    alias lt="exa --tree --group-directories-first"
+else
+    alias l="ls"
+    alias ll="ls -laF"
+    alias la="ls -a"
+end
+
+if type -q bat
+    alias c="bat --paging=never"
+    alias b="bat"
+else
+    alias c="cat"
+    alias b="less"
+end
+
+if type -q fd
+    alias f="fd"
+    alias ff="fd --hidden --no-ignore"
+else
+    alias f="find"
+    alias ff="find"
+end
+
+if type -q dust
+    alias d="dust"
+else
+    alias d="du -h"
+end
+
+if type -q procs
+    alias p="procs"
+    alias pst="procs --tree"
+else
+    alias p="ps aux"
+end
+
+if type -q btm
+    alias t="btm"
+else if type -q btop
+    alias t="btop"
+else if type -q htop
+    alias t="htop"
+else
+    alias t="top"
+end
+
+if not type -q delta; and type -q git-delta
+    alias delta="git-delta"
+end
