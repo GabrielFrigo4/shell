@@ -891,7 +891,8 @@ _menu="${_menu_script}"
 	done
 ) &
 _sub_pid=\$!
-trap "kill \${_sub_pid} 2> \"/dev/null\" || true" EXIT TERM INT
+trap "kill \${_sub_pid} 2> \"/dev/null\" || true" EXIT
+trap "exit" TERM INT
 
 printf '{"version":1,"click_events":true}\n[\n'
 while :; do
