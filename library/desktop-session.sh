@@ -384,9 +384,11 @@ _wayland_session_env() {
 	[ -z "${XDG_RUNTIME_DIR:-}" ] && export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"
 	[ ! -d "${XDG_RUNTIME_DIR}" ] && mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
 
+	unset DISPLAY XAUTHORITY 2> "/dev/null" || true
+	export XDG_SESSION_TYPE="wayland"
 	export XKB_DEFAULT_LAYOUT="br" XKB_DEFAULT_MODEL="abnt2" XKB_DEFAULT_OPTIONS="numpad:mac"
 	export WLR_KEYBOARD_REPEAT_DELAY=200 WLR_KEYBOARD_REPEAT_RATE=50
-	export GDK_BACKEND="wayland,x11,*" CLUTTER_BACKEND="wayland" SDL_VIDEODRIVER="wayland"
+	export GDK_BACKEND="wayland,x11" CLUTTER_BACKEND="wayland" SDL_VIDEODRIVER="wayland"
 	export MOZ_ENABLE_WAYLAND=1 ELECTRON_OZONE_PLATFORM_HINT="auto"
 	export GTK_APPLICATION_PREFER_DARK_THEME=1 ADW_DEBUG_COLOR_SCHEME="prefer-dark"
 
@@ -443,7 +445,7 @@ _wayland_session_env() {
 
 _x11_session_env() {
 	local _target_flavor="${1:-}"
-	unset WAYLAND_DISPLAY
+	unset WAYLAND_DISPLAY 2> "/dev/null" || true
 	export XDG_SESSION_TYPE="x11" GDK_BACKEND="x11" QT_QPA_PLATFORM="xcb" SDL_VIDEODRIVER="x11" CLUTTER_BACKEND="x11"
 	export XORG_RUN_AS_USER_OK=1 XKB_DEFAULT_LAYOUT="br" XKB_DEFAULT_MODEL="abnt2" XKB_DEFAULT_OPTIONS="numpad:mac"
 	export GTK_APPLICATION_PREFER_DARK_THEME=1 ADW_DEBUG_COLOR_SCHEME="prefer-dark"
@@ -1077,6 +1079,8 @@ class WwmBar(Gtk.Window):
         self.set_title("wwm-bar")
         self.set_decorated(False)
         self.set_resizable(False)
+        self.set_accept_focus(False)
+        self.set_focus_on_map(False)
 
         screen = Gdk.Screen.get_default()
         screen_w = screen.get_width() if screen else 1920
@@ -1085,6 +1089,7 @@ class WwmBar(Gtk.Window):
 
         self.last_ws_state = None
         self.managed_workspaces = {1}
+        self.last_app_con_id = None
 
         font_name = os.environ.get("WWM_FONT", "JetBrainsMono Nerd Font")
 
@@ -1240,7 +1245,7 @@ class WwmBar(Gtk.Window):
 
         btn_close = Gtk.Button(label="Close")
         btn_close.get_style_context().add_class("danger-btn")
-        btn_close.connect("clicked", lambda b: subprocess.Popen(["swaymsg", "kill"]))
+        btn_close.connect("clicked", self.on_close_app)
         actions_box.pack_end(btn_close, False, False, 0)
 
         actions = [
@@ -1255,7 +1260,7 @@ class WwmBar(Gtk.Window):
                 continue
             b = Gtk.Button(label=name)
             b.get_style_context().add_class("app-btn")
-            b.connect("clicked", lambda widget, c=cmd: subprocess.Popen([c]))
+            b.connect("clicked", lambda widget, c=cmd: subprocess.Popen(["swaymsg", "exec", c]))
             actions_box.pack_end(b, False, False, 0)
 
         self.update_workspaces()
@@ -1263,6 +1268,69 @@ class WwmBar(Gtk.Window):
         GLib.timeout_add(250, self.update_workspaces)
         GLib.timeout_add(1000, self.update_clock)
         self.show_all()
+
+    def get_target_app_con_id(self):
+        try:
+            res = subprocess.run(["swaymsg", "-t", "get_tree"], capture_output=True, text=True)
+            root = json.loads(res.stdout)
+        except Exception:
+            return None
+
+        def find_focused_workspace(node):
+            if node.get("type") == "workspace":
+                def has_focus(n):
+                    if n.get("focused"):
+                        return True
+                    for c in n.get("nodes", []) + n.get("floating_nodes", []):
+                        if has_focus(c):
+                            return True
+                    return False
+                if has_focus(node):
+                    return node
+            for c in node.get("nodes", []) + node.get("floating_nodes", []):
+                r = find_focused_workspace(c)
+                if r:
+                    return r
+            return None
+
+        ws = find_focused_workspace(root)
+        if not ws:
+            return None
+
+        def collect_app_leaves(node):
+            leaves = []
+            children = node.get("nodes", []) + node.get("floating_nodes", [])
+            name = str(node.get("name") or "")
+            app_id = str(node.get("app_id") or "")
+            win_props = node.get("window_properties") or {}
+            instance = str(win_props.get("instance") or "")
+            is_bar = (name == "wwm-bar" or app_id == "wwm-bar" or instance == "wwm-bar")
+
+            if not children:
+                if not is_bar and node.get("id") and node.get("type") != "workspace":
+                    leaves.append(node)
+            else:
+                for c in children:
+                    leaves.extend(collect_app_leaves(c))
+            return leaves
+
+        candidates = collect_app_leaves(ws)
+        if not candidates:
+            return None
+        for c in candidates:
+            if c.get("focused"):
+                return c.get("id")
+        ws_focus = ws.get("focus", [])
+        for f_id in ws_focus:
+            for c in candidates:
+                if c.get("id") == f_id:
+                    return f_id
+        return candidates[0].get("id")
+
+    def on_close_app(self, widget=None):
+        target_id = self.get_target_app_con_id()
+        if target_id is not None:
+            subprocess.Popen(["swaymsg", f"[con_id={target_id}] kill"])
 
     def update_clock(self):
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -1384,6 +1452,7 @@ EOF
 
 	cat << 'EOF' >| "${_emacs_script}"
 #!/bin/sh
+export GDK_BACKEND="wayland"
 for _e in emacs-pgtk emacs; do
 	if command -v "${_e}" > "/dev/null" 2>&1; then
 		exec "${_e}" "$@"
@@ -1525,6 +1594,7 @@ EOF
 			cat << EOF >> "${_sway_cfg}"
 floating_minimum_size 1 x 1
 gaps top 32
+no_focus [instance="wwm-bar"]
 for_window [instance="wwm-bar"] floating enable, sticky enable, border none, resize set 100 ppt 32 px, move absolute position 0 0
 exec env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}"
 EOF
@@ -1830,7 +1900,7 @@ EOF
 
 	cat << 'EOF' >| "${_emacs_script}"
 #!/bin/sh
-for _e in emacs-gtk+x11 emacs-gtk emacs emacs-lucid; do
+for _e in emacs-gtk+x11 emacs-x11 emacs-lucid emacs-gtk emacs-nw emacs; do
 	if command -v "${_e}" > "/dev/null" 2>&1; then
 		exec "${_e}" "$@"
 	fi
@@ -1841,68 +1911,218 @@ EOF
 	if command -v openbox > "/dev/null" 2>&1; then
 		local _ob_menu_cfg="${_run_dir}/openbox-menu-$$.xml"
 		local _ob_wm_cfg="${_run_dir}/openbox-wm-$$.xml"
-		local _cat_dev="${_run_dir}/menu-cat-dev-$$.xml"
-		local _cat_net="${_run_dir}/menu-cat-net-$$.xml"
-		local _cat_office="${_run_dir}/menu-cat-office-$$.xml"
-		local _cat_media="${_run_dir}/menu-cat-media-$$.xml"
-		local _cat_sys="${_run_dir}/menu-cat-sys-$$.xml"
-		: >| "${_cat_dev}"
-		: >| "${_cat_net}"
-		: >| "${_cat_office}"
-		: >| "${_cat_media}"
-		: >| "${_cat_sys}"
+		local _menu_gen_ok=0
+		if command -v python3 > "/dev/null" 2>&1; then
+			python3 - "${_ob_menu_cfg}" "${_browser_script}" "${_term_script}" "${_files_script}" "${_emacs_script}" "${_wm_x11_term}" << 'EOF_PY_MENU' > "/dev/null" 2>&1
+import os, sys, re, shlex, shutil
 
-		awk '
-			FNR == 1 {
-				if (in_entry && !nodisplay && name != "" && exec_cmd != "") {
-					print cat "\t" substr(name, 1, 24) "\t" exec_cmd;
-				}
-				in_entry = 0; name = ""; exec_cmd = ""; nodisplay = 0; cat = "sys";
-			}
-			/^\[Desktop Entry\]/ { in_entry = 1; next }
-			/^\[/ && !/^\[Desktop Entry\]/ { in_entry = 0 }
-			in_entry && /^Name=/ && name == "" { name = substr($0, 6) }
-			in_entry && /^Exec=/ && exec_cmd == "" {
-				exec_cmd = substr($0, 6);
-				sub(/[[:space:]]+%[a-zA-Z]/, "", exec_cmd);
-			}
-			in_entry && /^Categories=/ {
-				cats = substr($0, 12);
-				if (cats ~ /Development|IDE|Building/) {
-					cat = "dev";
-				} else if (cats ~ /Network|WebBrowser|Email|Chat/) {
-					cat = "net";
-				} else if (cats ~ /Office|WordProcessor|Spreadsheet|Viewer/) {
-					cat = "office";
-				} else if (cats ~ /AudioVideo|Audio|Video|Graphics/) {
-					cat = "media";
-				} else {
-					cat = "sys";
-				}
-			}
-			in_entry && (/^NoDisplay=true/ || /^Hidden=true/) { nodisplay = 1 }
-			END {
-				if (in_entry && !nodisplay && name != "" && exec_cmd != "") {
-					print cat "\t" substr(name, 1, 24) "\t" exec_cmd;
-				}
-			}
-		' /usr/share/applications/*.desktop /usr/local/share/applications/*.desktop /var/lib/flatpak/exports/share/applications/*.desktop "${HOME}/.local/share/applications/"*.desktop 2> "/dev/null" \
-		| sort -u -k2,2 \
-		| while IFS="$(printf '\t')" read -r _app_cat _app_name _app_exec; do
-			[ -z "${_app_name}" ] || [ -z "${_app_exec}" ] && continue
-			_safe_name="$(printf '%s' "${_app_name}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
-			_safe_exec="$(printf '%s' "${_app_exec}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
-			_item="    <item label=\"${_safe_name}\"><action name=\"Execute\"><command>${_safe_exec}</command></action></item>"
-			case "${_app_cat}" in
-				dev)    printf '%s\n' "${_item}" >> "${_cat_dev}" ;;
-				net)    printf '%s\n' "${_item}" >> "${_cat_net}" ;;
-				office) printf '%s\n' "${_item}" >> "${_cat_office}" ;;
-				media)  printf '%s\n' "${_item}" >> "${_cat_media}" ;;
-				*)      printf '%s\n' "${_item}" >> "${_cat_sys}" ;;
-			esac
-		done
+menu_file = sys.argv[1]
+browser_cmd = sys.argv[2]
+term_cmd = sys.argv[3]
+files_cmd = sys.argv[4]
+emacs_cmd = sys.argv[5]
+wm_term = sys.argv[6] if len(sys.argv) > 6 else "xterm"
 
-		cat << EOF >| "${_ob_menu_cfg}"
+dirs = [
+    os.path.expanduser("~/.local/share/applications"),
+    os.path.expanduser("~/.local/share/flatpak/exports/share/applications"),
+    "/var/lib/flatpak/exports/share/applications",
+    "/usr/local/share/applications",
+    "/usr/share/applications"
+]
+
+def extract_bin(cmd):
+    try:
+        parts = shlex.split(cmd)
+    except Exception:
+        parts = cmd.split()
+    if not parts:
+        return None
+    idx = 0
+    if parts[0] == "env":
+        idx = 1
+        while idx < len(parts) and "=" in parts[idx]:
+            idx += 1
+    elif "=" in parts[0]:
+        while idx < len(parts) and "=" in parts[idx]:
+            idx += 1
+    if idx < len(parts):
+        return parts[idx]
+    return None
+
+def xml_escape(s):
+    return (s.replace("&", "&amp;")
+             .replace("<", "&lt;")
+             .replace(">", "&gt;")
+             .replace('"', "&quot;")
+             .replace("'", "&apos;"))
+
+CATEGORIES = [
+    ("cat-editors", "Editors", {"TextEditor", "IDE"}),
+    ("cat-dev", "Development", {"Development", "Building", "Debugger", "RevisionControl", "Translation", "WebDevelopment"}),
+    ("cat-net", "Internet", {"Network", "WebBrowser", "Email", "InstantMessaging", "Chat", "FileTransfer", "P2P", "RemoteAccess", "Feed"}),
+    ("cat-office", "Office", {"Office", "WordProcessor", "Spreadsheet", "Presentation", "Database", "Publishing", "Viewer", "PDF", "Calendar", "ContactManagement"}),
+    ("cat-graphics", "Graphics", {"Graphics", "2DGraphics", "3DGraphics", "VectorGraphics", "RasterGraphics", "Photography", "Scanning", "OCR"}),
+    ("cat-media", "Audio &amp; Video", {"AudioVideo", "Audio", "Video", "Player", "Recorder", "Midi", "Mixer", "Sequencer", "Tuner", "TV"}),
+    ("cat-sys", "System &amp; Tools", set()),
+]
+
+cat_map = {c[0]: [] for c in CATEGORIES}
+seen_files = set()
+seen_names = set()
+
+for d in dirs:
+    if not os.path.isdir(d):
+        continue
+    for fname in sorted(os.listdir(d)):
+        if not fname.endswith(".desktop"):
+            continue
+        if fname in seen_files:
+            continue
+        seen_files.add(fname)
+        fpath = os.path.join(d, fname)
+
+        in_entry = False
+        data = {}
+        try:
+            with open(fpath, "r", encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("["):
+                        in_entry = (line == "[Desktop Entry]")
+                        continue
+                    if not in_entry or "=" not in line or line.startswith("#"):
+                        continue
+                    k, v = line.split("=", 1)
+                    k = k.strip()
+                    v = v.strip()
+                    if k not in data:
+                        data[k] = v
+        except Exception:
+            continue
+
+        if data.get("Type") != "Application":
+            continue
+        if data.get("NoDisplay", "false").lower() == "true":
+            continue
+        if data.get("Hidden", "false").lower() == "true":
+            continue
+
+        name = data.get("Name")
+        exec_cmd = data.get("Exec")
+        if not name or not exec_cmd:
+            continue
+
+        try_exec = data.get("TryExec")
+        if try_exec and not shutil.which(try_exec):
+            continue
+
+        clean_exec = re.sub(r"%[a-zA-Z]", "", exec_cmd).strip()
+        clean_exec = re.sub(r"@@[uUfF]?\s*@@?", "", clean_exec).strip()
+        clean_exec = re.sub(r"\s+", " ", clean_exec)
+        target_bin = extract_bin(clean_exec)
+        if not target_bin or not shutil.which(target_bin):
+            continue
+
+        if target_bin == "emacsclient" or clean_exec.startswith("emacsclient"):
+            clean_exec = emacs_cmd
+
+        norm_name = name.strip()
+        if norm_name.lower() in seen_names:
+            continue
+        seen_names.add(norm_name.lower())
+
+        app_cats = set(c for c in data.get("Categories", "").split(";") if c)
+        terminal = data.get("Terminal", "false").lower() == "true"
+
+        assigned_cat = "cat-sys"
+        for cat_id, _, cat_keys in CATEGORIES[:-1]:
+            if app_cats.intersection(cat_keys):
+                assigned_cat = cat_id
+                break
+
+        cat_map[assigned_cat].append({
+            "name": norm_name,
+            "exec": clean_exec,
+            "terminal": terminal
+        })
+
+lines = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<openbox_menu xmlns="http://openbox.org/3.4/menu">',
+    '  <menu id="root-menu" label="Universal Environment">',
+    '    <item label="Web Browser">',
+    f'      <action name="Execute"><command>{xml_escape(browser_cmd)}</command></action>',
+    '    </item>',
+    '    <item label="Terminal">',
+    f'      <action name="Execute"><command>{xml_escape(term_cmd)}</command></action>',
+    '    </item>',
+    '    <item label="Files">',
+    f'      <action name="Execute"><command>{xml_escape(files_cmd)}</command></action>',
+    '    </item>',
+    '    <item label="Emacs">',
+    f'      <action name="Execute"><command>{xml_escape(emacs_cmd)}</command></action>',
+    '    </item>',
+    '    <separator/>'
+]
+
+for cat_id, cat_title, _ in CATEGORIES:
+    apps_in_cat = cat_map.get(cat_id, [])
+    if not apps_in_cat:
+        continue
+    apps_in_cat.sort(key=lambda x: x["name"].lower())
+    lines.append(f'    <menu id="{cat_id}" label="{cat_title}">')
+    for a in apps_in_cat:
+        s_name = xml_escape(a["name"][:36])
+        raw_cmd = a["exec"]
+        if a["terminal"]:
+            esc_sh = raw_cmd.replace("'", "'\\''")
+            full_cmd = f"{wm_term} -e sh -c '{esc_sh}'"
+        else:
+            esc_sh = raw_cmd.replace("'", "'\\''")
+            full_cmd = f"sh -c '{esc_sh}'"
+        s_cmd = xml_escape(full_cmd)
+        lines.append(f'      <item label="{s_name}"><action name="Execute"><command>{s_cmd}</command></action></item>')
+    lines.append('    </menu>')
+
+lines.extend([
+    '    <separator/>',
+    '    <item label="Reconfigure">',
+    '      <action name="Reconfigure"/>',
+    '    </item>',
+    '    <item label="Exit">',
+    '      <action name="Exit"/>',
+    '    </item>',
+    '  </menu>',
+    '</openbox_menu>'
+])
+
+with open(menu_file, "w", encoding="utf-8") as f:
+    f.write("\n".join(lines) + "\n")
+EOF_PY_MENU
+			[ $? -eq 0 ] && [ -s "${_ob_menu_cfg}" ] && _menu_gen_ok=1
+		fi
+
+		if [ "${_menu_gen_ok}" -ne 1 ]; then
+			local _cat_apps="${_run_dir}/menu-cat-apps-$$.xml"
+			: >| "${_cat_apps}"
+			for _app_dir in "${HOME}/.local/share/applications" "${HOME}/.local/share/flatpak/exports/share/applications" "/var/lib/flatpak/exports/share/applications" "/usr/local/share/applications" "/usr/share/applications"; do
+				[ -d "${_app_dir}" ] || continue
+				for _df in "${_app_dir}"/*.desktop; do
+					[ -f "${_df}" ] || continue
+					_d_name="$(grep -m 1 '^Name=' "${_df}" 2> "/dev/null" | cut -d= -f2- | tr -d '\r\n' || true)"
+					_d_exec="$(grep -m 1 '^Exec=' "${_df}" 2> "/dev/null" | cut -d= -f2- | sed 's/[[:space:]]*%[a-zA-Z]//g' | tr -d '\r\n' || true)"
+					[ -z "${_d_name}" ] || [ -z "${_d_exec}" ] && continue
+					grep -q -E '^(NoDisplay|Hidden)=true' "${_df}" 2> "/dev/null" && continue
+					case "${_d_exec}" in
+						emacsclient*) _d_exec="${_emacs_script}" ;;
+					esac
+					_s_name="$(printf '%s' "${_d_name}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
+					_s_exec="$(printf '%s' "${_d_exec}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
+					printf '    <item label="%s"><action name="Execute"><command>sh -c &apos;%s&apos;</command></action></item>\n' "${_s_name}" "${_s_exec}" >> "${_cat_apps}"
+				done
+			done
+			cat << EOF >| "${_ob_menu_cfg}"
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="Universal Environment">
@@ -1919,20 +2139,8 @@ EOF
       <action name="Execute"><command>${_emacs_script}</command></action>
     </item>
     <separator/>
-    <menu id="cat-dev" label="Development">
-$(cat "${_cat_dev}")
-    </menu>
-    <menu id="cat-net" label="Internet">
-$(cat "${_cat_net}")
-    </menu>
-    <menu id="cat-office" label="Office">
-$(cat "${_cat_office}")
-    </menu>
-    <menu id="cat-media" label="Media &amp; Graphics">
-$(cat "${_cat_media}")
-    </menu>
-    <menu id="cat-sys" label="System &amp; Tools">
-$(cat "${_cat_sys}")
+    <menu id="cat-all" label="Applications">
+$(cat "${_cat_apps}")
     </menu>
     <separator/>
     <item label="Reconfigure">
@@ -1944,7 +2152,8 @@ $(cat "${_cat_sys}")
   </menu>
 </openbox_menu>
 EOF
-		rm -f "${_cat_dev}" "${_cat_net}" "${_cat_office}" "${_cat_media}" "${_cat_sys}" 2> "/dev/null" || true
+			rm -f "${_cat_apps}" 2> "/dev/null" || true
+		fi
 
 		cat << EOF >| "${_ob_wm_cfg}"
 <?xml version="1.0" encoding="UTF-8"?>

@@ -606,22 +606,28 @@ from gi.repository import Gtk, Gdk, GdkX11, GLib, Pango
 from Xlib import display, X, Xatom
 import Xlib.protocol.event
 
+BAR_H = 24
+
 class XguiTabBar(Gtk.Window):
     def __init__(self):
         super().__init__(type=Gtk.WindowType.TOPLEVEL)
         self.set_type_hint(Gdk.WindowTypeHint.DOCK)
         self.set_decorated(False)
         self.set_resizable(False)
+        self.set_accept_focus(False)
+        self.set_focus_on_map(False)
         self.set_title("xgui-tabbar")
         self.set_wmclass("xgui-tabbar", "xgui-tabbar")
 
+        self.bar_h = BAR_H
         self.d = display.Display()
         self.screen_obj = self.d.screen()
         self.root = self.screen_obj.root
         self.screen_w = self.screen_obj.width_in_pixels
         self.screen_h = self.screen_obj.height_in_pixels
 
-        self.set_size_request(self.screen_w, 28)
+        self.set_default_size(self.screen_w, self.bar_h)
+        self.set_size_request(self.screen_w, self.bar_h)
         self.move(0, 0)
         self.realize()
         self.self_xid = self.get_window().get_xid()
@@ -664,17 +670,17 @@ class XguiTabBar(Gtk.Window):
         }}
         * {{
             font-family: "{font_name}", "JetBrainsMono Nerd Font", monospace;
-            font-size: 10pt;
+            font-size: 9.5pt;
             font-weight: bold;
         }}
         button {{
             background-image: none;
             box-shadow: none;
             text-shadow: none;
-            padding: 4px 10px;
+            padding: 1px 10px;
             margin: 0;
             border-radius: 0;
-            min-height: 26px;
+            min-height: 18px;
         }}
         button.inactive-tab {{
             background-color: #1e1e22;
@@ -715,6 +721,7 @@ class XguiTabBar(Gtk.Window):
         self.is_bar_visible = False
         self.last_windows = []
         self.last_active = None
+        self.positioned_wids = set()
 
         self.poll()
         GLib.timeout_add(200, self.poll)
@@ -722,13 +729,25 @@ class XguiTabBar(Gtk.Window):
     def set_struts(self, enable):
         try:
             if enable:
-                strut = [0, 0, 28, 0]
-                strut_p = [0, 0, 28, 0, 0, 0, 0, 0, 0, self.screen_w - 1, 0, 0]
+                strut = [0, 0, self.bar_h, 0]
+                strut_p = [0, 0, self.bar_h, 0, 0, 0, 0, 0, 0, self.screen_w - 1, 0, 0]
                 self.self_xwin.change_property(self.atom_net_strut, self.atom_cardinal, 32, strut)
                 self.self_xwin.change_property(self.atom_net_strut_partial, self.atom_cardinal, 32, strut_p)
             else:
                 self.self_xwin.delete_property(self.atom_net_strut)
                 self.self_xwin.delete_property(self.atom_net_strut_partial)
+            self.d.sync()
+        except Exception:
+            pass
+
+    def unmaximize_window(self, xid):
+        try:
+            ev = Xlib.protocol.event.ClientMessage(
+                window=xid,
+                client_type=self.atom_net_wm_state,
+                data=(32, [0, self.atom_max_vert, self.atom_max_horz, 1, 0])
+            )
+            self.root.send_event(ev, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
             self.d.sync()
         except Exception:
             pass
@@ -815,18 +834,38 @@ class XguiTabBar(Gtk.Window):
                 self.hide()
                 self.set_struts(False)
                 self.is_bar_visible = False
+                self.positioned_wids.clear()
                 for w in normal_windows:
+                    self.unmaximize_window(w)
+                    try:
+                        w_obj = self.d.create_resource_object("window", w)
+                        w_obj.configure(x=0, y=0, width=self.screen_w, height=self.screen_h)
+                    except Exception:
+                        pass
                     self.maximize_window(w)
+                    self.d.sync()
             return True
+
+        self.positioned_wids.intersection_update(normal_windows)
 
         if not self.is_bar_visible:
             self.set_struts(True)
             self.move(0, 0)
-            self.resize(self.screen_w, 28)
-            self.show()
+            self.resize(self.screen_w, self.bar_h)
+            self.show_all()
             self.is_bar_visible = True
-            for w in normal_windows:
+
+        for w in normal_windows:
+            if w not in self.positioned_wids:
+                self.unmaximize_window(w)
+                try:
+                    w_obj = self.d.create_resource_object("window", w)
+                    w_obj.configure(x=0, y=self.bar_h, width=self.screen_w, height=self.screen_h - self.bar_h)
+                except Exception:
+                    pass
                 self.maximize_window(w)
+                self.d.sync()
+                self.positioned_wids.add(w)
 
         if normal_windows != self.last_windows or active_xid != self.last_active:
             self.last_windows = normal_windows
@@ -1013,7 +1052,7 @@ elif [ "${_is_terminal}" -eq 1 ]; then
 		exec xterm -bc -bcf 600 -bcn 600 -xrm 'XTerm*cursorBlink: always' -xrm 'XTerm*cursorBlinkXOR: false' -xrm 'XTerm*vt100.cursorBlink: always' -xrm '*cursorBlink: always' -maximized -e "${_sh}" -i -c "\${_target_bin} \$*"
 	fi
 elif [ "\${_target_bin}" = "emacs" ]; then
-	_emacs_kiosk_bin="\$(command -v emacs-gtk+x11 2> "/dev/null" || command -v emacs-gtk 2> "/dev/null" || command -v emacs 2> "/dev/null" || command -v emacs-lucid 2> "/dev/null" || true)"
+	_emacs_kiosk_bin="\$(command -v emacs-gtk+x11 2> "/dev/null" || command -v emacs-x11 2> "/dev/null" || command -v emacs-lucid 2> "/dev/null" || command -v emacs-gtk 2> "/dev/null" || command -v emacs-nw 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
 	exec "\${_emacs_kiosk_bin}" -mm "\$@"
 else
 	exec "\${_target_bin}" "\$@"
@@ -1173,7 +1212,7 @@ emacs-window-manager-x11() {
 	export EMACS_OS_MODE="x11"
 	export _X11_FLAVOR_OVERRIDE="${_flavor}"
 
-	local _emacs_bin="$(command -v emacs-gtk+x11 2> "/dev/null" || command -v emacs-gtk 2> "/dev/null" || command -v emacs 2> "/dev/null" || command -v emacs-lucid 2> "/dev/null" || true)"
+	local _emacs_bin="$(command -v emacs-gtk+x11 2> "/dev/null" || command -v emacs-x11 2> "/dev/null" || command -v emacs-lucid 2> "/dev/null" || command -v emacs-gtk 2> "/dev/null" || command -v emacs-nw 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
 	if [ -z "${_emacs_bin}" ]; then
 		_ui_err "emacs não encontrado."
 		unset _X11_FLAVOR_OVERRIDE EMACS_OS_MODE
