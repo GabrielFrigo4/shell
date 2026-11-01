@@ -217,6 +217,8 @@ A exportação de `XCURSOR_THEME`, `XCURSOR_SIZE` (`24px`) e `XCURSOR_PATH` obed
 
 ### 4. Matriz de Harmonização de Temas GTK & Qt
 
+Sincroniza proceduralmente `SAL_USE_VCLPLUGIN="gtk3"`, `GTK_APPLICATION_PREFER_DARK_THEME=1` e `gtk-icon-theme-name` (`Adwaita` / `breeze-dark`) em `~/.config/gtk-3.0/settings.ini`, `~/.config/gtk-4.0/settings.ini` e GSettings, garantindo fidelidade de ícones e widgets 100% idêntica no LibreOffice e aplicações GTK entre sessões X11 (`xgui`, `xwm`, `xewm`) e Wayland (`wgui`, `wwm`, `wewm`).
+
 | Desktop Environment | Tema GTK Canônico                         | Estilo de Widget Qt (`QT_STYLE_OVERRIDE`) | Plataforma Qt (`QT_QPA_PLATFORMTHEME`)                         |
 | :------------------ | :---------------------------------------- | :---------------------------------------- | :------------------------------------------------------------- |
 | **KDE (Plasma)**    | `Breeze-Dark`                             | `Breeze-Dark` / `Breeze`                  | `xdgdesktopportal`                                             |

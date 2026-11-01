@@ -500,11 +500,13 @@ graphical-launcher-x11() {
 	local _display="$(_resolve_free_display)"
 	export DISPLAY="${_display}"
 	_x11_session_env "${_flavor}"
+	_setup_cursor_env "${_flavor}"
 	_x11_driver_preflight
 
 	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
-	export GTK_THEME="${GTK_THEME:-Breeze-Dark:dark}"
+	export GTK_THEME="${GTK_THEME:-adw-gtk3-dark}"
 	export GTK_APPLICATION_PREFER_DARK_THEME=1
+	export SAL_USE_VCLPLUGIN="gtk3"
 	export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
 
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
@@ -904,6 +906,11 @@ EOF_TABBAR
 #!/bin/sh
 unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-GNOME}"
+export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
+export SAL_USE_VCLPLUGIN="gtk3"
+export GTK_THEME="${GTK_THEME:-adw-gtk3-dark}"
+export GTK_APPLICATION_PREFER_DARK_THEME=1
 
 if [ -z "\${ENVIRONMENT_SESSION_WRAPPED:-}" ]; then
 	export ENVIRONMENT_SESSION_WRAPPED=1
@@ -925,8 +932,11 @@ export GDK_BACKEND="x11"
 export QT_QPA_PLATFORM="xcb"
 export SDL_VIDEODRIVER="x11"
 export CLUTTER_BACKEND="x11"
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-GNOME}"
+export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
+export SAL_USE_VCLPLUGIN="gtk3"
 export GTK_CSD=0
-export GTK_THEME="\${GTK_THEME:-Breeze-Dark:dark}"
+export GTK_THEME="${GTK_THEME:-adw-gtk3-dark}"
 export GTK_APPLICATION_PREFER_DARK_THEME=1
 export QT_QPA_PLATFORMTHEME="\${QT_QPA_PLATFORMTHEME:-qt6ct}"
 export XCURSOR_THEME="\${XCURSOR_THEME}"
@@ -1211,6 +1221,7 @@ emacs-window-manager-x11() {
 
 	export EMACS_OS_MODE="x11"
 	export _X11_FLAVOR_OVERRIDE="${_flavor}"
+	_setup_cursor_env "${_flavor}"
 
 	local _emacs_bin="$(command -v emacs-gtk+x11 2> "/dev/null" || command -v emacs-x11 2> "/dev/null" || command -v emacs-lucid 2> "/dev/null" || command -v emacs-gtk 2> "/dev/null" || command -v emacs-nw 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
 	if [ -z "${_emacs_bin}" ]; then

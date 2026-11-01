@@ -232,7 +232,7 @@ open-libreoffice() {
 		_bin="soffice"
 	fi
 	[ -z "${_bin}" ] && { _ui_err "LibreOffice not found."; return 127; }
-	(command nohup "${_bin}" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+	(SAL_USE_VCLPLUGIN=gtk3 GTK_THEME="${GTK_THEME:-adw-gtk3-dark}" GTK_APPLICATION_PREFER_DARK_THEME=1 command nohup "${_bin}" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 }
 alias ol="open-libreoffice"
 
@@ -552,6 +552,8 @@ if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 
 	export ELECTRON_OZONE_PLATFORM_HINT="auto"
 	export _JAVA_AWT_WM_NONREPARENTING=1
+	export SAL_USE_VCLPLUGIN="gtk3"
+	export GTK_APPLICATION_PREFER_DARK_THEME=1
 
 	_default_cursor_paths="${HOME}/.local/share/icons:${HOME}/.icons:/usr/local/share/icons:/usr/share/icons"
 	case ":${XCURSOR_PATH:-}:" in

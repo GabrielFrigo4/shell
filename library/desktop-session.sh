@@ -331,6 +331,44 @@ _setup_cursor_env() {
 
 	export XCURSOR_THEME="${_valid_theme}" XCURSOR_SIZE="${_target_size}"
 
+	local _icon_theme=""
+	case "${_flavor}" in
+		kde|plasma|lxqt)
+			_icon_theme="breeze-dark"
+			;;
+		gnome|budgie)
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_icon_theme="$(gsettings get org.gnome.desktop.interface icon-theme 2> "/dev/null" | tr -d "'\"")"
+			fi
+			[ -z "${_icon_theme}" ] && _icon_theme="Adwaita"
+			;;
+		mate|cinnamon|xfce|lxde)
+			_icon_theme="Adwaita"
+			;;
+		pantheon)
+			_icon_theme="elementary"
+			;;
+		deepin)
+			_icon_theme="bloom"
+			;;
+		cosmic)
+			_icon_theme="cosmic"
+			;;
+	esac
+
+	if [ -z "${_icon_theme}" ]; then
+		if command -v gsettings > "/dev/null" 2>&1; then
+			_icon_theme="$(gsettings get org.gnome.desktop.interface icon-theme 2> "/dev/null" | tr -d "'\"")"
+		fi
+	fi
+	if [ -z "${_icon_theme}" ]; then
+		if [ -d "/usr/share/icons/Adwaita" ] || [ -d "/usr/local/share/icons/Adwaita" ] || [ -d "${HOME}/.local/share/icons/Adwaita" ] || [ -d "${HOME}/.icons/Adwaita" ]; then
+			_icon_theme="Adwaita"
+		else
+			_icon_theme="breeze-dark"
+		fi
+	fi
+
 	mkdir -p "${HOME}/.icons/default" 2> "/dev/null" || true
 	printf '[Icon Theme]\nInherits=%s\n' "${_valid_theme}" >| "${HOME}/.icons/default/index.theme" 2> "/dev/null" || true
 
@@ -338,7 +376,7 @@ _setup_cursor_env() {
 		_gtk_dir="$(dirname "${_gtk_cfg}")"
 		[ -d "${_gtk_dir}" ] || mkdir -p "${_gtk_dir}" 2> "/dev/null" || true
 		if [ ! -f "${_gtk_cfg}" ]; then
-			printf '[Settings]\ngtk-cursor-theme-name=%s\ngtk-cursor-blink=true\ngtk-cursor-blink-time=1200\n' "${_valid_theme}" >| "${_gtk_cfg}" 2> "/dev/null" || true
+			printf '[Settings]\ngtk-cursor-theme-name=%s\ngtk-cursor-blink=true\ngtk-cursor-blink-time=1200\ngtk-icon-theme-name=%s\ngtk-theme-name=adw-gtk3-dark\ngtk-application-prefer-dark-theme=true\n' "${_valid_theme}" "${_icon_theme}" >| "${_gtk_cfg}" 2> "/dev/null" || true
 		else
 			_cfg_tmp="${_gtk_cfg}.tmp.$$"
 			cat "${_gtk_cfg}" >| "${_cfg_tmp}" 2> "/dev/null" || true
@@ -357,6 +395,21 @@ _setup_cursor_env() {
 			else
 				printf 'gtk-cursor-blink-time=1200\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
 			fi
+			if grep -q "^gtk-icon-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
+				sed "s/^gtk-icon-theme-name=.*/gtk-icon-theme-name=${_icon_theme}/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+			else
+				printf 'gtk-icon-theme-name=%s\n' "${_icon_theme}" >> "${_cfg_tmp}" 2> "/dev/null" || true
+			fi
+			if grep -q "^gtk-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
+				sed "s/^gtk-theme-name=.*/gtk-theme-name=adw-gtk3-dark/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+			else
+				printf 'gtk-theme-name=adw-gtk3-dark\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
+			fi
+			if grep -q "^gtk-application-prefer-dark-theme=" "${_cfg_tmp}" 2> "/dev/null"; then
+				sed "s/^gtk-application-prefer-dark-theme=.*/gtk-application-prefer-dark-theme=true/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+			else
+				printf 'gtk-application-prefer-dark-theme=true\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
+			fi
 			cat "${_cfg_tmp}" >| "${_gtk_cfg}" 2> "/dev/null" || true
 			rm -f "${_cfg_tmp}" "${_cfg_tmp}.1" 2> "/dev/null" || true
 		fi
@@ -373,6 +426,7 @@ _setup_cursor_env() {
 		gsettings set org.gnome.desktop.interface cursor-size "${_target_size}" > "/dev/null" 2>&1 || true
 		gsettings set org.gnome.desktop.interface cursor-blink true > "/dev/null" 2>&1 || true
 		gsettings set org.gnome.desktop.interface cursor-blink-time 1200 > "/dev/null" 2>&1 || true
+		gsettings set org.gnome.desktop.interface icon-theme "${_icon_theme}" > "/dev/null" 2>&1 || true
 	fi
 }
 
@@ -391,6 +445,7 @@ _wayland_session_env() {
 	export GDK_BACKEND="wayland,x11" CLUTTER_BACKEND="wayland" SDL_VIDEODRIVER="wayland"
 	export MOZ_ENABLE_WAYLAND=1 ELECTRON_OZONE_PLATFORM_HINT="auto"
 	export GTK_APPLICATION_PREFER_DARK_THEME=1 ADW_DEBUG_COLOR_SCHEME="prefer-dark"
+	export SAL_USE_VCLPLUGIN="gtk3"
 
 	if [ -z "${GTK_THEME:-}" ] && [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
 		local _ini_gtk="$(grep -E '^[[:space:]]*gtk-theme-name[[:space:]]*=' "${HOME}/.config/gtk-3.0/settings.ini" 2> "/dev/null" | head -n 1 | cut -d= -f2- | tr -d ' "' || true)"
@@ -399,34 +454,34 @@ _wayland_session_env() {
 
 	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
 	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
-	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="Breeze-Dark:dark"
+	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="adw-gtk3-dark"
 	export QT_QPA_PLATFORM="wayland;xcb"
 	case "${_theme_flavor}" in
 		kde|plasma)
-			export XDG_CURRENT_DESKTOP="KDE" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze"
+			export XDG_CURRENT_DESKTOP="KDE" DESKTOP_SESSION="${DESKTOP_SESSION:-kde}" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze"
 			;;
 		lxqt)
-			export XDG_CURRENT_DESKTOP="LXQt" QT_QPA_PLATFORMTHEME="lxqt" QT_STYLE_OVERRIDE="Breeze"
+			export XDG_CURRENT_DESKTOP="LXQt" DESKTOP_SESSION="${DESKTOP_SESSION:-lxqt}" QT_QPA_PLATFORMTHEME="lxqt" QT_STYLE_OVERRIDE="Breeze"
 			;;
 		cosmic)
-			export XDG_CURRENT_DESKTOP="COSMIC" QT_QPA_PLATFORMTHEME="cosmic"
+			export XDG_CURRENT_DESKTOP="COSMIC" DESKTOP_SESSION="${DESKTOP_SESSION:-cosmic}" QT_QPA_PLATFORMTHEME="cosmic"
 			;;
 		budgie)
-			export XDG_CURRENT_DESKTOP="Budgie:GNOME" QT_QPA_PLATFORMTHEME="qt6ct"
+			export XDG_CURRENT_DESKTOP="Budgie:GNOME" DESKTOP_SESSION="${DESKTOP_SESSION:-budgie}" QT_QPA_PLATFORMTHEME="qt6ct"
 			;;
 		pantheon)
-			export XDG_CURRENT_DESKTOP="Pantheon" QT_QPA_PLATFORMTHEME="qt6ct"
+			export XDG_CURRENT_DESKTOP="Pantheon" DESKTOP_SESSION="${DESKTOP_SESSION:-pantheon}" QT_QPA_PLATFORMTHEME="qt6ct"
 			;;
 		deepin)
-			export XDG_CURRENT_DESKTOP="DDE" QT_QPA_PLATFORMTHEME="deepin"
+			export XDG_CURRENT_DESKTOP="DDE" DESKTOP_SESSION="${DESKTOP_SESSION:-deepin}" QT_QPA_PLATFORMTHEME="deepin"
 			;;
 		*)
 			case "${_theme_flavor}" in
-				cinnamon) export XDG_CURRENT_DESKTOP="X-Cinnamon" ;;
-				mate)     export XDG_CURRENT_DESKTOP="MATE" ;;
-				xfce)     export XDG_CURRENT_DESKTOP="XFCE" ;;
-				lxde)     export XDG_CURRENT_DESKTOP="LXDE" ;;
-				*)        export XDG_CURRENT_DESKTOP="GNOME" ;;
+				cinnamon) export XDG_CURRENT_DESKTOP="X-Cinnamon" DESKTOP_SESSION="${DESKTOP_SESSION:-cinnamon}" ;;
+				mate)     export XDG_CURRENT_DESKTOP="MATE" DESKTOP_SESSION="${DESKTOP_SESSION:-mate}" ;;
+				xfce)     export XDG_CURRENT_DESKTOP="XFCE" DESKTOP_SESSION="${DESKTOP_SESSION:-xfce}" ;;
+				lxde)     export XDG_CURRENT_DESKTOP="LXDE" DESKTOP_SESSION="${DESKTOP_SESSION:-lxde}" ;;
+				*)        export XDG_CURRENT_DESKTOP="GNOME" DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}" ;;
 			esac
 			unset QT_STYLE_OVERRIDE 2> "/dev/null" || true
 			if [ -f "${HOME}/.config/qt6ct/qt6ct.conf" ] || command -v qt6ct > "/dev/null" 2>&1; then
@@ -438,6 +493,7 @@ _wayland_session_env() {
 			fi
 			;;
 	esac
+	export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
 
 	_setup_cursor_env "${_target_flavor}"
 	_enable_numlock_console
@@ -449,6 +505,7 @@ _x11_session_env() {
 	export XDG_SESSION_TYPE="x11" GDK_BACKEND="x11" QT_QPA_PLATFORM="xcb" SDL_VIDEODRIVER="x11" CLUTTER_BACKEND="x11"
 	export XORG_RUN_AS_USER_OK=1 XKB_DEFAULT_LAYOUT="br" XKB_DEFAULT_MODEL="abnt2" XKB_DEFAULT_OPTIONS="numpad:mac"
 	export GTK_APPLICATION_PREFER_DARK_THEME=1 ADW_DEBUG_COLOR_SCHEME="prefer-dark"
+	export SAL_USE_VCLPLUGIN="gtk3"
 
 	if [ -z "${GTK_THEME:-}" ] && [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
 		local _ini_gtk="$(grep -E '^[[:space:]]*gtk-theme-name[[:space:]]*=' "${HOME}/.config/gtk-3.0/settings.ini" 2> "/dev/null" | head -n 1 | cut -d= -f2- | tr -d ' "' || true)"
@@ -457,33 +514,33 @@ _x11_session_env() {
 
 	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
 	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
-	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="Breeze-Dark:dark"
+	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="adw-gtk3-dark"
 	case "${_theme_flavor}" in
 		kde|plasma)
-			export XDG_CURRENT_DESKTOP="KDE" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze"
+			export XDG_CURRENT_DESKTOP="KDE" DESKTOP_SESSION="${DESKTOP_SESSION:-kde}" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze"
 			;;
 		lxqt)
-			export XDG_CURRENT_DESKTOP="LXQt" QT_QPA_PLATFORMTHEME="lxqt" QT_STYLE_OVERRIDE="Breeze"
+			export XDG_CURRENT_DESKTOP="LXQt" DESKTOP_SESSION="${DESKTOP_SESSION:-lxqt}" QT_QPA_PLATFORMTHEME="lxqt" QT_STYLE_OVERRIDE="Breeze"
 			;;
 		cosmic)
-			export XDG_CURRENT_DESKTOP="COSMIC" QT_QPA_PLATFORMTHEME="cosmic"
+			export XDG_CURRENT_DESKTOP="COSMIC" DESKTOP_SESSION="${DESKTOP_SESSION:-cosmic}" QT_QPA_PLATFORMTHEME="cosmic"
 			;;
 		budgie)
-			export XDG_CURRENT_DESKTOP="Budgie:GNOME" QT_QPA_PLATFORMTHEME="qt6ct"
+			export XDG_CURRENT_DESKTOP="Budgie:GNOME" DESKTOP_SESSION="${DESKTOP_SESSION:-budgie}" QT_QPA_PLATFORMTHEME="qt6ct"
 			;;
 		pantheon)
-			export XDG_CURRENT_DESKTOP="Pantheon" QT_QPA_PLATFORMTHEME="qt6ct"
+			export XDG_CURRENT_DESKTOP="Pantheon" DESKTOP_SESSION="${DESKTOP_SESSION:-pantheon}" QT_QPA_PLATFORMTHEME="qt6ct"
 			;;
 		deepin)
-			export XDG_CURRENT_DESKTOP="DDE" QT_QPA_PLATFORMTHEME="deepin"
+			export XDG_CURRENT_DESKTOP="DDE" DESKTOP_SESSION="${DESKTOP_SESSION:-deepin}" QT_QPA_PLATFORMTHEME="deepin"
 			;;
 		*)
 			case "${_theme_flavor}" in
-				cinnamon) export XDG_CURRENT_DESKTOP="X-Cinnamon" ;;
-				mate)     export XDG_CURRENT_DESKTOP="MATE" ;;
-				xfce)     export XDG_CURRENT_DESKTOP="XFCE" ;;
-				lxde)     export XDG_CURRENT_DESKTOP="LXDE" ;;
-				*)        export XDG_CURRENT_DESKTOP="GNOME" ;;
+				cinnamon) export XDG_CURRENT_DESKTOP="X-Cinnamon" DESKTOP_SESSION="${DESKTOP_SESSION:-cinnamon}" ;;
+				mate)     export XDG_CURRENT_DESKTOP="MATE" DESKTOP_SESSION="${DESKTOP_SESSION:-mate}" ;;
+				xfce)     export XDG_CURRENT_DESKTOP="XFCE" DESKTOP_SESSION="${DESKTOP_SESSION:-xfce}" ;;
+				lxde)     export XDG_CURRENT_DESKTOP="LXDE" DESKTOP_SESSION="${DESKTOP_SESSION:-lxde}" ;;
+				*)        export XDG_CURRENT_DESKTOP="GNOME" DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}" ;;
 			esac
 			unset QT_STYLE_OVERRIDE 2> "/dev/null" || true
 			if [ -f "${HOME}/.config/qt6ct/qt6ct.conf" ] || command -v qt6ct > "/dev/null" 2>&1; then
@@ -493,6 +550,7 @@ _x11_session_env() {
 			fi
 			;;
 	esac
+	export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
 
 	local _xres_target="${HOME}/.Xresources" _xres_src=""
 	if [ -f "${HOME}/.local/share/profile/terminals/xterm/Xresources" ]; then
@@ -744,6 +802,11 @@ _exec_x11() {
 unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
 export EMACS_OS_MODE="${EMACS_OS_MODE:-}"
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-GNOME}"
+export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
+export SAL_USE_VCLPLUGIN="gtk3"
+export GTK_THEME="${GTK_THEME:-adw-gtk3-dark}"
+export GTK_APPLICATION_PREFER_DARK_THEME=1
 
 if [ -z "\${ENVIRONMENT_SESSION_WRAPPED:-}" ]; then
 	export ENVIRONMENT_SESSION_WRAPPED=1
@@ -765,7 +828,10 @@ export GDK_BACKEND="x11"
 export QT_QPA_PLATFORM="xcb"
 export SDL_VIDEODRIVER="x11"
 export CLUTTER_BACKEND="x11"
-export GTK_THEME="\${GTK_THEME:-Breeze-Dark:dark}"
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-GNOME}"
+export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
+export SAL_USE_VCLPLUGIN="gtk3"
+export GTK_THEME="${GTK_THEME:-adw-gtk3-dark}"
 export GTK_APPLICATION_PREFER_DARK_THEME=1
 export QT_QPA_PLATFORMTHEME="\${QT_QPA_PLATFORMTHEME:-qt6ct}"
 export XCURSOR_THEME="\${XCURSOR_THEME}"
