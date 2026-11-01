@@ -50,6 +50,49 @@ if ! command -v _resolve_graphical_app > "/dev/null" 2>&1; then
 	}
 fi
 
+if ! command -v _resolve_desktop_font > "/dev/null" 2>&1; then
+	_resolve_desktop_font() {
+		local _target_flavor="${1:-}"
+		if command -v fc-list > "/dev/null" 2>&1; then
+			if fc-list : family 2> "/dev/null" | grep -qi "JetBrainsMono Nerd Font"; then
+				printf '%s\n' "JetBrainsMono Nerd Font"
+				return 0
+			fi
+			case "${_target_flavor}" in
+				kde|plasma)
+					if fc-list : family 2> "/dev/null" | grep -qi "^Noto Sans$"; then
+						printf '%s\n' "Noto Sans"
+						return 0
+					fi
+					;;
+				gnome)
+					for _f in "Adwaita Sans" "Cantarell"; do
+						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
+							printf '%s\n' "${_f}"
+							return 0
+						fi
+					done
+					;;
+				mate|cinnamon|xfce)
+					for _f in "Ubuntu" "DejaVu Sans"; do
+						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
+							printf '%s\n' "${_f}"
+							return 0
+						fi
+					done
+					;;
+			esac
+			for _f in "Adwaita Sans" "Cantarell" "Noto Sans" "Ubuntu" "DejaVu Sans"; do
+				if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
+					printf '%s\n' "${_f}"
+					return 0
+				fi
+			done
+		fi
+		printf '%s\n' "Sans"
+	}
+fi
+
 ### --------------------------------
 ### EPHEMERAL GRAPHICAL LAUNCHERS
 ### --------------------------------
@@ -88,7 +131,7 @@ graphical-launcher-wayland() {
 	local _wayland_runner="${XDG_RUNTIME_DIR:-/tmp}/wayland-runner-$$.sh"
 	local _sh="$(_detect_enabled_shell)"
 
-	cat << EOF > "${_wayland_runner}"
+	cat << EOF >| "${_wayland_runner}"
 #!/bin/sh
 _app_target="\$1"
 [ "\$#" -ge 1 ] && shift
@@ -157,6 +200,7 @@ EOF
 
 	local _cur_theme="${XCURSOR_THEME}"
 	local _cur_size="${XCURSOR_SIZE:-24}"
+	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
 	local _log_dir="$(_get_shell_log_dir)"
 	local _log_file="${_log_dir}/wayland-kiosk.log"
 	local _ret=0
@@ -174,7 +218,7 @@ EOF
 	if command -v sway > "/dev/null" 2>&1; then
 		local _sway_cfg="${XDG_RUNTIME_DIR:-/tmp}/sway-gui-$$.conf"
 		local _tabwatch="${XDG_RUNTIME_DIR:-/tmp}/wgui-tabwatch-$$.sh"
-		cat << 'EOF' > "${_tabwatch}"
+		cat << 'EOF' >| "${_tabwatch}"
 #!/bin/sh
 while :; do
 	_count=$(swaymsg -t get_tree 2> "/dev/null" | grep -c '"pid":' || true)
@@ -188,8 +232,8 @@ done
 EOF
 		chmod 0755 "${_tabwatch}"
 
-		cat << EOF > "${_sway_cfg}"
-font pango:Sans Bold 10
+		cat << EOF >| "${_sway_cfg}"
+font pango:${_ui_font} Bold 10
 titlebar_padding 10 5
 default_border none
 default_floating_border pixel 1
@@ -251,7 +295,7 @@ EOF
 	elif command -v labwc > "/dev/null" 2>&1; then
 		local _labwc_dir="${XDG_RUNTIME_DIR:-/tmp}/labwc-gui-$$"
 		mkdir -p "${_labwc_dir}"
-		cat << 'EOF' > "${_labwc_dir}/themerc"
+		cat << 'EOF' >| "${_labwc_dir}/themerc"
 window.active.title.bg.color: #1f1f28
 window.active.label.text.color: #dcd7ba
 window.inactive.title.bg.color: #16161e
@@ -267,7 +311,7 @@ menu.items.text.color: #dcd7ba
 menu.items.active.bg.color: #2a2a37
 menu.items.active.text.color: #e6c384
 EOF
-		cat << 'EOF' > "${_labwc_dir}/menu.xml"
+		cat << 'EOF' >| "${_labwc_dir}/menu.xml"
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="Universal Labwc">
@@ -293,7 +337,7 @@ EOF
   </menu>
 </openbox_menu>
 EOF
-		cat << EOF > "${_labwc_dir}/rc.xml"
+		cat << EOF >| "${_labwc_dir}/rc.xml"
 <?xml version="1.0"?>
 <labwc_config>
   <theme>
@@ -343,7 +387,7 @@ EOF
 		rm -rf "${_labwc_dir}" 2> "/dev/null" || true
 	elif command -v river > "/dev/null" 2>&1; then
 		local _river_init="${XDG_RUNTIME_DIR:-/tmp}/river-gui-$$.sh"
-		cat << EOF > "${_river_init}"
+		cat << EOF >| "${_river_init}"
 #!/bin/sh
 riverctl border-width 0
 riverctl xcursor-theme "${_cur_theme}" "${_cur_size}"
@@ -422,6 +466,7 @@ graphical-launcher-x11() {
 	_x11_session_env "${_flavor}"
 	_x11_driver_preflight
 
+	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
 	export GTK_THEME="${GTK_THEME:-Breeze-Dark:dark}"
 	export GTK_APPLICATION_PREFER_DARK_THEME=1
 	export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
@@ -439,29 +484,63 @@ window.client.padding.width: 0
 window.active.border.color: #3584e4
 window.active.title.bg: flat solid
 window.active.title.bg.color: #2b2b30
+window.active.label.bg: parentrelative
 window.active.label.text.color: #ffffff
-
-window.inactive.border.color: #38383d
-window.inactive.title.bg: flat solid
-window.inactive.title.bg.color: #1e1e22
-window.inactive.label.text.color: #9a9996
-
-window.active.button.unpressed.bg: flat solid
-window.active.button.unpressed.bg.color: #2b2b30
+window.active.handle.bg: flat solid
+window.active.handle.bg.color: #2b2b30
+window.active.grip.bg: flat solid
+window.active.grip.bg.color: #3584e4
+window.active.button.unpressed.bg: parentrelative
 window.active.button.unpressed.image.color: #ffffff
-
 window.active.button.pressed.bg: flat solid
 window.active.button.pressed.bg.color: #3584e4
 window.active.button.pressed.image.color: #ffffff
-
 window.active.button.hover.bg: flat solid
-window.active.button.hover.bg.color: #e01b24
+window.active.button.hover.bg.color: #3584e4
 window.active.button.hover.image.color: #ffffff
-
-window.inactive.button.unpressed.bg: flat solid
-window.inactive.button.unpressed.bg.color: #1e1e22
+window.active.button.disabled.bg: parentrelative
+window.active.button.disabled.image.color: #5e5c64
+window.inactive.border.color: #38383d
+window.inactive.title.bg: flat solid
+window.inactive.title.bg.color: #1e1e22
+window.inactive.label.bg: parentrelative
+window.inactive.label.text.color: #9a9996
+window.inactive.handle.bg: flat solid
+window.inactive.handle.bg.color: #1e1e22
+window.inactive.grip.bg: flat solid
+window.inactive.grip.bg.color: #38383d
+window.inactive.button.unpressed.bg: parentrelative
 window.inactive.button.unpressed.image.color: #9a9996
-
+window.inactive.button.pressed.bg: flat solid
+window.inactive.button.pressed.bg.color: #38383d
+window.inactive.button.pressed.image.color: #ffffff
+window.inactive.button.hover.bg: flat solid
+window.inactive.button.hover.bg.color: #38383d
+window.inactive.button.hover.image.color: #ffffff
+window.inactive.button.disabled.bg: parentrelative
+window.inactive.button.disabled.image.color: #5e5c64
+osd.border.width: 2
+osd.border.color: #3584e4
+osd.bg: flat solid
+osd.bg.color: #2b2b30
+osd.label.bg: parentrelative
+osd.label.text.color: #ffffff
+osd.hilight.bg: flat solid
+osd.hilight.bg.color: #3584e4
+osd.unhilight.bg: flat solid
+osd.unhilight.bg.color: #1e1e22
+osd.button.unpressed.bg: flat solid
+osd.button.unpressed.bg.color: #1e1e22
+osd.button.unpressed.text.color: #ffffff
+osd.button.unpressed.border.color: #38383d
+osd.button.pressed.bg: flat solid
+osd.button.pressed.bg.color: #3584e4
+osd.button.pressed.text.color: #ffffff
+osd.button.pressed.border.color: #3584e4
+osd.button.focused.bg: flat solid
+osd.button.focused.bg.color: #3584e4
+osd.button.focused.text.color: #ffffff
+osd.button.focused.border.color: #3584e4
 menu.border.width: 2
 menu.border.color: #38383d
 menu.title.bg: flat solid
@@ -470,9 +549,11 @@ menu.title.text.color: #3584e4
 menu.items.bg: flat solid
 menu.items.bg.color: #242428
 menu.items.text.color: #ffffff
+menu.items.disabled.text.color: #5e5c64
 menu.items.active.bg: flat solid
 menu.items.active.bg.color: #3584e4
 menu.items.active.text.color: #ffffff
+menu.separator.color: #38383d
 OTM
 
 	local _is_terminal=0
@@ -481,7 +562,7 @@ OTM
 	local _sh="$(_detect_enabled_shell)"
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-gui-$$.sh"
-	cat << EOF > "${_xinit_script}"
+	cat << EOF >| "${_xinit_script}"
 #!/bin/sh
 unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
@@ -536,7 +617,7 @@ fi
 
 if command -v openbox > "/dev/null" 2>&1; then
 	_ob_cfg="\${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-\$\$.xml"
-	cat << 'XOB' > "\${_ob_cfg}"
+	cat << 'XOB' >| "\${_ob_cfg}"
 <?xml version="1.0"?>
 <openbox_config xmlns="http://openbox.org/3.4/rc">
   <theme>
@@ -544,6 +625,12 @@ if command -v openbox > "/dev/null" 2>&1; then
     <titleLayout>NLIMC</titleLayout>
     <keepBorder>no</keepBorder>
     <animateIconify>no</animateIconify>
+    <font place="ActiveWindow"><name>${_ui_font}</name><size>10</size><weight>Bold</weight><slant>Normal</slant></font>
+    <font place="InactiveWindow"><name>${_ui_font}</name><size>10</size><weight>Normal</weight><slant>Normal</slant></font>
+    <font place="MenuHeader"><name>${_ui_font}</name><size>10</size><weight>Bold</weight><slant>Normal</slant></font>
+    <font place="MenuItem"><name>${_ui_font}</name><size>10</size><weight>Normal</weight><slant>Normal</slant></font>
+    <font place="ActiveOnScreenDisplay"><name>${_ui_font}</name><size>10</size><weight>Bold</weight><slant>Normal</slant></font>
+    <font place="InactiveOnScreenDisplay"><name>${_ui_font}</name><size>10</size><weight>Normal</weight><slant>Normal</slant></font>
   </theme>
   <focus>
     <focusNew>yes</focusNew>
@@ -558,6 +645,22 @@ if command -v openbox > "/dev/null" 2>&1; then
     <screenEdgeWarpTime>0</screenEdgeWarpTime>
     <screenEdgeWarpMouse>false</screenEdgeWarpMouse>
     <context name="Root"/>
+    <context name="Titlebar">
+      <mousebind button="Left" action="Drag"><action name="Move"/></mousebind>
+      <mousebind button="Left" action="DoubleClick"><action name="ToggleMaximize"/></mousebind>
+    </context>
+    <context name="Iconify">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Click"><action name="Iconify"/></mousebind>
+    </context>
+    <context name="Maximize">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Click"><action name="ToggleMaximize"/></mousebind>
+    </context>
+    <context name="Close">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Click"><action name="Close"/></mousebind>
+    </context>
     <context name="Client">
       <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
       <mousebind button="Middle" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
@@ -571,7 +674,7 @@ if command -v openbox > "/dev/null" 2>&1; then
     <keybind key="W-q"><action name="Close"/></keybind>
   </keyboard>
   <applications>
-    <application class="*">
+    <application type="normal">
       <decor>no</decor>
       <shade>no</shade>
       <focus>yes</focus>
@@ -579,7 +682,7 @@ if command -v openbox > "/dev/null" 2>&1; then
       <fullscreen>no</fullscreen>
     </application>
     <application type="dialog">
-      <decor>no</decor>
+      <decor>yes</decor>
       <focus>yes</focus>
       <maximized>no</maximized>
     </application>
@@ -594,19 +697,6 @@ elif command -v cwm > "/dev/null" 2>&1; then
 elif command -v ratpoison > "/dev/null" 2>&1; then
 	ratpoison > "/dev/null" 2>&1 &
 fi
-
-(
-	while :; do
-		if command -v wmctrl > "/dev/null" 2>&1; then
-			wmctrl -r :ACTIVE: -b add,maximized_vert,maximized_horz 2> "/dev/null" || true
-		elif command -v xdotool > "/dev/null" 2>&1; then
-			for _wid in \$(command xdotool search --onlyvisible --class ".*" 2> "/dev/null"); do
-				command xdotool windowsize "\${_wid}" 100% 100% windowmove "\${_wid}" 0 0 2> "/dev/null" || true
-			done
-		fi
-		sleep 1
-	done
-) &
 
 _target_bin="\$1"
 [ "\$#" -ge 1 ] && shift

@@ -50,6 +50,49 @@ if ! command -v _resolve_graphical_app > "/dev/null" 2>&1; then
 	}
 fi
 
+if ! command -v _resolve_desktop_font > "/dev/null" 2>&1; then
+	_resolve_desktop_font() {
+		local _target_flavor="${1:-}"
+		if command -v fc-list > "/dev/null" 2>&1; then
+			if fc-list : family 2> "/dev/null" | grep -qi "JetBrainsMono Nerd Font"; then
+				printf '%s\n' "JetBrainsMono Nerd Font"
+				return 0
+			fi
+			case "${_target_flavor}" in
+				kde|plasma)
+					if fc-list : family 2> "/dev/null" | grep -qi "^Noto Sans$"; then
+						printf '%s\n' "Noto Sans"
+						return 0
+					fi
+					;;
+				gnome)
+					for _f in "Adwaita Sans" "Cantarell"; do
+						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
+							printf '%s\n' "${_f}"
+							return 0
+						fi
+					done
+					;;
+				mate|cinnamon|xfce)
+					for _f in "Ubuntu" "DejaVu Sans"; do
+						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
+							printf '%s\n' "${_f}"
+							return 0
+						fi
+					done
+					;;
+			esac
+			for _f in "Adwaita Sans" "Cantarell" "Noto Sans" "Ubuntu" "DejaVu Sans"; do
+				if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
+					printf '%s\n' "${_f}"
+					return 0
+				fi
+			done
+		fi
+		printf '%s\n' "Sans"
+	}
+fi
+
 ### --------------------------------
 ### CONSOLE & CURSOR HELPERS
 ### --------------------------------
@@ -213,11 +256,11 @@ _setup_cursor_env() {
 		if [ -f "${_gtk_cfg}" ]; then
 			_cfg_tmp="${_gtk_cfg}.tmp.$$"
 			if grep -q "^gtk-cursor-theme-name=" "${_gtk_cfg}" 2> "/dev/null"; then
-				sed "s/^gtk-cursor-theme-name=.*/gtk-cursor-theme-name=${_valid_theme}/" "${_gtk_cfg}" > "${_cfg_tmp}" 2> "/dev/null" && cat "${_cfg_tmp}" > "${_gtk_cfg}" 2> "/dev/null" || true
+				sed "s/^gtk-cursor-theme-name=.*/gtk-cursor-theme-name=${_valid_theme}/" "${_gtk_cfg}" >| "${_cfg_tmp}" 2> "/dev/null" && cat "${_cfg_tmp}" >| "${_gtk_cfg}" 2> "/dev/null" || true
 			else
-				cat "${_gtk_cfg}" > "${_cfg_tmp}" 2> "/dev/null" || true
+				cat "${_gtk_cfg}" >| "${_cfg_tmp}" 2> "/dev/null" || true
 				printf 'gtk-cursor-theme-name=%s\n' "${_valid_theme}" >> "${_cfg_tmp}" 2> "/dev/null" || true
-				cat "${_cfg_tmp}" > "${_gtk_cfg}" 2> "/dev/null" || true
+				cat "${_cfg_tmp}" >| "${_gtk_cfg}" 2> "/dev/null" || true
 			fi
 			rm -f "${_cfg_tmp}" 2> "/dev/null" || true
 		fi
@@ -433,7 +476,7 @@ _session_quote_args() {
 
 _session_cmd_file() {
 	local _file="${XDG_RUNTIME_DIR:-/tmp}/session-cmd-$$.sh"
-	printf '#!/bin/sh\nrm -f "$0"\nexec %s\n' "$(_session_quote_args "$@")" > "${_file}"
+	printf '#!/bin/sh\nrm -f "$0"\nexec %s\n' "$(_session_quote_args "$@")" >| "${_file}"
 	chmod 0700 "${_file}"
 	printf '%s\n' "${_file}"
 }
@@ -564,7 +607,7 @@ _exec_x11() {
 
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-session-$$.sh"
-	cat << EOF > "${_xinit_script}"
+	cat << EOF >| "${_xinit_script}"
 #!/bin/sh
 unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
@@ -813,6 +856,7 @@ window-manager-wayland() {
 
 	local _cur_theme="${XCURSOR_THEME}"
 	local _cur_size="${XCURSOR_SIZE:-24}"
+	local _ui_font="$(_resolve_desktop_font "")"
 
 	local _wm_term="foot -o dpi-aware=no"
 	for _t in foot alacritty kitty xterm; do
@@ -825,17 +869,18 @@ window-manager-wayland() {
 	local _run_dir="${XDG_RUNTIME_DIR:-/tmp}"
 	local _term_script="${_run_dir}/wwm-term-$$.sh"
 	local _browser_script="${_run_dir}/wwm-browser-$$.sh"
+	local _files_script="${_run_dir}/wwm-files-$$.sh"
 	local _emacs_script="${_run_dir}/wwm-emacs-$$.sh"
 	local _menu_script="${_run_dir}/wwm-menu-$$.sh"
 	local _status_script="${_run_dir}/wwm-status-$$.sh"
 
-	cat << EOF > "${_term_script}"
+	cat << EOF >| "${_term_script}"
 #!/bin/sh
 exec ${_wm_term} "\$@"
 EOF
 	chmod 0755 "${_term_script}"
 
-	cat << 'EOF' > "${_browser_script}"
+	cat << 'EOF' >| "${_browser_script}"
 #!/bin/sh
 for _b in firefox chromium google-chrome-stable google-chrome brave-browser; do
 	if command -v "${_b}" > "/dev/null" 2>&1; then
@@ -845,7 +890,18 @@ done
 EOF
 	chmod 0755 "${_browser_script}"
 
-	cat << 'EOF' > "${_emacs_script}"
+	cat << EOF >| "${_files_script}"
+#!/bin/sh
+for _fm in nautilus dolphin thunar pcmanfm caja nemo; do
+	if command -v "\${_fm}" > "/dev/null" 2>&1; then
+		exec "\${_fm}" "\$@"
+	fi
+done
+exec ${_wm_term} -e sh -c 'ls -la; exec sh'
+EOF
+	chmod 0755 "${_files_script}"
+
+	cat << 'EOF' >| "${_emacs_script}"
 #!/bin/sh
 for _e in emacs-pgtk emacs; do
 	if command -v "${_e}" > "/dev/null" 2>&1; then
@@ -855,7 +911,7 @@ done
 EOF
 	chmod 0755 "${_emacs_script}"
 
-	cat << EOF > "${_menu_script}"
+	cat << EOF >| "${_menu_script}"
 #!/bin/sh
 if command -v wofi > "/dev/null" 2>&1; then
 	exec wofi --show drun
@@ -871,49 +927,51 @@ fi
 EOF
 	chmod 0755 "${_menu_script}"
 
-	cat << EOF > "${_status_script}"
+	cat << EOF >| "${_status_script}"
 #!/bin/sh
 _term="${_term_script}"
 _browser="${_browser_script}"
+_files="${_files_script}"
 _emacs="${_emacs_script}"
 _menu="${_menu_script}"
 
 (
-	while IFS= read -r _click_line; do
-		case "\${_click_line}" in
-			*"\"name\":\"term\""*)    "\${_term}" > "/dev/null" 2>&1 & ;;
-			*"\"name\":\"browser\""*) "\${_browser}" > "/dev/null" 2>&1 & ;;
-			*"\"name\":\"emacs\""*)   "\${_emacs}" > "/dev/null" 2>&1 & ;;
-			*"\"name\":\"menu\""*)    "\${_menu}" > "/dev/null" 2>&1 & ;;
-			*"\"name\":\"close\""*)   swaymsg kill > "/dev/null" 2>&1 & ;;
-			*"\"name\":\"exit\""*)    swaymsg exit > "/dev/null" 2>&1 & ;;
-		esac
+	printf '{"version":1,"click_events":true}\n[\n'
+	while :; do
+		_date_str="\$(date "+%Y-%m-%d %H:%M:%S")"
+		printf '[{"name":"browser","full_text":" [ Web Browser ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"term","full_text":" [ Terminal ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"files","full_text":" [ Files ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"emacs","full_text":" [ Emacs ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"menu","full_text":" [ Menu ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"close","full_text":" [ Close ] ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
+		printf '{"name":"exit","full_text":" [ Exit ] ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
+		printf '{"name":"time","full_text":" %s ","background":"#1e1e22","color":"#9a9996","border":"#38383d"}],\n' "\${_date_str}"
+		sleep 1
 	done
 ) &
-_sub_pid=\$!
-trap "kill \${_sub_pid} 2> \"/dev/null\" || true" EXIT
-trap "exit" TERM INT
+_clock_pid=\$!
+trap "kill \${_clock_pid} 2> \"/dev/null\" || true; exit" EXIT TERM INT
 
-printf '{"version":1,"click_events":true}\n[\n'
-while :; do
-	_date_str="\$(date "+%Y-%m-%d %H:%M:%S")"
-	printf '[{"name":"term","full_text":" [ Terminal ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-	printf '{"name":"browser","full_text":" [ Browser ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-	printf '{"name":"emacs","full_text":" [ Emacs ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-	printf '{"name":"menu","full_text":" [ Menu ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-	printf '{"name":"close","full_text":" [ Fechar Janela ] ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
-	printf '{"name":"exit","full_text":" [ Sair ] ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
-	printf '{"name":"time","full_text":" %s ","background":"#1e1e22","color":"#9a9996","border":"#38383d"}],\n' "\${_date_str}"
-	sleep 1
+while IFS= read -r _click_line; do
+	case "\${_click_line}" in
+		*"\"name\""*"\"browser\""*) "\${_browser}" > "/dev/null" 2>&1 & ;;
+		*"\"name\""*"\"term\""*)    "\${_term}" > "/dev/null" 2>&1 & ;;
+		*"\"name\""*"\"files\""*)   "\${_files}" > "/dev/null" 2>&1 & ;;
+		*"\"name\""*"\"emacs\""*)   "\${_emacs}" > "/dev/null" 2>&1 & ;;
+		*"\"name\""*"\"menu\""*)    "\${_menu}" > "/dev/null" 2>&1 & ;;
+		*"\"name\""*"\"close\""*)   swaymsg kill > "/dev/null" 2>&1 & ;;
+		*"\"name\""*"\"exit\""*)    swaymsg exit > "/dev/null" 2>&1 & ;;
+	esac
 done
 EOF
 	chmod 0755 "${_status_script}"
 
 	if command -v sway > "/dev/null" 2>&1; then
 		local _sway_cfg="${_run_dir}/sway-wm-$$.conf"
-		cat << EOF > "${_sway_cfg}"
+		cat << EOF >| "${_sway_cfg}"
 output * bg #1e1e22 solid_color
-font pango:Sans Bold 10
+font pango:${_ui_font} Bold 10
 titlebar_padding 10 6
 default_border pixel 2
 default_floating_border pixel 2
@@ -985,7 +1043,7 @@ bindsym Mod4+Shift+q exec swaymsg exit
 bar {
     position bottom
     status_command "${_status_script}"
-    font pango:Sans Bold 10
+    font pango:${_ui_font} Bold 10
     colors {
         background #1e1e22
         statusline #ffffff
@@ -997,12 +1055,12 @@ bar {
 EOF
 		_exec_wayland sway -c "${_sway_cfg}"
 		local _sway_ret=$?
-		rm -f "${_sway_cfg}" "${_term_script}" "${_browser_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" 2> "/dev/null" || true
+		rm -f "${_sway_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" 2> "/dev/null" || true
 		return "${_sway_ret}"
 	elif command -v labwc > "/dev/null" 2>&1; then
 		local _labwc_dir="${XDG_RUNTIME_DIR:-/tmp}/labwc-wm-$$"
 		mkdir -p "${_labwc_dir}"
-		cat << 'EOF' > "${_labwc_dir}/themerc"
+		cat << 'EOF' >| "${_labwc_dir}/themerc"
 window.active.title.bg.color: #1f1f28
 window.active.label.text.color: #dcd7ba
 window.inactive.title.bg.color: #16161e
@@ -1018,7 +1076,7 @@ menu.items.text.color: #dcd7ba
 menu.items.active.bg.color: #2a2a37
 menu.items.active.text.color: #e6c384
 EOF
-		cat << 'EOF' > "${_labwc_dir}/menu.xml"
+		cat << 'EOF' >| "${_labwc_dir}/menu.xml"
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="Universal Labwc">
@@ -1044,7 +1102,7 @@ EOF
   </menu>
 </openbox_menu>
 EOF
-		cat << EOF > "${_labwc_dir}/rc.xml"
+		cat << EOF >| "${_labwc_dir}/rc.xml"
 <?xml version="1.0"?>
 <labwc_config>
   <theme>
@@ -1090,7 +1148,7 @@ EOF
 		return "${_labwc_ret}"
 	elif command -v river > "/dev/null" 2>&1; then
 		local _river_init="${XDG_RUNTIME_DIR:-/tmp}/river-wm-$$.sh"
-		cat << EOF > "${_river_init}"
+		cat << EOF >| "${_river_init}"
 #!/bin/sh
 riverctl border-width 1
 riverctl border-color-focused "0x7e9cd8"
@@ -1133,6 +1191,8 @@ window-manager-x11() {
 	fi
 	_x11_session_env ""
 
+	local _ui_font="$(_resolve_desktop_font "")"
+
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
 	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
 	cat << 'OTM' >| "${_kiosk_theme_dir}/themerc"
@@ -1146,29 +1206,63 @@ window.client.padding.width: 0
 window.active.border.color: #3584e4
 window.active.title.bg: flat solid
 window.active.title.bg.color: #2b2b30
+window.active.label.bg: parentrelative
 window.active.label.text.color: #ffffff
-
-window.inactive.border.color: #38383d
-window.inactive.title.bg: flat solid
-window.inactive.title.bg.color: #1e1e22
-window.inactive.label.text.color: #9a9996
-
-window.active.button.unpressed.bg: flat solid
-window.active.button.unpressed.bg.color: #2b2b30
+window.active.handle.bg: flat solid
+window.active.handle.bg.color: #2b2b30
+window.active.grip.bg: flat solid
+window.active.grip.bg.color: #3584e4
+window.active.button.unpressed.bg: parentrelative
 window.active.button.unpressed.image.color: #ffffff
-
 window.active.button.pressed.bg: flat solid
 window.active.button.pressed.bg.color: #3584e4
 window.active.button.pressed.image.color: #ffffff
-
 window.active.button.hover.bg: flat solid
-window.active.button.hover.bg.color: #e01b24
+window.active.button.hover.bg.color: #3584e4
 window.active.button.hover.image.color: #ffffff
-
-window.inactive.button.unpressed.bg: flat solid
-window.inactive.button.unpressed.bg.color: #1e1e22
+window.active.button.disabled.bg: parentrelative
+window.active.button.disabled.image.color: #5e5c64
+window.inactive.border.color: #38383d
+window.inactive.title.bg: flat solid
+window.inactive.title.bg.color: #1e1e22
+window.inactive.label.bg: parentrelative
+window.inactive.label.text.color: #9a9996
+window.inactive.handle.bg: flat solid
+window.inactive.handle.bg.color: #1e1e22
+window.inactive.grip.bg: flat solid
+window.inactive.grip.bg.color: #38383d
+window.inactive.button.unpressed.bg: parentrelative
 window.inactive.button.unpressed.image.color: #9a9996
-
+window.inactive.button.pressed.bg: flat solid
+window.inactive.button.pressed.bg.color: #38383d
+window.inactive.button.pressed.image.color: #ffffff
+window.inactive.button.hover.bg: flat solid
+window.inactive.button.hover.bg.color: #38383d
+window.inactive.button.hover.image.color: #ffffff
+window.inactive.button.disabled.bg: parentrelative
+window.inactive.button.disabled.image.color: #5e5c64
+osd.border.width: 2
+osd.border.color: #3584e4
+osd.bg: flat solid
+osd.bg.color: #2b2b30
+osd.label.bg: parentrelative
+osd.label.text.color: #ffffff
+osd.hilight.bg: flat solid
+osd.hilight.bg.color: #3584e4
+osd.unhilight.bg: flat solid
+osd.unhilight.bg.color: #1e1e22
+osd.button.unpressed.bg: flat solid
+osd.button.unpressed.bg.color: #1e1e22
+osd.button.unpressed.text.color: #ffffff
+osd.button.unpressed.border.color: #38383d
+osd.button.pressed.bg: flat solid
+osd.button.pressed.bg.color: #3584e4
+osd.button.pressed.text.color: #ffffff
+osd.button.pressed.border.color: #3584e4
+osd.button.focused.bg: flat solid
+osd.button.focused.bg.color: #3584e4
+osd.button.focused.text.color: #ffffff
+osd.button.focused.border.color: #3584e4
 menu.border.width: 2
 menu.border.color: #38383d
 menu.title.bg: flat solid
@@ -1177,9 +1271,11 @@ menu.title.text.color: #3584e4
 menu.items.bg: flat solid
 menu.items.bg.color: #242428
 menu.items.text.color: #ffffff
+menu.items.disabled.text.color: #5e5c64
 menu.items.active.bg: flat solid
 menu.items.active.bg.color: #3584e4
 menu.items.active.text.color: #ffffff
+menu.separator.color: #38383d
 OTM
 
 	local _wm_x11_term="xterm"
@@ -1193,15 +1289,16 @@ OTM
 	local _run_dir="${XDG_RUNTIME_DIR:-/tmp}"
 	local _term_script="${_run_dir}/xwm-term-$$.sh"
 	local _browser_script="${_run_dir}/xwm-browser-$$.sh"
+	local _files_script="${_run_dir}/xwm-files-$$.sh"
 	local _emacs_script="${_run_dir}/xwm-emacs-$$.sh"
 
-	cat << EOF > "${_term_script}"
+	cat << EOF >| "${_term_script}"
 #!/bin/sh
 exec ${_wm_x11_term} "\$@"
 EOF
 	chmod 0755 "${_term_script}"
 
-	cat << 'EOF' > "${_browser_script}"
+	cat << 'EOF' >| "${_browser_script}"
 #!/bin/sh
 for _b in firefox chromium google-chrome-stable google-chrome brave-browser; do
 	if command -v "${_b}" > "/dev/null" 2>&1; then
@@ -1211,7 +1308,18 @@ done
 EOF
 	chmod 0755 "${_browser_script}"
 
-	cat << 'EOF' > "${_emacs_script}"
+	cat << EOF >| "${_files_script}"
+#!/bin/sh
+for _fm in nautilus dolphin thunar pcmanfm caja nemo; do
+	if command -v "\${_fm}" > "/dev/null" 2>&1; then
+		exec "\${_fm}" "\$@"
+	fi
+done
+exec ${_wm_x11_term} -e sh -c 'ls -la; exec sh'
+EOF
+	chmod 0755 "${_files_script}"
+
+	cat << 'EOF' >| "${_emacs_script}"
 #!/bin/sh
 for _e in emacs-gtk+x11 emacs-gtk emacs emacs-lucid; do
 	if command -v "${_e}" > "/dev/null" 2>&1; then
@@ -1224,28 +1332,23 @@ EOF
 	if command -v openbox > "/dev/null" 2>&1; then
 		local _ob_menu_cfg="${_run_dir}/openbox-menu-$$.xml"
 		local _ob_wm_cfg="${_run_dir}/openbox-wm-$$.xml"
-		cat << EOF > "${_ob_menu_cfg}"
-<?xml version="1.0" encoding="UTF-8"?>
-<openbox_menu xmlns="http://openbox.org/3.4/menu">
-  <menu id="root-menu" label="Universal Environment">
-    <item label="Terminal">
-      <action name="Execute"><command>${_term_script}</command></action>
-    </item>
-    <item label="Web Browser">
-      <action name="Execute"><command>${_browser_script}</command></action>
-    </item>
-    <item label="Emacs">
-      <action name="Execute"><command>${_emacs_script}</command></action>
-    </item>
-    <separator/>
-EOF
+		local _cat_dev="${_run_dir}/menu-cat-dev-$$.xml"
+		local _cat_net="${_run_dir}/menu-cat-net-$$.xml"
+		local _cat_office="${_run_dir}/menu-cat-office-$$.xml"
+		local _cat_media="${_run_dir}/menu-cat-media-$$.xml"
+		local _cat_sys="${_run_dir}/menu-cat-sys-$$.xml"
+		: >| "${_cat_dev}"
+		: >| "${_cat_net}"
+		: >| "${_cat_office}"
+		: >| "${_cat_media}"
+		: >| "${_cat_sys}"
 
 		awk '
 			FNR == 1 {
 				if (in_entry && !nodisplay && name != "" && exec_cmd != "") {
-					print name "\t" exec_cmd;
+					print cat "\t" substr(name, 1, 24) "\t" exec_cmd;
 				}
-				in_entry = 0; name = ""; exec_cmd = ""; nodisplay = 0;
+				in_entry = 0; name = ""; exec_cmd = ""; nodisplay = 0; cat = "sys";
 			}
 			/^\[Desktop Entry\]/ { in_entry = 1; next }
 			/^\[/ && !/^\[Desktop Entry\]/ { in_entry = 0 }
@@ -1254,27 +1357,74 @@ EOF
 				exec_cmd = substr($0, 6);
 				sub(/[[:space:]]+%[a-zA-Z]/, "", exec_cmd);
 			}
+			in_entry && /^Categories=/ {
+				cats = substr($0, 12);
+				if (cats ~ /Development|IDE|Building/) {
+					cat = "dev";
+				} else if (cats ~ /Network|WebBrowser|Email|Chat/) {
+					cat = "net";
+				} else if (cats ~ /Office|WordProcessor|Spreadsheet|Viewer/) {
+					cat = "office";
+				} else if (cats ~ /AudioVideo|Audio|Video|Graphics/) {
+					cat = "media";
+				} else {
+					cat = "sys";
+				}
+			}
 			in_entry && (/^NoDisplay=true/ || /^Hidden=true/) { nodisplay = 1 }
 			END {
 				if (in_entry && !nodisplay && name != "" && exec_cmd != "") {
-					print name "\t" exec_cmd;
+					print cat "\t" substr(name, 1, 24) "\t" exec_cmd;
 				}
 			}
 		' /usr/share/applications/*.desktop /usr/local/share/applications/*.desktop /var/lib/flatpak/exports/share/applications/*.desktop "${HOME}/.local/share/applications/"*.desktop 2> "/dev/null" \
-		| sort -u -k1,1 \
-		| head -n 35 \
-		| while IFS="$(printf '\t')" read -r _app_name _app_exec; do
+		| sort -u -k2,2 \
+		| while IFS="$(printf '\t')" read -r _app_cat _app_name _app_exec; do
 			[ -z "${_app_name}" ] || [ -z "${_app_exec}" ] && continue
 			_safe_name="$(printf '%s' "${_app_name}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
 			_safe_exec="$(printf '%s' "${_app_exec}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
-			cat << EOF >> "${_ob_menu_cfg}"
-    <item label="${_safe_name}">
-      <action name="Execute"><command>${_safe_exec}</command></action>
-    </item>
-EOF
+			_item="    <item label=\"${_safe_name}\"><action name=\"Execute\"><command>${_safe_exec}</command></action></item>"
+			case "${_app_cat}" in
+				dev)    printf '%s\n' "${_item}" >> "${_cat_dev}" ;;
+				net)    printf '%s\n' "${_item}" >> "${_cat_net}" ;;
+				office) printf '%s\n' "${_item}" >> "${_cat_office}" ;;
+				media)  printf '%s\n' "${_item}" >> "${_cat_media}" ;;
+				*)      printf '%s\n' "${_item}" >> "${_cat_sys}" ;;
+			esac
 		done
 
-		cat << EOF >> "${_ob_menu_cfg}"
+		cat << EOF >| "${_ob_menu_cfg}"
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="Universal Environment">
+    <item label="Web Browser">
+      <action name="Execute"><command>${_browser_script}</command></action>
+    </item>
+    <item label="Terminal">
+      <action name="Execute"><command>${_term_script}</command></action>
+    </item>
+    <item label="Files">
+      <action name="Execute"><command>${_files_script}</command></action>
+    </item>
+    <item label="Emacs">
+      <action name="Execute"><command>${_emacs_script}</command></action>
+    </item>
+    <separator/>
+    <menu id="cat-dev" label="Development">
+$(cat "${_cat_dev}")
+    </menu>
+    <menu id="cat-net" label="Internet">
+$(cat "${_cat_net}")
+    </menu>
+    <menu id="cat-office" label="Office">
+$(cat "${_cat_office}")
+    </menu>
+    <menu id="cat-media" label="Media &amp; Graphics">
+$(cat "${_cat_media}")
+    </menu>
+    <menu id="cat-sys" label="System &amp; Tools">
+$(cat "${_cat_sys}")
+    </menu>
     <separator/>
     <item label="Reconfigure">
       <action name="Reconfigure"/>
@@ -1285,7 +1435,9 @@ EOF
   </menu>
 </openbox_menu>
 EOF
-		cat << EOF > "${_ob_wm_cfg}"
+		rm -f "${_cat_dev}" "${_cat_net}" "${_cat_office}" "${_cat_media}" "${_cat_sys}" 2> "/dev/null" || true
+
+		cat << EOF >| "${_ob_wm_cfg}"
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_config xmlns="http://openbox.org/3.4/rc">
   <theme>
@@ -1293,11 +1445,13 @@ EOF
     <titleLayout>NLIMC</titleLayout>
     <keepBorder>yes</keepBorder>
     <animateIconify>no</animateIconify>
+    <font place="ActiveWindow"><name>${_ui_font}</name><size>10</size><weight>Bold</weight><slant>Normal</slant></font>
+    <font place="InactiveWindow"><name>${_ui_font}</name><size>10</size><weight>Normal</weight><slant>Normal</slant></font>
+    <font place="MenuHeader"><name>${_ui_font}</name><size>10</size><weight>Bold</weight><slant>Normal</slant></font>
+    <font place="MenuItem"><name>${_ui_font}</name><size>10</size><weight>Normal</weight><slant>Normal</slant></font>
+    <font place="ActiveOnScreenDisplay"><name>${_ui_font}</name><size>10</size><weight>Bold</weight><slant>Normal</slant></font>
+    <font place="InactiveOnScreenDisplay"><name>${_ui_font}</name><size>10</size><weight>Normal</weight><slant>Normal</slant></font>
   </theme>
-  <font place="ActiveWindowTitle"><name>sans</name><size>10</size><weight>bold</weight></font>
-  <font place="InactiveWindowTitle"><name>sans</name><size>10</size><weight>normal</weight></font>
-  <font place="MenuHeader"><name>sans</name><size>10</size><weight>bold</weight></font>
-  <font place="MenuItem"><name>sans</name><size>10</size><weight>normal</weight></font>
   <mouse>
     <dragThreshold>1</dragThreshold>
     <doubleClickTime>500</doubleClickTime>
@@ -1311,6 +1465,18 @@ EOF
     <context name="Titlebar">
       <mousebind button="Left" action="Drag"><action name="Move"/></mousebind>
       <mousebind button="Left" action="DoubleClick"><action name="ToggleMaximize"/></mousebind>
+    </context>
+    <context name="Iconify">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Click"><action name="Iconify"/></mousebind>
+    </context>
+    <context name="Maximize">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Click"><action name="ToggleMaximize"/></mousebind>
+    </context>
+    <context name="Close">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Click"><action name="Close"/></mousebind>
     </context>
     <context name="Client">
       <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
@@ -1326,6 +1492,7 @@ EOF
     <keybind key="C-A-t"><action name="Execute"><command>${_term_script}</command></action></keybind>
     <keybind key="W-b"><action name="Execute"><command>${_browser_script}</command></action></keybind>
     <keybind key="W-e"><action name="Execute"><command>${_emacs_script}</command></action></keybind>
+    <keybind key="W-f"><action name="Execute"><command>${_files_script}</command></action></keybind>
     <keybind key="A-F4"><action name="Close"/></keybind>
     <keybind key="W-q"><action name="Close"/></keybind>
     <keybind key="A-Tab"><action name="NextWindow"/></keybind>
@@ -1335,13 +1502,13 @@ EOF
 EOF
 		_exec_x11 openbox --config-file "${_ob_wm_cfg}"
 		local _ob_ret=$?
-		rm -f "${_ob_menu_cfg}" "${_ob_wm_cfg}" "${_term_script}" "${_browser_script}" "${_emacs_script}" 2> "/dev/null" || true
+		rm -f "${_ob_menu_cfg}" "${_ob_wm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" 2> "/dev/null" || true
 		return "${_ob_ret}"
 	elif command -v openbox-session > "/dev/null" 2>&1; then
 		_exec_x11 openbox-session
 	elif command -v cwm > "/dev/null" 2>&1; then
 		local _cwm_cfg="${XDG_RUNTIME_DIR:-/tmp}/cwmrc-wm-$$"
-		cat << EOF > "${_cwm_cfg}"
+		cat << EOF >| "${_cwm_cfg}"
 color activeborder "#7e9cd8"
 color inactiveborder "#1f1f28"
 color menubg "#16161e"
