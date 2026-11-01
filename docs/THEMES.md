@@ -142,3 +142,40 @@ Ao inicializar uma máquina diretamente em um console TTY de emergência (sem se
 
 - **Detecção de TTY Puro:** Se `$TERM` for `linux`, `vt100` ou similar sem suporte a glifos Nerd Fonts, o tema desativa automaticamente ícones complexos.
 - **Substituição de Caracteres:** Glifos Unicode são substituídos por equivalentes ASCII simples (`*`, `!`, `>`), garantindo que o prompt nunca exiba caracteres corrompidos (_mojibake_ ou caixas vazias).
+
+---
+
+## 🖥️ Sistema Visual de Desktop & Paleta Adwaita-Breeze Dark Fusion
+
+Além da experiência de linha de comando no terminal e no console TTY, o ecossistema estende sua identidade visual para sessões de gerenciadores de janela (`wwm`, `xwm`) e quiosques gráficos flutuantes (`wgui`, `xgui`):
+
+### 1. Paleta Cromática Adwaita-Breeze Dark Fusion
+
+A identidade visual equilibra a sobriedade dos tons escuros do Adwaita com o contraste moderno do KDE Breeze:
+
+| Elemento de UI                         | Código Hex | Papel Visual                                                        |
+| :------------------------------------- | :--------: | :------------------------------------------------------------------ |
+| **Superfície Base / Fundo**            | `#1e1e22`  | Cor de fundo das barras, bordas inativas e área de desktop          |
+| **Painel Ativo / Superfície Elevada**  | `#2b2b30`  | Fundo de botões interativos e títulos de janelas ativas             |
+| **Acento Primário (Azul Adwaita)**     | `#3584e4`  | Foco de janela, bordas ativas e botões de ação principal            |
+| **Acento de Alerta (Vermelho Breeze)** | `#e01b24`  | Botões de encerramento (`[ Close ]`, `[ Exit ]`) e janelas urgentes |
+| **Bordas & Separadores**               | `#38383d`  | Linhas de contenção de containers e separadores de barra            |
+| **Texto Secundário / Inativo**         | `#9a9996`  | Rótulos de workspaces inativos e carimbos de data/hora              |
+| **Texto de Alto Contraste**            | `#ffffff`  | Tipografia em botões em foco e títulos de janelas ativas            |
+
+### 2. Pipeline Tipográfico (`_resolve_desktop_font`)
+
+Para manter harmonia tipográfica entre Wayland, X11 e terminais emulados, a função `_resolve_desktop_font` inspeciona as fontes disponíveis via `fc-list`:
+
+1. **Prioridade Absoluta:** `JetBrainsMono Nerd Font` (fonte padrão homologada no ecossistema).
+2. **Resolução Contextual por Desktop Environment (DE):**
+    - **KDE / Plasma:** Fallback para `Noto Sans`.
+    - **GNOME:** Fallback para `Adwaita Sans` ou `Cantarell`.
+    - **MATE / Cinnamon / XFCE:** Fallback para `Ubuntu` ou `DejaVu Sans`.
+3. **Fallback Seguro Universal:** `Sans`.
+
+### 3. Componentes Visuais de Sessão & Quiosque
+
+- **Barra Interativa Swaybar no `wwm`:** No gerenciador Wayland nativo, a `swaybar` executa em streaming JSON contínuo (`"click_events": true`). Apresenta botões visuais emoldurados para aplicativos essenciais (`[ Web Browser ]`, `[ Terminal ]`, `[ Files ]`, `[ Emacs ]`, `[ Menu ]`), botão de fechamento da janela em foco (`[ Close ]`) e encerramento de sessão (`[ Exit ]`), respondendo diretamente aos cliques do mouse via leitura contínua no stdin.
+- **Menu Dinâmico Categorizado no `xwm`:** No ambiente X11 com Openbox, um parser procedural em AWK varre os arquivos `.desktop` do sistema em `/usr/share/applications`, `/usr/local/share/applications` e Flatpak, agrupando as aplicações em categorias canônicas: Desenvolvimento (`dev`), Rede (`net`), Escritório (`office`), Multimídia (`media`) e Sistema (`sys`).
+- **Abas Auto-Ocultáveis no `wgui`:** No lançador gráfico efêmero sob Wayland, o processo `wgui-tabwatch` monitora ativamente a contagem de janelas. Quando duas ou mais janelas estão presentes (`_count >= 2`), ativa o layout tabulado com bordas (`layout tabbed, border normal 1`). Em janela única, comuta para tela limpa sem bordas (`layout splith, border none`), garantindo máxima imersão.
