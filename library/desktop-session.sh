@@ -335,28 +335,44 @@ _setup_cursor_env() {
 	printf '[Icon Theme]\nInherits=%s\n' "${_valid_theme}" >| "${HOME}/.icons/default/index.theme" 2> "/dev/null" || true
 
 	for _gtk_cfg in "${HOME}/.config/gtk-3.0/settings.ini" "${HOME}/.config/gtk-4.0/settings.ini"; do
-		if [ -f "${_gtk_cfg}" ]; then
+		_gtk_dir="$(dirname "${_gtk_cfg}")"
+		[ -d "${_gtk_dir}" ] || mkdir -p "${_gtk_dir}" 2> "/dev/null" || true
+		if [ ! -f "${_gtk_cfg}" ]; then
+			printf '[Settings]\ngtk-cursor-theme-name=%s\ngtk-cursor-blink=true\ngtk-cursor-blink-time=1200\n' "${_valid_theme}" >| "${_gtk_cfg}" 2> "/dev/null" || true
+		else
 			_cfg_tmp="${_gtk_cfg}.tmp.$$"
-			if grep -q "^gtk-cursor-theme-name=" "${_gtk_cfg}" 2> "/dev/null"; then
-				sed "s/^gtk-cursor-theme-name=.*/gtk-cursor-theme-name=${_valid_theme}/" "${_gtk_cfg}" >| "${_cfg_tmp}" 2> "/dev/null" && cat "${_cfg_tmp}" >| "${_gtk_cfg}" 2> "/dev/null" || true
+			cat "${_gtk_cfg}" >| "${_cfg_tmp}" 2> "/dev/null" || true
+			if grep -q "^gtk-cursor-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
+				sed "s/^gtk-cursor-theme-name=.*/gtk-cursor-theme-name=${_valid_theme}/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
 			else
-				cat "${_gtk_cfg}" >| "${_cfg_tmp}" 2> "/dev/null" || true
 				printf 'gtk-cursor-theme-name=%s\n' "${_valid_theme}" >> "${_cfg_tmp}" 2> "/dev/null" || true
-				cat "${_cfg_tmp}" >| "${_gtk_cfg}" 2> "/dev/null" || true
 			fi
-			rm -f "${_cfg_tmp}" 2> "/dev/null" || true
+			if grep -q "^gtk-cursor-blink=" "${_cfg_tmp}" 2> "/dev/null"; then
+				sed "s/^gtk-cursor-blink=.*/gtk-cursor-blink=true/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+			else
+				printf 'gtk-cursor-blink=true\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
+			fi
+			if grep -q "^gtk-cursor-blink-time=" "${_cfg_tmp}" 2> "/dev/null"; then
+				sed "s/^gtk-cursor-blink-time=.*/gtk-cursor-blink-time=1200/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+			else
+				printf 'gtk-cursor-blink-time=1200\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
+			fi
+			cat "${_cfg_tmp}" >| "${_gtk_cfg}" 2> "/dev/null" || true
+			rm -f "${_cfg_tmp}" "${_cfg_tmp}.1" 2> "/dev/null" || true
 		fi
 	done
 
 	if [ -n "${DISPLAY:-}" ]; then
 		if command -v xrdb > "/dev/null" 2>&1; then
-			printf "Xcursor.theme: %s\nXcursor.size: %s\n" "${_valid_theme}" "${_target_size}" | xrdb -merge - 2> "/dev/null" || true
+			printf "Xcursor.theme: %s\nXcursor.size: %s\nXTerm*cursorBlink: always\nXTerm*cursorOnTime: 600\nXTerm*cursorOffTime: 600\n" "${_valid_theme}" "${_target_size}" | xrdb -merge - 2> "/dev/null" || true
 		fi
 		command -v xsetroot > "/dev/null" 2>&1 && xsetroot -cursor_name left_ptr 2> "/dev/null" || true
 	fi
 	if command -v gsettings > "/dev/null" 2>&1; then
-		gsettings set org.gnome.desktop.interface cursor-theme "${_valid_theme}" 2> "/dev/null" || true
-		gsettings set org.gnome.desktop.interface cursor-size "${_target_size}" 2> "/dev/null" || true
+		gsettings set org.gnome.desktop.interface cursor-theme "${_valid_theme}" > "/dev/null" 2>&1 || true
+		gsettings set org.gnome.desktop.interface cursor-size "${_target_size}" > "/dev/null" 2>&1 || true
+		gsettings set org.gnome.desktop.interface cursor-blink true > "/dev/null" 2>&1 || true
+		gsettings set org.gnome.desktop.interface cursor-blink-time 1200 > "/dev/null" 2>&1 || true
 	fi
 }
 
@@ -1062,12 +1078,21 @@ class WwmBar(Gtk.Window):
         self.set_decorated(False)
         self.set_resizable(False)
 
+        screen = Gdk.Screen.get_default()
+        screen_w = screen.get_width() if screen else 1920
+        self.set_default_size(screen_w, 32)
+        self.set_size_request(screen_w, 32)
+
+        self.last_ws_state = None
+        self.managed_workspaces = {1}
+
         font_name = os.environ.get("WWM_FONT", "JetBrainsMono Nerd Font")
 
         css_provider = Gtk.CssProvider()
         css = f"""
         window {{
             background-color: #1e1e22;
+            background-image: none;
             border-bottom: 1px solid #38383d;
             padding: 0;
             margin: 0;
@@ -1077,46 +1102,94 @@ class WwmBar(Gtk.Window):
             font-size: 11px;
         }}
         button {{
-            padding: 1px 8px;
-            margin: 2px 2px;
-            border-radius: 3px;
-            min-height: 22px;
-            background: #2b2b30;
-            color: #ffffff;
-            border: 1px solid #3584e4;
+            background-image: none;
+            box-shadow: none;
+            text-shadow: none;
+            border-radius: 6px;
         }}
-        button:hover {{
-            background: #3584e4;
-            color: #ffffff;
-        }}
-        button.ws-btn {{
-            padding: 1px 8px;
-            margin: 2px 2px;
+        button.app-btn {{
+            background-color: #2b2b30;
+            background-image: none;
+            color: #e5e9f0;
             border: 1px solid #38383d;
-            background: #2b2b30;
-            color: #9a9996;
-            font-weight: normal;
+            border-radius: 6px;
+            padding: 2px 10px;
+            margin: 3px 2px;
+            min-height: 22px;
         }}
-        button.ws-btn:hover {{
-            background: #38383d;
+        button.app-btn:hover {{
+            background-color: #3584e4;
+            background-image: none;
             color: #ffffff;
+            border-color: #4a96ef;
+        }}
+        button.ws-inactive {{
+            background-color: #242429;
+            background-image: none;
+            color: #9a9996;
+            border: 1px solid #323238;
+            border-radius: 6px;
+            padding: 2px 8px;
+            margin: 3px 2px;
+            min-width: 24px;
+            min-height: 22px;
+        }}
+        button.ws-inactive:hover {{
+            background-color: #323238;
+            background-image: none;
+            color: #ffffff;
+            border-color: #48484f;
         }}
         button.ws-active {{
-            background: #3584e4;
+            background-color: #3584e4;
+            background-image: none;
             color: #ffffff;
+            border: 1px solid #4a96ef;
+            border-radius: 6px;
+            padding: 2px 8px;
+            margin: 3px 2px;
+            min-width: 24px;
+            min-height: 22px;
             font-weight: bold;
-            border: 1px solid #3584e4;
         }}
         button.ws-active:hover {{
-            background: #4a96ef;
+            background-color: #4a96ef;
+            background-image: none;
             color: #ffffff;
+            border-color: #62a0ea;
+        }}
+        button.ws-ctrl-btn {{
+            background-color: #2b2b30;
+            background-image: none;
+            color: #ffffff;
+            border: 1px solid #38383d;
+            border-radius: 6px;
+            padding: 2px 7px;
+            margin: 3px 2px;
+            min-width: 22px;
+            min-height: 22px;
+            font-weight: bold;
+        }}
+        button.ws-ctrl-btn:hover {{
+            background-color: #3584e4;
+            background-image: none;
+            border-color: #4a96ef;
         }}
         button.danger-btn {{
-            border: 1px solid #e01b24;
+            background-color: #2b2b30;
+            background-image: none;
+            color: #f66151;
+            border: 1px solid #4a2528;
+            border-radius: 6px;
+            padding: 2px 10px;
+            margin: 3px 2px;
+            min-height: 22px;
         }}
         button.danger-btn:hover {{
-            background: #e01b24;
+            background-color: #e01b24;
+            background-image: none;
             color: #ffffff;
+            border-color: #f66151;
         }}
         label.clock-lbl {{
             color: #9a9996;
@@ -1137,6 +1210,19 @@ class WwmBar(Gtk.Window):
         self.ws_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         main_box.pack_start(self.ws_box, False, False, 4)
 
+        ws_ctrl_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        btn_add = Gtk.Button(label="+")
+        btn_add.get_style_context().add_class("ws-ctrl-btn")
+        btn_add.connect("clicked", self.on_add_ws)
+        ws_ctrl_box.pack_start(btn_add, False, False, 0)
+
+        btn_del = Gtk.Button(label="−")
+        btn_del.get_style_context().add_class("ws-ctrl-btn")
+        btn_del.connect("clicked", self.on_del_ws)
+        ws_ctrl_box.pack_start(btn_del, False, False, 0)
+
+        main_box.pack_start(ws_ctrl_box, False, False, 2)
+
         center_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         main_box.pack_start(center_box, True, True, 0)
 
@@ -1147,27 +1233,28 @@ class WwmBar(Gtk.Window):
         self.clock_lbl.get_style_context().add_class("clock-lbl")
         actions_box.pack_end(self.clock_lbl, False, False, 0)
 
-        btn_exit = Gtk.Button(label="[ Exit ]")
+        btn_exit = Gtk.Button(label="Exit")
         btn_exit.get_style_context().add_class("danger-btn")
         btn_exit.connect("clicked", lambda b: subprocess.Popen(["swaymsg", "exit"]))
         actions_box.pack_end(btn_exit, False, False, 0)
 
-        btn_close = Gtk.Button(label="[ Close ]")
+        btn_close = Gtk.Button(label="Close")
         btn_close.get_style_context().add_class("danger-btn")
         btn_close.connect("clicked", lambda b: subprocess.Popen(["swaymsg", "kill"]))
         actions_box.pack_end(btn_close, False, False, 0)
 
         actions = [
-            ("[ Menu ]", os.environ.get("WWM_MENU", "")),
-            ("[ Emacs ]", os.environ.get("WWM_EMACS", "")),
-            ("[ Files ]", os.environ.get("WWM_FILES", "")),
-            ("[ Terminal ]", os.environ.get("WWM_TERM", "")),
-            ("[ Web Browser ]", os.environ.get("WWM_BROWSER", "")),
+            ("Menu", os.environ.get("WWM_MENU", "")),
+            ("Emacs", os.environ.get("WWM_EMACS", "")),
+            ("Files", os.environ.get("WWM_FILES", "")),
+            ("Terminal", os.environ.get("WWM_TERM", "")),
+            ("Web Browser", os.environ.get("WWM_BROWSER", "")),
         ]
         for name, cmd in actions:
             if not cmd:
                 continue
             b = Gtk.Button(label=name)
+            b.get_style_context().add_class("app-btn")
             b.connect("clicked", lambda widget, c=cmd: subprocess.Popen([c]))
             actions_box.pack_end(b, False, False, 0)
 
@@ -1182,31 +1269,82 @@ class WwmBar(Gtk.Window):
         self.clock_lbl.set_text(now)
         return True
 
-    def update_workspaces(self):
+    def on_add_ws(self, widget=None):
+        used_nums = set()
         try:
             res = subprocess.run(["swaymsg", "-t", "get_workspaces"], capture_output=True, text=True)
             ws_list = json.loads(res.stdout)
-            focused_num = 1
-            active_nums = set()
             for ws in ws_list:
                 num = ws.get("num")
                 if num is not None:
-                    active_nums.add(num)
+                    used_nums.add(num)
+        except Exception:
+            pass
+        all_existing = self.managed_workspaces.union(used_nums)
+        next_num = (max(all_existing) + 1) if all_existing else 1
+        self.managed_workspaces.add(next_num)
+        subprocess.Popen(["swaymsg", "workspace", "number", str(next_num)])
+        self.update_workspaces()
+
+    def on_del_ws(self, widget=None):
+        focused_num = 1
+        used_nums = set()
+        try:
+            res = subprocess.run(["swaymsg", "-t", "get_workspaces"], capture_output=True, text=True)
+            ws_list = json.loads(res.stdout)
+            for ws in ws_list:
+                num = ws.get("num")
+                if num is not None:
+                    used_nums.add(num)
+                if ws.get("focused"):
+                    focused_num = num
+        except Exception:
+            pass
+        all_ws = sorted(list(self.managed_workspaces.union(used_nums)))
+        if len(all_ws) > 1:
+            remaining = [w for w in all_ws if w != focused_num]
+            lower = [w for w in remaining if w < focused_num]
+            target_num = max(lower) if lower else min(remaining)
+            subprocess.run(
+                ["swaymsg", f"[workspace=__focused__] move container to workspace number {target_num}"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            self.managed_workspaces.discard(focused_num)
+            subprocess.Popen(["swaymsg", "workspace", "number", str(target_num)])
+            self.update_workspaces()
+
+    def update_workspaces(self):
+        focused_num = 1
+        used_nums = set()
+        try:
+            res = subprocess.run(["swaymsg", "-t", "get_workspaces"], capture_output=True, text=True)
+            ws_list = json.loads(res.stdout)
+            for ws in ws_list:
+                num = ws.get("num")
+                if num is not None:
+                    used_nums.add(num)
                 if ws.get("focused"):
                     focused_num = num
         except Exception:
             focused_num = 1
-            active_nums = set([1])
+            used_nums = set([1])
 
-        all_ws = sorted(list(set(range(1, 6)).union(active_nums)))
+        all_ws = sorted(list(self.managed_workspaces.union(used_nums)))
+        current_state = (tuple(all_ws), focused_num)
+        if current_state == self.last_ws_state:
+            return True
+        self.last_ws_state = current_state
+
         for child in self.ws_box.get_children():
             self.ws_box.remove(child)
 
         for num in all_ws:
             b = Gtk.Button(label=str(num))
-            b.get_style_context().add_class("ws-btn")
             if num == focused_num:
                 b.get_style_context().add_class("ws-active")
+            else:
+                b.get_style_context().add_class("ws-inactive")
             b.connect("clicked", lambda widget, n=num: subprocess.Popen(["swaymsg", "workspace", "number", str(n)]))
             self.ws_box.pack_start(b, False, False, 0)
         self.ws_box.show_all()
@@ -1282,13 +1420,13 @@ _menu="${_menu_script}"
 	printf '{"version":1,"click_events":true}\n[\n'
 	while :; do
 		_date_str="\$(date "+%Y-%m-%d %H:%M:%S")"
-		printf '[{"name":"browser","full_text":" [ Web Browser ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"term","full_text":" [ Terminal ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"files","full_text":" [ Files ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"emacs","full_text":" [ Emacs ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"menu","full_text":" [ Menu ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"close","full_text":" [ Close ] ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
-		printf '{"name":"exit","full_text":" [ Exit ] ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
+		printf '[{"name":"browser","full_text":" Web Browser ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"term","full_text":" Terminal ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"files","full_text":" Files ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"emacs","full_text":" Emacs ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"menu","full_text":" Menu ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"close","full_text":" Close ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
+		printf '{"name":"exit","full_text":" Exit ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
 		printf '{"name":"time","full_text":" %s ","background":"#1e1e22","color":"#9a9996","border":"#38383d"}],\n' "\${_date_str}"
 		sleep 1
 	done
@@ -1386,8 +1524,8 @@ EOF
 		if [ "${_has_gtk3_bar}" -eq 1 ]; then
 			cat << EOF >> "${_sway_cfg}"
 floating_minimum_size 1 x 1
-gaps top 30
-for_window [instance="wwm-bar"] floating enable, sticky enable, border none, resize set 100 ppt 30 px, move absolute position 0 0
+gaps top 32
+for_window [instance="wwm-bar"] floating enable, sticky enable, border none, resize set 100 ppt 32 px, move absolute position 0 0
 exec env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}"
 EOF
 		else

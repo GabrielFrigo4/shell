@@ -257,6 +257,56 @@ alias open-mail="open-thunderbird"
 alias omail="open-thunderbird"
 alias oth="open-thunderbird"
 
+open-smart() {
+	if [ "$#" -eq 0 ]; then
+		if command -v _ui_warn > "/dev/null" 2>&1; then
+			_ui_warn "Uso: o <arquivo|diretorio|url>"
+		else
+			echo "Uso: o <arquivo|diretorio|url>" >&2
+		fi
+		return 1
+	fi
+
+	for _target in "$@"; do
+		local _ext_match=0
+		case "${_target}" in
+			*.pdf|*.PDF|*.epub|*.EPUB|*.djvu|*.DJVU|\
+			*.sqlite|*.sqlite3|*.db|\
+			*.org|*.md|*.txt|*.tex|\
+			*.el|*.sh|*.py|*.c|*.h|*.rs|*.go|*.js|*.ts|\
+			*.json|*.yaml|*.yml|*.toml|*.xml|*.csv|*.log|\
+			*.diff|*.patch|\
+			*.zip|*.tar|*.gz|*.xz|*.zst|*.7z)
+				_ext_match=1
+				;;
+		esac
+
+		if { [ -n "${INSIDE_EMACS:-}" ] || [ "${_ext_match}" -eq 1 ]; } && \
+		   command -v emacsclient > "/dev/null" 2>&1 && \
+		   emacsclient -e t > "/dev/null" 2>&1; then
+			emacsclient -n "${_target}"
+			continue
+		fi
+
+		if [ "${_ext_match}" -eq 1 ] && { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && command -v emacs > "/dev/null" 2>&1; then
+			(command nohup emacs "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
+			continue
+		fi
+
+		if [ "$(uname -s 2> "/dev/null")" = "Darwin" ]; then
+			(command nohup open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
+		elif command -v cygstart > "/dev/null" 2>&1; then
+			(command nohup cygstart "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
+		elif command -v xdg-open > "/dev/null" 2>&1; then
+			(command nohup xdg-open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
+		elif command -v gio > "/dev/null" 2>&1; then
+			(command nohup gio open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
+		fi
+	done
+}
+alias open="open-smart"
+alias o="open-smart"
+
 ### --------------------------------
 ### MODERN RUST CLI TOOLS
 ### --------------------------------

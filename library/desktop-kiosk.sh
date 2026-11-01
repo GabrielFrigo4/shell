@@ -657,39 +657,49 @@ class XguiTabBar(Gtk.Window):
         css = f"""
         window {{
             background-color: #1e1e22;
+            background-image: none;
             border-bottom: 1px solid #38383d;
             padding: 0;
             margin: 0;
         }}
         * {{
             font-family: "{font_name}", "JetBrainsMono Nerd Font", monospace;
-            font-size: 11px;
+            font-size: 10pt;
+            font-weight: bold;
         }}
         button {{
-            padding: 0px 8px;
+            background-image: none;
+            box-shadow: none;
+            text-shadow: none;
+            padding: 4px 10px;
             margin: 0;
-            border: none;
             border-radius: 0;
-            min-height: 27px;
+            min-height: 26px;
         }}
         button.inactive-tab {{
-            background: #2b2b30;
+            background-color: #1e1e22;
+            background-image: none;
             color: #9a9996;
-            border-right: 1px solid #38383d;
+            border: 1px solid #38383d;
         }}
         button.inactive-tab:hover {{
-            background: #38383d;
+            background-color: #2b2b30;
+            background-image: none;
             color: #ffffff;
+            border-color: #3584e4;
         }}
         button.active-tab {{
-            background: #3584e4;
+            background-color: #2b2b30;
+            background-image: none;
             color: #ffffff;
-            font-weight: bold;
-            border-right: 1px solid #38383d;
+            border: 1px solid #3584e4;
+            border-top: 2px solid #3584e4;
         }}
         button.active-tab:hover {{
-            background: #4a96ef;
+            background-color: #323238;
+            background-image: none;
             color: #ffffff;
+            border-color: #4a96ef;
         }}
         """
         css_provider.load_from_data(css.encode("utf-8"))
