@@ -1963,8 +1963,9 @@ CATEGORIES = [
     ("cat-net", "Internet", {"Network", "WebBrowser", "Email", "InstantMessaging", "Chat", "FileTransfer", "P2P", "RemoteAccess", "Feed"}),
     ("cat-office", "Office", {"Office", "WordProcessor", "Spreadsheet", "Presentation", "Database", "Publishing", "Viewer", "PDF", "Calendar", "ContactManagement"}),
     ("cat-graphics", "Graphics", {"Graphics", "2DGraphics", "3DGraphics", "VectorGraphics", "RasterGraphics", "Photography", "Scanning", "OCR"}),
-    ("cat-media", "Audio &amp; Video", {"AudioVideo", "Audio", "Video", "Player", "Recorder", "Midi", "Mixer", "Sequencer", "Tuner", "TV"}),
-    ("cat-sys", "System &amp; Tools", set()),
+    ("cat-media", "Media Player", {"AudioVideo", "Audio", "Video", "Player", "Recorder", "Midi", "Mixer", "Sequencer", "Tuner", "TV", "Music"}),
+    ("cat-tools", "Tools", {"Utility", "Accessories", "Archiving", "Compression", "Calculator", "Clock", "FileTools", "TextTools", "Accessibility"}),
+    ("cat-sys", "System", {"System", "Settings", "HardwareSettings", "DesktopSettings", "PackageManager", "TerminalEmulator", "FileManager", "Monitor", "Security"}),
 ]
 
 cat_map = {c[0]: [] for c in CATEGORIES}
@@ -2036,7 +2037,7 @@ for d in dirs:
         terminal = data.get("Terminal", "false").lower() == "true"
 
         assigned_cat = "cat-sys"
-        for cat_id, _, cat_keys in CATEGORIES[:-1]:
+        for cat_id, _, cat_keys in CATEGORIES:
             if app_cats.intersection(cat_keys):
                 assigned_cat = cat_id
                 break
@@ -2104,8 +2105,10 @@ EOF_PY_MENU
 		fi
 
 		if [ "${_menu_gen_ok}" -ne 1 ]; then
-			local _cat_apps="${_run_dir}/menu-cat-apps-$$.xml"
-			: >| "${_cat_apps}"
+			local _cid _target_cat _tuple _t_key _rest _t_id _t_label _t_file
+			for _cid in editors dev net office graphics media tools sys; do
+				: >| "${_run_dir}/menu-cat-${_cid}-$$.xml"
+			done
 			for _app_dir in "${HOME}/.local/share/applications" "${HOME}/.local/share/flatpak/exports/share/applications" "/var/lib/flatpak/exports/share/applications" "/usr/local/share/applications" "/usr/share/applications"; do
 				[ -d "${_app_dir}" ] || continue
 				for _df in "${_app_dir}"/*.desktop; do
@@ -2119,7 +2122,18 @@ EOF_PY_MENU
 					esac
 					_s_name="$(printf '%s' "${_d_name}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
 					_s_exec="$(printf '%s' "${_d_exec}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
-					printf '    <item label="%s"><action name="Execute"><command>sh -c &apos;%s&apos;</command></action></item>\n' "${_s_name}" "${_s_exec}" >> "${_cat_apps}"
+					_d_cat="$(grep -m 1 '^Categories=' "${_df}" 2> "/dev/null" | cut -d= -f2- | tr -d '\r\n' || true)"
+					case "${_d_cat}" in
+						*TextEditor*|*IDE*) _target_cat="editors" ;;
+						*Development*|*Building*|*Debugger*|*RevisionControl*|*Translation*|*WebDevelopment*) _target_cat="dev" ;;
+						*Network*|*WebBrowser*|*Email*|*InstantMessaging*|*Chat*|*FileTransfer*|*P2P*|*RemoteAccess*|*Feed*) _target_cat="net" ;;
+						*Office*|*WordProcessor*|*Spreadsheet*|*Presentation*|*Database*|*Publishing*|*Viewer*|*PDF*|*Calendar*|*ContactManagement*) _target_cat="office" ;;
+						*Graphics*|*2DGraphics*|*3DGraphics*|*VectorGraphics*|*RasterGraphics*|*Photography*|*Scanning*|*OCR*) _target_cat="graphics" ;;
+						*AudioVideo*|*Audio*|*Video*|*Player*|*Recorder*|*Midi*|*Mixer*|*Sequencer*|*Tuner*|*TV*|*Music*) _target_cat="media" ;;
+						*Utility*|*Accessories*|*Archiving*|*Compression*|*Calculator*|*Clock*|*FileTools*|*TextTools*|*Accessibility*) _target_cat="tools" ;;
+						*) _target_cat="sys" ;;
+					esac
+					printf '      <item label="%s"><action name="Execute"><command>sh -c &apos;%s&apos;</command></action></item>\n' "${_s_name}" "${_s_exec}" >> "${_run_dir}/menu-cat-${_target_cat}-$$.xml"
 				done
 			done
 			cat << EOF >| "${_ob_menu_cfg}"
@@ -2139,9 +2153,21 @@ EOF_PY_MENU
       <action name="Execute"><command>${_emacs_script}</command></action>
     </item>
     <separator/>
-    <menu id="cat-all" label="Applications">
-$(cat "${_cat_apps}")
-    </menu>
+EOF
+			for _tuple in "editors:cat-editors:Editors" "dev:cat-dev:Development" "net:cat-net:Internet" "office:cat-office:Office" "graphics:cat-graphics:Graphics" "media:cat-media:Media Player" "tools:cat-tools:Tools" "sys:cat-sys:System"; do
+				_t_key="${_tuple%%:*}"
+				_rest="${_tuple#*:}"
+				_t_id="${_rest%%:*}"
+				_t_label="${_rest#*:}"
+				_t_file="${_run_dir}/menu-cat-${_t_key}-$$.xml"
+				if [ -s "${_t_file}" ]; then
+					printf '    <menu id="%s" label="%s">\n' "${_t_id}" "${_t_label}" >> "${_ob_menu_cfg}"
+					cat "${_t_file}" >> "${_ob_menu_cfg}"
+					printf '    </menu>\n' >> "${_ob_menu_cfg}"
+				fi
+				rm -f "${_t_file}" 2> "/dev/null" || true
+			done
+			cat << EOF >> "${_ob_menu_cfg}"
     <separator/>
     <item label="Reconfigure">
       <action name="Reconfigure"/>
@@ -2152,7 +2178,6 @@ $(cat "${_cat_apps}")
   </menu>
 </openbox_menu>
 EOF
-			rm -f "${_cat_apps}" 2> "/dev/null" || true
 		fi
 
 		cat << EOF >| "${_ob_wm_cfg}"

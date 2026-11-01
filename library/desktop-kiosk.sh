@@ -264,7 +264,7 @@ EOF
 
 		cat << EOF >| "${_sway_cfg}"
 font pango:${_ui_font} Bold 10
-titlebar_padding 10 5
+titlebar_padding 10 4
 default_border none
 default_floating_border pixel 1
 titlebar_border_thickness 0
@@ -606,7 +606,7 @@ from gi.repository import Gtk, Gdk, GdkX11, GLib, Pango
 from Xlib import display, X, Xatom
 import Xlib.protocol.event
 
-BAR_H = 24
+BAR_H = 26
 
 class XguiTabBar(Gtk.Window):
     def __init__(self):
@@ -670,17 +670,17 @@ class XguiTabBar(Gtk.Window):
         }}
         * {{
             font-family: "{font_name}", "JetBrainsMono Nerd Font", monospace;
-            font-size: 9.5pt;
+            font-size: 10pt;
             font-weight: bold;
         }}
         button {{
             background-image: none;
             box-shadow: none;
             text-shadow: none;
-            padding: 1px 10px;
+            padding: 2px 10px;
             margin: 0;
             border-radius: 0;
-            min-height: 18px;
+            min-height: 20px;
         }}
         button.inactive-tab {{
             background-color: #1e1e22;
