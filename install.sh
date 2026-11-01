@@ -223,6 +223,7 @@ if [ "${OS_NAME}" != "windows" ]; then
 	find "${SHELL_REPO_DIR}" -type d -exec chmod 0755 {} + 2> "/dev/null" || true
 	find "${SHELL_REPO_DIR}" -type f -exec chmod 0644 {} + 2> "/dev/null" || true
 	[ -f "${SHELL_REPO_DIR}/shell.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/shell.sh" 2> "/dev/null" || true
+	[ -f "${SHELL_REPO_DIR}/init.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/init.sh" 2> "/dev/null" || true
 	[ -f "${SHELL_REPO_DIR}/install.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/install.sh" 2> "/dev/null" || true
 	[ -f "${SHELL_REPO_DIR}/benchmark.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/benchmark.sh" 2> "/dev/null" || true
 	[ -d "${SHELL_REPO_DIR}/.githooks" ] && chmod 0755 "${SHELL_REPO_DIR}/.githooks/"* 2> "/dev/null" || true

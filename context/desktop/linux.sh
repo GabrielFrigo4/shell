@@ -3,7 +3,7 @@
 ### ================================
 
 ### --------------------------------
-### Clipboard Integration
+### CLIPBOARD INTEGRATION
 ### --------------------------------
 clip() {
 	if [ -n "${WAYLAND_DISPLAY}" ] && command -v wl-copy > "/dev/null" 2>&1; then
@@ -13,7 +13,7 @@ clip() {
 	elif command -v xsel > "/dev/null" 2>&1; then
 		command xsel --clipboard --input "$@"
 	else
-		echo "❌ No clipboard tool found (wl-copy/xclip/xsel)." >&2
+		_ui_err "No clipboard tool found (wl-copy/xclip/xsel)."
 		return 127
 	fi
 }
@@ -26,17 +26,9 @@ paste() {
 	elif command -v xsel > "/dev/null" 2>&1; then
 		command xsel --clipboard --output "$@"
 	else
-		echo "❌ No clipboard tool found (wl-paste/xclip/xsel)." >&2
+		_ui_err "No clipboard tool found (wl-paste/xclip/xsel)."
 		return 127
 	fi
-}
-
-### --------------------------------
-### FILE OPENER
-### --------------------------------
-o() {
-	command -v xdg-open > "/dev/null" 2>&1 || { echo "❌ xdg-open not found." >&2; return 127; }
-	(command nohup xdg-open "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 }
 
 ### --------------------------------

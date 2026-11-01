@@ -5,21 +5,25 @@
 
 if [ -n "${SHELL_REPO_DIR:-}" ] && [ -d "${SHELL_REPO_DIR}" ]; then
 	_SHELL_ROOT="${SHELL_REPO_DIR}"
-elif [ -d "/usr/local/share/shell" ]; then
-	_SHELL_ROOT="/usr/local/share/shell"
-elif [ -d "${HOME}/.local/share/shell" ]; then
-	_SHELL_ROOT="${HOME}/.local/share/shell"
 else
-	case "${0}" in
+	_script_src="${BASH_SOURCE[0]:-${0}}"
+	case "${_script_src}" in
 		-*|"") _script_dir="" ;;
-		*/*)  _script_dir="${0%/*}" ;;
-		*)    _script_dir="." ;;
+		*/*)  _script_dir="${_script_src%/*}" ;;
+		*)    _script_dir="" ;;
 	esac
 	if [ -n "${_script_dir}" ] && [ -d "${_script_dir}" ]; then
 		_SHELL_ROOT="$(cd "${_script_dir}" && pwd)"
+	elif [ -f "${PWD}/shell.sh" ] && [ -d "${PWD}/core" ]; then
+		_SHELL_ROOT="${PWD}"
+	elif [ -d "/usr/local/share/shell" ]; then
+		_SHELL_ROOT="/usr/local/share/shell"
+	elif [ -d "${HOME}/.local/share/shell" ]; then
+		_SHELL_ROOT="${HOME}/.local/share/shell"
 	else
 		_SHELL_ROOT="${PWD}"
 	fi
+	unset _script_src _script_dir
 fi
 export SHELL_REPO_DIR="${_SHELL_ROOT}"
 
@@ -41,7 +45,7 @@ _shell_is_sourced() {
 		fi
 	fi
 	case "${0##*/}" in
-		shell.sh) return 1 ;;
+		shell.sh|init.sh) return 1 ;;
 		*) return 0 ;;
 	esac
 }
@@ -71,6 +75,7 @@ _self_heal_perms() {
 		chmod 0755 "${_SHELL_ROOT}/.githooks/"* 2> "/dev/null" || true
 	fi
 	[ -f "${_SHELL_ROOT}/shell.sh" ] && chmod 0755 "${_SHELL_ROOT}/shell.sh" 2> "/dev/null" || true
+	[ -f "${_SHELL_ROOT}/init.sh" ] && chmod 0755 "${_SHELL_ROOT}/init.sh" 2> "/dev/null" || true
 	[ -f "${_SHELL_ROOT}/install.sh" ] && chmod 0755 "${_SHELL_ROOT}/install.sh" 2> "/dev/null" || true
 	[ -f "${_SHELL_ROOT}/benchmark.sh" ] && chmod 0755 "${_SHELL_ROOT}/benchmark.sh" 2> "/dev/null" || true
 }
@@ -86,7 +91,11 @@ _shell_bootstrap() {
 	for _module in "${_SHELL_ROOT}/core/"*.sh; do
 		[ -f "${_module}" ] && . "${_module}"
 	done
-	unset _module
+	_ctx="${SHELL_CONTEXT:-desktop}"
+	[ -f "${_SHELL_ROOT}/context/${_ctx}/common.sh" ] && . "${_SHELL_ROOT}/context/${_ctx}/common.sh"
+	_ctx_os="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+	[ -f "${_SHELL_ROOT}/context/${_ctx}/${_ctx_os}.sh" ] && . "${_SHELL_ROOT}/context/${_ctx}/${_ctx_os}.sh"
+	unset _module _ctx _ctx_os
 }
 
 ### ================================

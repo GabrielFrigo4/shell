@@ -257,6 +257,11 @@ alias open-mail="open-thunderbird"
 alias omail="open-thunderbird"
 alias oth="open-thunderbird"
 
+### --------------------------------
+### FILE OPENER
+### --------------------------------
+unalias open o > "/dev/null" 2>&1 || true
+
 open-smart() {
 	if [ "$#" -eq 0 ]; then
 		if command -v _ui_warn > "/dev/null" 2>&1; then
@@ -297,6 +302,14 @@ open-smart() {
 			(command nohup open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
 		elif command -v cygstart > "/dev/null" 2>&1; then
 			(command nohup cygstart "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
+		elif command -v wslview > "/dev/null" 2>&1; then
+			(command nohup wslview "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
+		elif command -v explorer.exe > "/dev/null" 2>&1; then
+			if command -v wslpath > "/dev/null" 2>&1; then
+				(command nohup explorer.exe "$(command wslpath -w "${_target}")" < "/dev/null" > "/dev/null" 2>&1 &)
+			else
+				(command nohup explorer.exe "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
+			fi
 		elif command -v xdg-open > "/dev/null" 2>&1; then
 			(command nohup xdg-open "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
 		elif command -v gio > "/dev/null" 2>&1; then
@@ -304,8 +317,14 @@ open-smart() {
 		fi
 	done
 }
-alias open="open-smart"
-alias o="open-smart"
+
+open() {
+	open-smart "$@"
+}
+
+o() {
+	open-smart "$@"
+}
 
 ### --------------------------------
 ### MODERN RUST CLI TOOLS

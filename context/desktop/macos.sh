@@ -3,19 +3,14 @@
 ### ================================
 
 ### --------------------------------
-### System Integration
+### SYSTEM INTEGRATION
 ### --------------------------------
 clip() {
-	command -v pbcopy > "/dev/null" 2>&1 || { echo "❌ pbcopy not found." >&2; return 127; }
+	command -v pbcopy > "/dev/null" 2>&1 || { _ui_err "pbcopy not found."; return 127; }
 	command pbcopy "$@"
 }
 
 paste() {
-	command -v pbpaste > "/dev/null" 2>&1 || { echo "❌ pbpaste not found." >&2; return 127; }
+	command -v pbpaste > "/dev/null" 2>&1 || { _ui_err "pbpaste not found."; return 127; }
 	command pbpaste "$@"
-}
-
-o() {
-	command -v open > "/dev/null" 2>&1 || { echo "❌ open not found." >&2; return 127; }
-	command open "$@"
 }

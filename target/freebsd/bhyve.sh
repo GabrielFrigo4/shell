@@ -99,6 +99,7 @@ agy-lx() {
 	fi
 }
 
+unalias agy > "/dev/null" 2>&1 || true
 agy() {
 	agy-lx "$@"
 }
@@ -108,4 +109,3 @@ agy() {
 ### --------------------------------
 alias debian="linux"
 alias deb="linux"
-alias agy="agy-lx"

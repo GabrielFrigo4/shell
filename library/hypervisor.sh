@@ -345,8 +345,8 @@ freebsd() {
 		_hyp_kvm_dispatch "FreeBSD" "${_vm_name}" "${_fb_user}" "${_fb_ip}" "${_action}" "$@"
 	fi
 }
+unalias fb > "/dev/null" 2>&1 || true
 fb() { freebsd "$@"; }
-alias fb="freebsd"
 
 ### ================================
 ### LINUX
@@ -470,8 +470,8 @@ linux() {
 		esac
 	fi
 }
+unalias lx > "/dev/null" 2>&1 || true
 lx() { linux "$@"; }
-alias lx="linux"
 
 ### ================================
 ### OPENBSD
@@ -515,8 +515,8 @@ openbsd() {
 		_hyp_kvm_dispatch "OpenBSD" "${_vm_name}" "${_ob_user}" "${_ob_ip}" "${_action}" "$@"
 	fi
 }
+unalias ob > "/dev/null" 2>&1 || true
 ob() { openbsd "$@"; }
-alias ob="openbsd"
 
 ### ================================
 ### NETBSD
@@ -560,5 +560,5 @@ netbsd() {
 		_hyp_kvm_dispatch "NetBSD" "${_vm_name}" "${_nb_user}" "${_nb_ip}" "${_action}" "$@"
 	fi
 }
+unalias nb > "/dev/null" 2>&1 || true
 nb() { netbsd "$@"; }
-alias nb="netbsd"
