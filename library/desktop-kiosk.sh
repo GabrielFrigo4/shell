@@ -7,7 +7,7 @@
 ### --------------------------------
 if ! command -v _sanitize_graphical_env > "/dev/null" 2>&1; then
 	_sanitize_graphical_env() {
-		unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED EMACS_OS_MODE
+		unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED
 		export COLORTERM="truecolor"
 		export MICRO_TRUECOLOR=1
 	}
@@ -173,15 +173,36 @@ EOF
 
 	if command -v sway > "/dev/null" 2>&1; then
 		local _sway_cfg="${XDG_RUNTIME_DIR:-/tmp}/sway-gui-$$.conf"
+		local _tabwatch="${XDG_RUNTIME_DIR:-/tmp}/wgui-tabwatch-$$.sh"
+		cat << 'EOF' > "${_tabwatch}"
+#!/bin/sh
+while :; do
+	_count=$(swaymsg -t get_tree 2> "/dev/null" | grep -c '"pid":' || true)
+	if [ "${_count:-0}" -ge 2 ]; then
+		swaymsg "[workspace=__focused__] layout tabbed, border normal 1" > "/dev/null" 2>&1 || true
+	else
+		swaymsg "[workspace=__focused__] layout splith, border none" > "/dev/null" 2>&1 || true
+	fi
+	sleep 1
+done
+EOF
+		chmod 0755 "${_tabwatch}"
+
 		cat << EOF > "${_sway_cfg}"
+font pango:Sans Bold 10
+titlebar_padding 10 5
 default_border none
 default_floating_border pixel 1
 titlebar_border_thickness 0
 gaps inner 0
 gaps outer 0
-workspace_layout tabbed
+workspace_layout default
 hide_edge_borders both
 popup_during_fullscreen smart
+client.focused #3584e4 #2b2b30 #ffffff #3584e4 #3584e4
+client.focused_inactive #38383d #1e1e22 #9a9996 #38383d #38383d
+client.unfocused #38383d #1e1e22 #9a9996 #38383d #38383d
+client.urgent #e01b24 #2b2b30 #ffffff #e01b24 #e01b24
 seat * xcursor_theme ${_cur_theme} ${_cur_size}
 seat * fallback true
 seat * hide_cursor when-typing disable
@@ -221,11 +242,12 @@ input type:keyboard {
     repeat_rate 50
     xkb_numlock enabled
 }
+exec "${_tabwatch}"
 exec ${_exec_invocation}
 EOF
 		${_dbus_run} command sway -c "${_sway_cfg}" >| "${_log_file}" 2>&1
 		_ret=$?
-		rm -f "${_sway_cfg}" 2> "/dev/null" || true
+		rm -f "${_sway_cfg}" "${_tabwatch}" 2> "/dev/null" || true
 	elif command -v labwc > "/dev/null" 2>&1; then
 		local _labwc_dir="${XDG_RUNTIME_DIR:-/tmp}/labwc-gui-$$"
 		mkdir -p "${_labwc_dir}"
@@ -405,27 +427,53 @@ graphical-launcher-x11() {
 	export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
 
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
-	if [ ! -f "${_kiosk_theme_dir}/themerc" ]; then
-		mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
-		cat << 'OTM' > "${_kiosk_theme_dir}/themerc"
-border.width: 1
-border.color: #54546d
-padding.width: 1
-padding.height: 1
+	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
+	cat << 'OTM' >| "${_kiosk_theme_dir}/themerc"
+border.width: 2
+border.color: #38383d
+padding.width: 8
+padding.height: 6
 window.handle.width: 0
 window.client.padding.width: 0
-window.active.title.bg.color: #1f1f28
-window.active.label.text.color: #dcd7ba
-window.inactive.title.bg.color: #16161e
-window.inactive.label.text.color: #727169
-menu.border.width: 1
-menu.border.color: #54546d
-menu.items.bg.color: #1f1f28
-menu.items.text.color: #dcd7ba
-menu.items.active.bg.color: #2a2a37
-menu.items.active.text.color: #e6c384
+
+window.active.border.color: #3584e4
+window.active.title.bg: flat solid
+window.active.title.bg.color: #2b2b30
+window.active.label.text.color: #ffffff
+
+window.inactive.border.color: #38383d
+window.inactive.title.bg: flat solid
+window.inactive.title.bg.color: #1e1e22
+window.inactive.label.text.color: #9a9996
+
+window.active.button.unpressed.bg: flat solid
+window.active.button.unpressed.bg.color: #2b2b30
+window.active.button.unpressed.image.color: #ffffff
+
+window.active.button.pressed.bg: flat solid
+window.active.button.pressed.bg.color: #3584e4
+window.active.button.pressed.image.color: #ffffff
+
+window.active.button.hover.bg: flat solid
+window.active.button.hover.bg.color: #e01b24
+window.active.button.hover.image.color: #ffffff
+
+window.inactive.button.unpressed.bg: flat solid
+window.inactive.button.unpressed.bg.color: #1e1e22
+window.inactive.button.unpressed.image.color: #9a9996
+
+menu.border.width: 2
+menu.border.color: #38383d
+menu.title.bg: flat solid
+menu.title.bg.color: #1e1e22
+menu.title.text.color: #3584e4
+menu.items.bg: flat solid
+menu.items.bg.color: #242428
+menu.items.text.color: #ffffff
+menu.items.active.bg: flat solid
+menu.items.active.bg.color: #3584e4
+menu.items.active.text.color: #ffffff
 OTM
-	fi
 
 	local _is_terminal=0
 	_is_terminal_app "${_app}" && _is_terminal=1
@@ -493,7 +541,7 @@ if command -v openbox > "/dev/null" 2>&1; then
 <openbox_config xmlns="http://openbox.org/3.4/rc">
   <theme>
     <name>kiosk</name>
-    <titleLayout></titleLayout>
+    <titleLayout>NLIMC</titleLayout>
     <keepBorder>no</keepBorder>
     <animateIconify>no</animateIconify>
   </theme>
@@ -509,17 +557,32 @@ if command -v openbox > "/dev/null" 2>&1; then
     <doubleClickTime>500</doubleClickTime>
     <screenEdgeWarpTime>0</screenEdgeWarpTime>
     <screenEdgeWarpMouse>false</screenEdgeWarpMouse>
-    <context name="Frame"/><context name="Titlebar"/><context name="Top"/><context name="Bottom"/>
-    <context name="Left"/><context name="Right"/><context name="TopLeft"/><context name="TopRight"/>
-    <context name="BottomLeft"/><context name="BottomRight"/><context name="Maximize"/><context name="Iconify"/>
-    <context name="Close"/><context name="AllDesktops"/><context name="Shade"/><context name="Root"/><context name="Client"/>
+    <context name="Root"/>
+    <context name="Client">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Middle" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Right" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+    </context>
   </mouse>
   <keyboard>
+    <keybind key="A-Tab"><action name="NextWindow"/></keybind>
+    <keybind key="W-Tab"><action name="NextWindow"/></keybind>
     <keybind key="A-F4"><action name="Close"/></keybind>
+    <keybind key="W-q"><action name="Close"/></keybind>
   </keyboard>
   <applications>
-    <application class="*"><decor>no</decor><shade>no</shade><focus>yes</focus><maximized>yes</maximized></application>
-    <application type="dialog"><decor>no</decor><focus>yes</focus><maximized>no</maximized></application>
+    <application class="*">
+      <decor>no</decor>
+      <shade>no</shade>
+      <focus>yes</focus>
+      <maximized>yes</maximized>
+      <fullscreen>no</fullscreen>
+    </application>
+    <application type="dialog">
+      <decor>no</decor>
+      <focus>yes</focus>
+      <maximized>no</maximized>
+    </application>
   </applications>
 </openbox_config>
 XOB
@@ -530,16 +593,20 @@ elif command -v cwm > "/dev/null" 2>&1; then
 	cwm > "/dev/null" 2>&1 &
 elif command -v ratpoison > "/dev/null" 2>&1; then
 	ratpoison > "/dev/null" 2>&1 &
-elif command -v xdotool > "/dev/null" 2>&1; then
-	(
-		for _i in \$(seq 1 20); do
-			sleep 0.1
+fi
+
+(
+	while :; do
+		if command -v wmctrl > "/dev/null" 2>&1; then
+			wmctrl -r :ACTIVE: -b add,maximized_vert,maximized_horz 2> "/dev/null" || true
+		elif command -v xdotool > "/dev/null" 2>&1; then
 			for _wid in \$(command xdotool search --onlyvisible --class ".*" 2> "/dev/null"); do
 				command xdotool windowsize "\${_wid}" 100% 100% windowmove "\${_wid}" 0 0 2> "/dev/null" || true
 			done
-		done
-	) &
-fi
+		fi
+		sleep 1
+	done
+) &
 
 _target_bin="\$1"
 [ "\$#" -ge 1 ] && shift
@@ -664,6 +731,7 @@ emacs-window-manager-wayland() {
 
 		local _log_dir="$(_get_shell_log_dir)"
 		local _ewm_log="${_log_dir}/ewm-wayland.log"
+		unset WAYLAND_DISPLAY DISPLAY
 		${_bus_wrapper:-command} "${_ewm_emacs_bin}" --fg-daemon=ewm -L "${HOME}/.local/share/emacs/site-lisp/ewm" -l ewm -f ewm-start-module "$@" >| "${_ewm_log}" 2>&1
 		local _emacs_ret=$?
 

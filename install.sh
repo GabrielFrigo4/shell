@@ -23,6 +23,8 @@ if [ -z "${ZSH_VERSION:-}" ]; then
 	unset _esc_test
 fi
 
+[ -f "${SHELL_REPO_DIR}/library/ui.sh" ] && . "${SHELL_REPO_DIR}/library/ui.sh"
+
 
 ### --------------------------------
 ### HELP DOCUMENTATION
@@ -112,8 +114,8 @@ unset _skip_next
 case "${SHELL_CONTEXT}" in
 	desktop|server|container) ;;
 	*)
-		echo "❌ ERROR: Invalid context '${SHELL_CONTEXT}'. Use 'desktop', 'server' or 'container'." >&2
-		echo "   Run '$0 --help' for usage instructions." >&2
+		_ui_err "Invalid context '${SHELL_CONTEXT}'. Use 'desktop', 'server' or 'container'."
+		_ui_info "Run '$0 --help' for usage instructions."
 		exit 1
 		;;
 esac
@@ -121,8 +123,8 @@ esac
 case "${SHELL_TARGET}" in
 	all|zsh|bash|sh|ksh|fish|pwsh|powershell|nu|nushell|cmd) ;;
 	*)
-		echo "❌ ERROR: Invalid shell '${SHELL_TARGET}'. Use 'all', 'zsh', 'bash', 'sh', 'ksh', 'fish', 'pwsh', 'nu' or 'cmd'." >&2
-		echo "   Run '$0 --help' for usage instructions." >&2
+		_ui_err "Invalid shell '${SHELL_TARGET}'. Use 'all', 'zsh', 'bash', 'sh', 'ksh', 'fish', 'pwsh', 'nu' or 'cmd'."
+		_ui_info "Run '$0 --help' for usage instructions."
 		exit 1
 		;;
 esac
@@ -130,8 +132,8 @@ esac
 case "${SHELL_USERLAND}" in
 	default|gnu|bsd) ;;
 	*)
-		echo "❌ ERROR: Invalid userland '${SHELL_USERLAND}'. Use 'default', 'gnu' or 'bsd'." >&2
-		echo "   Run '$0 --help' for usage instructions." >&2
+		_ui_err "Invalid userland '${SHELL_USERLAND}'. Use 'default', 'gnu' or 'bsd'."
+		_ui_info "Run '$0 --help' for usage instructions."
 		exit 1
 		;;
 esac
@@ -190,17 +192,17 @@ else
 	TARGET_SHELLS="$(echo "${TARGET_SHELLS}" | sed 's/^[ ]*//')"
 fi
 
-echo "=== Shell Installer ==="
-echo "Detected repo:   ${SHELL_REPO_DIR}"
-echo "Detected OS:     ${OS_NAME}"
-echo "Current shell:   ${SHELL_NAME}"
-echo "Target shell(s): ${TARGET_SHELLS}"
-echo "Context:         ${SHELL_CONTEXT}"
-echo "Userland:        ${SHELL_USERLAND}"
+_ui_banner "Shell Installer"
+_ui_info "Detected repo:   ${SHELL_REPO_DIR}"
+_ui_info "Detected OS:     ${OS_NAME}"
+_ui_info "Current shell:   ${SHELL_NAME}"
+_ui_info "Target shell(s): ${TARGET_SHELLS}"
+_ui_info "Context:         ${SHELL_CONTEXT}"
+_ui_info "Userland:        ${SHELL_USERLAND}"
 if [ "${SHELL_FRAMEWORK}" -eq 1 ]; then
-	echo "Mode:            framework (Oh-My-Bash / Oh-My-Zsh enabled)"
+	_ui_info "Mode:            framework (Oh-My-Bash / Oh-My-Zsh enabled)"
 else
-	echo "Mode:            pure (standalone native templates, zero overhead)"
+	_ui_info "Mode:            pure (standalone native templates, zero overhead)"
 fi
 
 ### --------------------------------
@@ -290,8 +292,8 @@ _install_shell_target() {
 	local _prompt_file="${SHELL_REPO_DIR}/target/${OS_NAME}/${_target_shell}/prompt.sh"
 
 	if [ ! -f "${_prompt_file}" ]; then
-		echo "⚠️  No prompt file found for ${_target_shell} at: ${_prompt_file}"
-		echo "   Skipping ${_target_shell}."
+		_ui_warn "No prompt file found for ${_target_shell} at: ${_prompt_file}"
+		_ui_info "Skipping ${_target_shell}."
 		return 0
 	fi
 
@@ -394,7 +396,7 @@ _install_shell_target() {
 		case "${_target_shell}" in
 			zsh)
 				if [ -d "${HOME}/.oh-my-zsh" ]; then
-					echo "🗑️  Removing existing Oh-My-Zsh (--pure mode)..."
+					_ui_info "Removing existing Oh-My-Zsh (--pure mode)..."
 					rm -rf "${HOME}/.oh-my-zsh"
 				fi
 				if [ "${OS_NAME}" != "windows" ]; then
@@ -403,7 +405,7 @@ _install_shell_target() {
 				;;
 			bash)
 				if [ -d "${HOME}/.oh-my-bash" ]; then
-					echo "🗑️  Removing existing Oh-My-Bash (--pure mode)..."
+					_ui_info "Removing existing Oh-My-Bash (--pure mode)..."
 					rm -rf "${HOME}/.oh-my-bash" "${HOME}/.osh-update"
 				fi
 				if [ "${OS_NAME}" != "windows" ]; then
@@ -513,21 +515,21 @@ _install_shell_target() {
 	EOF
 	)"
 
-	echo "Target RC file: ${_rc_file}"
+	_ui_info "Target RC file: ${_rc_file}"
 	if grep -qF "${_source_line}" "${_rc_file}" 2> "/dev/null"; then
-		echo "Shell config already installed in ${_rc_file}. Skipping."
+		_ui_info "Shell config already installed in ${_rc_file}. Skipping."
 	else
 		echo "${_setup_block}" | tee -a "${_rc_file}" > "/dev/null"
-		echo "Done! Added source lines to ${_rc_file}"
+		_ui_ok "Added source lines to ${_rc_file}"
 	fi
 
 	if [ "${OS_NAME}" != "windows" ]; then
-		echo "Target RC file: ${_root_rc_file} (root)"
+		_ui_info "Target RC file: ${_root_rc_file} (root)"
 		if _as_root grep -qF "${_source_line}" "${_root_rc_file}" 2> "/dev/null"; then
-			echo "Shell config already installed in ${_root_rc_file}. Skipping."
+			_ui_info "Shell config already installed in ${_root_rc_file}. Skipping."
 		else
 			echo "${_setup_block}" | _as_root tee -a "${_root_rc_file}" > "/dev/null" 2>&1 || true
-			echo "Done! Added source lines to ${_root_rc_file}"
+			_ui_ok "Added source lines to ${_root_rc_file}"
 		fi
 	fi
 }
@@ -537,7 +539,7 @@ _install_shell_target() {
 ### --------------------------------
 for _target in ${TARGET_SHELLS}; do
 	echo ""
-	echo "🔧 Configuring for shell: ${_target}"
+	_ui_step "Configuring for shell: ${_target}"
 	case "${_target}" in
 		fish|pwsh|powershell|nu|nushell|cmd)
 			_install_extended_shell "${_target}"
@@ -558,6 +560,6 @@ for _target in ${TARGET_SHELLS}; do
 	esac
 done
 
-echo ""
-echo "✨ Installation finished for target shells: ${TARGET_SHELLS}"
-echo "Restart your terminal or reload your shell profile."
+_ui_banner "Installation Completed"
+_ui_ok "Installation finished for target shells: ${TARGET_SHELLS}"
+_ui_info "Restart your terminal or reload your shell profile."

@@ -7,7 +7,7 @@
 ### --------------------------------
 if ! command -v _sanitize_graphical_env > "/dev/null" 2>&1; then
 	_sanitize_graphical_env() {
-		unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED EMACS_OS_MODE
+		unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED
 		export COLORTERM="truecolor"
 		export MICRO_TRUECOLOR=1
 	}
@@ -114,43 +114,67 @@ _setup_cursor_env() {
 	esac
 
 	if [ -z "${_cursor_theme}" ]; then
-		if command -v plasmashell > "/dev/null" 2>&1 || command -v startplasma-wayland > "/dev/null" 2>&1 || command -v startplasma-x11 > "/dev/null" 2>&1; then
-			_cursor_theme="breeze_cursors"
-		elif command -v gnome-shell > "/dev/null" 2>&1; then
+		local _uid="$(id -u 2> "/dev/null" || echo 1000)"
+		if pgrep -u "${_uid}" -x gnome-shell > "/dev/null" 2>&1; then
+			_flavor="gnome"
+		elif pgrep -u "${_uid}" -x plasmashell > "/dev/null" 2>&1; then
+			_flavor="kde"
+		elif pgrep -u "${_uid}" -x mate-session > "/dev/null" 2>&1; then
+			_flavor="mate"
+		elif pgrep -u "${_uid}" -x cinnamon > "/dev/null" 2>&1; then
+			_flavor="cinnamon"
+		elif pgrep -u "${_uid}" -x xfce4-session > "/dev/null" 2>&1; then
+			_flavor="xfce"
+		elif [ -n "${XDG_CURRENT_DESKTOP:-}" ]; then
+			case "${XDG_CURRENT_DESKTOP}" in
+				*GNOME*|*gnome*)       _flavor="gnome" ;;
+				*KDE*|*kde*|*Plasma*)  _flavor="kde" ;;
+				*MATE*|*mate*)         _flavor="mate" ;;
+				*Cinnamon*|*cinnamon*) _flavor="cinnamon" ;;
+				*XFCE*|*xfce*)         _flavor="xfce" ;;
+			esac
+		fi
+
+		case "${_flavor}" in
+			kde)
+				_cursor_theme="breeze_cursors"
+				;;
+			gnome)
+				if command -v gsettings > "/dev/null" 2>&1; then
+					_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+				fi
+				[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+				;;
+			mate)
+				if command -v gsettings > "/dev/null" 2>&1; then
+					_cursor_theme="$(gsettings get org.mate.peripherals-mouse cursor-theme 2> "/dev/null" | tr -d "'\"")"
+				fi
+				[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+				;;
+			cinnamon)
+				if command -v gsettings > "/dev/null" 2>&1; then
+					_cursor_theme="$(gsettings get org.cinnamon.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+				fi
+				[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+				;;
+			xfce)
+				_cursor_theme="Adwaita"
+				;;
+		esac
+	fi
+
+	if [ -z "${_cursor_theme}" ]; then
+		if command -v gnome-shell > "/dev/null" 2>&1; then
 			if command -v gsettings > "/dev/null" 2>&1; then
 				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+		elif command -v plasmashell > "/dev/null" 2>&1 || command -v startplasma-wayland > "/dev/null" 2>&1 || command -v startplasma-x11 > "/dev/null" 2>&1; then
+			_cursor_theme="breeze_cursors"
 		elif command -v mate-session > "/dev/null" 2>&1; then
-			if command -v gsettings > "/dev/null" 2>&1; then
-				_cursor_theme="$(gsettings get org.mate.peripherals-mouse cursor-theme 2> "/dev/null" | tr -d "'\"")"
-			fi
-			if [ -z "${_cursor_theme}" ]; then
-				for _c in mate Mate Adwaita; do
-					for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
-						if [ -d "${_p}/${_c}/cursors" ]; then
-							_cursor_theme="${_c}"
-							break 2
-						fi
-					done
-				done
-			fi
-			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+			_cursor_theme="Adwaita"
 		elif command -v cinnamon-session > "/dev/null" 2>&1; then
-			if command -v gsettings > "/dev/null" 2>&1; then
-				_cursor_theme="$(gsettings get org.cinnamon.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
-			fi
-			if [ -z "${_cursor_theme}" ]; then
-				for _c in Bibata-Modern-Classic DMZ-White Adwaita; do
-					for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
-						if [ -d "${_p}/${_c}/cursors" ]; then
-							_cursor_theme="${_c}"
-							break 2
-						fi
-					done
-				done
-			fi
-			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+			_cursor_theme="Adwaita"
 		elif command -v xfce4-session > "/dev/null" 2>&1; then
 			_cursor_theme="Adwaita"
 		elif command -v lxqt-session > "/dev/null" 2>&1; then
@@ -169,7 +193,7 @@ _setup_cursor_env() {
 	fi
 
 	if [ -z "${_valid_theme}" ]; then
-		for _c in "Bibata-Modern-Classic" "Adwaita" "breeze_cursors" "DMZ-White" "default"; do
+		for _c in "Adwaita" "Bibata-Modern-Classic" "breeze_cursors" "DMZ-White" "default"; do
 			for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
 				if [ -d "${_p}/${_c}/cursors" ]; then
 					_valid_theme="${_c}"
@@ -184,6 +208,20 @@ _setup_cursor_env() {
 
 	mkdir -p "${HOME}/.icons/default" 2> "/dev/null" || true
 	printf '[Icon Theme]\nInherits=%s\n' "${_valid_theme}" >| "${HOME}/.icons/default/index.theme" 2> "/dev/null" || true
+
+	for _gtk_cfg in "${HOME}/.config/gtk-3.0/settings.ini" "${HOME}/.config/gtk-4.0/settings.ini"; do
+		if [ -f "${_gtk_cfg}" ]; then
+			_cfg_tmp="${_gtk_cfg}.tmp.$$"
+			if grep -q "^gtk-cursor-theme-name=" "${_gtk_cfg}" 2> "/dev/null"; then
+				sed "s/^gtk-cursor-theme-name=.*/gtk-cursor-theme-name=${_valid_theme}/" "${_gtk_cfg}" > "${_cfg_tmp}" 2> "/dev/null" && cat "${_cfg_tmp}" > "${_gtk_cfg}" 2> "/dev/null" || true
+			else
+				cat "${_gtk_cfg}" > "${_cfg_tmp}" 2> "/dev/null" || true
+				printf 'gtk-cursor-theme-name=%s\n' "${_valid_theme}" >> "${_cfg_tmp}" 2> "/dev/null" || true
+				cat "${_cfg_tmp}" > "${_gtk_cfg}" 2> "/dev/null" || true
+			fi
+			rm -f "${_cfg_tmp}" 2> "/dev/null" || true
+		fi
+	done
 
 	if [ -n "${DISPLAY:-}" ]; then
 		if command -v xrdb > "/dev/null" 2>&1; then
@@ -530,6 +568,7 @@ _exec_x11() {
 #!/bin/sh
 unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
+export EMACS_OS_MODE="${EMACS_OS_MODE:-}"
 
 if [ -z "\${ENVIRONMENT_SESSION_WRAPPED:-}" ]; then
 	export ENVIRONMENT_SESSION_WRAPPED=1
@@ -764,6 +803,7 @@ desktop-session-x11() { start-session xorg "$@"; }
 alias xorg="desktop-session-x11" x11="desktop-session-x11" start-xorg="desktop-session-x11" start-x11="desktop-session-x11"
 
 window-manager-wayland() {
+	unset EMACS_OS_MODE
 	_sanitize_graphical_env
 	if [ "$#" -gt 0 ]; then
 		start-session way "$@"
@@ -782,20 +822,104 @@ window-manager-wayland() {
 		fi
 	done
 
-	local _wm_browser="sh -c 'command -v firefox >/dev/null 2>&1 && exec firefox || command -v chromium >/dev/null 2>&1 && exec chromium || command -v google-chrome-stable >/dev/null 2>&1 && exec google-chrome-stable || command -v google-chrome >/dev/null 2>&1 && exec google-chrome'"
-	local _wm_emacs="sh -c 'command -v emacs-pgtk >/dev/null 2>&1 && exec emacs-pgtk || exec emacs'"
-	local _wm_launcher="sh -c 'command -v wofi >/dev/null 2>&1 && exec wofi --show drun || command -v fuzzel >/dev/null 2>&1 && exec fuzzel || command -v rofi >/dev/null 2>&1 && exec rofi -show drun || command -v bemenu-run >/dev/null 2>&1 && exec bemenu-run || command -v dmenu_run >/dev/null 2>&1 && exec dmenu_run || exec ${_wm_term}'"
+	local _run_dir="${XDG_RUNTIME_DIR:-/tmp}"
+	local _term_script="${_run_dir}/wwm-term-$$.sh"
+	local _browser_script="${_run_dir}/wwm-browser-$$.sh"
+	local _emacs_script="${_run_dir}/wwm-emacs-$$.sh"
+	local _menu_script="${_run_dir}/wwm-menu-$$.sh"
+	local _status_script="${_run_dir}/wwm-status-$$.sh"
+
+	cat << EOF > "${_term_script}"
+#!/bin/sh
+exec ${_wm_term} "\$@"
+EOF
+	chmod 0755 "${_term_script}"
+
+	cat << 'EOF' > "${_browser_script}"
+#!/bin/sh
+for _b in firefox chromium google-chrome-stable google-chrome brave-browser; do
+	if command -v "${_b}" > "/dev/null" 2>&1; then
+		exec "${_b}" "$@"
+	fi
+done
+EOF
+	chmod 0755 "${_browser_script}"
+
+	cat << 'EOF' > "${_emacs_script}"
+#!/bin/sh
+for _e in emacs-pgtk emacs; do
+	if command -v "${_e}" > "/dev/null" 2>&1; then
+		exec "${_e}" "$@"
+	fi
+done
+EOF
+	chmod 0755 "${_emacs_script}"
+
+	cat << EOF > "${_menu_script}"
+#!/bin/sh
+if command -v wofi > "/dev/null" 2>&1; then
+	exec wofi --show drun
+elif command -v fuzzel > "/dev/null" 2>&1; then
+	exec fuzzel
+elif command -v rofi > "/dev/null" 2>&1; then
+	exec rofi -show drun
+elif command -v bemenu-run > "/dev/null" 2>&1; then
+	exec bemenu-run
+else
+	exec ${_wm_term}
+fi
+EOF
+	chmod 0755 "${_menu_script}"
+
+	cat << EOF > "${_status_script}"
+#!/bin/sh
+_term="${_term_script}"
+_browser="${_browser_script}"
+_emacs="${_emacs_script}"
+_menu="${_menu_script}"
+
+(
+	while IFS= read -r _click_line; do
+		case "\${_click_line}" in
+			*"\"name\":\"term\""*)    "\${_term}" > "/dev/null" 2>&1 & ;;
+			*"\"name\":\"browser\""*) "\${_browser}" > "/dev/null" 2>&1 & ;;
+			*"\"name\":\"emacs\""*)   "\${_emacs}" > "/dev/null" 2>&1 & ;;
+			*"\"name\":\"menu\""*)    "\${_menu}" > "/dev/null" 2>&1 & ;;
+			*"\"name\":\"close\""*)   swaymsg kill > "/dev/null" 2>&1 & ;;
+			*"\"name\":\"exit\""*)    swaymsg exit > "/dev/null" 2>&1 & ;;
+		esac
+	done
+) &
+_sub_pid=\$!
+trap "kill \${_sub_pid} 2> \"/dev/null\" || true" EXIT TERM INT
+
+printf '{"version":1,"click_events":true}\n[\n'
+while :; do
+	_date_str="\$(date "+%Y-%m-%d %H:%M:%S")"
+	printf '[{"name":"term","full_text":" [ Terminal ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+	printf '{"name":"browser","full_text":" [ Browser ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+	printf '{"name":"emacs","full_text":" [ Emacs ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+	printf '{"name":"menu","full_text":" [ Menu ] ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+	printf '{"name":"close","full_text":" [ Fechar Janela ] ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
+	printf '{"name":"exit","full_text":" [ Sair ] ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
+	printf '{"name":"time","full_text":" %s ","background":"#1e1e22","color":"#9a9996","border":"#38383d"}],\n' "\${_date_str}"
+	sleep 1
+done
+EOF
+	chmod 0755 "${_status_script}"
 
 	if command -v sway > "/dev/null" 2>&1; then
-		local _sway_cfg="${XDG_RUNTIME_DIR:-/tmp}/sway-wm-$$.conf"
+		local _sway_cfg="${_run_dir}/sway-wm-$$.conf"
 		cat << EOF > "${_sway_cfg}"
-output * bg #16161e solid_color
-default_border pixel 1
-default_floating_border pixel 1
-client.focused #7e9cd8 #1f1f28 #dcd7ba #7e9cd8 #7e9cd8
-client.focused_inactive #54546d #1f1f28 #727169 #54546d #54546d
-client.unfocused #54546d #16161e #727169 #54546d #54546d
-client.urgent #e82424 #1f1f28 #dcd7ba #e82424 #e82424
+output * bg #1e1e22 solid_color
+font pango:Sans Bold 10
+titlebar_padding 10 6
+default_border pixel 2
+default_floating_border pixel 2
+client.focused #3584e4 #2b2b30 #ffffff #3584e4 #3584e4
+client.focused_inactive #38383d #1e1e22 #9a9996 #38383d #38383d
+client.unfocused #38383d #1e1e22 #9a9996 #38383d #38383d
+client.urgent #e01b24 #2b2b30 #ffffff #e01b24 #e01b24
 seat * xcursor_theme ${_cur_theme} ${_cur_size}
 seat * fallback true
 seat * hide_cursor when-typing disable
@@ -822,11 +946,11 @@ input type:keyboard {
 }
 focus_follows_mouse yes
 xwayland enable
-bindsym Mod4+Return exec ${_wm_term}
-bindsym Ctrl+Mod1+t exec ${_wm_term}
-bindsym Mod4+b exec ${_wm_browser}
-bindsym Mod4+e exec ${_wm_emacs}
-bindsym Mod4+d exec ${_wm_launcher}
+bindsym Mod4+Return exec ${_term_script}
+bindsym Ctrl+Mod1+t exec ${_term_script}
+bindsym Mod4+b exec ${_browser_script}
+bindsym Mod4+e exec ${_emacs_script}
+bindsym Mod4+d exec ${_menu_script}
 bindsym Mod4+1 workspace number 1
 bindsym Mod4+2 workspace number 2
 bindsym Mod4+3 workspace number 3
@@ -859,19 +983,20 @@ bindsym Mod4+Shift+q exec swaymsg exit
 
 bar {
     position bottom
-    status_command while :; do printf "Super+Enter:Term | Super+B:Browser | Super+E:Emacs | Super+D:Menu | Super+Q:Close | %s\\n" "\$(date "+%Y-%m-%d %H:%M:%S")"; sleep 1; done
+    status_command "${_status_script}"
+    font pango:Sans Bold 10
     colors {
-        background #16161e
-        statusline #dcd7ba
-        separator #54546d
-        focused_workspace #7e9cd8 #1f1f28 #dcd7ba
-        inactive_workspace #16161e #16161e #727169
+        background #1e1e22
+        statusline #ffffff
+        separator #38383d
+        focused_workspace #3584e4 #2b2b30 #ffffff
+        inactive_workspace #1e1e22 #1e1e22 #9a9996
     }
 }
 EOF
 		_exec_wayland sway -c "${_sway_cfg}"
 		local _sway_ret=$?
-		rm -f "${_sway_cfg}" 2> "/dev/null" || true
+		rm -f "${_sway_cfg}" "${_term_script}" "${_browser_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" 2> "/dev/null" || true
 		return "${_sway_ret}"
 	elif command -v labwc > "/dev/null" 2>&1; then
 		local _labwc_dir="${XDG_RUNTIME_DIR:-/tmp}/labwc-wm-$$"
@@ -999,6 +1124,7 @@ EOF
 alias wwm="window-manager-wayland"
 
 window-manager-x11() {
+	unset EMACS_OS_MODE
 	_sanitize_graphical_env
 	if [ "$#" -gt 0 ]; then
 		start-session xorg "$@"
@@ -1009,28 +1135,50 @@ window-manager-x11() {
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
 	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
 	cat << 'OTM' >| "${_kiosk_theme_dir}/themerc"
-border.width: 1
-border.color: #54546d
-padding.width: 2
-padding.height: 2
+border.width: 2
+border.color: #38383d
+padding.width: 8
+padding.height: 6
 window.handle.width: 0
 window.client.padding.width: 0
-window.active.title.bg.color: #1f1f28
-window.active.label.text.color: #dcd7ba
-window.inactive.title.bg.color: #16161e
-window.inactive.label.text.color: #727169
-window.active.button.unpressed.bg.color: #1f1f28
-window.active.button.unpressed.image.color: #dcd7ba
-window.inactive.button.unpressed.bg.color: #16161e
-window.inactive.button.unpressed.image.color: #727169
-menu.border.width: 1
-menu.border.color: #54546d
-menu.items.bg.color: #1f1f28
-menu.items.text.color: #dcd7ba
-menu.items.active.bg.color: #2a2a37
-menu.items.active.text.color: #e6c384
-menu.title.bg.color: #16161e
-menu.title.text.color: #7e9cd8
+
+window.active.border.color: #3584e4
+window.active.title.bg: flat solid
+window.active.title.bg.color: #2b2b30
+window.active.label.text.color: #ffffff
+
+window.inactive.border.color: #38383d
+window.inactive.title.bg: flat solid
+window.inactive.title.bg.color: #1e1e22
+window.inactive.label.text.color: #9a9996
+
+window.active.button.unpressed.bg: flat solid
+window.active.button.unpressed.bg.color: #2b2b30
+window.active.button.unpressed.image.color: #ffffff
+
+window.active.button.pressed.bg: flat solid
+window.active.button.pressed.bg.color: #3584e4
+window.active.button.pressed.image.color: #ffffff
+
+window.active.button.hover.bg: flat solid
+window.active.button.hover.bg.color: #e01b24
+window.active.button.hover.image.color: #ffffff
+
+window.inactive.button.unpressed.bg: flat solid
+window.inactive.button.unpressed.bg.color: #1e1e22
+window.inactive.button.unpressed.image.color: #9a9996
+
+menu.border.width: 2
+menu.border.color: #38383d
+menu.title.bg: flat solid
+menu.title.bg.color: #1e1e22
+menu.title.text.color: #3584e4
+menu.items.bg: flat solid
+menu.items.bg.color: #242428
+menu.items.text.color: #ffffff
+menu.items.active.bg: flat solid
+menu.items.active.bg.color: #3584e4
+menu.items.active.text.color: #ffffff
 OTM
 
 	local _wm_x11_term="xterm"
@@ -1041,25 +1189,91 @@ OTM
 		fi
 	done
 
-	local _wm_browser="sh -c 'command -v firefox >/dev/null 2>&1 && exec firefox || command -v chromium >/dev/null 2>&1 && exec chromium || command -v google-chrome-stable >/dev/null 2>&1 && exec google-chrome-stable || command -v google-chrome >/dev/null 2>&1 && exec google-chrome'"
-	local _wm_emacs="sh -c 'command -v emacs-gtk+x11 >/dev/null 2>&1 && exec emacs-gtk+x11 || command -v emacs >/dev/null 2>&1 && exec emacs'"
+	local _run_dir="${XDG_RUNTIME_DIR:-/tmp}"
+	local _term_script="${_run_dir}/xwm-term-$$.sh"
+	local _browser_script="${_run_dir}/xwm-browser-$$.sh"
+	local _emacs_script="${_run_dir}/xwm-emacs-$$.sh"
+
+	cat << EOF > "${_term_script}"
+#!/bin/sh
+exec ${_wm_x11_term} "\$@"
+EOF
+	chmod 0755 "${_term_script}"
+
+	cat << 'EOF' > "${_browser_script}"
+#!/bin/sh
+for _b in firefox chromium google-chrome-stable google-chrome brave-browser; do
+	if command -v "${_b}" > "/dev/null" 2>&1; then
+		exec "${_b}" "$@"
+	fi
+done
+EOF
+	chmod 0755 "${_browser_script}"
+
+	cat << 'EOF' > "${_emacs_script}"
+#!/bin/sh
+for _e in emacs-gtk+x11 emacs-gtk emacs emacs-lucid; do
+	if command -v "${_e}" > "/dev/null" 2>&1; then
+		exec "${_e}" "$@"
+	fi
+done
+EOF
+	chmod 0755 "${_emacs_script}"
 
 	if command -v openbox > "/dev/null" 2>&1; then
-		local _ob_menu_cfg="${XDG_RUNTIME_DIR:-/tmp}/openbox-menu-$$.xml"
-		local _ob_wm_cfg="${XDG_RUNTIME_DIR:-/tmp}/openbox-wm-$$.xml"
+		local _ob_menu_cfg="${_run_dir}/openbox-menu-$$.xml"
+		local _ob_wm_cfg="${_run_dir}/openbox-wm-$$.xml"
 		cat << EOF > "${_ob_menu_cfg}"
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="Universal Environment">
     <item label="Terminal">
-      <action name="Execute"><command>${_wm_x11_term}</command></action>
-    </item>
-    <item label="Emacs">
-      <action name="Execute"><command>${_wm_emacs}</command></action>
+      <action name="Execute"><command>${_term_script}</command></action>
     </item>
     <item label="Web Browser">
-      <action name="Execute"><command>${_wm_browser}</command></action>
+      <action name="Execute"><command>${_browser_script}</command></action>
     </item>
+    <item label="Emacs">
+      <action name="Execute"><command>${_emacs_script}</command></action>
+    </item>
+    <separator/>
+EOF
+
+		awk '
+			FNR == 1 {
+				if (in_entry && !nodisplay && name != "" && exec_cmd != "") {
+					print name "\t" exec_cmd;
+				}
+				in_entry = 0; name = ""; exec_cmd = ""; nodisplay = 0;
+			}
+			/^\[Desktop Entry\]/ { in_entry = 1; next }
+			/^\[/ && !/^\[Desktop Entry\]/ { in_entry = 0 }
+			in_entry && /^Name=/ && name == "" { name = substr($0, 6) }
+			in_entry && /^Exec=/ && exec_cmd == "" {
+				exec_cmd = substr($0, 6);
+				sub(/[[:space:]]+%[a-zA-Z]/, "", exec_cmd);
+			}
+			in_entry && (/^NoDisplay=true/ || /^Hidden=true/) { nodisplay = 1 }
+			END {
+				if (in_entry && !nodisplay && name != "" && exec_cmd != "") {
+					print name "\t" exec_cmd;
+				}
+			}
+		' /usr/share/applications/*.desktop /usr/local/share/applications/*.desktop /var/lib/flatpak/exports/share/applications/*.desktop "${HOME}/.local/share/applications/"*.desktop 2> "/dev/null" \
+		| sort -u -k1,1 \
+		| head -n 35 \
+		| while IFS="$(printf '\t')" read -r _app_name _app_exec; do
+			[ -z "${_app_name}" ] || [ -z "${_app_exec}" ] && continue
+			_safe_name="$(printf '%s' "${_app_name}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
+			_safe_exec="$(printf '%s' "${_app_exec}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
+			cat << EOF >> "${_ob_menu_cfg}"
+    <item label="${_safe_name}">
+      <action name="Execute"><command>${_safe_exec}</command></action>
+    </item>
+EOF
+		done
+
+		cat << EOF >> "${_ob_menu_cfg}"
     <separator/>
     <item label="Reconfigure">
       <action name="Reconfigure"/>
@@ -1107,10 +1321,10 @@ EOF
     <file>${_ob_menu_cfg}</file>
   </menu>
   <keyboard>
-    <keybind key="W-Return"><action name="Execute"><command>${_wm_x11_term}</command></action></keybind>
-    <keybind key="C-A-t"><action name="Execute"><command>${_wm_x11_term}</command></action></keybind>
-    <keybind key="W-b"><action name="Execute"><command>${_wm_browser}</command></action></keybind>
-    <keybind key="W-e"><action name="Execute"><command>${_wm_emacs}</command></action></keybind>
+    <keybind key="W-Return"><action name="Execute"><command>${_term_script}</command></action></keybind>
+    <keybind key="C-A-t"><action name="Execute"><command>${_term_script}</command></action></keybind>
+    <keybind key="W-b"><action name="Execute"><command>${_browser_script}</command></action></keybind>
+    <keybind key="W-e"><action name="Execute"><command>${_emacs_script}</command></action></keybind>
     <keybind key="A-F4"><action name="Close"/></keybind>
     <keybind key="W-q"><action name="Close"/></keybind>
     <keybind key="A-Tab"><action name="NextWindow"/></keybind>
@@ -1120,7 +1334,7 @@ EOF
 EOF
 		_exec_x11 openbox --config-file "${_ob_wm_cfg}"
 		local _ob_ret=$?
-		rm -f "${_ob_menu_cfg}" "${_ob_wm_cfg}" 2> "/dev/null" || true
+		rm -f "${_ob_menu_cfg}" "${_ob_wm_cfg}" "${_term_script}" "${_browser_script}" "${_emacs_script}" 2> "/dev/null" || true
 		return "${_ob_ret}"
 	elif command -v openbox-session > "/dev/null" 2>&1; then
 		_exec_x11 openbox-session

@@ -495,56 +495,79 @@ if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 		_cursor_theme=""
 		_cursor_size="${XCURSOR_SIZE:-24}"
 
-		if command -v plasmashell > "/dev/null" 2>&1 || command -v startplasma-wayland > "/dev/null" 2>&1 || command -v startplasma-x11 > "/dev/null" 2>&1; then
+		local _uid="$(id -u 2> "/dev/null" || echo 1000)"
+		if pgrep -u "${_uid}" -x gnome-shell > "/dev/null" 2>&1; then
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+				_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+		elif pgrep -u "${_uid}" -x plasmashell > "/dev/null" 2>&1; then
 			if [ -f "${HOME}/.config/kcminputrc" ]; then
-				_cursor_theme=$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")
-				_cursor_size=$(awk -F= '/^[[:space:]]*cursorSize[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")
+				_cursor_theme="$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
+				_cursor_size="$(awk -F= '/^[[:space:]]*cursorSize[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="breeze_cursors"
-		elif command -v gnome-shell > "/dev/null" 2>&1; then
+		elif pgrep -u "${_uid}" -x mate-session > "/dev/null" 2>&1; then
 			if command -v gsettings > "/dev/null" 2>&1; then
-				_cursor_theme=$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")
-				_cursor_size=$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")
+				_cursor_theme="$(gsettings get org.mate.peripherals-mouse cursor-theme 2> "/dev/null" | tr -d "'\"")"
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
-		elif command -v mate-session > "/dev/null" 2>&1; then
+		elif pgrep -u "${_uid}" -x cinnamon > "/dev/null" 2>&1; then
 			if command -v gsettings > "/dev/null" 2>&1; then
-				_cursor_theme=$(gsettings get org.mate.peripherals-mouse cursor-theme 2> "/dev/null" | tr -d "'\"")
-			fi
-			if [ -z "${_cursor_theme}" ]; then
-				for _cand in mate Mate Adwaita; do
-					for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
-						if [ -d "${_p}/${_cand}/cursors" ]; then
-							_cursor_theme="${_cand}"
-							break 2
-						fi
-					done
-				done
+				_cursor_theme="$(gsettings get org.cinnamon.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
-		elif command -v cinnamon-session > "/dev/null" 2>&1; then
-			if command -v gsettings > "/dev/null" 2>&1; then
-				_cursor_theme=$(gsettings get org.cinnamon.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")
-			fi
-			if [ -z "${_cursor_theme}" ]; then
-				for _cand in Bibata-Modern-Classic DMZ-White Adwaita; do
-					for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
-						if [ -d "${_p}/${_cand}/cursors" ]; then
-							_cursor_theme="${_cand}"
-							break 2
-						fi
-					done
-				done
-			fi
-			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
-		elif command -v xfce4-session > "/dev/null" 2>&1; then
+		elif pgrep -u "${_uid}" -x xfce4-session > "/dev/null" 2>&1; then
 			_cursor_theme="Adwaita"
-		elif command -v lxqt-session > "/dev/null" 2>&1; then
-			_cursor_theme="breeze_cursors"
+		elif [ -n "${XDG_CURRENT_DESKTOP:-}" ]; then
+			case "${XDG_CURRENT_DESKTOP}" in
+				*GNOME*|*gnome*)
+					if command -v gsettings > "/dev/null" 2>&1; then
+						_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+						_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
+					fi
+					[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+					;;
+				*KDE*|*kde*|*Plasma*)
+					if [ -f "${HOME}/.config/kcminputrc" ]; then
+						_cursor_theme="$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
+						_cursor_size="$(awk -F= '/^[[:space:]]*cursorSize[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
+					fi
+					[ -z "${_cursor_theme}" ] && _cursor_theme="breeze_cursors"
+					;;
+				*MATE*|*mate*)         _cursor_theme="Adwaita" ;;
+				*Cinnamon*|*cinnamon*) _cursor_theme="Adwaita" ;;
+				*XFCE*|*xfce*)         _cursor_theme="Adwaita" ;;
+			esac
 		fi
 
 		if [ -z "${_cursor_theme}" ]; then
-			for _cand in Bibata-Modern-Classic Adwaita breeze_cursors DMZ-White default; do
+			if command -v gnome-shell > "/dev/null" 2>&1; then
+				if command -v gsettings > "/dev/null" 2>&1; then
+					_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+					_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
+				fi
+				[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+			elif command -v plasmashell > "/dev/null" 2>&1 || command -v startplasma-wayland > "/dev/null" 2>&1 || command -v startplasma-x11 > "/dev/null" 2>&1; then
+				if [ -f "${HOME}/.config/kcminputrc" ]; then
+					_cursor_theme="$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
+					_cursor_size="$(awk -F= '/^[[:space:]]*cursorSize[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
+				fi
+				[ -z "${_cursor_theme}" ] && _cursor_theme="breeze_cursors"
+			elif command -v mate-session > "/dev/null" 2>&1; then
+				_cursor_theme="Adwaita"
+			elif command -v cinnamon-session > "/dev/null" 2>&1; then
+				_cursor_theme="Adwaita"
+			elif command -v xfce4-session > "/dev/null" 2>&1; then
+				_cursor_theme="Adwaita"
+			elif command -v lxqt-session > "/dev/null" 2>&1; then
+				_cursor_theme="breeze_cursors"
+			fi
+		fi
+
+		if [ -z "${_cursor_theme}" ]; then
+			for _cand in Adwaita Bibata-Modern-Classic breeze_cursors DMZ-White default; do
 				for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
 					if [ -d "${_p}/${_cand}/cursors" ]; then
 						_cursor_theme="${_cand}"
