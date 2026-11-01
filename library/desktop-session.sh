@@ -59,13 +59,13 @@ if ! command -v _resolve_desktop_font > "/dev/null" 2>&1; then
 				return 0
 			fi
 			case "${_target_flavor}" in
-				kde|plasma)
+				kde|plasma|lxqt)
 					if fc-list : family 2> "/dev/null" | grep -qi "^Noto Sans$"; then
 						printf '%s\n' "Noto Sans"
 						return 0
 					fi
 					;;
-				gnome)
+				gnome|budgie)
 					for _f in "Adwaita Sans" "Cantarell"; do
 						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
 							printf '%s\n' "${_f}"
@@ -73,7 +73,31 @@ if ! command -v _resolve_desktop_font > "/dev/null" 2>&1; then
 						fi
 					done
 					;;
-				mate|cinnamon|xfce)
+				pantheon)
+					for _f in "Inter" "Open Sans" "Cantarell"; do
+						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
+							printf '%s\n' "${_f}"
+							return 0
+						fi
+					done
+					;;
+				deepin)
+					for _f in "Noto Sans" "Source Han Sans" "Cantarell"; do
+						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
+							printf '%s\n' "${_f}"
+							return 0
+						fi
+					done
+					;;
+				cosmic)
+					for _f in "Fira Sans" "Noto Sans"; do
+						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
+							printf '%s\n' "${_f}"
+							return 0
+						fi
+					done
+					;;
+				mate|cinnamon|xfce|lxde)
 					for _f in "Ubuntu" "DejaVu Sans"; do
 						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
 							printf '%s\n' "${_f}"
@@ -110,14 +134,29 @@ _setup_cursor_env() {
 
 	local _cursor_theme="" _target_size="${XCURSOR_SIZE:-24}"
 	case "${_flavor}" in
-		kde|plasma)
+		kde|plasma|lxqt)
 			_cursor_theme="breeze_cursors"
 			;;
-		gnome)
+		gnome|budgie)
 			if command -v gsettings > "/dev/null" 2>&1; then
 				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+			;;
+		pantheon)
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="elementary"
+			;;
+		deepin)
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme="$(gsettings get com.deepin.dde.dock cursor-theme 2> "/dev/null" | tr -d "'\"")"
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="bloom"
+			;;
+		cosmic)
+			_cursor_theme="cosmic"
 			;;
 		mate)
 			if command -v gsettings > "/dev/null" 2>&1; then
@@ -151,7 +190,7 @@ _setup_cursor_env() {
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
 			;;
-		xfce)
+		xfce|lxde)
 			_cursor_theme="Adwaita"
 			;;
 	esac
@@ -168,25 +207,58 @@ _setup_cursor_env() {
 			_flavor="cinnamon"
 		elif pgrep -u "${_uid}" -x xfce4-session > "/dev/null" 2>&1; then
 			_flavor="xfce"
+		elif pgrep -u "${_uid}" -x lxqt-session > "/dev/null" 2>&1; then
+			_flavor="lxqt"
+		elif pgrep -u "${_uid}" -x lxsession > "/dev/null" 2>&1; then
+			_flavor="lxde"
+		elif pgrep -u "${_uid}" -x budgie-daemon > "/dev/null" 2>&1; then
+			_flavor="budgie"
+		elif pgrep -u "${_uid}" -x io.elementary.wingpanel > "/dev/null" 2>&1; then
+			_flavor="pantheon"
+		elif pgrep -u "${_uid}" -x dde-desktop > "/dev/null" 2>&1; then
+			_flavor="deepin"
+		elif pgrep -u "${_uid}" -x cosmic-comp > "/dev/null" 2>&1; then
+			_flavor="cosmic"
 		elif [ -n "${XDG_CURRENT_DESKTOP:-}" ]; then
 			case "${XDG_CURRENT_DESKTOP}" in
-				*GNOME*|*gnome*)       _flavor="gnome" ;;
-				*KDE*|*kde*|*Plasma*)  _flavor="kde" ;;
-				*MATE*|*mate*)         _flavor="mate" ;;
-				*Cinnamon*|*cinnamon*) _flavor="cinnamon" ;;
-				*XFCE*|*xfce*)         _flavor="xfce" ;;
+				*GNOME*|*gnome*)        _flavor="gnome" ;;
+				*KDE*|*kde*|*Plasma*)   _flavor="kde" ;;
+				*MATE*|*mate*)          _flavor="mate" ;;
+				*Cinnamon*|*cinnamon*)  _flavor="cinnamon" ;;
+				*XFCE*|*xfce*)          _flavor="xfce" ;;
+				*LXQt*|*lxqt*)          _flavor="lxqt" ;;
+				*LXDE*|*lxde*)          _flavor="lxde" ;;
+				*Budgie*|*budgie*)      _flavor="budgie" ;;
+				*Pantheon*|*pantheon*)  _flavor="pantheon" ;;
+				*Deepin*|*deepin*|*DDE*) _flavor="deepin" ;;
+				*COSMIC*|*cosmic*)      _flavor="cosmic" ;;
 			esac
 		fi
 
 		case "${_flavor}" in
-			kde)
+			kde|lxqt)
 				_cursor_theme="breeze_cursors"
 				;;
-			gnome)
+			gnome|budgie)
 				if command -v gsettings > "/dev/null" 2>&1; then
 					_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
 				fi
 				[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+				;;
+			pantheon)
+				if command -v gsettings > "/dev/null" 2>&1; then
+					_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+				fi
+				[ -z "${_cursor_theme}" ] && _cursor_theme="elementary"
+				;;
+			deepin)
+				if command -v gsettings > "/dev/null" 2>&1; then
+					_cursor_theme="$(gsettings get com.deepin.dde.dock cursor-theme 2> "/dev/null" | tr -d "'\"")"
+				fi
+				[ -z "${_cursor_theme}" ] && _cursor_theme="bloom"
+				;;
+			cosmic)
+				_cursor_theme="cosmic"
 				;;
 			mate)
 				if command -v gsettings > "/dev/null" 2>&1; then
@@ -200,7 +272,7 @@ _setup_cursor_env() {
 				fi
 				[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
 				;;
-			xfce)
+			xfce|lxde)
 				_cursor_theme="Adwaita"
 				;;
 		esac
@@ -222,6 +294,16 @@ _setup_cursor_env() {
 			_cursor_theme="Adwaita"
 		elif command -v lxqt-session > "/dev/null" 2>&1; then
 			_cursor_theme="breeze_cursors"
+		elif command -v lxsession > "/dev/null" 2>&1; then
+			_cursor_theme="Adwaita"
+		elif command -v budgie-desktop > "/dev/null" 2>&1; then
+			_cursor_theme="Adwaita"
+		elif command -v pantheon-session > "/dev/null" 2>&1 || command -v io.elementary.wingpanel > "/dev/null" 2>&1; then
+			_cursor_theme="elementary"
+		elif command -v startdde > "/dev/null" 2>&1 || command -v dde-session > "/dev/null" 2>&1; then
+			_cursor_theme="bloom"
+		elif command -v cosmic-session > "/dev/null" 2>&1 || command -v cosmic-comp > "/dev/null" 2>&1; then
+			_cursor_theme="cosmic"
 		fi
 	fi
 
@@ -236,7 +318,7 @@ _setup_cursor_env() {
 	fi
 
 	if [ -z "${_valid_theme}" ]; then
-		for _c in "Adwaita" "Bibata-Modern-Classic" "breeze_cursors" "DMZ-White" "default"; do
+		for _c in "Adwaita" "Bibata-Modern-Classic" "breeze_cursors" "elementary" "bloom" "cosmic" "DMZ-White" "default"; do
 			for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
 				if [ -d "${_p}/${_c}/cursors" ]; then
 					_valid_theme="${_c}"
@@ -302,14 +384,30 @@ _wayland_session_env() {
 	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="Breeze-Dark:dark"
 	export QT_QPA_PLATFORM="wayland;xcb"
 	case "${_theme_flavor}" in
-		kde)
+		kde|plasma)
 			export XDG_CURRENT_DESKTOP="KDE" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze"
+			;;
+		lxqt)
+			export XDG_CURRENT_DESKTOP="LXQt" QT_QPA_PLATFORMTHEME="lxqt" QT_STYLE_OVERRIDE="Breeze"
+			;;
+		cosmic)
+			export XDG_CURRENT_DESKTOP="COSMIC" QT_QPA_PLATFORMTHEME="cosmic"
+			;;
+		budgie)
+			export XDG_CURRENT_DESKTOP="Budgie:GNOME" QT_QPA_PLATFORMTHEME="qt6ct"
+			;;
+		pantheon)
+			export XDG_CURRENT_DESKTOP="Pantheon" QT_QPA_PLATFORMTHEME="qt6ct"
+			;;
+		deepin)
+			export XDG_CURRENT_DESKTOP="DDE" QT_QPA_PLATFORMTHEME="deepin"
 			;;
 		*)
 			case "${_theme_flavor}" in
 				cinnamon) export XDG_CURRENT_DESKTOP="X-Cinnamon" ;;
 				mate)     export XDG_CURRENT_DESKTOP="MATE" ;;
 				xfce)     export XDG_CURRENT_DESKTOP="XFCE" ;;
+				lxde)     export XDG_CURRENT_DESKTOP="LXDE" ;;
 				*)        export XDG_CURRENT_DESKTOP="GNOME" ;;
 			esac
 			unset QT_STYLE_OVERRIDE 2> "/dev/null" || true
@@ -343,14 +441,30 @@ _x11_session_env() {
 	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="Breeze-Dark:dark"
 	case "${_theme_flavor}" in
-		kde)
+		kde|plasma)
 			export XDG_CURRENT_DESKTOP="KDE" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze"
+			;;
+		lxqt)
+			export XDG_CURRENT_DESKTOP="LXQt" QT_QPA_PLATFORMTHEME="lxqt" QT_STYLE_OVERRIDE="Breeze"
+			;;
+		cosmic)
+			export XDG_CURRENT_DESKTOP="COSMIC" QT_QPA_PLATFORMTHEME="cosmic"
+			;;
+		budgie)
+			export XDG_CURRENT_DESKTOP="Budgie:GNOME" QT_QPA_PLATFORMTHEME="qt6ct"
+			;;
+		pantheon)
+			export XDG_CURRENT_DESKTOP="Pantheon" QT_QPA_PLATFORMTHEME="qt6ct"
+			;;
+		deepin)
+			export XDG_CURRENT_DESKTOP="DDE" QT_QPA_PLATFORMTHEME="deepin"
 			;;
 		*)
 			case "${_theme_flavor}" in
 				cinnamon) export XDG_CURRENT_DESKTOP="X-Cinnamon" ;;
 				mate)     export XDG_CURRENT_DESKTOP="MATE" ;;
 				xfce)     export XDG_CURRENT_DESKTOP="XFCE" ;;
+				lxde)     export XDG_CURRENT_DESKTOP="LXDE" ;;
 				*)        export XDG_CURRENT_DESKTOP="GNOME" ;;
 			esac
 			unset QT_STYLE_OVERRIDE 2> "/dev/null" || true
@@ -794,6 +908,10 @@ _start_wayland() {
 		hyprland|hypr) _try_wayland Hyprland hyprland ;;
 		sway)          _try_wayland sway ;;
 		cosmic)        _try_wayland cosmic-session start-cosmic ;;
+		lxqt)          _try_wayland lxqt-wayland-session startlxqt-wayland ;;
+		budgie)        _try_wayland budgie-desktop ;;
+		pantheon)      _try_wayland pantheon-session io.elementary.wingpanel ;;
+		deepin)        _try_wayland startdde dde-session ;;
 		niri)          _try_wayland niri-session niri ;;
 		river)         _try_wayland river ;;
 		wayfire)       _try_wayland wayfire ;;
@@ -801,7 +919,7 @@ _start_wayland() {
 		dwl)           _try_wayland dwl ;;
 		hikari)        _try_wayland hikari ;;
 		weston)        _try_wayland weston ;;
-		"")            _try_wayland startplasma-wayland plasma-wayland-session gnome-session Hyprland hyprland sway cosmic-session start-cosmic niri-session niri river wayfire labwc dwl hikari weston ;;
+		"")            _try_wayland startplasma-wayland plasma-wayland-session gnome-session Hyprland hyprland sway cosmic-session start-cosmic lxqt-wayland-session startlxqt-wayland budgie-desktop pantheon-session startdde niri-session niri river wayfire labwc dwl hikari weston ;;
 		*)             _try_wayland "${1}" ;;
 	esac
 }
@@ -816,10 +934,14 @@ _start_xorg() {
 		cinnamon)   _try_xorg cinnamon-session ;;
 		lxqt)       _try_xorg startlxqt ;;
 		lxde)       _try_xorg startlxde ;;
+		budgie)     _try_xorg budgie-desktop ;;
+		pantheon)   _try_xorg pantheon-session io.elementary.wingpanel ;;
+		deepin)     _try_xorg startdde dde-session ;;
+		cosmic)     _try_xorg start-cosmic cosmic-session ;;
 		openbox)    _try_xorg openbox-session openbox ;;
 		"")
 			[ -f "${HOME}/.xinitrc" ] || [ -f "${HOME}/.xsession" ] || [ -f "${HOME}/.Xclients" ] && _exec_x11
-			_try_xorg startplasma-x11 startxfce4 gnome-session mate-session cinnamon-session startlxqt startlxde openbox-session openbox
+			_try_xorg startplasma-x11 startxfce4 gnome-session mate-session cinnamon-session startlxqt startlxde budgie-desktop pantheon-session startdde cosmic-session openbox-session openbox
 			_exec_x11
 			;;
 		*) _try_xorg "${1}" ;;
@@ -829,12 +951,41 @@ _start_xorg() {
 start-session() {
 	_sanitize_graphical_env
 	[ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ] && _ui_warn "Uma sessão gráfica já está ativa (${WAYLAND_DISPLAY:-${DISPLAY}})."
-	local _type="${1:-}"
-	local _env="${2:-}"
+	local _type=""
+	local _env=""
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			way|wayland)   _type="way"; shift ;;
+			xorg|x11)      _type="xorg"; shift ;;
+			-g|--gnome)    _env="gnome"; shift ;;
+			-k|--kde)      _env="kde"; shift ;;
+			-x|--xfce)     _env="xfce"; shift ;;
+			-m|--mate)     _env="mate"; shift ;;
+			-c|--cinnamon) _env="cinnamon"; shift ;;
+			--lxqt)        _env="lxqt"; shift ;;
+			--lxde)        _env="lxde"; shift ;;
+			--budgie)      _env="budgie"; shift ;;
+			--pantheon)    _env="pantheon"; shift ;;
+			--deepin)      _env="deepin"; shift ;;
+			--cosmic)      _env="cosmic"; shift ;;
+			--)            shift; break ;;
+			*)
+				if [ -z "${_type}" ]; then
+					case "$1" in
+						way*|xorg*|x11*) _type="$1" ;;
+						*) _env="$1" ;;
+					esac
+				elif [ -z "${_env}" ]; then
+					_env="$1"
+				fi
+				shift
+				;;
+		esac
+	done
 	case "${_type}" in
 		way|wayland) _start_wayland "${_env}" || { _ui_err "Nenhum compositor Wayland '${_env:-detectado}' encontrado."; return 1; } ;;
 		xorg|x11)    _start_xorg "${_env}" || { _ui_err "Nenhum ambiente Xorg '${_env:-detectado}' encontrado."; return 1; } ;;
-		"")          _start_wayland "" || _start_xorg "" || { _ui_err "Nenhum ambiente gráfico encontrado."; return 1; } ;;
+		"")          _start_wayland "${_env}" || _start_xorg "${_env}" || { _ui_err "Nenhum ambiente gráfico encontrado."; return 1; } ;;
 		*)           _start_wayland "${_type}" || _start_xorg "${_type}" || { _ui_err "Ambiente '${_type}' não encontrado."; return 1; } ;;
 	esac
 }
@@ -848,15 +999,33 @@ alias xorg="desktop-session-x11" x11="desktop-session-x11" start-xorg="desktop-s
 window-manager-wayland() {
 	unset EMACS_OS_MODE
 	_sanitize_graphical_env
+	local _flavor=""
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			-g|--gnome)    _flavor="gnome"; shift ;;
+			-k|--kde)      _flavor="kde"; shift ;;
+			-x|--xfce)     _flavor="xfce"; shift ;;
+			-m|--mate)     _flavor="mate"; shift ;;
+			-c|--cinnamon) _flavor="cinnamon"; shift ;;
+			--lxqt)        _flavor="lxqt"; shift ;;
+			--lxde)        _flavor="lxde"; shift ;;
+			--budgie)      _flavor="budgie"; shift ;;
+			--pantheon)    _flavor="pantheon"; shift ;;
+			--deepin)      _flavor="deepin"; shift ;;
+			--cosmic)      _flavor="cosmic"; shift ;;
+			--)            shift; break ;;
+			*)             break ;;
+		esac
+	done
 	if [ "$#" -gt 0 ]; then
 		start-session way "$@"
 		return $?
 	fi
-	_wayland_session_env ""
+	_wayland_session_env "${_flavor}"
 
 	local _cur_theme="${XCURSOR_THEME}"
 	local _cur_size="${XCURSOR_SIZE:-24}"
-	local _ui_font="$(_resolve_desktop_font "")"
+	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
 
 	local _wm_term="foot -o dpi-aware=no"
 	for _t in foot alacritty kitty xterm; do
@@ -873,6 +1042,180 @@ window-manager-wayland() {
 	local _emacs_script="${_run_dir}/wwm-emacs-$$.sh"
 	local _menu_script="${_run_dir}/wwm-menu-$$.sh"
 	local _status_script="${_run_dir}/wwm-status-$$.sh"
+	local _bar_script=""
+
+	local _has_gtk3_bar=0
+	if command -v python3 > "/dev/null" 2>&1 && python3 -c 'import gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk' > "/dev/null" 2>&1; then
+		_has_gtk3_bar=1
+		_bar_script="${_run_dir}/wwm-bar-$$.py"
+		cat << 'EOF_WBAR' >| "${_bar_script}"
+import os, sys, subprocess, json, datetime
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, Gdk, GLib
+
+class WwmBar(Gtk.Window):
+    def __init__(self):
+        super().__init__(type=Gtk.WindowType.TOPLEVEL)
+        self.set_wmclass("wwm-bar", "wwm-bar")
+        self.set_title("wwm-bar")
+        self.set_decorated(False)
+        self.set_resizable(False)
+
+        font_name = os.environ.get("WWM_FONT", "JetBrainsMono Nerd Font")
+
+        css_provider = Gtk.CssProvider()
+        css = f"""
+        window {{
+            background-color: #1e1e22;
+            border-bottom: 1px solid #38383d;
+            padding: 0;
+            margin: 0;
+        }}
+        * {{
+            font-family: "{font_name}", "JetBrainsMono Nerd Font", monospace;
+            font-size: 11px;
+        }}
+        button {{
+            padding: 1px 8px;
+            margin: 2px 2px;
+            border-radius: 3px;
+            min-height: 22px;
+            background: #2b2b30;
+            color: #ffffff;
+            border: 1px solid #3584e4;
+        }}
+        button:hover {{
+            background: #3584e4;
+            color: #ffffff;
+        }}
+        button.ws-btn {{
+            padding: 1px 8px;
+            margin: 2px 2px;
+            border: 1px solid #38383d;
+            background: #2b2b30;
+            color: #9a9996;
+            font-weight: normal;
+        }}
+        button.ws-btn:hover {{
+            background: #38383d;
+            color: #ffffff;
+        }}
+        button.ws-active {{
+            background: #3584e4;
+            color: #ffffff;
+            font-weight: bold;
+            border: 1px solid #3584e4;
+        }}
+        button.ws-active:hover {{
+            background: #4a96ef;
+            color: #ffffff;
+        }}
+        button.danger-btn {{
+            border: 1px solid #e01b24;
+        }}
+        button.danger-btn:hover {{
+            background: #e01b24;
+            color: #ffffff;
+        }}
+        label.clock-lbl {{
+            color: #9a9996;
+            font-size: 11px;
+            margin: 0 10px;
+        }}
+        """
+        css_provider.load_from_data(css.encode("utf-8"))
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(),
+            css_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        main_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.add(main_box)
+
+        self.ws_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        main_box.pack_start(self.ws_box, False, False, 4)
+
+        center_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        main_box.pack_start(center_box, True, True, 0)
+
+        actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        main_box.pack_end(actions_box, False, False, 4)
+
+        self.clock_lbl = Gtk.Label()
+        self.clock_lbl.get_style_context().add_class("clock-lbl")
+        actions_box.pack_end(self.clock_lbl, False, False, 0)
+
+        btn_exit = Gtk.Button(label="[ Exit ]")
+        btn_exit.get_style_context().add_class("danger-btn")
+        btn_exit.connect("clicked", lambda b: subprocess.Popen(["swaymsg", "exit"]))
+        actions_box.pack_end(btn_exit, False, False, 0)
+
+        btn_close = Gtk.Button(label="[ Close ]")
+        btn_close.get_style_context().add_class("danger-btn")
+        btn_close.connect("clicked", lambda b: subprocess.Popen(["swaymsg", "kill"]))
+        actions_box.pack_end(btn_close, False, False, 0)
+
+        actions = [
+            ("[ Menu ]", os.environ.get("WWM_MENU", "")),
+            ("[ Emacs ]", os.environ.get("WWM_EMACS", "")),
+            ("[ Files ]", os.environ.get("WWM_FILES", "")),
+            ("[ Terminal ]", os.environ.get("WWM_TERM", "")),
+            ("[ Web Browser ]", os.environ.get("WWM_BROWSER", "")),
+        ]
+        for name, cmd in actions:
+            if not cmd:
+                continue
+            b = Gtk.Button(label=name)
+            b.connect("clicked", lambda widget, c=cmd: subprocess.Popen([c]))
+            actions_box.pack_end(b, False, False, 0)
+
+        self.update_workspaces()
+        self.update_clock()
+        GLib.timeout_add(250, self.update_workspaces)
+        GLib.timeout_add(1000, self.update_clock)
+        self.show_all()
+
+    def update_clock(self):
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        self.clock_lbl.set_text(now)
+        return True
+
+    def update_workspaces(self):
+        try:
+            res = subprocess.run(["swaymsg", "-t", "get_workspaces"], capture_output=True, text=True)
+            ws_list = json.loads(res.stdout)
+            focused_num = 1
+            active_nums = set()
+            for ws in ws_list:
+                num = ws.get("num")
+                if num is not None:
+                    active_nums.add(num)
+                if ws.get("focused"):
+                    focused_num = num
+        except Exception:
+            focused_num = 1
+            active_nums = set([1])
+
+        all_ws = sorted(list(set(range(1, 6)).union(active_nums)))
+        for child in self.ws_box.get_children():
+            self.ws_box.remove(child)
+
+        for num in all_ws:
+            b = Gtk.Button(label=str(num))
+            b.get_style_context().add_class("ws-btn")
+            if num == focused_num:
+                b.get_style_context().add_class("ws-active")
+            b.connect("clicked", lambda widget, n=num: subprocess.Popen(["swaymsg", "workspace", "number", str(n)]))
+            self.ws_box.pack_start(b, False, False, 0)
+        self.ws_box.show_all()
+        return True
+
+win = WwmBar()
+Gtk.main()
+EOF_WBAR
+	fi
 
 	cat << EOF >| "${_term_script}"
 #!/bin/sh
@@ -1039,7 +1382,16 @@ bindsym Mod4+Tab focus next
 bindsym Mod4+q kill
 bindsym Mod1+F4 kill
 bindsym Mod4+Shift+q exec swaymsg exit
-
+EOF
+		if [ "${_has_gtk3_bar}" -eq 1 ]; then
+			cat << EOF >> "${_sway_cfg}"
+floating_minimum_size 1 x 1
+gaps top 30
+for_window [instance="wwm-bar"] floating enable, sticky enable, border none, resize set 100 ppt 30 px, move absolute position 0 0
+exec env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}"
+EOF
+		else
+			cat << EOF >> "${_sway_cfg}"
 bar {
     position bottom
     status_command "${_status_script}"
@@ -1053,9 +1405,10 @@ bar {
     }
 }
 EOF
+		fi
 		_exec_wayland sway -c "${_sway_cfg}"
 		local _sway_ret=$?
-		rm -f "${_sway_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" 2> "/dev/null" || true
+		rm -f "${_sway_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
 		return "${_sway_ret}"
 	elif command -v labwc > "/dev/null" 2>&1; then
 		local _labwc_dir="${XDG_RUNTIME_DIR:-/tmp}/labwc-wm-$$"
@@ -1185,22 +1538,40 @@ alias wwm="window-manager-wayland"
 window-manager-x11() {
 	unset EMACS_OS_MODE
 	_sanitize_graphical_env
+	local _flavor=""
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			-g|--gnome)    _flavor="gnome"; shift ;;
+			-k|--kde)      _flavor="kde"; shift ;;
+			-x|--xfce)     _flavor="xfce"; shift ;;
+			-m|--mate)     _flavor="mate"; shift ;;
+			-c|--cinnamon) _flavor="cinnamon"; shift ;;
+			--lxqt)        _flavor="lxqt"; shift ;;
+			--lxde)        _flavor="lxde"; shift ;;
+			--budgie)      _flavor="budgie"; shift ;;
+			--pantheon)    _flavor="pantheon"; shift ;;
+			--deepin)      _flavor="deepin"; shift ;;
+			--cosmic)      _flavor="cosmic"; shift ;;
+			--)            shift; break ;;
+			*)             break ;;
+		esac
+	done
 	if [ "$#" -gt 0 ]; then
 		start-session xorg "$@"
 		return $?
 	fi
-	_x11_session_env ""
+	_x11_session_env "${_flavor}"
 
-	local _ui_font="$(_resolve_desktop_font "")"
+	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
 
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
 	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
 	cat << 'OTM' >| "${_kiosk_theme_dir}/themerc"
-border.width: 2
+border.width: 3
 border.color: #38383d
 padding.width: 8
 padding.height: 6
-window.handle.width: 0
+window.handle.width: 3
 window.client.padding.width: 0
 
 window.active.border.color: #3584e4
@@ -1230,7 +1601,7 @@ window.inactive.label.text.color: #9a9996
 window.inactive.handle.bg: flat solid
 window.inactive.handle.bg.color: #1e1e22
 window.inactive.grip.bg: flat solid
-window.inactive.grip.bg.color: #38383d
+window.inactive.grip.bg.color: #2b2b30
 window.inactive.button.unpressed.bg: parentrelative
 window.inactive.button.unpressed.image.color: #9a9996
 window.inactive.button.pressed.bg: flat solid
@@ -1457,14 +1828,60 @@ EOF
     <doubleClickTime>500</doubleClickTime>
     <screenEdgeWarpTime>0</screenEdgeWarpTime>
     <screenEdgeWarpMouse>false</screenEdgeWarpMouse>
-    <context name="Root">
-      <mousebind button="Right" action="Press">
-        <action name="ShowMenu"><menu>root-menu</menu></action>
-      </mousebind>
+    <context name="Frame">
+      <mousebind button="A-Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="A-Left" action="Drag"><action name="Move"/></mousebind>
+      <mousebind button="A-Right" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="A-Right" action="Drag"><action name="Resize"/></mousebind>
     </context>
     <context name="Titlebar">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
       <mousebind button="Left" action="Drag"><action name="Move"/></mousebind>
       <mousebind button="Left" action="DoubleClick"><action name="ToggleMaximize"/></mousebind>
+    </context>
+    <context name="Top">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Resize"><edge>top</edge></action></mousebind>
+    </context>
+    <context name="Bottom">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Resize"><edge>bottom</edge></action></mousebind>
+    </context>
+    <context name="Left">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Resize"><edge>left</edge></action></mousebind>
+    </context>
+    <context name="Right">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Resize"><edge>right</edge></action></mousebind>
+    </context>
+    <context name="TLCorner">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Resize"/></mousebind>
+    </context>
+    <context name="TRCorner">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Resize"/></mousebind>
+    </context>
+    <context name="BLCorner">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Resize"/></mousebind>
+    </context>
+    <context name="BRCorner">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Resize"/></mousebind>
+    </context>
+    <context name="Handle">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Resize"><edge>bottom</edge></action></mousebind>
+    </context>
+    <context name="BLGrip">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Resize"/></mousebind>
+    </context>
+    <context name="BRGrip">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Resize"/></mousebind>
     </context>
     <context name="Iconify">
       <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
@@ -1482,6 +1899,11 @@ EOF
       <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
       <mousebind button="Middle" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
       <mousebind button="Right" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+    </context>
+    <context name="Root">
+      <mousebind button="Right" action="Press">
+        <action name="ShowMenu"><menu>root-menu</menu></action>
+      </mousebind>
     </context>
   </mouse>
   <menu>

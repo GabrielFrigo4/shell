@@ -167,15 +167,76 @@ A identidade visual equilibra a sobriedade dos tons escuros do Adwaita com o con
 
 Para manter harmonia tipográfica entre Wayland, X11 e terminais emulados, a função `_resolve_desktop_font` inspeciona as fontes disponíveis via `fc-list`:
 
-1. **Prioridade Absoluta:** `JetBrainsMono Nerd Font` (fonte padrão homologada no ecossistema).
+1. **Prioridade Primária Universal:** `JetBrainsMono Nerd Font` (fonte canônica homologada no ecossistema).
 2. **Resolução Contextual por Desktop Environment (DE):**
     - **KDE / Plasma:** Fallback para `Noto Sans`.
     - **GNOME:** Fallback para `Adwaita Sans` ou `Cantarell`.
     - **MATE / Cinnamon / XFCE:** Fallback para `Ubuntu` ou `DejaVu Sans`.
+    - **LXQt:** Fallback para `Noto Sans` ou `Sans Serif`.
+    - **LXDE:** Fallback para `DejaVu Sans`.
+    - **Budgie:** Fallback para `Adwaita Sans`, `Ubuntu` ou `Cantarell`.
+    - **Pantheon:** Fallback para `Inter`, `Open Sans` ou `Cantarell`.
+    - **Deepin:** Fallback para `Noto Sans`.
+    - **COSMIC:** Fallback para `Fira Sans` ou `Cantarell`.
 3. **Fallback Seguro Universal:** `Sans`.
 
-### 3. Componentes Visuais de Sessão & Quiosque
+| Desktop Environment | Família Tipográfica Primária | Família de Fallback                                                                  |
+| :------------------ | :--------------------------- | :----------------------------------------------------------------------------------- |
+| **KDE (Plasma)**    | `JetBrainsMono Nerd Font`    | `Noto Sans` $\rightarrow$ `Sans`                                                     |
+| **GNOME**           | `JetBrainsMono Nerd Font`    | `Adwaita Sans` $\rightarrow$ `Cantarell` $\rightarrow$ `Sans`                        |
+| **MATE**            | `JetBrainsMono Nerd Font`    | `Ubuntu` $\rightarrow$ `DejaVu Sans` $\rightarrow$ `Sans`                            |
+| **Cinnamon**        | `JetBrainsMono Nerd Font`    | `Ubuntu` $\rightarrow$ `DejaVu Sans` $\rightarrow$ `Sans`                            |
+| **XFCE**            | `JetBrainsMono Nerd Font`    | `Ubuntu` $\rightarrow$ `DejaVu Sans` $\rightarrow$ `Sans`                            |
+| **LXQt**            | `JetBrainsMono Nerd Font`    | `Noto Sans` $\rightarrow$ `Sans Serif` $\rightarrow$ `Sans`                          |
+| **LXDE**            | `JetBrainsMono Nerd Font`    | `DejaVu Sans` $\rightarrow$ `Sans`                                                   |
+| **Budgie**          | `JetBrainsMono Nerd Font`    | `Adwaita Sans` $\rightarrow$ `Ubuntu` $\rightarrow$ `Cantarell` $\rightarrow$ `Sans` |
+| **Pantheon**        | `JetBrainsMono Nerd Font`    | `Inter` $\rightarrow$ `Open Sans` $\rightarrow$ `Cantarell` $\rightarrow$ `Sans`     |
+| **Deepin**          | `JetBrainsMono Nerd Font`    | `Noto Sans` $\rightarrow$ `Sans`                                                     |
+| **COSMIC**          | `JetBrainsMono Nerd Font`    | `Fira Sans` $\rightarrow$ `Cantarell` $\rightarrow$ `Sans`                           |
+| **Standalone WMs**  | `JetBrainsMono Nerd Font`    | `Sans`                                                                               |
 
-- **Barra Interativa Swaybar no `wwm`:** No gerenciador Wayland nativo, a `swaybar` executa em streaming JSON contínuo (`"click_events": true`). Apresenta botões visuais emoldurados para aplicativos essenciais (`[ Web Browser ]`, `[ Terminal ]`, `[ Files ]`, `[ Emacs ]`, `[ Menu ]`), botão de fechamento da janela em foco (`[ Close ]`) e encerramento de sessão (`[ Exit ]`), respondendo diretamente aos cliques do mouse via leitura contínua no stdin.
-- **Menu Dinâmico Categorizado no `xwm`:** No ambiente X11 com Openbox, um parser procedural em AWK varre os arquivos `.desktop` do sistema em `/usr/share/applications`, `/usr/local/share/applications` e Flatpak, agrupando as aplicações em categorias canônicas: Desenvolvimento (`dev`), Rede (`net`), Escritório (`office`), Multimídia (`media`) e Sistema (`sys`).
-- **Abas Auto-Ocultáveis no `wgui`:** No lançador gráfico efêmero sob Wayland, o processo `wgui-tabwatch` monitora ativamente a contagem de janelas. Quando duas ou mais janelas estão presentes (`_count >= 2`), ativa o layout tabulado com bordas (`layout tabbed, border normal 1`). Em janela única, comuta para tela limpa sem bordas (`layout splith, border none`), garantindo máxima imersão.
+### 3. Pipeline de Cursor & Precedência Canônica (`_setup_cursor_env`)
+
+A exportação de `XCURSOR_THEME`, `XCURSOR_SIZE` (`24px`) e `XCURSOR_PATH` obedece rigorosamente à cascata de prioridade:
+`KDE > GNOME > MATE > Cinnamon > XFCE > LXQt > LXDE > Budgie > Pantheon > Deepin > COSMIC > Fallback (Adwaita -> breeze_cursors -> default)`.
+
+| Desktop Environment    | Tema de Cursor Primário                                          | Fonte de Configuração / Fallback                          |
+| :--------------------- | :--------------------------------------------------------------- | :-------------------------------------------------------- |
+| **KDE (Plasma)**       | `breeze_cursors`                                                 | `~/.config/kcminputrc` (cursorTheme, cursorSize)          |
+| **GNOME**              | `Adwaita`                                                        | GSettings (`org.gnome.desktop.interface cursor-theme`)    |
+| **MATE**               | `Adwaita`                                                        | GSettings (`org.mate.peripherals-mouse cursor-theme`)     |
+| **Cinnamon**           | `Adwaita`                                                        | GSettings (`org.cinnamon.desktop.interface cursor-theme`) |
+| **XFCE**               | `Adwaita`                                                        | `xfconf-query` / `~/.icons/Adwaita`                       |
+| **LXQt**               | `breeze_cursors`                                                 | `~/.config/lxqt/session.conf` / `breeze_cursors`          |
+| **LXDE**               | `Adwaita`                                                        | `~/.config/lxsession/LXDE/desktop.conf`                   |
+| **Budgie**             | `Adwaita`                                                        | GSettings (`org.gnome.desktop.interface cursor-theme`)    |
+| **Pantheon**           | `Adwaita`                                                        | GSettings (`org.gnome.desktop.interface cursor-theme`)    |
+| **Deepin**             | `Adwaita`                                                        | `com.deepin.dde.appearance cursor-theme` / `Adwaita`      |
+| **COSMIC**             | `Adwaita`                                                        | Configurações COSMIC / `Adwaita`                          |
+| **Fallback Universal** | `Adwaita` $\rightarrow$ `breeze_cursors` $\rightarrow$ `default` | Diretórios XDG / `/usr/share/icons`                       |
+
+### 4. Matriz de Harmonização de Temas GTK & Qt
+
+| Desktop Environment | Tema GTK Canônico                         | Estilo de Widget Qt (`QT_STYLE_OVERRIDE`) | Plataforma Qt (`QT_QPA_PLATFORMTHEME`)                         |
+| :------------------ | :---------------------------------------- | :---------------------------------------- | :------------------------------------------------------------- |
+| **KDE (Plasma)**    | `Breeze-Dark`                             | `Breeze-Dark` / `Breeze`                  | `xdgdesktopportal`                                             |
+| **GNOME**           | `adw-gtk3-dark` / GSettings               | _(Padrão via Platform Theme)_             | `qt6ct` $\rightarrow$ `qt5ct` $\rightarrow$ `xdgdesktopportal` |
+| **MATE**            | `Yaru-MATE-dark` / `BlackMATE`            | _(Padrão via Platform Theme)_             | `gtk3`                                                         |
+| **Cinnamon**        | `Mint-Y-Dark`                             | _(Padrão via Platform Theme)_             | `gtk3`                                                         |
+| **XFCE**            | `Greybird-dark`                           | _(Padrão via Platform Theme)_             | `gtk3`                                                         |
+| **LXQt**            | `Breeze-Dark` / `Arc-Dark`                | `Breeze-Dark` / `Breeze`                  | `lxqt`                                                         |
+| **LXDE**            | `Clearlooks-Phenix` / `Arc-Dark`          | _(Padrão via Platform Theme)_             | `gtk3`                                                         |
+| **Budgie**          | `Materia-dark` / `Arc-Dark`               | _(Padrão via Platform Theme)_             | `qt6ct` $\rightarrow$ `qt5ct` $\rightarrow$ `xdgdesktopportal` |
+| **Pantheon**        | `io.elementary.stylesheet.blueberry-dark` | _(Padrão via Platform Theme)_             | `qt6ct` $\rightarrow$ `qt5ct` $\rightarrow$ `xdgdesktopportal` |
+| **Deepin**          | `deepin-dark`                             | `chameleon`                               | `deepin`                                                       |
+| **COSMIC**          | `cosmic-dark`                             | _(Padrão via Platform Theme)_             | `qt6ct` $\rightarrow$ `qt5ct` $\rightarrow$ `xdgdesktopportal` |
+| **Standalone WMs**  | `adw-gtk3-dark`                           | _(Padrão via Platform Theme)_             | Wayland: `qt6ct`/`qt5ct`/`xdgdesktopportal` \| X11: `gtk3`     |
+
+### 5. Componentes Visuais de Sessão & Quiosque
+
+- **Barra Interativa Swaybar no `wwm` com Feedback `:hover`:** No gerenciador Wayland nativo, a `swaybar` executa em streaming JSON contínuo (`"click_events": true`). Apresenta botões visuais emoldurados para aplicativos essenciais (`[ Web Browser ]`, `[ Terminal ]`, `[ Files ]`, `[ Emacs ]`, `[ Menu ]`), botão de fechamento da janela em foco (`[ Close ]`) e encerramento de sessão (`[ Exit ]`). O script trata eventos de foco e cursor do mouse em tempo real, fornecendo realce visual de hover com transições de cor (acento azul `#3584e4` em navegação, alerta vermelho `#e01b24` nos botões de saída), respondendo instantaneamente a cliques via leitura assíncrona no stdin.
+- **Menu Dinâmico & Ergonomia SSD no `xwm`:** No ambiente X11 com Openbox, um parser procedural em AWK varre os arquivos `.desktop` do sistema em `/usr/share/applications`, `/usr/local/share/applications` e Flatpak, agrupando as aplicações em categorias canônicas: Desenvolvimento (`dev`), Rede (`net`), Escritório (`office`), Multimídia (`media`) e Sistema (`sys`). Além disso, o `xwm` implementa suporte completo a decorações server-side (SSD) com redimensionamento fluido em todas as 4 bordas e 4 cantos (`Top`, `Bottom`, `Left`, `Right`, `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`), permitindo arrastar bordas com o mouse sem depender de combinações modais de teclado (`Alt + Right Click`).
+- **Abas Dinâmicas no `xgui` e `wgui` ($\ge 2$ Janelas):** Nos quiosques flutuantes sob Wayland e X11, o monitoramento de janelas ativas atua em tempo real:
+    - **Janela Única (`_count < 2`):** Interface imersiva de aplicação única com bordas ocultas (`border none` / `layout splith`).
+    - **Múltiplas Janelas (`_count >= 2`):** Assim que uma segunda janela, caixa de diálogo ou visualizador modal é aberto, o compositor comuta dinamicamente para barra de abas (`layout tabbed, border normal 1`).
+    - **Estilização de Abas Adwaita-Breeze Dark Fusion:** Fundo inativo em `#1e1e22`, aba ativa em `#2b2b30`, linha de realce em azul `#3584e4`, bordas em `#38383d` e transições `:hover` suaves, mantendo elegância visual e foco estrito na tarefa.

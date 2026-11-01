@@ -3,7 +3,7 @@
 # ----------------------------------------------------------------
 
 ### --------------------------------
-### Detect Desktop Environment
+### DETECT DESKTOP ENVIRONMENT
 ### --------------------------------
 _detect_desktop_environment() {
 	[ -n "${_DETECTED_DESKTOP_ENV+x}" ] && echo "${_DETECTED_DESKTOP_ENV}" && return 0
@@ -13,20 +13,80 @@ _detect_desktop_environment() {
 		return 0
 	fi
 
-	local _desktop="${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION}}"
-	case "${_desktop}" in
-		*[Kk][Dd][Ee]*|*[Pp]lasma*)                                            _DETECTED_DESKTOP_ENV="kde" ;;
-		*[Gg][Nn][Oo][Mm][Ee]*)                                                _DETECTED_DESKTOP_ENV="gnome" ;;
-		*[Xx][Ff][Cc][Ee]*)                                                    _DETECTED_DESKTOP_ENV="xfce" ;;
-		*[Cc][Ii][Nn][Nn][Aa][Mm][Oo][Nn]*)                                    _DETECTED_DESKTOP_ENV="cinnamon" ;;
-		*[Mm][Aa][Tt][Ee]*)                                                    _DETECTED_DESKTOP_ENV="mate" ;;
-		*[Cc][Oo][Ss][Mm][Ii][Cc]*)                                            _DETECTED_DESKTOP_ENV="cosmic" ;;
-		*[Ll][Xx][Qq][Tt]*)                                                    _DETECTED_DESKTOP_ENV="lxqt" ;;
-		*[Ss][Ww][Aa][Yy]*)                                                    _DETECTED_DESKTOP_ENV="sway" ;;
-		*[Hh][Yy][Pp][Rr][Ll][Aa][Nn][Dd]*)                                    _DETECTED_DESKTOP_ENV="hyprland" ;;
-		*[Ii]3*|*[Bb][Ss][Pp][Ww][Mm]*|*[Rr][Ii][Vv][Ee][Rr]*|*[Dd][Ww][Mm]*) _DETECTED_DESKTOP_ENV="wm" ;;
-		*)                                                                     _DETECTED_DESKTOP_ENV="unknown" ;;
+	local _desktop="${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION:-}}"
+	case "$(printf '%s\n' "${_desktop}" | tr '[:upper:]' '[:lower:]')" in
+		*kde*|*plasma*)                                   _DETECTED_DESKTOP_ENV="kde" ;;
+		*gnome*)                                          _DETECTED_DESKTOP_ENV="gnome" ;;
+		*mate*)                                           _DETECTED_DESKTOP_ENV="mate" ;;
+		*cinnamon*)                                       _DETECTED_DESKTOP_ENV="cinnamon" ;;
+		*xfce*)                                           _DETECTED_DESKTOP_ENV="xfce" ;;
+		*lxqt*)                                           _DETECTED_DESKTOP_ENV="lxqt" ;;
+		*lxde*)                                           _DETECTED_DESKTOP_ENV="lxde" ;;
+		*budgie*)                                         _DETECTED_DESKTOP_ENV="budgie" ;;
+		*pantheon*)                                       _DETECTED_DESKTOP_ENV="pantheon" ;;
+		*deepin*|*dde*)                                   _DETECTED_DESKTOP_ENV="deepin" ;;
+		*cosmic*)                                         _DETECTED_DESKTOP_ENV="cosmic" ;;
+		*sway*)                                           _DETECTED_DESKTOP_ENV="sway" ;;
+		*hyprland*)                                       _DETECTED_DESKTOP_ENV="hyprland" ;;
+		*river*)                                          _DETECTED_DESKTOP_ENV="river" ;;
+		*labwc*)                                          _DETECTED_DESKTOP_ENV="labwc" ;;
+		*cage*)                                           _DETECTED_DESKTOP_ENV="cage" ;;
+		*niri*)                                           _DETECTED_DESKTOP_ENV="niri" ;;
+		*wayfire*)                                        _DETECTED_DESKTOP_ENV="wayfire" ;;
+		*dwl*)                                            _DETECTED_DESKTOP_ENV="dwl" ;;
+		*openbox*)                                        _DETECTED_DESKTOP_ENV="openbox" ;;
+		*cwm*)                                            _DETECTED_DESKTOP_ENV="cwm" ;;
+		*i3*|*bspwm*|*dwm*|*fvwm*|*xmonad*|*qtile*|*wm*)   _DETECTED_DESKTOP_ENV="wm" ;;
+		*)                                                _DETECTED_DESKTOP_ENV="" ;;
 	esac
+
+	if [ -z "${_DETECTED_DESKTOP_ENV}" ] && command -v pgrep > "/dev/null" 2>&1; then
+		if pgrep -x plasmashell > "/dev/null" 2>&1 || pgrep -x kwin_wayland > "/dev/null" 2>&1 || pgrep -x kwin_x11 > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="kde"
+		elif pgrep -x gnome-shell > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="gnome"
+		elif pgrep -x mate-session > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="mate"
+		elif pgrep -x cinnamon > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="cinnamon"
+		elif pgrep -x xfce4-session > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="xfce"
+		elif pgrep -x lxqt-session > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="lxqt"
+		elif pgrep -x lxsession > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="lxde"
+		elif pgrep -x budgie-wm > "/dev/null" 2>&1 || pgrep -x budgie-panel > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="budgie"
+		elif pgrep -x gala > "/dev/null" 2>&1 || pgrep -x wingpanel > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="pantheon"
+		elif pgrep -x dde-desktop > "/dev/null" 2>&1 || pgrep -x deepin-wm > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="deepin"
+		elif pgrep -x cosmic-comp > "/dev/null" 2>&1 || pgrep -x cosmic-session > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="cosmic"
+		elif pgrep -x sway > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="sway"
+		elif pgrep -x Hyprland > "/dev/null" 2>&1 || pgrep -x hyprland > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="hyprland"
+		elif pgrep -x river > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="river"
+		elif pgrep -x labwc > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="labwc"
+		elif pgrep -x cage > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="cage"
+		elif pgrep -x niri > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="niri"
+		elif pgrep -x wayfire > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="wayfire"
+		elif pgrep -x dwl > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="dwl"
+		elif pgrep -x openbox > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="openbox"
+		elif pgrep -x cwm > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="cwm"
+		fi
+	fi
+
+	[ -z "${_DETECTED_DESKTOP_ENV}" ] && _DETECTED_DESKTOP_ENV="unknown"
 	_cache_write "desktop_env" "${_DETECTED_DESKTOP_ENV}"
 	echo "${_DETECTED_DESKTOP_ENV}"
 }
@@ -92,17 +152,24 @@ _detect_color_scheme() {
 _detect_desktop_theme() {
 	if [ -n "${1:-}" ]; then
 		case "$1" in
-			gnome|kde|xfce|mate|cinnamon|adwaita) echo "$1"; return 0 ;;
+			kde|gnome|mate|cinnamon|xfce|lxqt|lxde|budgie|pantheon|deepin|cosmic|adwaita) echo "$1"; return 0 ;;
 		esac
 	fi
 
-	if [ -n "${XDG_CURRENT_DESKTOP:-}" ]; then
-		case "$(printf '%s\n' "${XDG_CURRENT_DESKTOP}" | tr '[:upper:]' '[:lower:]')" in
-			*gnome*)        echo "gnome"; return 0 ;;
-			*kde*|*plasma*) echo "kde"; return 0 ;;
-			*cinnamon*)     echo "cinnamon"; return 0 ;;
-			*mate*)         echo "mate"; return 0 ;;
-			*xfce*)         echo "xfce"; return 0 ;;
+	local _desktop="${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION:-}}"
+	if [ -n "${_desktop}" ]; then
+		case "$(printf '%s\n' "${_desktop}" | tr '[:upper:]' '[:lower:]')" in
+			*kde*|*plasma*)         echo "kde"; return 0 ;;
+			*gnome*)                echo "gnome"; return 0 ;;
+			*mate*)                 echo "mate"; return 0 ;;
+			*cinnamon*)             echo "cinnamon"; return 0 ;;
+			*xfce*)                 echo "xfce"; return 0 ;;
+			*lxqt*)                 echo "lxqt"; return 0 ;;
+			*lxde*)                 echo "lxde"; return 0 ;;
+			*budgie*)               echo "budgie"; return 0 ;;
+			*pantheon*)             echo "pantheon"; return 0 ;;
+			*deepin*|*dde*)         echo "deepin"; return 0 ;;
+			*cosmic*)               echo "cosmic"; return 0 ;;
 		esac
 	fi
 
@@ -111,27 +178,49 @@ _detect_desktop_theme() {
 			echo "kde"; return 0
 		elif pgrep -x gnome-shell > "/dev/null" 2>&1; then
 			echo "gnome"; return 0
-		elif pgrep -x cinnamon > "/dev/null" 2>&1; then
-			echo "cinnamon"; return 0
 		elif pgrep -x mate-session > "/dev/null" 2>&1; then
 			echo "mate"; return 0
+		elif pgrep -x cinnamon > "/dev/null" 2>&1; then
+			echo "cinnamon"; return 0
 		elif pgrep -x xfce4-session > "/dev/null" 2>&1; then
 			echo "xfce"; return 0
+		elif pgrep -x lxqt-session > "/dev/null" 2>&1; then
+			echo "lxqt"; return 0
+		elif pgrep -x lxsession > "/dev/null" 2>&1; then
+			echo "lxde"; return 0
+		elif pgrep -x budgie-wm > "/dev/null" 2>&1 || pgrep -x budgie-panel > "/dev/null" 2>&1; then
+			echo "budgie"; return 0
+		elif pgrep -x gala > "/dev/null" 2>&1 || pgrep -x wingpanel > "/dev/null" 2>&1; then
+			echo "pantheon"; return 0
+		elif pgrep -x dde-desktop > "/dev/null" 2>&1 || pgrep -x deepin-wm > "/dev/null" 2>&1; then
+			echo "deepin"; return 0
+		elif pgrep -x cosmic-comp > "/dev/null" 2>&1 || pgrep -x cosmic-session > "/dev/null" 2>&1; then
+			echo "cosmic"; return 0
 		fi
 	fi
 
-	if [ "${_DETECTED_OS-$(_detect_os)}" = "freebsd" ] && { command -v plasmashell > "/dev/null" 2>&1 || command -v startplasma-wayland > "/dev/null" 2>&1 || command -v startplasma-x11 > "/dev/null" 2>&1 || [ -d "/usr/local/share/plasma" ]; }; then
+	if command -v plasmashell > "/dev/null" 2>&1 || command -v startplasma-wayland > "/dev/null" 2>&1 || command -v startplasma-x11 > "/dev/null" 2>&1 || [ -d "/usr/share/plasma" ] || [ -d "/usr/local/share/plasma" ]; then
 		echo "kde"
-	elif command -v gnome-shell > "/dev/null" 2>&1; then
+	elif command -v gnome-shell > "/dev/null" 2>&1 || command -v gnome-session > "/dev/null" 2>&1 || [ -d "/usr/share/gnome-shell" ] || [ -d "/usr/local/share/gnome-shell" ]; then
 		echo "gnome"
-	elif command -v startplasma-wayland > "/dev/null" 2>&1 || command -v plasmashell > "/dev/null" 2>&1 || command -v startplasma-x11 > "/dev/null" 2>&1 || [ -d "/usr/share/plasma" ] || [ -d "/usr/local/share/plasma" ]; then
-		echo "kde"
-	elif command -v cinnamon > "/dev/null" 2>&1 || [ -d "/usr/share/cinnamon" ] || [ -d "/usr/local/share/cinnamon" ]; then
-		echo "cinnamon"
 	elif command -v mate-session > "/dev/null" 2>&1 || [ -d "/usr/share/mate" ] || [ -d "/usr/local/share/mate" ]; then
 		echo "mate"
+	elif command -v cinnamon > "/dev/null" 2>&1 || command -v cinnamon-session > "/dev/null" 2>&1 || [ -d "/usr/share/cinnamon" ] || [ -d "/usr/local/share/cinnamon" ]; then
+		echo "cinnamon"
 	elif command -v xfce4-session > "/dev/null" 2>&1 || [ -d "/usr/share/xfce4" ] || [ -d "/usr/local/share/xfce4" ]; then
 		echo "xfce"
+	elif command -v lxqt-session > "/dev/null" 2>&1 || [ -d "/usr/share/lxqt" ] || [ -d "/usr/local/share/lxqt" ]; then
+		echo "lxqt"
+	elif command -v lxsession > "/dev/null" 2>&1 || command -v startlxde > "/dev/null" 2>&1 || [ -d "/usr/share/lxde" ] || [ -d "/usr/local/share/lxde" ]; then
+		echo "lxde"
+	elif command -v budgie-desktop > "/dev/null" 2>&1 || command -v budgie-wm > "/dev/null" 2>&1 || [ -d "/usr/share/budgie-desktop" ] || [ -d "/usr/local/share/budgie-desktop" ]; then
+		echo "budgie"
+	elif command -v gala > "/dev/null" 2>&1 || command -v wingpanel > "/dev/null" 2>&1 || [ -d "/usr/share/pantheon" ] || [ -d "/usr/local/share/pantheon" ]; then
+		echo "pantheon"
+	elif command -v dde-desktop > "/dev/null" 2>&1 || command -v dde-session > "/dev/null" 2>&1 || [ -d "/usr/share/dde" ] || [ -d "/usr/local/share/dde" ]; then
+		echo "deepin"
+	elif command -v cosmic-session > "/dev/null" 2>&1 || command -v cosmic-comp > "/dev/null" 2>&1 || [ -d "/usr/share/cosmic" ] || [ -d "/usr/local/share/cosmic" ]; then
+		echo "cosmic"
 	else
 		echo "adwaita"
 	fi
@@ -143,7 +232,7 @@ _detect_desktop_theme() {
 _resolve_gtk_theme() {
 	local _flavor="${1:-$(_detect_desktop_theme)}"
 
-	if [ "${_flavor}" = "gnome" ] || [ "${_flavor}" = "adwaita" ]; then
+	if [ "${_flavor}" = "gnome" ] || [ "${_flavor}" = "budgie" ] || [ "${_flavor}" = "pantheon" ] || [ "${_flavor}" = "adwaita" ]; then
 		if command -v gsettings > "/dev/null" 2>&1; then
 			local _gset_theme=""
 			_gset_theme="$(command gsettings get org.gnome.desktop.interface gtk-theme 2> "/dev/null" | tr -d "'" || true)"
@@ -172,6 +261,12 @@ _resolve_gtk_theme() {
 		xfce)     _candidates="Greybird-dark Greybird adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
 		cinnamon) _candidates="Mint-Y-Dark adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
 		mate)     _candidates="Yaru-MATE-dark BlackMATE adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
+		lxqt)     _candidates="Breeze-Dark Breeze:dark adw-gtk3-dark Adwaita-dark Adwaita:dark Arc-Dark" ;;
+		lxde)     _candidates="Clearlooks-Phenix Arc-Dark adw-gtk3-dark Adwaita-dark Adwaita:dark Numix" ;;
+		budgie)   _candidates="Materia-dark Arc-Dark Yaru-dark adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
+		pantheon) _candidates="io.elementary.stylesheet.blueberry-dark io.elementary.stylesheet.blueberry adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
+		deepin)   _candidates="deepin-dark deepin adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
+		cosmic)   _candidates="cosmic-dark cosmic adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
 		*)        _candidates="adw-gtk3-dark Yaru-dark Adwaita-dark Adwaita:dark Breeze-Dark Greybird-dark" ;;
 	esac
 
@@ -238,15 +333,21 @@ _detect_qt_theme() {
 	[ "${_desktop_env}" = "unknown" ] && _desktop_env="$(_detect_desktop_theme)"
 	local _color_scheme="$(_detect_color_scheme)"
 
-	if [ "${_desktop_env}" = "kde" ]; then
-		if [ "${_color_scheme}" = "dark" ]; then
-			_DETECTED_QT_THEME="Breeze-Dark"
-		else
-			_DETECTED_QT_THEME="Breeze"
-		fi
-	else
-		_DETECTED_QT_THEME=""
-	fi
+	case "${_desktop_env}" in
+		kde|lxqt)
+			if [ "${_color_scheme}" = "dark" ]; then
+				_DETECTED_QT_THEME="Breeze-Dark"
+			else
+				_DETECTED_QT_THEME="Breeze"
+			fi
+			;;
+		deepin)
+			_DETECTED_QT_THEME="chameleon"
+			;;
+		*)
+			_DETECTED_QT_THEME=""
+			;;
+	esac
 	_cache_write "qt_theme" "${_DETECTED_QT_THEME}"
 	echo "${_DETECTED_QT_THEME}"
 }
@@ -266,7 +367,16 @@ _detect_qt_platform_theme() {
 		kde)
 			_DETECTED_QT_PLATFORM_THEME="xdgdesktopportal"
 			;;
-		gnome|sway|hyprland)
+		lxqt)
+			_DETECTED_QT_PLATFORM_THEME="lxqt"
+			;;
+		deepin)
+			_DETECTED_QT_PLATFORM_THEME="deepin"
+			;;
+		xfce|mate|cinnamon|lxde)
+			_DETECTED_QT_PLATFORM_THEME="gtk3"
+			;;
+		gnome|budgie|pantheon|cosmic|sway|hyprland|river|labwc|cage|niri|wayfire|dwl)
 			if command -v qt6ct > "/dev/null" 2>&1; then
 				_DETECTED_QT_PLATFORM_THEME="qt6ct"
 			elif command -v qt5ct > "/dev/null" 2>&1; then
@@ -274,9 +384,6 @@ _detect_qt_platform_theme() {
 			else
 				_DETECTED_QT_PLATFORM_THEME="xdgdesktopportal"
 			fi
-			;;
-		xfce|mate|cinnamon)
-			_DETECTED_QT_PLATFORM_THEME="gtk3"
 			;;
 		*)
 			if command -v qt6ct > "/dev/null" 2>&1; then

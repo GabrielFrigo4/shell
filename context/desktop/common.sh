@@ -495,19 +495,19 @@ if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 		_cursor_theme=""
 		_cursor_size="${XCURSOR_SIZE:-24}"
 
-		local _uid="$(id -u 2> "/dev/null" || echo 1000)"
-		if pgrep -u "${_uid}" -x gnome-shell > "/dev/null" 2>&1; then
-			if command -v gsettings > "/dev/null" 2>&1; then
-				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
-				_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
-			fi
-			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
-		elif pgrep -u "${_uid}" -x plasmashell > "/dev/null" 2>&1; then
+		_uid="$(id -u 2> "/dev/null" || echo 1000)"
+		if pgrep -u "${_uid}" -x plasmashell > "/dev/null" 2>&1 || pgrep -u "${_uid}" -x kwin_wayland > "/dev/null" 2>&1 || pgrep -u "${_uid}" -x kwin_x11 > "/dev/null" 2>&1; then
 			if [ -f "${HOME}/.config/kcminputrc" ]; then
 				_cursor_theme="$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
 				_cursor_size="$(awk -F= '/^[[:space:]]*cursorSize[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="breeze_cursors"
+		elif pgrep -u "${_uid}" -x gnome-shell > "/dev/null" 2>&1; then
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+				_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
 		elif pgrep -u "${_uid}" -x mate-session > "/dev/null" 2>&1; then
 			if command -v gsettings > "/dev/null" 2>&1; then
 				_cursor_theme="$(gsettings get org.mate.peripherals-mouse cursor-theme 2> "/dev/null" | tr -d "'\"")"
@@ -520,54 +520,90 @@ if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
 		elif pgrep -u "${_uid}" -x xfce4-session > "/dev/null" 2>&1; then
 			_cursor_theme="Adwaita"
-		elif [ -n "${XDG_CURRENT_DESKTOP:-}" ]; then
-			case "${XDG_CURRENT_DESKTOP}" in
-				*GNOME*|*gnome*)
-					if command -v gsettings > "/dev/null" 2>&1; then
-						_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
-						_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
-					fi
-					[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
-					;;
-				*KDE*|*kde*|*Plasma*)
+		elif pgrep -u "${_uid}" -x lxqt-session > "/dev/null" 2>&1; then
+			_cursor_theme="breeze_cursors"
+		elif pgrep -u "${_uid}" -x lxsession > "/dev/null" 2>&1; then
+			_cursor_theme="Adwaita"
+		elif pgrep -u "${_uid}" -x budgie-wm > "/dev/null" 2>&1 || pgrep -u "${_uid}" -x budgie-panel > "/dev/null" 2>&1; then
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+				_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+		elif pgrep -u "${_uid}" -x gala > "/dev/null" 2>&1 || pgrep -u "${_uid}" -x wingpanel > "/dev/null" 2>&1; then
+			if command -v gsettings > "/dev/null" 2>&1; then
+				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+				_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
+			fi
+			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+		elif pgrep -u "${_uid}" -x dde-desktop > "/dev/null" 2>&1 || pgrep -u "${_uid}" -x deepin-wm > "/dev/null" 2>&1; then
+			_cursor_theme="Adwaita"
+		elif pgrep -u "${_uid}" -x cosmic-comp > "/dev/null" 2>&1 || pgrep -u "${_uid}" -x cosmic-session > "/dev/null" 2>&1; then
+			_cursor_theme="Adwaita"
+		elif [ -n "${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION:-}}" ]; then
+			case "$(printf '%s\n' "${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION}}" | tr '[:upper:]' '[:lower:]')" in
+				*kde*|*plasma*)
 					if [ -f "${HOME}/.config/kcminputrc" ]; then
 						_cursor_theme="$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
 						_cursor_size="$(awk -F= '/^[[:space:]]*cursorSize[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
 					fi
 					[ -z "${_cursor_theme}" ] && _cursor_theme="breeze_cursors"
 					;;
-				*MATE*|*mate*)         _cursor_theme="Adwaita" ;;
-				*Cinnamon*|*cinnamon*) _cursor_theme="Adwaita" ;;
-				*XFCE*|*xfce*)         _cursor_theme="Adwaita" ;;
+				*gnome*)
+					if command -v gsettings > "/dev/null" 2>&1; then
+						_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+						_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
+					fi
+					[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+					;;
+				*mate*)         _cursor_theme="Adwaita" ;;
+				*cinnamon*)     _cursor_theme="Adwaita" ;;
+				*xfce*)         _cursor_theme="Adwaita" ;;
+				*lxqt*)         _cursor_theme="breeze_cursors" ;;
+				*lxde*)         _cursor_theme="Adwaita" ;;
+				*budgie*)       _cursor_theme="Adwaita" ;;
+				*pantheon*)     _cursor_theme="Adwaita" ;;
+				*deepin*|*dde*) _cursor_theme="Adwaita" ;;
+				*cosmic*)       _cursor_theme="Adwaita" ;;
 			esac
 		fi
 
 		if [ -z "${_cursor_theme}" ]; then
-			if command -v gnome-shell > "/dev/null" 2>&1; then
-				if command -v gsettings > "/dev/null" 2>&1; then
-					_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
-					_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
-				fi
-				[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
-			elif command -v plasmashell > "/dev/null" 2>&1 || command -v startplasma-wayland > "/dev/null" 2>&1 || command -v startplasma-x11 > "/dev/null" 2>&1; then
+			if command -v plasmashell > "/dev/null" 2>&1 || command -v startplasma-wayland > "/dev/null" 2>&1 || command -v startplasma-x11 > "/dev/null" 2>&1 || [ -d "/usr/share/plasma" ] || [ -d "/usr/local/share/plasma" ]; then
 				if [ -f "${HOME}/.config/kcminputrc" ]; then
 					_cursor_theme="$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
 					_cursor_size="$(awk -F= '/^[[:space:]]*cursorSize[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
 				fi
 				[ -z "${_cursor_theme}" ] && _cursor_theme="breeze_cursors"
-			elif command -v mate-session > "/dev/null" 2>&1; then
+			elif command -v gnome-shell > "/dev/null" 2>&1 || command -v gnome-session > "/dev/null" 2>&1 || [ -d "/usr/share/gnome-shell" ] || [ -d "/usr/local/share/gnome-shell" ]; then
+				if command -v gsettings > "/dev/null" 2>&1; then
+					_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
+					_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
+				fi
+				[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
+			elif command -v mate-session > "/dev/null" 2>&1 || [ -d "/usr/share/mate" ] || [ -d "/usr/local/share/mate" ]; then
 				_cursor_theme="Adwaita"
-			elif command -v cinnamon-session > "/dev/null" 2>&1; then
+			elif command -v cinnamon > "/dev/null" 2>&1 || command -v cinnamon-session > "/dev/null" 2>&1 || [ -d "/usr/share/cinnamon" ] || [ -d "/usr/local/share/cinnamon" ]; then
 				_cursor_theme="Adwaita"
-			elif command -v xfce4-session > "/dev/null" 2>&1; then
+			elif command -v xfce4-session > "/dev/null" 2>&1 || [ -d "/usr/share/xfce4" ] || [ -d "/usr/local/share/xfce4" ]; then
 				_cursor_theme="Adwaita"
-			elif command -v lxqt-session > "/dev/null" 2>&1; then
+			elif command -v lxqt-session > "/dev/null" 2>&1 || [ -d "/usr/share/lxqt" ] || [ -d "/usr/local/share/lxqt" ]; then
 				_cursor_theme="breeze_cursors"
+			elif command -v lxsession > "/dev/null" 2>&1 || command -v startlxde > "/dev/null" 2>&1 || [ -d "/usr/share/lxde" ] || [ -d "/usr/local/share/lxde" ]; then
+				_cursor_theme="Adwaita"
+			elif command -v budgie-desktop > "/dev/null" 2>&1 || command -v budgie-wm > "/dev/null" 2>&1 || [ -d "/usr/share/budgie-desktop" ] || [ -d "/usr/local/share/budgie-desktop" ]; then
+				_cursor_theme="Adwaita"
+			elif command -v gala > "/dev/null" 2>&1 || command -v wingpanel > "/dev/null" 2>&1 || [ -d "/usr/share/pantheon" ] || [ -d "/usr/local/share/pantheon" ]; then
+				_cursor_theme="Adwaita"
+			elif command -v dde-desktop > "/dev/null" 2>&1 || command -v dde-session > "/dev/null" 2>&1 || [ -d "/usr/share/dde" ] || [ -d "/usr/local/share/dde" ]; then
+				_cursor_theme="Adwaita"
+			elif command -v cosmic-session > "/dev/null" 2>&1 || command -v cosmic-comp > "/dev/null" 2>&1 || [ -d "/usr/share/cosmic" ] || [ -d "/usr/local/share/cosmic" ]; then
+				_cursor_theme="Adwaita"
 			fi
 		fi
 
 		if [ -z "${_cursor_theme}" ]; then
-			for _cand in Adwaita Bibata-Modern-Classic breeze_cursors DMZ-White default; do
+			for _cand in Adwaita breeze_cursors Bibata-Modern-Classic DMZ-White default; do
 				for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
 					if [ -d "${_p}/${_cand}/cursors" ]; then
 						_cursor_theme="${_cand}"
@@ -581,7 +617,7 @@ if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 		[ -z "${_cursor_size}" ] && _cursor_size="24"
 		[ -z "${XCURSOR_THEME:-}" ] && export XCURSOR_THEME="${_cursor_theme}"
 		[ -z "${XCURSOR_SIZE:-}" ] && export XCURSOR_SIZE="${_cursor_size}"
-		unset _cursor_theme _cursor_size _cand _p
+		unset _cursor_theme _cursor_size _cand _p _uid
 	fi
 fi
 

@@ -59,13 +59,13 @@ if ! command -v _resolve_desktop_font > "/dev/null" 2>&1; then
 				return 0
 			fi
 			case "${_target_flavor}" in
-				kde|plasma)
+				kde|plasma|lxqt)
 					if fc-list : family 2> "/dev/null" | grep -qi "^Noto Sans$"; then
 						printf '%s\n' "Noto Sans"
 						return 0
 					fi
 					;;
-				gnome)
+				gnome|budgie)
 					for _f in "Adwaita Sans" "Cantarell"; do
 						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
 							printf '%s\n' "${_f}"
@@ -73,7 +73,31 @@ if ! command -v _resolve_desktop_font > "/dev/null" 2>&1; then
 						fi
 					done
 					;;
-				mate|cinnamon|xfce)
+				pantheon)
+					for _f in "Inter" "Open Sans" "Cantarell"; do
+						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
+							printf '%s\n' "${_f}"
+							return 0
+						fi
+					done
+					;;
+				deepin)
+					for _f in "Noto Sans" "Source Han Sans" "Cantarell"; do
+						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
+							printf '%s\n' "${_f}"
+							return 0
+						fi
+					done
+					;;
+				cosmic)
+					for _f in "Fira Sans" "Noto Sans"; do
+						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
+							printf '%s\n' "${_f}"
+							return 0
+						fi
+					done
+					;;
+				mate|cinnamon|xfce|lxde)
 					for _f in "Ubuntu" "DejaVu Sans"; do
 						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
 							printf '%s\n' "${_f}"
@@ -110,6 +134,12 @@ graphical-launcher-wayland() {
 			-x|--xfce)     _flavor="xfce"; shift ;;
 			-m|--mate)     _flavor="mate"; shift ;;
 			-c|--cinnamon) _flavor="cinnamon"; shift ;;
+			--lxqt)        _flavor="lxqt"; shift ;;
+			--lxde)        _flavor="lxde"; shift ;;
+			--budgie)      _flavor="budgie"; shift ;;
+			--pantheon)    _flavor="pantheon"; shift ;;
+			--deepin)      _flavor="deepin"; shift ;;
+			--cosmic)      _flavor="cosmic"; shift ;;
 			--)            shift; break ;;
 			*)             break ;;
 		esac
@@ -449,6 +479,12 @@ graphical-launcher-x11() {
 			-x|--xfce)     _flavor="xfce"; shift ;;
 			-m|--mate)     _flavor="mate"; shift ;;
 			-c|--cinnamon) _flavor="cinnamon"; shift ;;
+			--lxqt)        _flavor="lxqt"; shift ;;
+			--lxde)        _flavor="lxde"; shift ;;
+			--budgie)      _flavor="budgie"; shift ;;
+			--pantheon)    _flavor="pantheon"; shift ;;
+			--deepin)      _flavor="deepin"; shift ;;
+			--cosmic)      _flavor="cosmic"; shift ;;
 			--)            shift; break ;;
 			*)             break ;;
 		esac
@@ -474,11 +510,11 @@ graphical-launcher-x11() {
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
 	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
 	cat << 'OTM' >| "${_kiosk_theme_dir}/themerc"
-border.width: 2
+border.width: 3
 border.color: #38383d
 padding.width: 8
 padding.height: 6
-window.handle.width: 0
+window.handle.width: 3
 window.client.padding.width: 0
 
 window.active.border.color: #3584e4
@@ -508,7 +544,7 @@ window.inactive.label.text.color: #9a9996
 window.inactive.handle.bg: flat solid
 window.inactive.handle.bg.color: #1e1e22
 window.inactive.grip.bg: flat solid
-window.inactive.grip.bg.color: #38383d
+window.inactive.grip.bg.color: #2b2b30
 window.inactive.button.unpressed.bg: parentrelative
 window.inactive.button.unpressed.image.color: #9a9996
 window.inactive.button.pressed.bg: flat solid
@@ -558,6 +594,259 @@ OTM
 
 	local _is_terminal=0
 	_is_terminal_app "${_app}" && _is_terminal=1
+
+	local _tabbar_script=""
+	if command -v python3 > "/dev/null" 2>&1 && python3 -c 'import gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk' > "/dev/null" 2>&1; then
+		_tabbar_script="${XDG_RUNTIME_DIR:-/tmp}/xgui-tabbar-$$.py"
+		cat << 'EOF_TABBAR' >| "${_tabbar_script}"
+import os, sys, subprocess, time
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, Gdk, GdkX11, GLib, Pango
+from Xlib import display, X, Xatom
+import Xlib.protocol.event
+
+class XguiTabBar(Gtk.Window):
+    def __init__(self):
+        super().__init__(type=Gtk.WindowType.TOPLEVEL)
+        self.set_type_hint(Gdk.WindowTypeHint.DOCK)
+        self.set_decorated(False)
+        self.set_resizable(False)
+        self.set_title("xgui-tabbar")
+        self.set_wmclass("xgui-tabbar", "xgui-tabbar")
+
+        self.d = display.Display()
+        self.screen_obj = self.d.screen()
+        self.root = self.screen_obj.root
+        self.screen_w = self.screen_obj.width_in_pixels
+        self.screen_h = self.screen_obj.height_in_pixels
+
+        self.set_size_request(self.screen_w, 28)
+        self.move(0, 0)
+        self.realize()
+        self.self_xid = self.get_window().get_xid()
+        self.self_xwin = self.d.create_resource_object("window", self.self_xid)
+
+        self.atom_net_client_list = self.d.intern_atom("_NET_CLIENT_LIST")
+        self.atom_net_active = self.d.intern_atom("_NET_ACTIVE_WINDOW")
+        self.atom_net_wm_name = self.d.intern_atom("_NET_WM_NAME")
+        self.atom_utf8_string = self.d.intern_atom("UTF8_STRING")
+        self.atom_net_wm_type = self.d.intern_atom("_NET_WM_WINDOW_TYPE")
+        self.atom_wm_state = self.d.intern_atom("WM_STATE")
+        self.atom_net_strut = self.d.intern_atom("_NET_WM_STRUT")
+        self.atom_net_strut_partial = self.d.intern_atom("_NET_WM_STRUT_PARTIAL")
+        self.atom_cardinal = self.d.intern_atom("CARDINAL")
+        self.atom_net_wm_state = self.d.intern_atom("_NET_WM_STATE")
+        self.atom_max_vert = self.d.intern_atom("_NET_WM_STATE_MAXIMIZED_VERT")
+        self.atom_max_horz = self.d.intern_atom("_NET_WM_STATE_MAXIMIZED_HORZ")
+
+        self.skip_types = set([
+            self.d.intern_atom("_NET_WM_WINDOW_TYPE_DOCK"),
+            self.d.intern_atom("_NET_WM_WINDOW_TYPE_DESKTOP"),
+            self.d.intern_atom("_NET_WM_WINDOW_TYPE_MENU"),
+            self.d.intern_atom("_NET_WM_WINDOW_TYPE_TOOLBAR"),
+            self.d.intern_atom("_NET_WM_WINDOW_TYPE_SPLASH"),
+            self.d.intern_atom("_NET_WM_WINDOW_TYPE_UTILITY"),
+            self.d.intern_atom("_NET_WM_WINDOW_TYPE_DIALOG"),
+            self.d.intern_atom("_NET_WM_WINDOW_TYPE_NOTIFICATION")
+        ])
+
+        font_name = os.environ.get("XGUI_FONT", "JetBrainsMono Nerd Font")
+
+        css_provider = Gtk.CssProvider()
+        css = f"""
+        window {{
+            background-color: #1e1e22;
+            border-bottom: 1px solid #38383d;
+            padding: 0;
+            margin: 0;
+        }}
+        * {{
+            font-family: "{font_name}", "JetBrainsMono Nerd Font", monospace;
+            font-size: 11px;
+        }}
+        button {{
+            padding: 0px 8px;
+            margin: 0;
+            border: none;
+            border-radius: 0;
+            min-height: 27px;
+        }}
+        button.inactive-tab {{
+            background: #2b2b30;
+            color: #9a9996;
+            border-right: 1px solid #38383d;
+        }}
+        button.inactive-tab:hover {{
+            background: #38383d;
+            color: #ffffff;
+        }}
+        button.active-tab {{
+            background: #3584e4;
+            color: #ffffff;
+            font-weight: bold;
+            border-right: 1px solid #38383d;
+        }}
+        button.active-tab:hover {{
+            background: #4a96ef;
+            color: #ffffff;
+        }}
+        """
+        css_provider.load_from_data(css.encode("utf-8"))
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(),
+            css_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        self.box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.add(self.box)
+
+        self.is_bar_visible = False
+        self.last_windows = []
+        self.last_active = None
+
+        self.poll()
+        GLib.timeout_add(200, self.poll)
+
+    def set_struts(self, enable):
+        try:
+            if enable:
+                strut = [0, 0, 28, 0]
+                strut_p = [0, 0, 28, 0, 0, 0, 0, 0, 0, self.screen_w - 1, 0, 0]
+                self.self_xwin.change_property(self.atom_net_strut, self.atom_cardinal, 32, strut)
+                self.self_xwin.change_property(self.atom_net_strut_partial, self.atom_cardinal, 32, strut_p)
+            else:
+                self.self_xwin.delete_property(self.atom_net_strut)
+                self.self_xwin.delete_property(self.atom_net_strut_partial)
+            self.d.sync()
+        except Exception:
+            pass
+
+    def maximize_window(self, xid):
+        try:
+            ev = Xlib.protocol.event.ClientMessage(
+                window=xid,
+                client_type=self.atom_net_wm_state,
+                data=(32, [1, self.atom_max_vert, self.atom_max_horz, 1, 0])
+            )
+            self.root.send_event(ev, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
+            self.d.sync()
+        except Exception:
+            pass
+
+    def activate_window(self, xid):
+        try:
+            ev = Xlib.protocol.event.ClientMessage(
+                window=xid,
+                client_type=self.atom_net_active,
+                data=(32, [1, X.CurrentTime, 0, 0, 0])
+            )
+            self.root.send_event(ev, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
+            self.d.sync()
+        except Exception:
+            try:
+                subprocess.Popen(["xdotool", "windowactivate", str(xid)])
+            except Exception:
+                pass
+
+    def get_title(self, xid):
+        try:
+            xwin = self.d.create_resource_object("window", xid)
+            prop = xwin.get_full_property(self.atom_net_wm_name, self.atom_utf8_string)
+            if prop and prop.value:
+                val = prop.value
+                return val.decode("utf-8", errors="replace") if isinstance(val, bytes) else str(val)
+            name = xwin.get_wm_name()
+            if name:
+                return name
+        except Exception:
+            pass
+        return "Window"
+
+    def is_normal(self, xid):
+        if xid == self.self_xid:
+            return False
+        try:
+            xwin = self.d.create_resource_object("window", xid)
+            trans = xwin.get_wm_transient_for()
+            if trans:
+                return False
+            type_prop = xwin.get_full_property(self.atom_net_wm_type, Xatom.ATOM)
+            if type_prop and type_prop.value:
+                if any(t in self.skip_types for t in type_prop.value):
+                    return False
+            state_prop = xwin.get_full_property(self.atom_wm_state, 0)
+            if state_prop and state_prop.value and state_prop.value[0] == 0:
+                return False
+            return True
+        except Exception:
+            return False
+
+    def poll(self):
+        try:
+            prop = self.root.get_full_property(self.atom_net_client_list, Xatom.WINDOW)
+            all_xids = list(prop.value) if prop and prop.value else []
+        except Exception:
+            all_xids = []
+
+        active_xid = None
+        try:
+            act_prop = self.root.get_full_property(self.atom_net_active, Xatom.WINDOW)
+            if act_prop and act_prop.value:
+                active_xid = act_prop.value[0]
+        except Exception:
+            pass
+
+        normal_windows = [x for x in all_xids if self.is_normal(x)]
+
+        if len(normal_windows) < 2:
+            if self.is_bar_visible:
+                self.hide()
+                self.set_struts(False)
+                self.is_bar_visible = False
+                for w in normal_windows:
+                    self.maximize_window(w)
+            return True
+
+        if not self.is_bar_visible:
+            self.set_struts(True)
+            self.move(0, 0)
+            self.resize(self.screen_w, 28)
+            self.show()
+            self.is_bar_visible = True
+            for w in normal_windows:
+                self.maximize_window(w)
+
+        if normal_windows != self.last_windows or active_xid != self.last_active:
+            self.last_windows = normal_windows
+            self.last_active = active_xid
+            for child in self.box.get_children():
+                self.box.remove(child)
+
+            for w in normal_windows:
+                title = self.get_title(w)
+                btn = Gtk.Button()
+                lbl = Gtk.Label(label=title)
+                lbl.set_ellipsize(Pango.EllipsizeMode.END)
+                lbl.set_max_width_chars(32)
+                btn.add(lbl)
+                ctx = btn.get_style_context()
+                if w == active_xid:
+                    ctx.add_class("active-tab")
+                else:
+                    ctx.add_class("inactive-tab")
+                btn.connect("clicked", lambda widget, target=w: self.activate_window(target))
+                self.box.pack_start(btn, True, True, 0)
+
+            self.box.show_all()
+
+        return True
+
+win = XguiTabBar()
+Gtk.main()
+EOF_TABBAR
+	fi
 
 	local _sh="$(_detect_enabled_shell)"
 	local _vt_arg="$(_resolve_vt_arg)"
@@ -613,6 +902,10 @@ if command -v xset > "/dev/null" 2>&1; then
 fi
 if command -v numlockx > "/dev/null" 2>&1; then
 	numlockx on 2> "/dev/null" || true
+fi
+
+if [ -n "${_tabbar_script}" ] && [ -f "${_tabbar_script}" ]; then
+	env GDK_BACKEND=x11 XGUI_FONT="${_ui_font}" python3 "${_tabbar_script}" > "/dev/null" 2>&1 &
 fi
 
 if command -v openbox > "/dev/null" 2>&1; then
@@ -757,7 +1050,7 @@ EOF
 	if [ "${_xinit_ret}" -ne 0 ] && [ -f "${_persistent_kiosk_log}" ] && [ -s "${_persistent_kiosk_log}" ]; then
 		_ui_err "Lançador Xorg encerrou com erro (código ${_xinit_ret}). Log: ${_persistent_kiosk_log}"
 	fi
-	rm -f "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-$$.xml" 2> "/dev/null" || true
+	rm -f "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-$$.xml" "${_tabbar_script}" 2> "/dev/null" || true
 	[ "${_had_display}" -eq 0 ] && unset DISPLAY
 	_freebsd_vt_bounce
 	return "${_xinit_ret}"
@@ -783,6 +1076,12 @@ emacs-window-manager-wayland() {
 			-x|--xfce)     _flavor="xfce"; shift ;;
 			-m|--mate)     _flavor="mate"; shift ;;
 			-c|--cinnamon) _flavor="cinnamon"; shift ;;
+			--lxqt)        _flavor="lxqt"; shift ;;
+			--lxde)        _flavor="lxde"; shift ;;
+			--budgie)      _flavor="budgie"; shift ;;
+			--pantheon)    _flavor="pantheon"; shift ;;
+			--deepin)      _flavor="deepin"; shift ;;
+			--cosmic)      _flavor="cosmic"; shift ;;
 			--)            shift; break ;;
 			*)             break ;;
 		esac
@@ -850,6 +1149,12 @@ emacs-window-manager-x11() {
 			-x|--xfce)     _flavor="xfce"; shift ;;
 			-m|--mate)     _flavor="mate"; shift ;;
 			-c|--cinnamon) _flavor="cinnamon"; shift ;;
+			--lxqt)        _flavor="lxqt"; shift ;;
+			--lxde)        _flavor="lxde"; shift ;;
+			--budgie)      _flavor="budgie"; shift ;;
+			--pantheon)    _flavor="pantheon"; shift ;;
+			--deepin)      _flavor="deepin"; shift ;;
+			--cosmic)      _flavor="cosmic"; shift ;;
 			--)            shift; break ;;
 			*)             break ;;
 		esac
