@@ -7,7 +7,7 @@ MAKEFLAGS += --no-print-directory -s
 # Makefile: Shell Runtime Engine
 # ----------------------------------------------------------------
 
-.PHONY: help hooks bench test format prettier install ci
+.PHONY: help hooks bench test format prettier install ci clean
 
 ### ================================
 ### HELP & DOCUMENTATION
@@ -29,6 +29,7 @@ help:
 	cmd "test"           "Valida sintaxe Zsh, Bash, POSIX sh e ksh em todos os módulos"; \
 	cmd "format"         "Formata arquivos Markdown com Prettier"; \
 	cmd "prettier"       "Formata arquivos Markdown com Prettier"; \
+	cmd "clean"          "Remove artefatos temporários, caches e ambientes virtuais (.venv)"; \
 	cmd "ci"             "Executa suíte completa de testes e quality gate local"; \
 	echo ""
 
@@ -79,3 +80,12 @@ hooks:
 ci: test
 	sh .githooks/pre-commit
 	echo "🚀 Shell pronto para produção e commits!"
+
+### ================================
+### CLEANUP
+### ================================
+clean:
+	echo "🧹 Limpando artefatos temporários, caches e ambientes virtuais..."
+	rm -rf .venv bin/ build/ dist/ .tmp/ *.log
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2> "/dev/null" || true
+	echo "✅ Workspace limpo!"
