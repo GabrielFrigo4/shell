@@ -78,14 +78,25 @@ alias ccache="clean-cache"
 ### --------------------------------
 _git_pull_resilient() {
 	local _dir="$1"
+	if command -v cygpath > "/dev/null" 2>&1; then
+		_dir="$(cygpath -u "${_dir}" 2> "/dev/null" || echo "${_dir}")"
+	else
+		_dir="$(echo "${_dir}" | tr '\\' '/')"
+	fi
 	[ -d "${_dir}/.git" ] || [ -f "${_dir}/.git" ] || return 1
+
+	local _is_windows=0
+	case "${OSTYPE:-$(uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')}" in
+		msys*|cygwin*|mingw*|windows*|win32*) _is_windows=1 ;;
+	esac
 
 	local _real_u="${SUDO_USER:-${DOAS_USER:-$(id -un 2> "/dev/null")}}"
 	local _real_g="$(id -gn "${_real_u}" 2> "/dev/null" || id -gn 2> "/dev/null")"
 	local _cur_uid="$(id -u 2> "/dev/null" || echo 1000)"
 	local _ran_as_root=0
+	local _escalator=""
 
-	if [ "${_cur_uid}" -ne 0 ]; then
+	if [ "${_is_windows}" -eq 0 ] && [ "${_cur_uid}" -ne 0 ]; then
 		local _needs_heal=0
 		if [ ! -w "${_dir}" ] || [ ! -w "${_dir}/.git" ] || [ ! -w "${_dir}/.git/objects" ]; then
 			_needs_heal=1
@@ -100,62 +111,70 @@ _git_pull_resilient() {
 		fi
 	fi
 
-	local _cmd="command git -C \"${_dir}\""
-	if [ ! -w "${_dir}" ]; then
+	if [ "${_is_windows}" -eq 0 ] && [ ! -w "${_dir}" ]; then
 		_as_root true || return 1
-		local _escalator="$(_detect_privilege_escalator)"
+		_escalator="$(_detect_privilege_escalator)"
 		case "${_escalator}" in
 			sudo|doas)
-				_cmd="${_escalator} git -C \"${_dir}\""
 				_ran_as_root=1
 				;;
 		esac
 	fi
 
+	_git_exec() {
+		if [ "${_ran_as_root}" -eq 1 ] && [ -n "${_escalator}" ]; then
+			${_escalator} git -C "${_dir}" "$@"
+		else
+			command git -C "${_dir}" "$@"
+		fi
+	}
+
 	_heal_final_perms() {
-		if [ "${_cur_uid}" -eq 0 ] || [ "${_ran_as_root}" -eq 1 ]; then
-			if [ -n "${_real_u}" ] && [ "${_real_u}" != "root" ]; then
-				if [ "${_cur_uid}" -eq 0 ]; then
-					chown -R "${_real_u}:${_real_g}" "${_dir}" 2> "/dev/null" || true
-					chmod -R u+rwX,go+rX "${_dir}" 2> "/dev/null" || true
-				else
-					_as_root chown -R "${_real_u}:${_real_g}" "${_dir}" 2> "/dev/null" || true
-					_as_root chmod -R u+rwX,go+rX "${_dir}" 2> "/dev/null" || true
+		if [ "${_is_windows}" -eq 0 ]; then
+			if [ "${_cur_uid}" -eq 0 ] || [ "${_ran_as_root}" -eq 1 ]; then
+				if [ -n "${_real_u}" ] && [ "${_real_u}" != "root" ]; then
+					if [ "${_cur_uid}" -eq 0 ]; then
+						chown -R "${_real_u}:${_real_g}" "${_dir}" 2> "/dev/null" || true
+						chmod -R u+rwX,go+rX "${_dir}" 2> "/dev/null" || true
+					else
+						_as_root chown -R "${_real_u}:${_real_g}" "${_dir}" 2> "/dev/null" || true
+						_as_root chmod -R u+rwX,go+rX "${_dir}" 2> "/dev/null" || true
+					fi
 				fi
 			fi
 		fi
 		command git config --global --add safe.directory "${_dir}" 2> "/dev/null" || true
 	}
 
-	eval "${_cmd} diff --numstat" 2> "/dev/null" | while IFS="$(printf '\t')" read -r _additions _deletions _file; do
+	_git_exec diff --numstat 2> "/dev/null" | while IFS="$(printf '\t')" read -r _additions _deletions _file; do
 		if [ "${_additions}" = "0" ] && [ "${_deletions}" = "0" ] && [ -n "${_file}" ]; then
-			eval "${_cmd} checkout -- \"${_file}\"" > "/dev/null" 2>&1 || true
+			_git_exec checkout -- "${_file}" > "/dev/null" 2>&1 || true
 		fi
 	done
 
 	local _has_stash=0
 	local _status
-	_status="$(eval "${_cmd} status --porcelain" 2> "/dev/null" || true)"
+	_status="$(_git_exec status --porcelain 2> "/dev/null" || true)"
 	if [ -n "${_status}" ]; then
 		local _stash_before _stash_after
-		_stash_before="$(eval "${_cmd} rev-parse -q --verify refs/stash" 2> "/dev/null" || true)"
+		_stash_before="$(_git_exec rev-parse -q --verify refs/stash 2> "/dev/null" || true)"
 		_ui_warn "Alterações locais ou arquivos novos detectados em ${_dir}."
 		_ui_sub "Criando auto-stash defensivo antes da sincronização..."
-		eval "${_cmd} stash push -u -m 'autostash-before-update-$(date +%s)'" > "/dev/null" 2>&1 || true
-		_stash_after="$(eval "${_cmd} rev-parse -q --verify refs/stash" 2> "/dev/null" || true)"
+		_git_exec stash push -u -m "autostash-before-update-$(date +%s)" > "/dev/null" 2>&1 || true
+		_stash_after="$(_git_exec rev-parse -q --verify refs/stash 2> "/dev/null" || true)"
 		if [ -n "${_stash_after}" ] && [ "${_stash_before}" != "${_stash_after}" ]; then
 			_has_stash=1
 		fi
 	fi
 
 	local _current_branch
-	_current_branch="$(eval "${_cmd} branch --show-current" 2> "/dev/null" || true)"
+	_current_branch="$(_git_exec branch --show-current 2> "/dev/null" || true)"
 	if [ -z "${_current_branch}" ]; then
 		local _default_branch
-		_default_branch="$(eval "${_cmd} symbolic-ref --short refs/remotes/origin/HEAD" 2> "/dev/null" | sed 's|^origin/||' || true)"
+		_default_branch="$(_git_exec symbolic-ref --short refs/remotes/origin/HEAD 2> "/dev/null" | sed 's|^origin/||' || true)"
 		[ -z "${_default_branch}" ] && _default_branch="main"
-		if eval "${_cmd} show-ref --verify --quiet refs/heads/${_default_branch}" 2> "/dev/null"; then
-			if eval "${_cmd} checkout \"${_default_branch}\"" > "/dev/null" 2>&1; then
+		if _git_exec show-ref --verify --quiet "refs/heads/${_default_branch}" 2> "/dev/null"; then
+			if _git_exec checkout "${_default_branch}" > "/dev/null" 2>&1; then
 				_current_branch="${_default_branch}"
 			fi
 		fi
@@ -163,29 +182,29 @@ _git_pull_resilient() {
 
 	local _pull_ok=0
 	if [ -n "${_current_branch}" ]; then
-		if eval "${_cmd} pull --ff-only" > "/dev/null" 2>&1; then
+		if _git_exec pull --ff-only > "/dev/null" 2>&1; then
 			_pull_ok=1
-		elif eval "${_cmd} pull --rebase" > "/dev/null" 2>&1; then
+		elif _git_exec pull --rebase > "/dev/null" 2>&1; then
 			_pull_ok=1
-		elif eval "${_cmd} pull" > "/dev/null" 2>&1; then
+		elif _git_exec pull > "/dev/null" 2>&1; then
 			_pull_ok=1
 		fi
 	else
-		if eval "${_cmd} fetch" > "/dev/null" 2>&1; then
+		if _git_exec fetch > "/dev/null" 2>&1; then
 			_pull_ok=1
 		fi
 	fi
 
 	if [ "${_pull_ok}" -eq 1 ]; then
 		if [ "${_has_stash}" -eq 1 ]; then
-			if ! eval "${_cmd} stash pop" > "/dev/null" 2>&1; then
-				eval "${_cmd} reset --merge" > "/dev/null" 2>&1 || eval "${_cmd} checkout -f" > "/dev/null" 2>&1 || true
+			if ! _git_exec stash pop > "/dev/null" 2>&1; then
+				_git_exec reset --merge > "/dev/null" 2>&1 || _git_exec checkout -f > "/dev/null" 2>&1 || true
 				_ui_warn "Conflito detectado ao restaurar alterações locais em ${_dir}."
 				_ui_info "Sua versão local foi preservada com segurança em 'git stash list'."
 			fi
-			eval "${_cmd} diff --numstat" 2> "/dev/null" | while IFS="$(printf '\t')" read -r _additions _deletions _file; do
+			_git_exec diff --numstat 2> "/dev/null" | while IFS="$(printf '\t')" read -r _additions _deletions _file; do
 				if [ "${_additions}" = "0" ] && [ "${_deletions}" = "0" ] && [ -n "${_file}" ]; then
-					eval "${_cmd} checkout -- \"${_file}\"" > "/dev/null" 2>&1 || true
+					_git_exec checkout -- "${_file}" > "/dev/null" 2>&1 || true
 				fi
 			done
 		fi
@@ -195,7 +214,7 @@ _git_pull_resilient() {
 		fi
 
 		if [ -f "${_dir}/.gitmodules" ]; then
-			eval "${_cmd} submodule update --init --recursive" > "/dev/null" 2>&1 || true
+			_git_exec submodule update --init --recursive > "/dev/null" 2>&1 || true
 		fi
 		_heal_final_perms
 		return 0
@@ -208,34 +227,38 @@ _git_pull_resilient() {
 
 _git_push_resilient() {
 	local _dir="$1"
+	if command -v cygpath > "/dev/null" 2>&1; then
+		_dir="$(cygpath -u "${_dir}" 2> "/dev/null" || echo "${_dir}")"
+	else
+		_dir="$(echo "${_dir}" | tr '\\' '/')"
+	fi
 	if [ ! -d "${_dir}/.git" ] && [ ! -f "${_dir}/.git" ]; then
 		return 0
 	fi
 
-	local _cmd="git -C \"${_dir}\""
 	local _has_remote
-	_has_remote="$(eval "${_cmd} remote" 2> "/dev/null" || true)"
+	_has_remote="$(command git -C "${_dir}" remote 2> "/dev/null" || true)"
 	if [ -z "${_has_remote}" ]; then
 		_ui_info "${_dir}: sem remote configurado, pulando."
 		return 0
 	fi
 
 	local _branch
-	_branch="$(eval "${_cmd} branch --show-current" 2> "/dev/null" || true)"
+	_branch="$(command git -C "${_dir}" branch --show-current 2> "/dev/null" || true)"
 	if [ -z "${_branch}" ]; then
 		_ui_info "${_dir}: branch indefinida (detached HEAD), pulando."
 		return 0
 	fi
 
 	local _unpushed
-	_unpushed="$(eval "${_cmd} cherry -v" 2> "/dev/null" || true)"
+	_unpushed="$(command git -C "${_dir}" cherry -v 2> "/dev/null" || true)"
 	if [ -z "${_unpushed}" ]; then
 		_ui_ok "${_dir}: já atualizado com o remote (${_branch})."
 		return 0
 	fi
 
 	_ui_sub "Enviando ${_dir} (${_branch})..."
-	if eval "${_cmd} push" > "/dev/null" 2>&1 || eval "${_cmd} push origin \"${_branch}\"" > "/dev/null" 2>&1; then
+	if command git -C "${_dir}" push > "/dev/null" 2>&1 || command git -C "${_dir}" push origin "${_branch}" > "/dev/null" 2>&1; then
 		_ui_ok "${_dir}: push concluído com sucesso!"
 		return 0
 	else

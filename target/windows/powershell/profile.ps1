@@ -1,4 +1,4 @@
-<#
+﻿<#
 # ----------------------------------------------------------------
 # Module: PowerShell Interactive Environment Profile
 # ----------------------------------------------------------------
@@ -492,11 +492,15 @@ Parâmetros:
 	_ui_step "$action Suíte de Editores no Windows..."
 	$found = 0
 
-	$emacsPath = Join-Path $HOME ".emacs.d"
-	if (-not (Test-Path $emacsPath) -and $env:APPDATA) {
-		$emacsPath = Join-Path $env:APPDATA ".emacs.d"
-	}
-	if (Test-Path (Join-Path $emacsPath ".git")) {
+	$emacsCandidates = @(
+		(Join-Path $HOME ".emacs.d"),
+		(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE ".emacs.d" }),
+		(if ($env:APPDATA) { Join-Path $env:APPDATA ".emacs.d" }),
+		(Join-Path $HOME ".config\emacs")
+	) | Where-Object { $_ -and (Test-Path (Join-Path $_ ".git")) } | Select-Object -Unique
+	$emacsPath = $emacsCandidates | Select-Object -First 1
+
+	if ($emacsPath) {
 		$found = 1
 		if ($Status) {
 			_ui_sub "Status de Emacs em $emacsPath..."
@@ -518,11 +522,14 @@ Parâmetros:
 		}
 	}
 
-	$helixPath = if ($env:APPDATA) { Join-Path $env:APPDATA "helix" } else { Join-Path $HOME ".config\helix" }
-	if (-not (Test-Path (Join-Path $helixPath ".git")) -and (Test-Path (Join-Path $HOME ".config\helix\.git"))) {
-		$helixPath = Join-Path $HOME ".config\helix"
-	}
-	if (Test-Path (Join-Path $helixPath ".git")) {
+	$helixCandidates = @(
+		(if ($env:APPDATA) { Join-Path $env:APPDATA "helix" }),
+		(Join-Path $HOME "AppData\Roaming\helix"),
+		(Join-Path $HOME ".config\helix")
+	) | Where-Object { $_ -and (Test-Path (Join-Path $_ ".git")) } | Select-Object -Unique
+	$helixPath = $helixCandidates | Select-Object -First 1
+
+	if ($helixPath) {
 		$found = 1
 		if ($Status) {
 			_ui_sub "Status de Helix em $helixPath..."
@@ -537,11 +544,14 @@ Parâmetros:
 		}
 	}
 
-	$nvimPath = if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "nvim" } else { Join-Path $HOME ".config\nvim" }
-	if (-not (Test-Path (Join-Path $nvimPath ".git")) -and (Test-Path (Join-Path $HOME ".config\nvim\.git"))) {
-		$nvimPath = Join-Path $HOME ".config\nvim"
-	}
-	if (Test-Path (Join-Path $nvimPath ".git")) {
+	$nvimCandidates = @(
+		(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "nvim" }),
+		(Join-Path $HOME "AppData\Local\nvim"),
+		(Join-Path $HOME ".config\nvim")
+	) | Where-Object { $_ -and (Test-Path (Join-Path $_ ".git")) } | Select-Object -Unique
+	$nvimPath = $nvimCandidates | Select-Object -First 1
+
+	if ($nvimPath) {
 		$found = 1
 		if ($Status) {
 			_ui_sub "Status de NeoVim em $nvimPath..."
@@ -556,11 +566,15 @@ Parâmetros:
 		}
 	}
 
-	$vimPath = Join-Path $HOME "vimfiles"
-	if (-not (Test-Path (Join-Path $vimPath ".git")) -and (Test-Path (Join-Path $HOME ".vim\.git"))) {
-		$vimPath = Join-Path $HOME ".vim"
-	}
-	if (Test-Path (Join-Path $vimPath ".git")) {
+	$vimCandidates = @(
+		(Join-Path $HOME "vimfiles"),
+		(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE "vimfiles" }),
+		(Join-Path $HOME ".vim"),
+		(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE ".vim" })
+	) | Where-Object { $_ -and (Test-Path (Join-Path $_ ".git")) } | Select-Object -Unique
+	$vimPath = $vimCandidates | Select-Object -First 1
+
+	if ($vimPath) {
 		$found = 1
 		if ($Status) {
 			_ui_sub "Status de Vim em $vimPath..."
@@ -677,6 +691,28 @@ Parâmetros:
 			}
 		}
 		_ui_ok "Sincronização de extensões concluída!"
+	}
+}
+
+function Update-EmacsModes {
+	$emacsCandidates = @(
+		(Join-Path $HOME ".emacs.d"),
+		(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE ".emacs.d" }),
+		(if ($env:APPDATA) { Join-Path $env:APPDATA ".emacs.d" }),
+		(Join-Path $HOME ".config\emacs")
+	) | Where-Object { $_ -and (Test-Path (Join-Path $_ ".git")) } | Select-Object -Unique
+	$emacsPath = $emacsCandidates | Select-Object -First 1
+
+	if (-not $emacsPath) {
+		_ui_warn "Diretório do GNU Emacs não encontrado em ~/.emacs.d ou ~/.config/emacs."
+		return
+	}
+	_ui_step "Atualizando submódulos Elisp locais em $emacsPath..."
+	git -C $emacsPath submodule update --init --recursive --remote --merge
+	if ($LASTEXITCODE -eq 0) {
+		_ui_ok "Submódulos Elisp atualizados com sucesso!"
+	} else {
+		_ui_err "Falha na sincronização dos submódulos Elisp."
 	}
 }
 
@@ -962,6 +998,45 @@ Parâmetros:
 	}
 }
 
+function Reinstall-Shell {
+	_ui_step "Recarregando ambiente do PowerShell..."
+	if ($PROFILE -and (Test-Path $PROFILE)) {
+		. $PROFILE
+	} elseif ($env:SHELL_REPO_DIR -and (Test-Path (Join-Path $env:SHELL_REPO_DIR "target\windows\powershell\profile.ps1"))) {
+		. (Join-Path $env:SHELL_REPO_DIR "target\windows\powershell\profile.ps1")
+	}
+	_ui_ok "PowerShell recarregado com sucesso!"
+}
+
+function Bench-Shell {
+	_ui_step "Medindo tempo de inicialização do PowerShell..."
+	$pwshExe = if (Get-Command pwsh -ErrorAction SilentlyContinue) { "pwsh" } else { "powershell" }
+	$sw = [System.Diagnostics.Stopwatch]::StartNew()
+	& $pwshExe -NoProfile -Command "exit"
+	$sw.Stop()
+	_ui_ok "Latência de boot limpo: $($sw.ElapsedMilliseconds) ms"
+}
+
+function Clean-Cache {
+	_ui_step "Limpando caches temporários do Shell..."
+	if (Test-Path "$env:LOCALAPPDATA\Temp") {
+		Get-ChildItem -Path "$env:LOCALAPPDATA\Temp" -Filter "*shell*" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+	}
+	_ui_ok "Cache do Universal Shell limpo com sucesso!"
+}
+
+function Update-Wifi {
+	_ui_step "Auditando interfaces e perfis de rede sem fio..."
+	netsh wlan show interfaces
+	_ui_ok "Status de WiFi verificado com sucesso!"
+}
+
+function Update-Network {
+	_ui_step "Auditando configurações e adaptadores de rede..."
+	Get-NetAdapter | Format-Table -AutoSize
+	_ui_ok "Rede verificada com sucesso!"
+}
+
 function Update-System {
 	_ui_step "Atualizando gerenciadores de pacotes do sistema..."
 	$found = $false
@@ -1099,12 +1174,56 @@ Set-Alias "uprc" "Update-Profile" -Force -Option AllScope
 Set-Alias "upprofile" "Update-Profile" -Force -Option AllScope
 Set-Alias "sync-profile" "Update-Profile" -Force -Option AllScope
 Set-Alias "upvt" "Update-Vault" -Force -Option AllScope
+Set-Alias "u" "Update-All" -Force -Option AllScope
 Set-Alias "upall" "Update-All" -Force -Option AllScope
+Set-Alias "update-emacs-modes" "Update-EmacsModes" -Force -Option AllScope
+Set-Alias "upmodes" "Update-EmacsModes" -Force -Option AllScope
+Set-Alias "reinstall-shell" "Reinstall-Shell" -Force -Option AllScope
+Set-Alias "resh" "Reinstall-Shell" -Force -Option AllScope
+Set-Alias "bench-shell" "Bench-Shell" -Force -Option AllScope
+Set-Alias "bsh" "Bench-Shell" -Force -Option AllScope
+Set-Alias "shell-bench" "Bench-Shell" -Force -Option AllScope
+Set-Alias "clean-cache" "Clean-Cache" -Force -Option AllScope
+Set-Alias "ccache" "Clean-Cache" -Force -Option AllScope
+Set-Alias "cleancache" "Clean-Cache" -Force -Option AllScope
+Set-Alias "update-wifi" "Update-Wifi" -Force -Option AllScope
+Set-Alias "upwf" "Update-Wifi" -Force -Option AllScope
+Set-Alias "update-network" "Update-Network" -Force -Option AllScope
+Set-Alias "upnet" "Update-Network" -Force -Option AllScope
 Set-Alias "cleansys" "Clean-System" -Force -Option AllScope
 Set-Alias "clearsys" "Clean-System" -Force -Option AllScope
 Set-Alias "sysclean" "Clean-System" -Force -Option AllScope
 Set-Alias "syscls" "Clean-System" -Force -Option AllScope
 Set-Alias "clear-system" "Clean-System" -Force -Option AllScope
+
+Remove-Item alias:gl -Force -ErrorAction SilentlyContinue
+Remove-Item alias:gp -Force -ErrorAction SilentlyContinue
+Remove-Item alias:gcm -Force -ErrorAction SilentlyContinue
+
+function Invoke-GitStatusSb { git status -sb @args }
+Set-Alias "gs" "Invoke-GitStatusSb" -Force -Option AllScope
+function Invoke-GitDiff { git diff @args }
+Set-Alias "gd" "Invoke-GitDiff" -Force -Option AllScope
+function Invoke-GitStatus { git status @args }
+Set-Alias "gst" "Invoke-GitStatus" -Force -Option AllScope
+function Invoke-GitCheckout { git checkout @args }
+Set-Alias "gco" "Invoke-GitCheckout" -Force -Option AllScope
+function Invoke-GitCheckoutBranch { git checkout -b @args }
+Set-Alias "gcb" "Invoke-GitCheckoutBranch" -Force -Option AllScope
+function Invoke-GitSwitch { git switch @args }
+Set-Alias "gsw" "Invoke-GitSwitch" -Force -Option AllScope
+function Invoke-GitSwitchCreate { git switch -c @args }
+Set-Alias "gswc" "Invoke-GitSwitchCreate" -Force -Option AllScope
+function Invoke-GitCommitMsg { git commit -m @args }
+Set-Alias "gcm" "Invoke-GitCommitMsg" -Force -Option AllScope
+function Invoke-GitAddAll { git add --all @args }
+Set-Alias "gaa" "Invoke-GitAddAll" -Force -Option AllScope
+function Invoke-GitPull { git pull @args }
+Set-Alias "gl" "Invoke-GitPull" -Force -Option AllScope
+function Invoke-GitPush { git push @args }
+Set-Alias "gp" "Invoke-GitPush" -Force -Option AllScope
+function Invoke-GitLogGraph { git log --oneline --decorate --graph -n 20 @args }
+Set-Alias "glog" "Invoke-GitLogGraph" -Force -Option AllScope
 
 Set-Alias "brw" "Browser-Search" -Force -Option AllScope
 Set-Alias "win-man" "Windows-Manual" -Force -Option AllScope
@@ -1190,10 +1309,10 @@ function ec {
 	_restore_tty_cursor
 }
 function emacs-nw {
-	if (Get-Command emacsclient -ErrorAction SilentlyContinue) {
-		emacsclient -t --alternate-editor "" @args
-	} elseif (Get-Command emacs -ErrorAction SilentlyContinue) {
+	if (Get-Command emacs -ErrorAction SilentlyContinue) {
 		emacs -nw @args
+	} elseif (Get-Command emacs.exe -ErrorAction SilentlyContinue) {
+		emacs.exe -nw @args
 	} else {
 		_ui_err "emacs not found."
 	}
@@ -1210,6 +1329,23 @@ function emacs-open-nw {
 Set-Alias "oen" "emacs-open-nw" -Force -Option AllScope
 Set-Alias "oenw" "emacs-open-nw" -Force -Option AllScope
 Set-Alias "open-emacs-nw" "emacs-open-nw" -Force -Option AllScope
+
+function Invoke-EmacsEshell {
+	$dir = if ($args) { $args[0] } else { "." }
+	if (Test-Path $dir) { $dir = (Resolve-Path $dir).Path.Replace('\', '/') }
+	if (Get-Command emacsclientw -ErrorAction SilentlyContinue) {
+		emacsclientw --create-frame --alternate-editor "" --eval "(progn (cd `"$dir/`") (aweshell/new))"
+	} elseif (Get-Command runemacs -ErrorAction SilentlyContinue) {
+		runemacs --eval "(progn (cd `"$dir/`") (aweshell/new))"
+	} else {
+		_ui_err "emacs not found."
+	}
+	_restore_tty_cursor
+}
+Set-Alias "emacs-eshell" "Invoke-EmacsEshell" -Force -Option AllScope
+Set-Alias "open-eshell" "Invoke-EmacsEshell" -Force -Option AllScope
+Set-Alias "oes" "Invoke-EmacsEshell" -Force -Option AllScope
+Set-Alias "esh" "Invoke-EmacsEshell" -Force -Option AllScope
 
 function oe {
 	$app = "emacsclientw"
@@ -1401,6 +1537,148 @@ Set-Alias "oa" "Invoke-OpenAntigravity" -Force -Option AllScope
 Set-Alias "ant" "Invoke-OpenAntigravity" -Force -Option AllScope
 Set-Alias "open-emacs" "oe" -Force -Option AllScope
 
+function Invoke-UniversalEditor {
+	$target = if ($args) { $args } else { @(".") }
+	if (Get-Command nvim -ErrorAction SilentlyContinue) {
+		nvim @target
+	} elseif (Get-Command vim -ErrorAction SilentlyContinue) {
+		vim @target
+	} elseif (Get-Command hx -ErrorAction SilentlyContinue) {
+		hx @target
+	} elseif (Get-Command emacs -ErrorAction SilentlyContinue) {
+		emacs -nw @target
+	} elseif (Get-Command emacs.exe -ErrorAction SilentlyContinue) {
+		emacs.exe -nw @target
+	} else {
+		notepad.exe @target
+	}
+}
+Set-Alias "editor" "Invoke-UniversalEditor" -Force -Option AllScope
+Set-Alias "e" "Invoke-UniversalEditor" -Force -Option AllScope
+
+function Invoke-OpenHelix {
+	$target = if ($args) { $args } else { @(".") }
+	hx @target
+}
+Set-Alias "open-helix" "Invoke-OpenHelix" -Force -Option AllScope
+Set-Alias "open-hx" "Invoke-OpenHelix" -Force -Option AllScope
+Set-Alias "oh" "Invoke-OpenHelix" -Force -Option AllScope
+Set-Alias "h" "Invoke-OpenHelix" -Force -Option AllScope
+
+function Invoke-OpenSmart {
+	if (-not $args) {
+		_ui_warn "Uso: o <arquivo|diretorio|url>"
+		return
+	}
+	foreach ($target in $args) {
+		if ($target -match '^https?://') {
+			Start-Process $target
+			continue
+		}
+		if (Test-Path $target -PathType Container) {
+			explorer.exe $target
+			continue
+		}
+		$ext = [System.IO.Path]::GetExtension($target).ToLower()
+		$docExts = @('.pdf', '.epub', '.djvu', '.sqlite', '.sqlite3', '.db', '.org', '.md', '.txt', '.tex', '.el', '.sh', '.py', '.c', '.h', '.rs', '.go', '.js', '.ts', '.json', '.yaml', '.yml', '.toml', '.xml', '.csv', '.log', '.diff', '.patch', '.zip', '.tar', '.gz', '.xz', '.7z')
+		if ($docExts -contains $ext) {
+			if (Get-Command emacsclientw -ErrorAction SilentlyContinue) {
+				Start-Process -FilePath "emacsclientw" -ArgumentList @("-n", $target) -WindowStyle Hidden
+				continue
+			} elseif (Get-Command emacs -ErrorAction SilentlyContinue) {
+				emacs -nw $target
+				continue
+			}
+		}
+		Start-Process $target
+	}
+}
+Set-Alias "open-smart" "Invoke-OpenSmart" -Force -Option AllScope
+Set-Alias "o" "Invoke-OpenSmart" -Force -Option AllScope
+Set-Alias "open" "Invoke-OpenSmart" -Force -Option AllScope
+
+function Invoke-TakeDir([string]$dir) {
+	if (-not $dir) {
+		Write-Error "Uso: take <diretorio>"
+		return
+	}
+	if (-not (Test-Path $dir)) {
+		New-Item -ItemType Directory -Path $dir -Force | Out-Null
+	}
+	Set-Location $dir
+}
+Set-Alias "take-dir" "Invoke-TakeDir" -Force -Option AllScope
+Set-Alias "take" "Invoke-TakeDir" -Force -Option AllScope
+Set-Alias "mkcd" "Invoke-TakeDir" -Force -Option AllScope
+
+function Invoke-CdGitRoot {
+	$root = git rev-parse --show-toplevel 2>$null
+	if ($root) {
+		Set-Location $root
+	} else {
+		_ui_err "Não está dentro de um repositório git."
+	}
+}
+Set-Alias "cd-git-root" "Invoke-CdGitRoot" -Force -Option AllScope
+Set-Alias "cdb" "Invoke-CdGitRoot" -Force -Option AllScope
+
+function Invoke-HistSearch([string]$term) {
+	if (-not $term) {
+		Get-History -Count 30
+	} else {
+		Get-History | Where-Object { $_.CommandLine -like "*$term*" }
+	}
+}
+Set-Alias "hist" "Invoke-HistSearch" -Force -Option AllScope
+Set-Alias "hg" "Invoke-HistSearch" -Force -Option AllScope
+
+function Invoke-ExtractArchive([string]$file) {
+	if (-not $file) {
+		Write-Error "Uso: extract <arquivo>"
+		return
+	}
+	if (-not (Test-Path $file)) {
+		_ui_err "Arquivo '$file' não encontrado."
+		return
+	}
+	switch -Wildcard ($file) {
+		"*.zip" { Expand-Archive -Path $file -DestinationPath . -Force }
+		"*.tar.gz" { tar -xzvf $file }
+		"*.tgz" { tar -xzvf $file }
+		"*.tar.bz2" { tar -xjvf $file }
+		"*.tbz2" { tar -xjvf $file }
+		"*.tar.xz" { tar -xJvf $file }
+		"*.txz" { tar -xJvf $file }
+		"*.tar" { tar -xvf $file }
+		"*.7z" { if (Get-Command 7z -ErrorAction SilentlyContinue) { 7z x $file } else { tar -xvf $file } }
+		"*.rar" { if (Get-Command unrar -ErrorAction SilentlyContinue) { unrar x $file } else { _ui_err "unrar não encontrado." } }
+		default { _ui_err "Formato não suportado para extração: '$file'" }
+	}
+}
+Set-Alias "extract" "Invoke-ExtractArchive" -Force -Option AllScope
+Set-Alias "x" "Invoke-ExtractArchive" -Force -Option AllScope
+
+function path-front([string]$dir) {
+	if ($dir -and (Test-Path $dir)) {
+		$env:PATH = "$dir;$env:PATH"
+	}
+}
+function path-back([string]$dir) {
+	if ($dir -and (Test-Path $dir)) {
+		$env:PATH = "$env:PATH;$dir"
+	}
+}
+function path-dedup {
+	$parts = $env:PATH -split ';' | Where-Object { $_ -and (Test-Path $_) }
+	$unique = @()
+	foreach ($p in $parts) {
+		if ($unique -notcontains $p) {
+			$unique += $p
+		}
+	}
+	$env:PATH = $unique -join ';'
+}
+
 ### ================================
 ### MODERN RUST TOOLS ALIASES
 ### ================================
@@ -1447,19 +1725,33 @@ if (-not (Get-Command delta -ErrorAction SilentlyContinue) -and (Get-Command git
 	Set-Alias "delta" "git-delta" -Force -Option AllScope
 }
 
+if (Get-Command zoxide -ErrorAction SilentlyContinue) {
+	Invoke-Expression (& zoxide init powershell | Out-String)
+}
+
 ### ================================
 ### GOOGLE ANTIGRAVITY CLI ALIASES
 ### ================================
 
+Set-Alias "a" "agy" -Force -Option AllScope
+
 function agy-continue { agy -c @args }
 function agyc { agy -c @args }
+function agyr { agy -c @args }
+function agy-return { agy -c @args }
 
 function agy-auto { agy --dangerously-skip-permissions @args }
 function agy-danger { agy --dangerously-skip-permissions @args }
 function agya { agy --dangerously-skip-permissions @args }
 function agyd { agy --dangerously-skip-permissions @args }
+function aa { agy --dangerously-skip-permissions @args }
+function ad { agy --dangerously-skip-permissions @args }
 
 function agy-continue-auto { agy -c --dangerously-skip-permissions @args }
 function agy-continue-danger { agy -c --dangerously-skip-permissions @args }
 function agyca { agy -c --dangerously-skip-permissions @args }
 function agycd { agy -c --dangerously-skip-permissions @args }
+function agyra { agy -c --dangerously-skip-permissions @args }
+function agyrd { agy -c --dangerously-skip-permissions @args }
+function agy-return-auto { agy -c --dangerously-skip-permissions @args }
+function agy-return-danger { agy -c --dangerously-skip-permissions @args }

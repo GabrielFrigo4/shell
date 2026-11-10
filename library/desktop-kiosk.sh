@@ -120,15 +120,35 @@ fi
 ### --------------------------------
 ### EPHEMERAL GRAPHICAL LAUNCHERS
 ### --------------------------------
-graphical-launcher-wayland() {
+graphical_launcher_wayland() {
 	unset EMACS_OS_MODE
 	_sanitize_graphical_env
 
-	local _flavor=""
+	local _flavor="" _selected_wm=""
 	local _had_wayland=1
 	[ -z "${WAYLAND_DISPLAY:-}" ] && _had_wayland=0
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
+			-l|--list|--pipeline)
+				_show_wm_pipeline "wayland"
+				return 0
+				;;
+			-w|--wm)
+				if [ "$#" -ge 2 ]; then
+					_selected_wm="$2"
+					shift 2
+				else
+					shift
+				fi
+				;;
+			--wm=*)
+				_selected_wm="${1#--wm=}"
+				shift
+				;;
+			--sway|--labwc|--river|--cage|--hyprland|--niri|--wayfire|--dwl)
+				_selected_wm="${1#--}"
+				shift
+				;;
 			-g|--gnome)    _flavor="gnome"; shift ;;
 			-k|--kde)      _flavor="kde"; shift ;;
 			-x|--xfce)     _flavor="xfce"; shift ;;
@@ -197,6 +217,12 @@ fi
 if command -v labwc > "/dev/null" 2>&1; then
 	labwc --exit > "/dev/null" 2>&1 || true
 fi
+if command -v hyprctl > "/dev/null" 2>&1 && [ -n "\${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+	hyprctl dispatch exit > "/dev/null" 2>&1 || true
+fi
+if command -v niri > "/dev/null" 2>&1 && [ -n "\${NIRI_SOCKET:-}" ]; then
+	niri msg action quit --skip-confirmation > "/dev/null" 2>&1 || true
+fi
 exit "\${_ret}"
 EOF
 	chmod 0755 "${_wayland_runner}"
@@ -245,10 +271,28 @@ EOF
 		_dbus_run="dbus-launch --exit-with-session"
 	fi
 
-	if command -v sway > "/dev/null" 2>&1; then
-		local _sway_cfg="${XDG_RUNTIME_DIR:-/tmp}/sway-gui-$$.conf"
-		local _tabwatch="${XDG_RUNTIME_DIR:-/tmp}/wgui-tabwatch-$$.sh"
-		cat << 'EOF' >| "${_tabwatch}"
+	local _target_wm="${_selected_wm}"
+	if [ -n "${_target_wm}" ]; then
+		if ! command -v "${_target_wm}" > "/dev/null" 2>&1; then
+			_ui_err "Compositor Wayland '${_target_wm}' não está instalado."
+			rm -f "${_wayland_runner}" 2> "/dev/null" || true
+			return 1
+		fi
+	else
+		local _w_cand
+		for _w_cand in $(_get_wayland_wm_pipeline); do
+			if command -v "${_w_cand}" > "/dev/null" 2>&1; then
+				_target_wm="${_w_cand}"
+				break
+			fi
+		done
+	fi
+
+	case "${_target_wm}" in
+		sway)
+			local _sway_cfg="${XDG_RUNTIME_DIR:-/tmp}/sway-gui-$$.conf"
+			local _tabwatch="${XDG_RUNTIME_DIR:-/tmp}/wgui-tabwatch-$$.sh"
+			cat << 'EOF' >| "${_tabwatch}"
 #!/bin/sh
 while :; do
 	_count=$(swaymsg -t get_tree 2> "/dev/null" | grep -c '"pid":' || true)
@@ -260,9 +304,9 @@ while :; do
 	sleep 1
 done
 EOF
-		chmod 0755 "${_tabwatch}"
+			chmod 0755 "${_tabwatch}"
 
-		cat << EOF >| "${_sway_cfg}"
+			cat << EOF >| "${_sway_cfg}"
 font pango:${_ui_font} Bold 10
 titlebar_padding 10 4
 default_border none
@@ -319,29 +363,30 @@ input type:keyboard {
 exec "${_tabwatch}"
 exec ${_exec_invocation}
 EOF
-		${_dbus_run} command sway -c "${_sway_cfg}" >| "${_log_file}" 2>&1
-		_ret=$?
-		rm -f "${_sway_cfg}" "${_tabwatch}" 2> "/dev/null" || true
-	elif command -v labwc > "/dev/null" 2>&1; then
-		local _labwc_dir="${XDG_RUNTIME_DIR:-/tmp}/labwc-gui-$$"
-		mkdir -p "${_labwc_dir}"
-		cat << 'EOF' >| "${_labwc_dir}/themerc"
-window.active.title.bg.color: #1f1f28
-window.active.label.text.color: #dcd7ba
-window.inactive.title.bg.color: #16161e
-window.inactive.label.text.color: #727169
+			${_dbus_run} command sway -c "${_sway_cfg}" >| "${_log_file}" 2>&1
+			_ret=$?
+			rm -f "${_sway_cfg}" "${_tabwatch}" 2> "/dev/null" || true
+			;;
+		labwc)
+			local _labwc_dir="${XDG_RUNTIME_DIR:-/tmp}/labwc-gui-$$"
+			mkdir -p "${_labwc_dir}"
+			cat << 'EOF' >| "${_labwc_dir}/themerc"
+window.active.title.bg.color: #2b2b30
+window.active.label.text.color: #ffffff
+window.inactive.title.bg.color: #1e1e22
+window.inactive.label.text.color: #9a9996
 border.width: 1
-border.color: #54546d
-window.active.border.color: #7e9cd8
-window.inactive.border.color: #54546d
+border.color: #38383d
+window.active.border.color: #3584e4
+window.inactive.border.color: #38383d
 menu.border.width: 1
-menu.border.color: #54546d
-menu.items.bg.color: #1f1f28
-menu.items.text.color: #dcd7ba
-menu.items.active.bg.color: #2a2a37
-menu.items.active.text.color: #e6c384
+menu.border.color: #38383d
+menu.items.bg.color: #1e1e22
+menu.items.text.color: #ffffff
+menu.items.active.bg.color: #3584e4
+menu.items.active.text.color: #ffffff
 EOF
-		cat << 'EOF' >| "${_labwc_dir}/menu.xml"
+			cat << 'EOF' >| "${_labwc_dir}/menu.xml"
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="Universal Labwc">
@@ -367,14 +412,14 @@ EOF
   </menu>
 </openbox_menu>
 EOF
-		cat << EOF >| "${_labwc_dir}/rc.xml"
+			cat << EOF >| "${_labwc_dir}/rc.xml"
 <?xml version="1.0"?>
 <labwc_config>
   <theme>
     <name>kiosk</name>
     <cornerRadius>0</cornerRadius>
     <border.width>1</border.width>
-    <border.color>#54546d</border.color>
+    <border.color>#38383d</border.color>
   </theme>
   <keyboard>
     <repeatRate>50</repeatRate>
@@ -386,7 +431,13 @@ EOF
     <keybind key="A-F4"><action name="Close"/></keybind>
   </keyboard>
   <mouse>
+    <context name="Titlebar">
+      <mousebind button="Left" action="Drag"><action name="Unmaximize"/><action name="Move"/></mousebind>
+    </context>
     <context name="Root">
+      <mousebind button="Middle" action="Press">
+        <action name="ShowMenu"><menu>client-list-combined-menu</menu></action>
+      </mousebind>
       <mousebind button="Right" action="Press">
         <action name="ShowMenu"><menu>root-menu</menu></action>
       </mousebind>
@@ -412,12 +463,13 @@ EOF
   </windowRules>
 </labwc_config>
 EOF
-		${_dbus_run} command labwc -C "${_labwc_dir}" -s "${_exec_invocation}" >| "${_log_file}" 2>&1
-		_ret=$?
-		rm -rf "${_labwc_dir}" 2> "/dev/null" || true
-	elif command -v river > "/dev/null" 2>&1; then
-		local _river_init="${XDG_RUNTIME_DIR:-/tmp}/river-gui-$$.sh"
-		cat << EOF >| "${_river_init}"
+			${_dbus_run} command labwc -C "${_labwc_dir}" -s "${_exec_invocation}" >| "${_log_file}" 2>&1
+			_ret=$?
+			rm -rf "${_labwc_dir}" 2> "/dev/null" || true
+			;;
+		river)
+			local _river_init="${XDG_RUNTIME_DIR:-/tmp}/river-gui-$$.sh"
+			cat << EOF >| "${_river_init}"
 #!/bin/sh
 riverctl border-width 0
 riverctl xcursor-theme "${_cur_theme}" "${_cur_size}"
@@ -434,18 +486,102 @@ riverctl map normal Super F toggle-fullscreen
 riverctl map normal Super Q spawn "riverctl exit"
 ${_exec_invocation} &
 EOF
-		chmod 0755 "${_river_init}"
-		${_dbus_run} command river -c "${_river_init}" >| "${_log_file}" 2>&1
-		_ret=$?
-		rm -f "${_river_init}" 2> "/dev/null" || true
-	elif command -v cage > "/dev/null" 2>&1; then
-		${_dbus_run} command cage -s -- ${_exec_invocation} >| "${_log_file}" 2>&1
-		_ret=$?
-	else
-		_ui_err "Nenhum compositor Wayland (sway, labwc, river, cage) encontrado."
-		rm -f "${_wayland_runner}" 2> "/dev/null" || true
-		return 1
-	fi
+			chmod 0755 "${_river_init}"
+			${_dbus_run} command river -c "${_river_init}" >| "${_log_file}" 2>&1
+			_ret=$?
+			rm -f "${_river_init}" 2> "/dev/null" || true
+			;;
+		hyprland)
+			local _hypr_cfg="${XDG_RUNTIME_DIR:-/tmp}/hyprland-gui-$$.conf"
+			cat << EOF >| "${_hypr_cfg}"
+monitor=,preferred,auto,1
+general {
+    border_size = 0
+    gaps_in = 0
+    gaps_out = 0
+}
+decoration {
+    rounding = 0
+    drop_shadow = false
+}
+misc {
+    disable_hyprland_logo = true
+    background_color = rgb(1e1e22)
+}
+input {
+    kb_layout = br
+    kb_model = abnt2
+    repeat_rate = 50
+    repeat_delay = 200
+    touchpad {
+        natural_scroll = true
+        tap-to-click = true
+    }
+}
+bind = SUPER, Q, killactive
+bind = SUPER SHIFT, Q, exit
+exec-once = ${_exec_invocation}
+EOF
+			if command -v Hyprland > "/dev/null" 2>&1; then
+				${_dbus_run} command Hyprland --config "${_hypr_cfg}" >| "${_log_file}" 2>&1
+			else
+				${_dbus_run} command hyprland --config "${_hypr_cfg}" >| "${_log_file}" 2>&1
+			fi
+			_ret=$?
+			rm -f "${_hypr_cfg}" 2> "/dev/null" || true
+			;;
+		niri)
+			local _niri_cfg="${XDG_RUNTIME_DIR:-/tmp}/niri-gui-$$.kdl"
+			cat << EOF >| "${_niri_cfg}"
+prefer-no-csd
+layout {
+    border {
+        width 0
+    }
+}
+binds {
+    Mod+Q { close-window; }
+    Mod+Shift+Q { quit; }
+}
+EOF
+			printf 'spawn-at-startup "%s" "%s"\n' "${_wayland_runner}" "${_app}" >> "${_niri_cfg}"
+			${_dbus_run} command niri --config "${_niri_cfg}" >| "${_log_file}" 2>&1
+			_ret=$?
+			rm -f "${_niri_cfg}" 2> "/dev/null" || true
+			;;
+		wayfire)
+			local _wf_cfg="${XDG_RUNTIME_DIR:-/tmp}/wayfire-gui-$$.ini"
+			cat << EOF >| "${_wf_cfg}"
+[core]
+plugins = autostart
+[autostart]
+app = ${_exec_invocation}
+EOF
+			${_dbus_run} command wayfire -c "${_wf_cfg}" >| "${_log_file}" 2>&1
+			_ret=$?
+			rm -f "${_wf_cfg}" 2> "/dev/null" || true
+			;;
+		dwl)
+			local _dwl_startup="${XDG_RUNTIME_DIR:-/tmp}/dwl-gui-$$.sh"
+			cat << EOF >| "${_dwl_startup}"
+#!/bin/sh
+exec ${_exec_invocation}
+EOF
+			chmod 0755 "${_dwl_startup}"
+			${_dbus_run} command dwl -s "${_dwl_startup}" >| "${_log_file}" 2>&1
+			_ret=$?
+			rm -f "${_dwl_startup}" 2> "/dev/null" || true
+			;;
+		cage)
+			${_dbus_run} command cage -s -- ${_exec_invocation} >| "${_log_file}" 2>&1
+			_ret=$?
+			;;
+		*)
+			_ui_err "Nenhum compositor Wayland (sway, labwc, river, hyprland, niri, wayfire, dwl, cage) encontrado."
+			rm -f "${_wayland_runner}" 2> "/dev/null" || true
+			return 1
+			;;
+	esac
 
 	rm -f "${_wayland_runner}" 2> "/dev/null" || true
 	[ "${_had_wayland}" -eq 0 ] && unset WAYLAND_DISPLAY
@@ -457,23 +593,42 @@ EOF
 	fi
 	return 0
 }
-alias wgui="graphical-launcher-wayland"
+alias graphical-launcher-wayland="graphical_launcher_wayland" wgui="graphical_launcher_wayland"
 
-graphical-launcher-x11() {
-	command -v xinit > "/dev/null" 2>&1 || command -v startx > "/dev/null" 2>&1 || {
-		_ui_err "xinit ou startx não encontrado para lançador Xorg."
-		return 1
-	}
-
+graphical_launcher_x11() {
 	unset EMACS_OS_MODE
 	_sanitize_graphical_env
 
-	local _flavor=""
+	local _flavor="" _selected_wm=""
 	local _had_display=1
 	[ -z "${DISPLAY:-}" ] && _had_display=0
 
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
+			-l|--list|--pipeline)
+				_show_wm_pipeline "x11"
+				return 0
+				;;
+			-w|--wm)
+				if [ "$#" -ge 2 ]; then
+					_selected_wm="$2"
+					shift 2
+				else
+					shift
+				fi
+				;;
+			--wm=*)
+				_selected_wm="${1#--wm=}"
+				shift
+				;;
+			--openbox|--cwm|--dwm|--fvwm|--twm)
+				_selected_wm="${1#--}"
+				shift
+				;;
+			--matchbox|--matchbox-window-manager)
+				_selected_wm="matchbox-window-manager"
+				shift
+				;;
 			-g|--gnome)    _flavor="gnome"; shift ;;
 			-k|--kde)      _flavor="kde"; shift ;;
 			-x|--xfce)     _flavor="xfce"; shift ;;
@@ -490,6 +645,11 @@ graphical-launcher-x11() {
 		esac
 	done
 
+	command -v xinit > "/dev/null" 2>&1 || command -v startx > "/dev/null" 2>&1 || {
+		_ui_err "xinit ou startx não encontrado para lançador Xorg."
+		return 1
+	}
+
 	local _raw_app="${1:-xterm}"
 	[ "$#" -ge 1 ] && shift
 	local _app="$(_resolve_graphical_app "${_raw_app}")"
@@ -502,6 +662,17 @@ graphical-launcher-x11() {
 	_x11_session_env "${_flavor}"
 	_setup_cursor_env "${_flavor}"
 	_x11_driver_preflight
+
+	local _theme_flavor="$(_detect_desktop_theme "${_flavor}")"
+	local _valid_theme="${XCURSOR_THEME:-Adwaita}"
+	local _icon_theme=""
+	case "${_theme_flavor}" in
+		kde|plasma|lxqt) _icon_theme="breeze-dark" ;;
+		pantheon)        _icon_theme="elementary" ;;
+		deepin)          _icon_theme="bloom" ;;
+		cosmic)          _icon_theme="cosmic" ;;
+		*)               _icon_theme="Adwaita" ;;
+	esac
 
 	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
 	export GTK_THEME="${GTK_THEME:-adw-gtk3-dark}"
@@ -899,6 +1070,24 @@ Gtk.main()
 EOF_TABBAR
 	fi
 
+
+	local _target_wm="${_selected_wm}"
+	if [ -n "${_target_wm}" ]; then
+		if ! command -v "${_target_wm}" > "/dev/null" 2>&1; then
+			_ui_err "Gerenciador X11 '${_target_wm}' não está instalado."
+			rm -f "${_tabbar_script}" 2> "/dev/null" || true
+			return 1
+		fi
+	else
+		local _x_cand
+		for _x_cand in $(_get_x11_wm_pipeline); do
+			if command -v "${_x_cand}" > "/dev/null" 2>&1; then
+				_target_wm="${_x_cand}"
+				break
+			fi
+		done
+	fi
+
 	local _sh="$(_detect_enabled_shell)"
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-gui-$$.sh"
@@ -963,13 +1152,50 @@ if command -v numlockx > "/dev/null" 2>&1; then
 	numlockx on 2> "/dev/null" || true
 fi
 
+if command -v gnome-keyring-daemon > "/dev/null" 2>&1; then
+	eval "\$(gnome-keyring-daemon --start --components=secrets,ssh,pkcs11 2> "/dev/null")"
+	[ -n "\${SSH_AUTH_SOCK:-}" ] && export SSH_AUTH_SOCK
+	if command -v dbus-update-activation-environment > "/dev/null" 2>&1; then
+		dbus-update-activation-environment --systemd SSH_AUTH_SOCK DISPLAY XDG_CURRENT_DESKTOP 2> "/dev/null" || \
+		dbus-update-activation-environment SSH_AUTH_SOCK DISPLAY XDG_CURRENT_DESKTOP 2> "/dev/null" || true
+	fi
+fi
+
+if command -v xrandr > "/dev/null" 2>&1; then
+	for _out in \$(xrandr 2> "/dev/null" | grep " connected" | cut -d ' ' -f1); do
+		xrandr --output "\${_out}" --set "TearFree" "on" 2> "/dev/null" || true
+	done
+fi
+
+if command -v xsettingsd > "/dev/null" 2>&1; then
+	_xsettings_cfg="\${XDG_RUNTIME_DIR:-/tmp}/xsettingsd-\$\$.conf"
+	cat << EOF_XSET >| "\${_xsettings_cfg}"
+Net/ThemeName "adw-gtk3-dark"
+Net/IconThemeName "${_icon_theme}"
+Gtk/CursorThemeName "${_valid_theme}"
+Gtk/CursorThemeSize 24
+Gtk/FontName "${_ui_font}"
+EOF_XSET
+	xsettingsd -c "\${_xsettings_cfg}" > "/dev/null" 2>&1 &
+fi
+
+if [ "\${X11_NO_COMPOSITOR:-0}" != "1" ]; then
+	if command -v picom > "/dev/null" 2>&1; then
+		picom --backend glx --vsync -b > "/dev/null" 2>&1 || \
+		picom --backend xrender --vsync -b > "/dev/null" 2>&1 || true
+	elif command -v xcompmgr > "/dev/null" 2>&1; then
+		xcompmgr -c -C -b > "/dev/null" 2>&1 || true
+	fi
+fi
+
 if [ -n "${_tabbar_script}" ] && [ -f "${_tabbar_script}" ]; then
 	env GDK_BACKEND=x11 XGUI_FONT="${_ui_font}" python3 "${_tabbar_script}" > "/dev/null" 2>&1 &
 fi
 
-if command -v openbox > "/dev/null" 2>&1; then
-	_ob_cfg="\${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-\$\$.xml"
-	cat << 'XOB' >| "\${_ob_cfg}"
+case "${_target_wm}" in
+	openbox)
+		_ob_cfg="\${XDG_RUNTIME_DIR:-/tmp}/openbox-gui-\$\$.xml"
+		cat << 'XOB' >| "\${_ob_cfg}"
 <?xml version="1.0"?>
 <openbox_config xmlns="http://openbox.org/3.4/rc">
   <theme>
@@ -996,9 +1222,11 @@ if command -v openbox > "/dev/null" 2>&1; then
     <doubleClickTime>500</doubleClickTime>
     <screenEdgeWarpTime>0</screenEdgeWarpTime>
     <screenEdgeWarpMouse>false</screenEdgeWarpMouse>
-    <context name="Root"/>
+    <context name="Root">
+      <mousebind button="Middle" action="Press"><action name="ShowMenu"><menu>client-list-combined-menu</menu></action></mousebind>
+    </context>
     <context name="Titlebar">
-      <mousebind button="Left" action="Drag"><action name="Move"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Unmaximize"/><action name="Move"/></mousebind>
       <mousebind button="Left" action="DoubleClick"><action name="ToggleMaximize"/></mousebind>
     </context>
     <context name="Iconify">
@@ -1041,14 +1269,33 @@ if command -v openbox > "/dev/null" 2>&1; then
   </applications>
 </openbox_config>
 XOB
-	openbox --config-file "\${_ob_cfg}" > "/dev/null" 2>&1 &
-elif command -v matchbox-window-manager > "/dev/null" 2>&1; then
-	matchbox-window-manager -use_titlebar no > "/dev/null" 2>&1 &
-elif command -v cwm > "/dev/null" 2>&1; then
-	cwm > "/dev/null" 2>&1 &
-elif command -v ratpoison > "/dev/null" 2>&1; then
-	ratpoison > "/dev/null" 2>&1 &
-fi
+		openbox --config-file "\${_ob_cfg}" > "/dev/null" 2>&1 &
+		;;
+	cwm)
+		cwm > "/dev/null" 2>&1 &
+		;;
+	dwm)
+		dwm > "/dev/null" 2>&1 &
+		;;
+	fvwm)
+		fvwm > "/dev/null" 2>&1 &
+		;;
+	twm)
+		twm > "/dev/null" 2>&1 &
+		;;
+	matchbox|matchbox-window-manager)
+		matchbox-window-manager -use_titlebar no > "/dev/null" 2>&1 &
+		;;
+	*)
+		if command -v openbox > "/dev/null" 2>&1; then
+			openbox > "/dev/null" 2>&1 &
+		elif command -v matchbox-window-manager > "/dev/null" 2>&1; then
+			matchbox-window-manager -use_titlebar no > "/dev/null" 2>&1 &
+		elif command -v cwm > "/dev/null" 2>&1; then
+			cwm > "/dev/null" 2>&1 &
+		fi
+		;;
+esac
 
 _target_bin="\$1"
 [ "\$#" -ge 1 ] && shift
@@ -1114,17 +1361,17 @@ EOF
 	_freebsd_vt_bounce
 	return "${_xinit_ret}"
 }
-alias xgui="graphical-launcher-x11"
+alias graphical-launcher-x11="graphical_launcher_x11" xgui="graphical_launcher_x11"
 
-graphical-launcher() {
+graphical_launcher() {
 	_dispatch_display_server "graphical-launcher" "$@"
 }
-alias gui="graphical-launcher"
+alias graphical-launcher="graphical_launcher" gui="graphical_launcher"
 
 ### --------------------------------
 ### EMACS OS WINDOW MANAGERS
 ### --------------------------------
-emacs-window-manager-wayland() {
+emacs_window_manager_wayland() {
 	_sanitize_graphical_env
 
 	local _flavor=""
@@ -1187,17 +1434,16 @@ emacs-window-manager-wayland() {
 			_ui_err "EWM Wayland encerrou com erro (código ${_emacs_ret}). Log: ${_ewm_log}"
 		fi
 	else
-		graphical-launcher-wayland emacs "$@"
+		graphical_launcher_wayland emacs "$@"
 	fi
 
 	unset EMACS_OS_MODE
 	_restore_tty_cursor 2> "/dev/null" || true
 	_freebsd_vt_bounce
 }
-alias wewm="emacs-window-manager-wayland"
-alias wew="emacs-window-manager-wayland"
+alias emacs-window-manager-wayland="emacs_window_manager_wayland" wewm="emacs_window_manager_wayland" wew="emacs_window_manager_wayland"
 
-emacs-window-manager-x11() {
+emacs_window_manager_x11() {
 	_sanitize_graphical_env
 
 	local _flavor=""
@@ -1238,13 +1484,9 @@ emacs-window-manager-x11() {
 	_restore_tty_cursor 2> "/dev/null" || true
 	_freebsd_vt_bounce
 }
-alias xewm="emacs-window-manager-x11"
-alias xew="emacs-window-manager-x11"
-alias exwm="emacs-window-manager-x11"
-alias exw="emacs-window-manager-x11"
+alias emacs-window-manager-x11="emacs_window_manager_x11" xewm="emacs_window_manager_x11" xew="emacs_window_manager_x11" exwm="emacs_window_manager_x11" exw="emacs_window_manager_x11"
 
-emacs-window-manager() {
+emacs_window_manager() {
 	_dispatch_display_server "emacs-window-manager" "$@"
 }
-alias ewm="emacs-window-manager"
-alias ew="emacs-window-manager"
+alias emacs-window-manager="emacs_window_manager" ewm="emacs_window_manager" ew="emacs_window_manager"

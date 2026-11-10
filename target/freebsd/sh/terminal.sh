@@ -25,9 +25,7 @@ if (bind -e) > "/dev/null" 2>&1; then
 	bind "\e[5C" em-next-word 2> "/dev/null" || true
 	bind "\e[5D" ed-prev-word 2> "/dev/null" || true
 	bind "\eOc" em-next-word 2> "/dev/null" || true
-	bind "\eOC" em-next-word 2> "/dev/null" || true
 	bind "\eOd" ed-prev-word 2> "/dev/null" || true
-	bind "\eOD" ed-prev-word 2> "/dev/null" || true
 fi
 
 if [ -z "${SHELL_INIT:-}" ]; then

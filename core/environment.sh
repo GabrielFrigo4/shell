@@ -337,7 +337,7 @@ else
 fi
 alias -- ~="cd ~" ..="cd .." ...="cd ../.." ....="cd ../../.." -="cd -"
 alias take="take-dir" mkcd="take-dir" cdb="cd-git-root"
-alias clear="printf '\x1b[2J\x1b[3J\x1b[H'"
+alias clear="[ -t 1 ] && echo -n \$'\e[2J\e[3J\e[H'"
 
 ### --------------------------------
 ### UTILITY & BENCHMARK ALIASES
@@ -415,11 +415,11 @@ alias agyra="agy -c --dangerously-skip-permissions" agyrd="agy -c --dangerously-
 if [ -t 1 ]; then
 	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 		if [ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ]; then
-			printf '\x1b%%G\x1b[?16;238;0c\x1b]P0000000\x1b]P17f0000\x1b]P2007f00\x1b]P3c4a100\x1b]P43366a3\x1b]P57f007f\x1b]P6007f7f\x1b]P7bfbfbf\x1b]P873828a\x1b]P9ff0000\x1b]Pa00ff00\x1b]Pbffff00\x1b]Pc739ecf\x1b]Pdff00ff\x1b]Pe00ffff\x1b]Pfffffff'
+			echo -n $'\e%G\e[?16;238;0c\e]P0000000\e]P17f0000\e]P2007f00\e]P3c4a100\e]P43366a3\e]P57f007f\e]P6007f7f\e]P7bfbfbf\e]P873828a\e]P9ff0000\e]Pa00ff00\e]Pbffff00\e]Pc739ecf\e]Pdff00ff\e]Pe00ffff\e]Pfffffff'
 			command -v stty > "/dev/null" 2>&1 && stty iutf8 2> "/dev/null" || true
 		fi
 	else
-		printf '\x1b[1 q'
+		echo -n $'\e[1 q'
 	fi
 fi
 

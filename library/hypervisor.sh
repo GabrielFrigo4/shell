@@ -81,10 +81,15 @@ _hyp_bhyve_ensure_up() {
 	_b_lbl="$1"
 	_b_vm="$2"
 	_b_ip="$3"
+	_b_user="${4:-${LINUX_HOST_USER:-gabriel}}"
 
 	if command -v nc > "/dev/null" 2>&1; then
 		if nc -z -w 1 "${_b_ip}" 22 > "/dev/null" 2>&1; then
-			return 0
+			_probe="$(ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=accept-new "${_b_user}@${_b_ip}" true 2>&1 || true)"
+			case "${_probe}" in
+				*nologin*|*"booting up"*) ;;
+				*) return 0 ;;
+			esac
 		fi
 	fi
 
@@ -110,10 +115,14 @@ _hyp_bhyve_ensure_up() {
 	fi
 
 	_wait_count=0
-	while [ "${_wait_count}" -lt 15 ]; do
+	while [ "${_wait_count}" -lt 30 ]; do
 		if command -v nc > "/dev/null" 2>&1; then
 			if nc -z -w 1 "${_b_ip}" 22 > "/dev/null" 2>&1; then
-				return 0
+				_probe="$(ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=accept-new "${_b_user}@${_b_ip}" true 2>&1 || true)"
+				case "${_probe}" in
+					*nologin*|*"booting up"*) ;;
+					*) return 0 ;;
+				esac
 			fi
 		fi
 		sleep 1
@@ -132,7 +141,17 @@ _hyp_bhyve_dispatch() {
 	case "${_action}" in
 		--start|-s|start|up)
 			_ui_step "Iniciando VM ${_label} no Bhyve (${_vm_name})..."
-			_as_root vm start "${_vm_name}"
+			if command -v _as_root > "/dev/null" 2>&1; then
+				_as_root vm start "${_vm_name}" > "/dev/null" 2>&1 || true
+			else
+				sudo vm start "${_vm_name}" > "/dev/null" 2>&1 || true
+			fi
+			_hyp_bhyve_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}" "${_vm_user}"
+			if [ "$#" -gt 0 ]; then
+				_hyp_ssh_connect "${_vm_user}" "${_vm_ip}" "$@"
+			else
+				_ui_ok "VM ${_label} (${_vm_name}) iniciada e pronta para conexões!"
+			fi
 			;;
 		--stop|--close|-c|-k|stop|down|poweroff)
 			_ui_step "Desligando VM ${_label} no Bhyve (${_vm_name})..."
@@ -149,15 +168,15 @@ _hyp_bhyve_dispatch() {
 			_as_root vm console "${_vm_name}"
 			;;
 		ssh)
-			_hyp_bhyve_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}"
+			_hyp_bhyve_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}" "${_vm_user}"
 			_hyp_ssh_connect "${_vm_user}" "${_vm_ip}" "$@"
 			;;
 		"")
-			_hyp_bhyve_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}"
+			_hyp_bhyve_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}" "${_vm_user}"
 			_hyp_ssh_connect "${_vm_user}" "${_vm_ip}"
 			;;
 		*)
-			_hyp_bhyve_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}"
+			_hyp_bhyve_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}" "${_vm_user}"
 			_hyp_ssh_connect "${_vm_user}" "${_vm_ip}" "${_action}" "$@"
 			;;
 	esac
@@ -433,8 +452,25 @@ linux() {
 
 		case "${_action}" in
 			--start|-s|start|up)
+				[ "$#" -ge 1 ] && shift 1
+				_lx_ip="${LINUX_HOST_IP:-192.168.8.2}"
+				_lx_user="${LINUX_HOST_USER:-gabriel}"
 				_ui_step "Iniciando VM Linux no Bhyve (${_vm_name})..."
-				_as_root vm start "${_vm_name}"
+				if command -v _as_root > "/dev/null" 2>&1; then
+					_as_root vm start "${_vm_name}" > "/dev/null" 2>&1 || true
+				elif command -v vm > "/dev/null" 2>&1; then
+					sudo vm start "${_vm_name}" > "/dev/null" 2>&1 || true
+				fi
+				_hyp_bhyve_ensure_up "Linux" "${_vm_name}" "${_lx_ip}" "${_lx_user}"
+				if [ "$#" -gt 0 ]; then
+					if command -v linux-host > "/dev/null" 2>&1; then
+						linux-host "$@"
+					else
+						_hyp_ssh_connect "${_lx_user}" "${_lx_ip}" "$@"
+					fi
+				else
+					_ui_ok "VM Linux (${_vm_name}) iniciada e pronta para conexões!"
+				fi
 				;;
 			--stop|--close|-c|-k|stop|down|poweroff)
 				_ui_step "Desligando VM Linux no Bhyve (${_vm_name})..."
@@ -451,10 +487,10 @@ linux() {
 				_as_root vm console "${_vm_name}"
 				;;
 			ssh)
-				shift
+				[ "$#" -ge 1 ] && shift 1
 				_lx_ip="${LINUX_HOST_IP:-192.168.8.2}"
 				_lx_user="${LINUX_HOST_USER:-gabriel}"
-				_hyp_bhyve_ensure_up "Linux" "${_vm_name}" "${_lx_ip}"
+				_hyp_bhyve_ensure_up "Linux" "${_vm_name}" "${_lx_ip}" "${_lx_user}"
 				_hyp_ssh_connect "${_lx_user}" "${_lx_ip}" "$@"
 				;;
 			*)
@@ -463,7 +499,7 @@ linux() {
 				else
 					_lx_ip="${LINUX_HOST_IP:-192.168.8.2}"
 					_lx_user="${LINUX_HOST_USER:-gabriel}"
-					_hyp_bhyve_ensure_up "Linux" "${_vm_name}" "${_lx_ip}"
+					_hyp_bhyve_ensure_up "Linux" "${_vm_name}" "${_lx_ip}" "${_lx_user}"
 					_hyp_ssh_connect "${_lx_user}" "${_lx_ip}" "$@"
 				fi
 				;;

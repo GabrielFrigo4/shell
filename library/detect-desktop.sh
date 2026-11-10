@@ -83,6 +83,14 @@ _detect_desktop_environment() {
 			_DETECTED_DESKTOP_ENV="openbox"
 		elif pgrep -x cwm > "/dev/null" 2>&1; then
 			_DETECTED_DESKTOP_ENV="cwm"
+		elif pgrep -x dwm > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="dwm"
+		elif pgrep -x fvwm > "/dev/null" 2>&1 || pgrep -x fvwm3 > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="fvwm"
+		elif pgrep -x twm > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="twm"
+		elif pgrep -x matchbox-window-manager > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="matchbox"
 		fi
 	fi
 
@@ -520,4 +528,84 @@ _detect_zoxide() {
 	else _DETECTED_ZOXIDE=""; fi
 	_cache_write "zoxide" "${_DETECTED_ZOXIDE}"
 	echo "${_DETECTED_ZOXIDE}"
+}
+
+### --------------------------------
+### WINDOW MANAGER PIPELINES
+### --------------------------------
+_get_x11_wm_pipeline() {
+	local _os="${1:-$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')}"
+	case "${_os}" in
+		openbsd)
+			printf '%s\n' "openbox cwm dwm fvwm twm matchbox-window-manager"
+			;;
+		*)
+			printf '%s\n' "openbox cwm dwm matchbox-window-manager"
+			;;
+	esac
+}
+
+_get_wayland_wm_pipeline() {
+	printf '%s\n' "sway labwc river hyprland niri wayfire dwl cage"
+}
+
+_show_wm_pipeline() {
+	local _target="${1:-all}"
+	local _os="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+
+	if [ "${_target}" = "wayland" ] || [ "${_target}" = "all" ]; then
+		_ui_banner "PIPELINE WAYLAND (${_os})"
+		local _w_pipeline="$(_get_wayland_wm_pipeline)"
+		local _primary_w="" _w_wm _w_bin
+		for _w_wm in ${_w_pipeline}; do
+			if command -v "${_w_wm}" > "/dev/null" 2>&1; then
+				_primary_w="${_w_wm}"
+				break
+			fi
+		done
+		_ui_step "Ordem de compositores Wayland:"
+		for _w_wm in ${_w_pipeline}; do
+			if command -v "${_w_wm}" > "/dev/null" 2>&1; then
+				_w_bin="$(command -v "${_w_wm}")"
+				if [ "${_w_wm}" = "${_primary_w}" ]; then
+					_ui_ok "${_w_wm} -> ${_w_bin} [SELECIONADO]"
+				else
+					_ui_ok "${_w_wm} -> ${_w_bin}"
+				fi
+			else
+				_ui_warn "${_w_wm} (ausente)"
+			fi
+		done
+		if [ -z "${_primary_w}" ]; then
+			_ui_warn "Nenhum compositor Wayland disponível no sistema."
+		fi
+	fi
+
+	if [ "${_target}" = "x11" ] || [ "${_target}" = "all" ]; then
+		_ui_banner "PIPELINE X11 (${_os})"
+		local _x_pipeline="$(_get_x11_wm_pipeline "${_os}")"
+		local _primary_x="" _x_wm _x_bin
+		for _x_wm in ${_x_pipeline}; do
+			if command -v "${_x_wm}" > "/dev/null" 2>&1; then
+				_primary_x="${_x_wm}"
+				break
+			fi
+		done
+		_ui_step "Ordem de gerenciadores X11:"
+		for _x_wm in ${_x_pipeline}; do
+			if command -v "${_x_wm}" > "/dev/null" 2>&1; then
+				_x_bin="$(command -v "${_x_wm}")"
+				if [ "${_x_wm}" = "${_primary_x}" ]; then
+					_ui_ok "${_x_wm} -> ${_x_bin} [SELECIONADO]"
+				else
+					_ui_ok "${_x_wm} -> ${_x_bin}"
+				fi
+			else
+				_ui_warn "${_x_wm} (ausente)"
+			fi
+		done
+		if [ -z "${_primary_x}" ]; then
+			_ui_warn "Nenhum gerenciador X11 disponível no sistema."
+		fi
+	fi
 }

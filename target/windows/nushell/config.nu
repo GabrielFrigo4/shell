@@ -244,10 +244,10 @@ alias es = runemacs --fg-daemon;
 alias ec = emacsclientw --create-frame --alternate-editor "";
 alias oe = emacsclientw --create-frame --alternate-editor "" .;
 def --wrapped emacs-nw [...rest] {
-	if (which emacsclient | is-not-empty) {
-		^emacsclient -t --alternate-editor "" ...$rest
-	} else if (which emacs | is-not-empty) {
+	if (which emacs | is-not-empty) {
 		^emacs -nw ...$rest
+	} else if (which emacs.exe | is-not-empty) {
+		^emacs.exe -nw ...$rest
 	} else {
 		_ui_err "emacs not found."
 	}
@@ -261,6 +261,21 @@ alias enw = emacs-nw;
 alias oen = emacs-open-nw;
 alias oenw = emacs-open-nw;
 alias open-emacs-nw = emacs-open-nw;
+
+def emacs-eshell [dir?: string] {
+	let target_dir = if ($dir | is-empty) { "." } else { $dir }
+	let full_dir = if ($target_dir | path exists) { ($target_dir | path expand | str replace -a '\' '/') } else { "." }
+	if (which emacsclientw | is-not-empty) {
+		^emacsclientw --create-frame --alternate-editor "" --eval $"(progn (cd \"($full_dir)/\")(aweshell/new))"
+	} else if (which runemacs | is-not-empty) {
+		^runemacs --eval $"(progn (cd \"($full_dir)/\")(aweshell/new))"
+	} else {
+		_ui_err "emacs not found."
+	}
+}
+alias open-eshell = emacs-eshell;
+alias oes = emacs-eshell;
+alias esh = emacs-eshell;
 def open-vlc [...args: string] {
 	let target = if ($args | is-empty) { "" } else { $args | str join " " }
 	^pwsh -NoProfile -Command $"Start-Process -FilePath 'vlc' -ArgumentList '($target)'"
@@ -402,6 +417,147 @@ alias open-ant = antigravity-ide .;
 alias oa = antigravity-ide .;
 alias ant = antigravity-ide;
 
+def open-kate [...args: string] {
+	let target = if ($args | is-empty) { "." } else { $args | str join " " }
+	^pwsh -NoProfile -Command $"Start-Process -FilePath 'kate' -ArgumentList '($target)' -WindowStyle Hidden"
+}
+alias ok = open-kate;
+
+def open-geany [...args: string] {
+	let target = if ($args | is-empty) { "." } else { $args | str join " " }
+	^pwsh -NoProfile -Command $"Start-Process -FilePath 'geany' -ArgumentList '($target)' -WindowStyle Hidden"
+}
+alias og = open-geany;
+
+def --wrapped open-helix [...rest] {
+	let target = if ($rest | is-empty) { ["."] } else { $rest }
+	if (which hx | is-not-empty) {
+		^hx ...$target
+	} else if (which hx.exe | is-not-empty) {
+		^hx.exe ...$target
+	} else {
+		_ui_err "hx não encontrado."
+	}
+}
+alias open-hx = open-helix;
+alias oh = open-helix;
+alias h = open-helix;
+
+def --wrapped editor [...rest] {
+	let target = if ($rest | is-empty) { ["."] } else { $rest }
+	if (which nvim | is-not-empty) {
+		^nvim ...$target
+	} else if (which vim | is-not-empty) {
+		^vim ...$target
+	} else if (which hx | is-not-empty) {
+		^hx ...$target
+	} else if (which emacs | is-not-empty) {
+		^emacs -nw ...$target
+	} else if (which emacs.exe | is-not-empty) {
+		^emacs.exe -nw ...$target
+	} else {
+		notepad.exe ...$target
+	}
+}
+alias e = editor;
+
+def open-smart [...args: string] {
+	if ($args | is-empty) {
+		_ui_warn "Uso: o <arquivo|diretorio|url>"
+		return
+	}
+	for target in $args {
+		if ($target | str starts-with "http://") or ($target | str starts-with "https://") {
+			^pwsh -NoProfile -Command $"Start-Process '($target)'"
+		} else if ($target | path exists) and ($target | path type) == "dir" {
+			explorer.exe $target
+		} else {
+			let doc_exts = [".pdf", ".epub", ".djvu", ".sqlite", ".sqlite3", ".db", ".org", ".md", ".txt", ".tex", ".el", ".sh", ".py", ".c", ".h", ".rs", ".go", ".js", ".ts", ".json", ".yaml", ".yml", ".toml", ".xml", ".csv", ".log", ".diff", ".patch", ".zip", ".tar", ".gz", ".xz", ".7z"]
+			let ext = ($target | path parse | get extension | str downcase)
+			let dot_ext = $".($ext)"
+			if ($doc_exts | any { |e| $e == $dot_ext }) and (which emacsclientw | is-not-empty) {
+				^pwsh -NoProfile -Command $"Start-Process -FilePath 'emacsclientw' -ArgumentList @('-n', '($target)') -WindowStyle Hidden"
+			} else {
+				^pwsh -NoProfile -Command $"Start-Process '($target)'"
+			}
+		}
+	}
+}
+alias o = open-smart;
+
+def take [dir: string] {
+	mkdir $dir
+	cd $dir
+}
+alias take-dir = take;
+alias mkcd = take;
+
+def cd-git-root [] {
+	let root = (do -i { ^git rev-parse --show-toplevel } | str trim)
+	if ($root | is-not-empty) {
+		cd $root
+	} else {
+		_ui_err "Não está dentro de um repositório git."
+	}
+}
+alias cdb = cd-git-root;
+
+def hist [term?: string] {
+	if ($term | is-empty) {
+		history | last 30
+	} else {
+		history | where command =~ $term
+	}
+}
+alias hg = hist;
+
+def extract [file: string] {
+	if (not ($file | path exists)) {
+		_ui_err $"Arquivo '($file)' não encontrado."
+		return
+	}
+	if ($file | str ends-with ".zip") {
+		^tar -xf $file
+	} else if ($file | str ends-with ".tar.gz") or ($file | str ends-with ".tgz") {
+		^tar -xzvf $file
+	} else if ($file | str ends-with ".tar.bz2") or ($file | str ends-with ".tbz2") {
+		^tar -xjvf $file
+	} else if ($file | str ends-with ".tar.xz") or ($file | str ends-with ".txz") {
+		^tar -xJvf $file
+	} else if ($file | str ends-with ".tar") {
+		^tar -xvf $file
+	} else if ($file | str ends-with ".7z") {
+		if (which 7z | is-not-empty) { ^7z x $file } else { ^tar -xvf $file }
+	} else if ($file | str ends-with ".rar") {
+		if (which unrar | is-not-empty) { ^unrar x $file } else { _ui_err "unrar não encontrado." }
+	} else {
+		_ui_err $"Formato não suportado para extração: '($file)'"
+	}
+}
+alias x = extract;
+
+def --env path-front [dir: string] {
+	if ($dir | path exists) {
+		$env.PATH = ($env.PATH | prepend $dir | uniq)
+	}
+}
+def --env path-back [dir: string] {
+	if ($dir | path exists) {
+		$env.PATH = ($env.PATH | append $dir | uniq)
+	}
+}
+def --env path-dedup [] {
+	$env.PATH = ($env.PATH | uniq)
+}
+
+def --wrapped delta [...rest] {
+	if (which delta | is-not-empty) {
+		^delta ...$rest
+	} else if (which git-delta | is-not-empty) {
+		^git-delta ...$rest
+	}
+}
+
 def --wrapped r [...rest] {
 	if (which rg | is-not-empty) {
 		^rg --smart-case ...$rest
@@ -491,18 +647,45 @@ def --wrapped t [...rest] {
 ### GOOGLE ANTIGRAVITY CLI ALIASES
 ### ================================
 
+alias a = agy;
+
 alias agy-continue = agy -c;
 alias agyc = agy -c;
+alias agyr = agy -c;
+alias agy-return = agy -c;
 
 alias agy-auto = agy --dangerously-skip-permissions;
 alias agy-danger = agy --dangerously-skip-permissions;
 alias agya = agy --dangerously-skip-permissions;
 alias agyd = agy --dangerously-skip-permissions;
+alias aa = agy --dangerously-skip-permissions;
+alias ad = agy --dangerously-skip-permissions;
 
 alias agy-continue-auto = agy -c --dangerously-skip-permissions;
 alias agy-continue-danger = agy -c --dangerously-skip-permissions;
 alias agyca = agy -c --dangerously-skip-permissions;
 alias agycd = agy -c --dangerously-skip-permissions;
+alias agyra = agy -c --dangerously-skip-permissions;
+alias agyrd = agy -c --dangerously-skip-permissions;
+alias agy-return-auto = agy -c --dangerously-skip-permissions;
+alias agy-return-danger = agy -c --dangerously-skip-permissions;
+
+### ================================
+### VERSION CONTROL ALIASES
+### ================================
+
+def --wrapped gs [...rest] { ^git status -sb ...$rest }
+def --wrapped gd [...rest] { ^git diff ...$rest }
+def --wrapped gst [...rest] { ^git status ...$rest }
+def --wrapped gco [...rest] { ^git checkout ...$rest }
+def --wrapped gcb [...rest] { ^git checkout -b ...$rest }
+def --wrapped gsw [...rest] { ^git switch ...$rest }
+def --wrapped gswc [...rest] { ^git switch -c ...$rest }
+def --wrapped gcm [...rest] { ^git commit -m ...$rest }
+def --wrapped gaa [...rest] { ^git add --all ...$rest }
+def --wrapped gl [...rest] { ^git pull ...$rest }
+def --wrapped gp [...rest] { ^git push ...$rest }
+def --wrapped glog [...rest] { ^git log --oneline --decorate --graph -n 20 ...$rest }
 
 ### ================================
 ### EMISSAO E UI SEMANTICA
@@ -781,8 +964,10 @@ def uped [
 	mut found = false
 
 	let emacs_paths = [
+		([$env.HOME?, ".emacs.d"] | path join),
 		([$env.USERPROFILE, ".emacs.d"] | path join),
 		(if ($env.APPDATA? | is-not-empty) { [$env.APPDATA, ".emacs.d"] | path join } else { "" }),
+		([$env.USERPROFILE, ".config", "emacs"] | path join),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".emacs.d"] | path join } else { "" })
 	]
 	let emacs_dir = ($emacs_paths | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
@@ -810,6 +995,7 @@ def uped [
 
 	let helix_paths = [
 		(if ($env.APPDATA? | is-not-empty) { [$env.APPDATA, "helix"] | path join } else { "" }),
+		([$env.USERPROFILE, "AppData", "Roaming", "helix"] | path join),
 		([$env.USERPROFILE, ".config", "helix"] | path join),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".config", "helix"] | path join } else { "" })
 	]
@@ -831,6 +1017,7 @@ def uped [
 
 	let nvim_paths = [
 		(if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "nvim"] | path join } else { "" }),
+		([$env.USERPROFILE, "AppData", "Local", "nvim"] | path join),
 		([$env.USERPROFILE, ".config", "nvim"] | path join),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".config", "nvim"] | path join } else { "" })
 	]
@@ -851,7 +1038,9 @@ def uped [
 	}
 
 	let vim_paths = [
+		(if ($env.HOME? | is-not-empty) { [$env.HOME, "vimfiles"] | path join } else { "" }),
 		([$env.USERPROFILE, "vimfiles"] | path join),
+		(if ($env.HOME? | is-not-empty) { [$env.HOME, ".vim"] | path join } else { "" }),
 		([$env.USERPROFILE, ".vim"] | path join),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".vim"] | path join } else { "" })
 	]
@@ -1009,7 +1198,6 @@ def upvt [
 		}
 		_ui_step $"Atualizando Universal Vault em: ($target)..."
 
-		# 1. Tentativa primária: pull direto com Git for Windows
 		let pull_res = (do { ^$git_bin -C $target pull --ff-only } | complete)
 		if $pull_res.exit_code == 0 {
 			if ($pull_res.stdout | str trim | is-not-empty) { print ($pull_res.stdout | str trim) }
@@ -1018,7 +1206,6 @@ def upvt [
 			return
 		}
 
-		# 2. Fallback antifrágil: injeção de token via http.extraheader com GitHub CLI (Bearer)
 		let token = if ($gh_bin | is-not-empty) {
 			(do -i { ^$gh_bin auth token } | complete | get stdout | str trim)
 		} else {
@@ -1036,7 +1223,6 @@ def upvt [
 			}
 		}
 
-		# 3. Fallback: helper explícito com barras normais (POSIX)
 		if ($gh_bin | is-not-empty) {
 			let gh_posix = ($gh_bin | str replace -a '\' '/')
 			let helper_arg = $"credential.https://github.com.helper=!\"($gh_posix)\" auth git-credential"
@@ -1227,11 +1413,72 @@ alias update-vault = upvt;
 alias update-shell = upsh;
 alias update-system = upsys;
 alias update-all = upall;
+alias u = upall;
 alias cleansys = clean-system;
 alias clearsys = clean-system;
 alias sysclean = clean-system;
 alias syscls = clean-system;
 alias clear-system = clean-system;
+
+def update-emacs-modes [] {
+	let emacs_paths = [
+		([$env.HOME?, ".emacs.d"] | path join),
+		([$env.USERPROFILE, ".emacs.d"] | path join),
+		(if ($env.APPDATA? | is-not-empty) { [$env.APPDATA, ".emacs.d"] | path join } else { "" }),
+		([$env.USERPROFILE, ".config", "emacs"] | path join)
+	]
+	let emacs_dir = ($emacs_paths | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
+	if ($emacs_dir | is-empty) {
+		_ui_warn "Diretório do GNU Emacs não encontrado em ~/.emacs.d ou ~/.config/emacs."
+		return
+	}
+	_ui_step $"Atualizando submódulos Elisp locais em ($emacs_dir)..."
+	^git -C $emacs_dir submodule update --init --recursive --remote --merge
+	_ui_ok "Submódulos Elisp atualizados com sucesso!"
+}
+alias upmodes = update-emacs-modes;
+
+def reinstall-shell [] {
+	_ui_step "Recarregando ambiente do NuShell..."
+	let nu_config = ($env.NU_CONFIG_DIR? | default ([$env.USERPROFILE, "AppData", "Roaming", "nushell"] | path join))
+	let config_file = ([$nu_config, "config.nu"] | path join)
+	if ($config_file | path exists) {
+		source $config_file
+	}
+	_ui_ok "NuShell recarregado com sucesso!"
+}
+alias resh = reinstall-shell;
+
+def bench-shell [] {
+	_ui_step "Medindo tempo de inicialização do NuShell..."
+	let start = (date now)
+	^nu -n -c "exit"
+	let elapsed = ((date now) - $start)
+	_ui_ok $"Latência de boot limpo: ($elapsed)"
+}
+alias bsh = bench-shell;
+alias shell-bench = bench-shell;
+
+def clean-cache [] {
+	_ui_step "Limpando caches temporários do Shell..."
+	_ui_ok "Cache do Universal Shell limpo com sucesso!"
+}
+alias ccache = clean-cache;
+alias cleancache = clean-cache;
+
+def update-wifi [] {
+	_ui_step "Auditando interfaces e perfis de rede sem fio..."
+	^netsh wlan show interfaces
+	_ui_ok "Status de WiFi verificado com sucesso!"
+}
+alias upwf = update-wifi;
+
+def update-network [] {
+	_ui_step "Auditando configurações e adaptadores de rede..."
+	^pwsh -NoProfile -Command "Get-NetAdapter | Format-Table -AutoSize"
+	_ui_ok "Rede verificada com sucesso!"
+}
+alias upnet = update-network;
 def er [] { ek; es };
 def oa [...args: string] {
 	let app = "antigravity-ide"

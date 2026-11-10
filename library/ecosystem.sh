@@ -135,40 +135,70 @@ update-editors() {
 		_ui_step "Atualizando a Suíte de Editores..."
 	fi
 
+	_win_home=""
+	if [ -n "${USERPROFILE:-}" ]; then
+		if command -v cygpath > "/dev/null" 2>&1; then
+			_win_home="$(cygpath -u "${USERPROFILE}" 2> "/dev/null" || echo "${USERPROFILE}")"
+		else
+			_win_home="$(echo "${USERPROFILE}" | tr '\\' '/')"
+		fi
+	fi
+
+	_win_appdata=""
+	if [ -n "${APPDATA:-}" ]; then
+		if command -v cygpath > "/dev/null" 2>&1; then
+			_win_appdata="$(cygpath -u "${APPDATA}" 2> "/dev/null" || echo "${APPDATA}")"
+		else
+			_win_appdata="$(echo "${APPDATA}" | tr '\\' '/')"
+		fi
+	elif [ -n "${_win_home}" ]; then
+		_win_appdata="${_win_home}/AppData/Roaming"
+	fi
+
+	_win_localappdata=""
+	if [ -n "${LOCALAPPDATA:-}" ]; then
+		if command -v cygpath > "/dev/null" 2>&1; then
+			_win_localappdata="$(cygpath -u "${LOCALAPPDATA}" 2> "/dev/null" || echo "${LOCALAPPDATA}")"
+		else
+			_win_localappdata="$(echo "${LOCALAPPDATA}" | tr '\\' '/')"
+		fi
+	elif [ -n "${_win_home}" ]; then
+		_win_localappdata="${_win_home}/AppData/Local"
+	fi
+
+	_processed_targets=""
 	for _editor in Emacs Helix NeoVim Vim; do
-		_target=""
 		case "${_editor}" in
 			Emacs)
-				if [ -d "${HOME}/.emacs.d/.git" ]; then
-					_target="${HOME}/.emacs.d"
-				elif [ -d "${XDG_CONFIG_HOME:-${HOME}/.config}/emacs/.git" ]; then
-					_target="${XDG_CONFIG_HOME:-${HOME}/.config}/emacs"
-				fi
+				set -- "${HOME}/.emacs.d" "${XDG_CONFIG_HOME:-${HOME}/.config}/emacs"
+				[ -n "${_win_home}" ] && set -- "$@" "${_win_home}/.emacs.d"
+				[ -n "${_win_appdata}" ] && set -- "$@" "${_win_appdata}/.emacs.d"
 				;;
 			Helix)
-				if [ -d "${XDG_CONFIG_HOME:-${HOME}/.config}/helix/.git" ]; then
-					_target="${XDG_CONFIG_HOME:-${HOME}/.config}/helix"
-				elif [ -d "${APPDATA:-${HOME}/AppData/Roaming}/helix/.git" ]; then
-					_target="${APPDATA:-${HOME}/AppData/Roaming}/helix"
-				fi
+				set -- "${XDG_CONFIG_HOME:-${HOME}/.config}/helix"
+				[ -n "${_win_appdata}" ] && set -- "$@" "${_win_appdata}/helix"
+				[ -n "${_win_home}" ] && set -- "$@" "${_win_home}/AppData/Roaming/helix"
 				;;
 			NeoVim)
-				if [ -d "${XDG_CONFIG_HOME:-${HOME}/.config}/nvim/.git" ]; then
-					_target="${XDG_CONFIG_HOME:-${HOME}/.config}/nvim"
-				elif [ -d "${LOCALAPPDATA:-${HOME}/AppData/Local}/nvim/.git" ]; then
-					_target="${LOCALAPPDATA:-${HOME}/AppData/Local}/nvim"
-				fi
+				set -- "${XDG_CONFIG_HOME:-${HOME}/.config}/nvim"
+				[ -n "${_win_localappdata}" ] && set -- "$@" "${_win_localappdata}/nvim"
+				[ -n "${_win_home}" ] && set -- "$@" "${_win_home}/AppData/Local/nvim"
 				;;
 			Vim)
-				if [ -d "${HOME}/.vim/.git" ]; then
-					_target="${HOME}/.vim"
-				elif [ -d "${HOME}/vimfiles/.git" ]; then
-					_target="${HOME}/vimfiles"
-				fi
+				set -- "${HOME}/.vim" "${HOME}/vimfiles"
+				[ -n "${_win_home}" ] && set -- "$@" "${_win_home}/vimfiles" "${_win_home}/.vim"
 				;;
 		esac
 
-		if [ -n "${_target}" ]; then
+		for _target in "$@"; do
+			[ -z "${_target}" ] && continue
+			[ -d "${_target}/.git" ] || [ -f "${_target}/.git" ] || continue
+			case " ${_processed_targets} " in
+				*" ${_target} "*) continue ;;
+			esac
+			_processed_targets="${_processed_targets} ${_target} "
+			_found=1
+
 			if [ "${_editor_mode}" = "status" ]; then
 				_branch="$(git -C "${_target}" branch --show-current 2> "/dev/null" || true)"
 				[ -z "${_branch}" ] && _branch="detached"
@@ -196,8 +226,7 @@ update-editors() {
 					fi
 				fi
 			fi
-			_found=1
-		fi
+		done
 	done
 
 	if [ "${_with_extensions}" -eq 1 ] && command -v sync-extensions > "/dev/null" 2>&1; then
@@ -210,18 +239,42 @@ update-editors() {
 	else
 		_ui_ok "Suíte de Editores finalizada (${_editor_mode})!"
 	fi
-	unset _found _editor_mode _with_extensions _editor _target _branch _status _arg
+	unset _found _editor_mode _with_extensions _editor _target _branch _status _arg _win_home _win_appdata _win_localappdata _processed_targets
 }
 
 ### --------------------------------
 ### UPDATE EMACS MODES
 ### --------------------------------
 update-emacs-modes() {
+	_win_home=""
+	if [ -n "${USERPROFILE:-}" ]; then
+		if command -v cygpath > "/dev/null" 2>&1; then
+			_win_home="$(cygpath -u "${USERPROFILE}" 2> "/dev/null" || echo "${USERPROFILE}")"
+		else
+			_win_home="$(echo "${USERPROFILE}" | tr '\\' '/')"
+		fi
+	fi
+
+	_win_appdata=""
+	if [ -n "${APPDATA:-}" ]; then
+		if command -v cygpath > "/dev/null" 2>&1; then
+			_win_appdata="$(cygpath -u "${APPDATA}" 2> "/dev/null" || echo "${APPDATA}")"
+		else
+			_win_appdata="$(echo "${APPDATA}" | tr '\\' '/')"
+		fi
+	elif [ -n "${_win_home}" ]; then
+		_win_appdata="${_win_home}/AppData/Roaming"
+	fi
+
 	_target=""
 	if [ -d "${HOME}/.emacs.d/.git" ]; then
 		_target="${HOME}/.emacs.d"
 	elif [ -d "${XDG_CONFIG_HOME:-${HOME}/.config}/emacs/.git" ]; then
 		_target="${XDG_CONFIG_HOME:-${HOME}/.config}/emacs"
+	elif [ -n "${_win_home}" ] && [ -d "${_win_home}/.emacs.d/.git" ]; then
+		_target="${_win_home}/.emacs.d"
+	elif [ -n "${_win_appdata}" ] && [ -d "${_win_appdata}/.emacs.d/.git" ]; then
+		_target="${_win_appdata}/.emacs.d"
 	fi
 
 	if [ -z "${_target}" ]; then
@@ -236,7 +289,7 @@ update-emacs-modes() {
 		_ui_err "Falha na sincronização dos submódulos Elisp."
 		return 1
 	fi
-	unset _target
+	unset _target _win_home _win_appdata
 }
 
 ### --------------------------------

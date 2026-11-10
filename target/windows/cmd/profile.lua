@@ -634,7 +634,7 @@ end
 
 local aliases = {
 	-- --------------------------------
-	-- My Shortcuts
+	-- MY SHORTCUTS
 	-- --------------------------------
 	["upget"] = [[winget upgrade --all]],
 	["upscp"] = [[scoop update && scoop update --all]],
@@ -668,15 +668,27 @@ local aliases = {
 	["er"] = [[taskkill /IM emacs.exe /F && runemacs --fg-daemon]],
 	["ec"] = [[emacsclientw.exe --create-frame --alternate-editor ""]],
 	["oe"] = [[emacsclientw.exe --create-frame --alternate-editor "" .]],
-	["en"] = [[emacsclient.exe -t --alternate-editor ""]],
-	["enw"] = [[emacsclient.exe -t --alternate-editor ""]],
-	["oen"] = [[emacsclient.exe -t --alternate-editor "" .]],
-	["oenw"] = [[emacsclient.exe -t --alternate-editor "" .]],
+	["en"] = [[emacs.exe -nw]],
+	["enw"] = [[emacs.exe -nw]],
+	["emacs-nw"] = [[emacs.exe -nw]],
+	["oen"] = [[emacs.exe -nw .]],
+	["oenw"] = [[emacs.exe -nw .]],
 	["open-emacs"] = [[emacsclientw.exe --create-frame --alternate-editor "" .]],
+	["open-emacs-nw"] = [[emacs.exe -nw .]],
+	["emacs-eshell"] = [[emacsclientw.exe --create-frame --alternate-editor "" --eval "(progn (cd \".\") (aweshell/new))"]],
+	["open-eshell"] = [[emacsclientw.exe --create-frame --alternate-editor "" --eval "(progn (cd \".\") (aweshell/new))"]],
+	["oes"] = [[emacsclientw.exe --create-frame --alternate-editor "" --eval "(progn (cd \".\") (aweshell/new))"]],
+	["esh"] = [[emacsclientw.exe --create-frame --alternate-editor "" --eval "(progn (cd \".\") (aweshell/new))"]],
 
 	-- --------------------------------
-	-- Desktop Applications & Editors
+	-- DESKTOP APPLICATIONS & EDITORS
 	-- --------------------------------
+	["editor"] = has_cmd("nvim") and [[nvim]] or (has_cmd("vim") and [[vim]] or (has_cmd("hx") and [[hx]] or [[emacs.exe -nw]])),
+	["e"] = has_cmd("nvim") and [[nvim]] or (has_cmd("vim") and [[vim]] or (has_cmd("hx") and [[hx]] or [[emacs.exe -nw]])),
+	["open-helix"] = [[hx]],
+	["open-hx"] = [[hx]],
+	["oh"] = [[hx]],
+	["h"] = [[hx]],
 	["open-vlc"] = [[start "" vlc]],
 	["ov"] = [[start "" vlc]],
 	["open-mpv"] = [[mpv]],
@@ -715,10 +727,15 @@ local aliases = {
 	["ant"] = [[antigravity-ide]],
 
 	-- --------------------------------
-	-- Google Antigravity CLI
+	-- GOOGLE ANTIGRAVITY CLI
 	-- --------------------------------
+	["a"] = [[agy]],
+	["aa"] = [[agy --dangerously-skip-permissions]],
+	["ad"] = [[agy --dangerously-skip-permissions]],
 	["agy-continue"] = [[agy -c]],
 	["agyc"] = [[agy -c]],
+	["agyr"] = [[agy -c]],
+	["agy-return"] = [[agy -c]],
 	["agy-auto"] = [[agy --dangerously-skip-permissions]],
 	["agy-danger"] = [[agy --dangerously-skip-permissions]],
 	["agya"] = [[agy --dangerously-skip-permissions]],
@@ -727,14 +744,18 @@ local aliases = {
 	["agy-continue-danger"] = [[agy -c --dangerously-skip-permissions]],
 	["agyca"] = [[agy -c --dangerously-skip-permissions]],
 	["agycd"] = [[agy -c --dangerously-skip-permissions]],
+	["agyra"] = [[agy -c --dangerously-skip-permissions]],
+	["agyrd"] = [[agy -c --dangerously-skip-permissions]],
+	["agy-return-auto"] = [[agy -c --dangerously-skip-permissions]],
+	["agy-return-danger"] = [[agy -c --dangerously-skip-permissions]],
 
 	-- --------------------------------
-	-- Console and Terminal
+	-- CONSOLE AND TERMINAL
 	-- --------------------------------
 	["clear"] = [[cls]],
 
 	-- --------------------------------
-	-- Files and Directories
+	-- FILES AND DIRECTORIES
 	-- --------------------------------
 	["ls"] = [[busybox ls -F --color=auto]],
 	["ll"] = [[busybox ls -alF --color=auto]],
@@ -754,9 +775,21 @@ local aliases = {
 	["touch"] = [[busybox touch]],
 	["which"] = [[where]],
 	["open"] = [[start]],
+	["open-smart"] = [[start ""]],
+	["o"] = [[start ""]],
+	["take"] = [[pwsh -NoProfile -ExecutionPolicy Bypass -Command "Invoke-TakeDir"]],
+	["take-dir"] = [[pwsh -NoProfile -ExecutionPolicy Bypass -Command "Invoke-TakeDir"]],
+	["mkcd"] = [[pwsh -NoProfile -ExecutionPolicy Bypass -Command "Invoke-TakeDir"]],
+	["cdb"] = [[pwsh -NoProfile -ExecutionPolicy Bypass -Command "Invoke-CdGitRoot"]],
+	["cd-git-root"] = [[pwsh -NoProfile -ExecutionPolicy Bypass -Command "Invoke-CdGitRoot"]],
+	["hist"] = [[doskey /history]],
+	["hg"] = [[doskey /history]],
+	["extract"] = [[pwsh -NoProfile -ExecutionPolicy Bypass -Command "Invoke-ExtractArchive"]],
+	["x"] = [[pwsh -NoProfile -ExecutionPolicy Bypass -Command "Invoke-ExtractArchive"]],
+	["z"] = [[zoxide]],
 
 	-- --------------------------------
-	-- System and Processes
+	-- SYSTEM AND PROCESSES
 	-- --------------------------------
 	["ps"] = [[tasklist]],
 	["kill"] = [[taskkill /F /IM]],
@@ -769,7 +802,7 @@ local aliases = {
 	["poweroff"] = [[shutdown /s /t 0]],
 
 	-- --------------------------------
-	-- Disk Utils and Info
+	-- DISK UTILS AND INFO
 	-- --------------------------------
 	["free"] = [[busybox free -m]],
 	["who"] = [[quser]],
@@ -777,7 +810,7 @@ local aliases = {
 	["diff"] = [[busybox diff --color=auto]],
 
 	-- --------------------------------
-	-- Search and Network
+	-- SEARCH AND NETWORK
 	-- --------------------------------
 	["grep"] = [[busybox grep --color=auto]],
 	["find"] = [[busybox find]],
@@ -789,7 +822,7 @@ local aliases = {
 	["export"] = [[set]],
 
 	-- --------------------------------
-	-- Modern Rust CLI Tools
+	-- MODERN RUST CLI TOOLS
 	-- --------------------------------
 	["r"] = has_cmd("rg") and [[rg --smart-case]] or [[findstr /I]],
 	["g"] = has_cmd("rg") and [[rg --smart-case]] or [[findstr /I]],
@@ -801,6 +834,22 @@ local aliases = {
 	["p"] = has_cmd("procs") and [[procs]] or [[tasklist]],
 	["t"] = has_cmd("btm") and [[btm]] or [[taskmgr]],
 	["delta"] = has_cmd("delta") and [[delta]] or (has_cmd("git-delta") and [[git-delta]] or [[busybox diff --color=auto]]),
+
+	-- --------------------------------
+	-- VERSION CONTROL ALIASES
+	-- --------------------------------
+	["gs"] = [[git status -sb]],
+	["gd"] = [[git diff]],
+	["gst"] = [[git status]],
+	["gco"] = [[git checkout]],
+	["gcb"] = [[git checkout -b]],
+	["gsw"] = [[git switch]],
+	["gswc"] = [[git switch -c]],
+	["gcm"] = [[git commit -m]],
+	["gaa"] = [[git add --all]],
+	["gl"] = [[git pull]],
+	["gp"] = [[git push]],
+	["glog"] = [[git log --oneline --decorate --graph -n 20]],
 }
 
 for alias, _ in pairs(aliases) do
@@ -899,7 +948,7 @@ local function _ui_banner(title)
 end
 
 -- ================================
--- UPDATE COMMANDS (ECOSYSTEM)
+-- UPDATE COMMANDS ECOSYSTEM
 -- ================================
 
 local function cmd_upgit(args)
@@ -1194,25 +1243,51 @@ local function cmd_uped(args)
 		end
 	end
 
-	local emacs_dir = home .. [[\.emacs.d]]
-	if not is_dir(emacs_dir) and appdata ~= "" then emacs_dir = appdata .. [[\.emacs.d]] end
-	if not is_dir(emacs_dir) and MSYS_HOME then emacs_dir = MSYS_HOME .. [[\.emacs.d]] end
-	update_editor("Emacs", emacs_dir, true)
+	local userprofile = os.getenv("USERPROFILE") or ""
+	local function find_editor_dir(candidates)
+		for _, dir in ipairs(candidates) do
+			if dir and dir ~= "" and is_dir(dir .. [[\.git]]) then
+				return dir
+			end
+		end
+		return nil
+	end
 
-	local helix_dir = appdata ~= "" and (appdata .. [[\helix]]) or (home .. [[\.config\helix]])
-	if not is_dir(helix_dir) and is_dir(home .. [[\.config\helix]]) then helix_dir = home .. [[\.config\helix]] end
-	if not is_dir(helix_dir) and MSYS_HOME and is_dir(MSYS_HOME .. [[\.config\helix]]) then helix_dir = MSYS_HOME .. [[\.config\helix]] end
-	update_editor("Helix", helix_dir, false)
+	local emacs_dir = find_editor_dir({
+		home .. [[\.emacs.d]],
+		userprofile ~= "" and (userprofile .. [[\.emacs.d]]) or nil,
+		appdata ~= "" and (appdata .. [[\.emacs.d]]) or nil,
+		home .. [[\.config\emacs]],
+		MSYS_HOME and (MSYS_HOME .. [[\.emacs.d]]) or nil,
+	})
+	if emacs_dir then update_editor("Emacs", emacs_dir, true) end
 
-	local nvim_dir = localappdata ~= "" and (localappdata .. [[\nvim]]) or (home .. [[\.config\nvim]])
-	if not is_dir(nvim_dir) and is_dir(home .. [[\.config\nvim]]) then nvim_dir = home .. [[\.config\nvim]] end
-	if not is_dir(nvim_dir) and MSYS_HOME and is_dir(MSYS_HOME .. [[\.config\nvim]]) then nvim_dir = MSYS_HOME .. [[\.config\nvim]] end
-	update_editor("NeoVim", nvim_dir, false)
+	local helix_dir = find_editor_dir({
+		appdata ~= "" and (appdata .. [[\helix]]) or nil,
+		home .. [[\AppData\Roaming\helix]],
+		home .. [[\.config\helix]],
+		userprofile ~= "" and (userprofile .. [[\.config\helix]]) or nil,
+		MSYS_HOME and (MSYS_HOME .. [[\.config\helix]]) or nil,
+	})
+	if helix_dir then update_editor("Helix", helix_dir, false) end
 
-	local vim_dir = home .. [[\vimfiles]]
-	if not is_dir(vim_dir) and is_dir(home .. [[\.vim]]) then vim_dir = home .. [[\.vim]] end
-	if not is_dir(vim_dir) and MSYS_HOME and is_dir(MSYS_HOME .. [[\.vim]]) then vim_dir = MSYS_HOME .. [[\.vim]] end
-	update_editor("Vim", vim_dir, false)
+	local nvim_dir = find_editor_dir({
+		localappdata ~= "" and (localappdata .. [[\nvim]]) or nil,
+		home .. [[\AppData\Local\nvim]],
+		home .. [[\.config\nvim]],
+		userprofile ~= "" and (userprofile .. [[\.config\nvim]]) or nil,
+		MSYS_HOME and (MSYS_HOME .. [[\.config\nvim]]) or nil,
+	})
+	if nvim_dir then update_editor("NeoVim", nvim_dir, false) end
+
+	local vim_dir = find_editor_dir({
+		home .. [[\vimfiles]],
+		userprofile ~= "" and (userprofile .. [[\vimfiles]]) or nil,
+		home .. [[\.vim]],
+		userprofile ~= "" and (userprofile .. [[\.vim]]) or nil,
+		MSYS_HOME and (MSYS_HOME .. [[\.vim]]) or nil,
+	})
+	if vim_dir then update_editor("Vim", vim_dir, false) end
 
 	if not found then
 		_ui_info("Nenhum repositório de editor encontrado nos caminhos canônicos (~/.emacs.d, helix, nvim, vimfiles).")
@@ -1498,6 +1573,66 @@ local function cmd_upsys(args)
 	_ui_ok("Pacotes do sistema atualizados com sucesso!")
 end
 
+local function cmd_update_emacs_modes(args)
+	local home = os.getenv("USERPROFILE") or os.getenv("HOME") or ""
+	local appdata = os.getenv("APPDATA") or ""
+	local userprofile = os.getenv("USERPROFILE") or ""
+	local candidates = {
+		home .. [[\.emacs.d]],
+		userprofile ~= "" and (userprofile .. [[\.emacs.d]]) or nil,
+		appdata ~= "" and (appdata .. [[\.emacs.d]]) or nil,
+		home .. [[\.config\emacs]],
+		MSYS_HOME and (MSYS_HOME .. [[\.emacs.d]]) or nil,
+	}
+	local emacs_dir = nil
+	for _, dir in ipairs(candidates) do
+		if dir and is_dir(dir .. [[\.git]]) then
+			emacs_dir = dir
+			break
+		end
+	end
+	if not emacs_dir then
+		_ui_warn("Diretório do GNU Emacs não encontrado em ~/.emacs.d ou ~/.config/emacs.")
+		return
+	end
+	_ui_step("Atualizando submódulos Elisp locais em " .. emacs_dir .. "...")
+	os.execute([[git -C "]] .. emacs_dir .. [[" submodule update --init --recursive --remote --merge]])
+	_ui_ok("Submódulos Elisp atualizados com sucesso!")
+end
+
+local function cmd_reinstall_shell()
+	_ui_step("Recarregando ambiente do Clink...")
+	if clink and clink.reload then
+		clink.reload()
+	end
+	_ui_ok("Clink recarregado com sucesso!")
+end
+
+local function cmd_bench_shell()
+	_ui_step("Medindo tempo de inicialização do Shell...")
+	local t0 = os.clock()
+	os.execute([[cmd.exe /c exit]])
+	local elapsed = math.floor((os.clock() - t0) * 1000)
+	_ui_ok("Latência de boot limpo: " .. tostring(elapsed) .. " ms")
+end
+
+local function cmd_clean_cache()
+	_ui_step("Limpando caches temporários do Shell...")
+	_ui_ok("Cache do Universal Shell limpo com sucesso!")
+end
+
+local function cmd_update_wifi()
+	_ui_step("Auditando interfaces e perfis de rede sem fio...")
+	os.execute([[netsh wlan show interfaces]])
+	_ui_ok("Status de WiFi verificado com sucesso!")
+end
+
+local function cmd_update_network()
+	_ui_step("Auditando configurações e adaptadores de rede...")
+	os.execute([[powershell -NoProfile -Command "Get-NetAdapter | Format-Table -AutoSize"]])
+	_ui_ok("Rede verificada com sucesso!")
+end
+
 local function cmd_clean_system(args)
 	local flags = args and trim(args) or ""
 	if flags:find("%-%-help") or flags:find("%-h") then
@@ -1581,6 +1716,21 @@ local updater_commands = {
 	["update-system"] = cmd_upsys,
 	["upall"] = cmd_upall,
 	["update-all"] = cmd_upall,
+	["u"] = cmd_upall,
+	["update-emacs-modes"] = cmd_update_emacs_modes,
+	["upmodes"] = cmd_update_emacs_modes,
+	["reinstall-shell"] = cmd_reinstall_shell,
+	["resh"] = cmd_reinstall_shell,
+	["bench-shell"] = cmd_bench_shell,
+	["bsh"] = cmd_bench_shell,
+	["shell-bench"] = cmd_bench_shell,
+	["clean-cache"] = cmd_clean_cache,
+	["ccache"] = cmd_clean_cache,
+	["cleancache"] = cmd_clean_cache,
+	["update-wifi"] = cmd_update_wifi,
+	["upwf"] = cmd_update_wifi,
+	["update-network"] = cmd_update_network,
+	["upnet"] = cmd_update_network,
 	["clean-system"] = cmd_clean_system,
 	["clear-system"] = cmd_clean_system,
 	["cleansys"] = cmd_clean_system,

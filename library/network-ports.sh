@@ -200,9 +200,13 @@ update-linux() {
 			fi
 		fi
 		_wait_count=0
-		while [ "${_wait_count}" -lt 10 ]; do
+		while [ "${_wait_count}" -lt 30 ]; do
 			if nc -z -w 1 192.168.8.2 22 > "/dev/null" 2>&1; then
-				break
+				_probe="$(ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=accept-new gabriel@192.168.8.2 true 2>&1 || true)"
+				case "${_probe}" in
+					*nologin*|*"booting up"*) ;;
+					*) break ;;
+				esac
 			fi
 			sleep 1
 			_wait_count=$(( _wait_count + 1 ))

@@ -58,9 +58,17 @@ prettier: format
 format:
 	echo "🎨 Formatando arquivos com Prettier..."
 	if command -v prettier > "/dev/null" 2>&1; then \
-		prettier --write "**/*.{md,json,jsonc,yml,yaml,html,css}"; \
+		find . -type f \( -name "*.md" -o -name "*.json" -o -name "*.jsonc" -o -name "*.yml" -o -name "*.yaml" -o -name "*.html" -o -name "*.css" \) \
+			-not -path "*/OSS/*" -not -path "*/.git/*" -not -path "*/.venv/*" -not -path "*/node_modules/*" \
+			-not -path "*/var/*" -not -path "*/tmp/*" -not -path "*/build/*" -not -path "*/dist/*" \
+			-not -path "*/target/*" -not -path "*/.cache/*" \
+			-exec prettier --write {} + 2> "/dev/null" || true; \
 	elif command -v npx > "/dev/null" 2>&1; then \
-		npx --yes prettier --write "**/*.{md,json,jsonc,yml,yaml,html,css}"; \
+		find . -type f \( -name "*.md" -o -name "*.json" -o -name "*.jsonc" -o -name "*.yml" -o -name "*.yaml" -o -name "*.html" -o -name "*.css" \) \
+			-not -path "*/OSS/*" -not -path "*/.git/*" -not -path "*/.venv/*" -not -path "*/node_modules/*" \
+			-not -path "*/var/*" -not -path "*/tmp/*" -not -path "*/build/*" -not -path "*/dist/*" \
+			-not -path "*/target/*" -not -path "*/.cache/*" \
+			-exec npx --yes prettier --write {} + 2> "/dev/null" || true; \
 	else \
 		echo "⚠️ Prettier não encontrado para formatação."; \
 	fi

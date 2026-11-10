@@ -57,6 +57,14 @@ bindkey '^[[6~' down-line-or-beginning-search 2> "/dev/null" || true
 [ -n "${terminfo[kcuu1]:-}" ] && bindkey "${terminfo[kcuu1]}" up-line-or-beginning-search 2> "/dev/null" || true
 [ -n "${terminfo[kcud1]:-}" ] && bindkey "${terminfo[kcud1]}" down-line-or-beginning-search 2> "/dev/null" || true
 
+bindkey '^[[C' forward-char 2> "/dev/null" || true
+bindkey '^[OC' forward-char 2> "/dev/null" || true
+[ -n "${terminfo[kcuf1]:-}" ] && bindkey "${terminfo[kcuf1]}" forward-char 2> "/dev/null" || true
+
+bindkey '^[[D' backward-char 2> "/dev/null" || true
+bindkey '^[OD' backward-char 2> "/dev/null" || true
+[ -n "${terminfo[kcub1]:-}" ] && bindkey "${terminfo[kcub1]}" backward-char 2> "/dev/null" || true
+
 bindkey '^R' history-incremental-pattern-search-backward 2> "/dev/null" || true
 bindkey '^S' history-incremental-pattern-search-forward 2> "/dev/null" || true
 
@@ -89,9 +97,7 @@ bindkey '^[[1;3D' backward-word 2> "/dev/null" || true
 bindkey '^[[5C' forward-word 2> "/dev/null" || true
 bindkey '^[[5D' backward-word 2> "/dev/null" || true
 bindkey '^[Oc' forward-word 2> "/dev/null" || true
-bindkey '^[OC' forward-word 2> "/dev/null" || true
 bindkey '^[Od' backward-word 2> "/dev/null" || true
-bindkey '^[OD' backward-word 2> "/dev/null" || true
 bindkey '^[^[[C' forward-word 2> "/dev/null" || true
 bindkey '^[^[[D' backward-word 2> "/dev/null" || true
 

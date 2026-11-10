@@ -3,8 +3,15 @@
 ### ================================
 
 _ensure_debian_running() {
-	if nc -z -w 1 192.168.8.2 22 > "/dev/null" 2>&1; then
-		return 0
+	_b_ip="192.168.8.2"
+	_b_user="gabriel"
+
+	if nc -z -w 1 "${_b_ip}" 22 > "/dev/null" 2>&1; then
+		_probe="$(ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=accept-new "${_b_user}@${_b_ip}" true 2>&1 || true)"
+		case "${_probe}" in
+			*nologin*|*"booting up"*) ;;
+			*) return 0 ;;
+		esac
 	fi
 
 	if ! pgrep -f "bhyve.*debian" > "/dev/null" 2>&1; then
@@ -17,9 +24,13 @@ _ensure_debian_running() {
 	fi
 
 	_wait_count=0
-	while [ "${_wait_count}" -lt 15 ]; do
-		if nc -z -w 1 192.168.8.2 22 > "/dev/null" 2>&1; then
-			return 0
+	while [ "${_wait_count}" -lt 30 ]; do
+		if nc -z -w 1 "${_b_ip}" 22 > "/dev/null" 2>&1; then
+			_probe="$(ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=accept-new "${_b_user}@${_b_ip}" true 2>&1 || true)"
+			case "${_probe}" in
+				*nologin*|*"booting up"*) ;;
+				*) return 0 ;;
+			esac
 		fi
 		sleep 1
 		_wait_count=$(( _wait_count + 1 ))
@@ -27,6 +38,19 @@ _ensure_debian_running() {
 }
 
 linux-host() {
+	if [ "$#" -gt 0 ]; then
+		case "$1" in
+			--start|-s|start|up)
+				[ "$#" -ge 1 ] && shift 1
+				_ensure_debian_running
+				if [ "$#" -eq 0 ]; then
+					_ui_ok "VM Debian iniciada e pronta para conexões!"
+					return 0
+				fi
+				;;
+		esac
+	fi
+
 	_ensure_debian_running
 
 	_target_dir=""

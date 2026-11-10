@@ -372,47 +372,77 @@ _setup_cursor_env() {
 	mkdir -p "${HOME}/.icons/default" 2> "/dev/null" || true
 	printf '[Icon Theme]\nInherits=%s\n' "${_valid_theme}" >| "${HOME}/.icons/default/index.theme" 2> "/dev/null" || true
 
-	for _gtk_cfg in "${HOME}/.config/gtk-3.0/settings.ini" "${HOME}/.config/gtk-4.0/settings.ini"; do
-		_gtk_dir="$(dirname "${_gtk_cfg}")"
-		[ -d "${_gtk_dir}" ] || mkdir -p "${_gtk_dir}" 2> "/dev/null" || true
-		if [ ! -f "${_gtk_cfg}" ]; then
-			printf '[Settings]\ngtk-cursor-theme-name=%s\ngtk-cursor-blink=true\ngtk-cursor-blink-time=1200\ngtk-icon-theme-name=%s\ngtk-theme-name=adw-gtk3-dark\ngtk-application-prefer-dark-theme=true\n' "${_valid_theme}" "${_icon_theme}" >| "${_gtk_cfg}" 2> "/dev/null" || true
+	local _de_key="${_flavor:-$(_detect_desktop_theme 2> "/dev/null" || echo "gnome")}"
+	case "${_de_key}" in
+		kde|plasma)   _de_key="kde" ;;
+		gnome)        _de_key="gnome" ;;
+		cosmic)       _de_key="cosmic" ;;
+		xfce)         _de_key="xfce" ;;
+		mate)         _de_key="mate" ;;
+		cinnamon)     _de_key="cinnamon" ;;
+		lxqt)         _de_key="lxqt" ;;
+		lxde)         _de_key="lxde" ;;
+		budgie)       _de_key="budgie" ;;
+		pantheon)     _de_key="pantheon" ;;
+		deepin|dde)   _de_key="deepin" ;;
+		*)            _de_key="gnome" ;;
+	esac
+
+	local _gtk_ver _rt_dir _rt_file _cfg_tmp _symlink
+	for _gtk_ver in gtk-3.0 gtk-4.0; do
+		_rt_dir="${XDG_DATA_HOME:-${HOME}/.local/share}/profile/runtime/${_gtk_ver}"
+		mkdir -p "${_rt_dir}" 2> "/dev/null" || true
+		_rt_file="${_rt_dir}/settings-${_de_key}.ini"
+		_cfg_tmp="${_rt_file}.tmp.$$"
+		if [ -f "${_rt_file}" ]; then
+			cat "${_rt_file}" >| "${_cfg_tmp}" 2> "/dev/null" || true
 		else
-			_cfg_tmp="${_gtk_cfg}.tmp.$$"
-			cat "${_gtk_cfg}" >| "${_cfg_tmp}" 2> "/dev/null" || true
-			if grep -q "^gtk-cursor-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
-				sed "s/^gtk-cursor-theme-name=.*/gtk-cursor-theme-name=${_valid_theme}/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-			else
-				printf 'gtk-cursor-theme-name=%s\n' "${_valid_theme}" >> "${_cfg_tmp}" 2> "/dev/null" || true
-			fi
-			if grep -q "^gtk-cursor-blink=" "${_cfg_tmp}" 2> "/dev/null"; then
-				sed "s/^gtk-cursor-blink=.*/gtk-cursor-blink=true/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-			else
-				printf 'gtk-cursor-blink=true\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
-			fi
-			if grep -q "^gtk-cursor-blink-time=" "${_cfg_tmp}" 2> "/dev/null"; then
-				sed "s/^gtk-cursor-blink-time=.*/gtk-cursor-blink-time=1200/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-			else
-				printf 'gtk-cursor-blink-time=1200\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
-			fi
-			if grep -q "^gtk-icon-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
-				sed "s/^gtk-icon-theme-name=.*/gtk-icon-theme-name=${_icon_theme}/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-			else
-				printf 'gtk-icon-theme-name=%s\n' "${_icon_theme}" >> "${_cfg_tmp}" 2> "/dev/null" || true
-			fi
-			if grep -q "^gtk-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
-				sed "s/^gtk-theme-name=.*/gtk-theme-name=adw-gtk3-dark/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-			else
-				printf 'gtk-theme-name=adw-gtk3-dark\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
-			fi
-			if grep -q "^gtk-application-prefer-dark-theme=" "${_cfg_tmp}" 2> "/dev/null"; then
-				sed "s/^gtk-application-prefer-dark-theme=.*/gtk-application-prefer-dark-theme=true/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-			else
-				printf 'gtk-application-prefer-dark-theme=true\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
-			fi
-			cat "${_cfg_tmp}" >| "${_gtk_cfg}" 2> "/dev/null" || true
-			rm -f "${_cfg_tmp}" "${_cfg_tmp}.1" 2> "/dev/null" || true
+			printf '[Settings]\n' >| "${_cfg_tmp}" 2> "/dev/null" || true
 		fi
+
+		if grep -q "^gtk-cursor-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
+			sed "s/^gtk-cursor-theme-name=.*/gtk-cursor-theme-name=${_valid_theme}/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+		else
+			printf 'gtk-cursor-theme-name=%s\n' "${_valid_theme}" >> "${_cfg_tmp}" 2> "/dev/null" || true
+		fi
+		if grep -q "^gtk-cursor-theme-size=" "${_cfg_tmp}" 2> "/dev/null"; then
+			sed "s/^gtk-cursor-theme-size=.*/gtk-cursor-theme-size=${_target_size}/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+		else
+			printf 'gtk-cursor-theme-size=%s\n' "${_target_size}" >> "${_cfg_tmp}" 2> "/dev/null" || true
+		fi
+		if grep -q "^gtk-cursor-blink=" "${_cfg_tmp}" 2> "/dev/null"; then
+			sed "s/^gtk-cursor-blink=.*/gtk-cursor-blink=true/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+		else
+			printf 'gtk-cursor-blink=true\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
+		fi
+		if grep -q "^gtk-cursor-blink-time=" "${_cfg_tmp}" 2> "/dev/null"; then
+			sed "s/^gtk-cursor-blink-time=.*/gtk-cursor-blink-time=1200/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+		else
+			printf 'gtk-cursor-blink-time=1200\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
+		fi
+		if grep -q "^gtk-icon-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
+			sed "s/^gtk-icon-theme-name=.*/gtk-icon-theme-name=${_icon_theme}/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+		else
+			printf 'gtk-icon-theme-name=%s\n' "${_icon_theme}" >> "${_cfg_tmp}" 2> "/dev/null" || true
+		fi
+		if grep -q "^gtk-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
+			sed "s/^gtk-theme-name=.*/gtk-theme-name=adw-gtk3-dark/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+		else
+			printf 'gtk-theme-name=adw-gtk3-dark\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
+		fi
+		if grep -q "^gtk-application-prefer-dark-theme=" "${_cfg_tmp}" 2> "/dev/null"; then
+			sed "s/^gtk-application-prefer-dark-theme=.*/gtk-application-prefer-dark-theme=true/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+		else
+			printf 'gtk-application-prefer-dark-theme=true\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
+		fi
+
+		mv -f "${_cfg_tmp}" "${_rt_file}" 2> "/dev/null" || true
+		rm -f "${_cfg_tmp}" "${_cfg_tmp}.1" 2> "/dev/null" || true
+
+		_symlink="${HOME}/.config/${_gtk_ver}/settings.ini"
+		mkdir -p "${HOME}/.config/${_gtk_ver}" 2> "/dev/null" || true
+		rm -f "${_symlink}" 2> "/dev/null" || true
+		ln -s "${_rt_file}" "${_symlink}" 2> "/dev/null" || true
 	done
 
 	if [ -n "${DISPLAY:-}" ]; then
@@ -564,7 +594,7 @@ _x11_session_env() {
 		fi
 	fi
 
-	_setup_cursor_env "${_target_flavor}"
+	_setup_cursor_env "${_theme_flavor}"
 	_enable_numlock_console
 }
 
@@ -579,7 +609,7 @@ _freebsd_vt_bounce() {
 					local _target_vt=1
 					[ "${_vt_idx}" -eq 1 ] && _target_vt=2
 					command vidcontrol -s "${_target_vt}" < "${_cur_tty}" 2> "/dev/null" || true
-					command vidcontrol -s "${_vt_idx}" < "${_cur_tty}" 2> "/dev/null" || printf '\x1bc'
+					command vidcontrol -s "${_vt_idx}" < "${_cur_tty}" 2> "/dev/null" || echo -n $'\ec'
 				fi
 				;;
 		esac
@@ -696,6 +726,15 @@ _exec_wayland() {
 	unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 	export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
 
+	if command -v gnome-keyring-daemon > "/dev/null" 2>&1; then
+		eval "$(gnome-keyring-daemon --start --components=secrets,ssh,pkcs11 2> "/dev/null")"
+		[ -n "${SSH_AUTH_SOCK:-}" ] && export SSH_AUTH_SOCK
+		if command -v dbus-update-activation-environment > "/dev/null" 2>&1; then
+			dbus-update-activation-environment --systemd SSH_AUTH_SOCK DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP 2> "/dev/null" || \
+			dbus-update-activation-environment SSH_AUTH_SOCK DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP 2> "/dev/null" || true
+		fi
+	fi
+
 	if [ "$(_detect_os)" = "freebsd" ]; then
 		if command -v ck-launch-session > "/dev/null" 2>&1; then
 			local _ck_cmd="$(_session_cmd_file "$@")"
@@ -795,6 +834,18 @@ _exec_x11() {
 		[ -z "${_session_cmd}" ] && _session_cmd="'xterm'"
 	fi
 
+	local _theme_flavor="$(_detect_desktop_theme "${_X11_FLAVOR_OVERRIDE:-}")"
+	local _ui_font="$(_resolve_desktop_font "${_theme_flavor}")"
+	local _valid_theme="${XCURSOR_THEME:-Adwaita}"
+	local _icon_theme=""
+	case "${_theme_flavor}" in
+		kde|plasma|lxqt) _icon_theme="breeze-dark" ;;
+		pantheon)        _icon_theme="elementary" ;;
+		deepin)          _icon_theme="bloom" ;;
+		cosmic)          _icon_theme="cosmic" ;;
+		*)               _icon_theme="Adwaita" ;;
+	esac
+
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-session-$$.sh"
 	cat << EOF >| "${_xinit_script}"
@@ -858,6 +909,42 @@ if command -v numlockx > "/dev/null" 2>&1; then
 	numlockx on 2> "/dev/null" || true
 fi
 
+if command -v gnome-keyring-daemon > "/dev/null" 2>&1; then
+	eval "\$(gnome-keyring-daemon --start --components=secrets,ssh,pkcs11 2> "/dev/null")"
+	[ -n "\${SSH_AUTH_SOCK:-}" ] && export SSH_AUTH_SOCK
+	if command -v dbus-update-activation-environment > "/dev/null" 2>&1; then
+		dbus-update-activation-environment --systemd SSH_AUTH_SOCK DISPLAY XDG_CURRENT_DESKTOP 2> "/dev/null" || \
+		dbus-update-activation-environment SSH_AUTH_SOCK DISPLAY XDG_CURRENT_DESKTOP 2> "/dev/null" || true
+	fi
+fi
+
+if command -v xrandr > "/dev/null" 2>&1; then
+	for _out in \$(xrandr 2> "/dev/null" | grep " connected" | cut -d ' ' -f1); do
+		xrandr --output "\${_out}" --set "TearFree" "on" 2> "/dev/null" || true
+	done
+fi
+
+if command -v xsettingsd > "/dev/null" 2>&1; then
+	_xsettings_cfg="\${XDG_RUNTIME_DIR:-/tmp}/xsettingsd-\$\$.conf"
+	cat << EOF_XSET >| "\${_xsettings_cfg}"
+Net/ThemeName "adw-gtk3-dark"
+Net/IconThemeName "${_icon_theme}"
+Gtk/CursorThemeName "${_valid_theme}"
+Gtk/CursorThemeSize 24
+Gtk/FontName "${_ui_font}"
+EOF_XSET
+	xsettingsd -c "\${_xsettings_cfg}" > "/dev/null" 2>&1 &
+fi
+
+if [ "\${X11_NO_COMPOSITOR:-0}" != "1" ]; then
+	if command -v picom > "/dev/null" 2>&1; then
+		picom --backend glx --vsync -b > "/dev/null" 2>&1 || \
+		picom --backend xrender --vsync -b > "/dev/null" 2>&1 || true
+	elif command -v xcompmgr > "/dev/null" 2>&1; then
+		xcompmgr -c -C -b > "/dev/null" 2>&1 || true
+	fi
+fi
+
 exec ${_session_cmd}
 EOF
 	chmod 0755 "${_xinit_script}"
@@ -894,7 +981,7 @@ EOF
 		command xinit "${_xinit_script}" -- "${_display}" ${_vt_arg} >| "${_persistent_log}" 2>&1
 		_xinit_ret=$?
 	fi
-	rm -f "${_server_auth}" "${_xinit_script}" 2> "/dev/null" || true
+	rm -f "${_server_auth}" "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/xsettingsd-$$.conf" 2> "/dev/null" || true
 	command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" 2> "/dev/null" || true
 
 	if [ "${_xinit_ret}" -ne 0 ] && [ -f "${_persistent_log}" ] && [ -s "${_persistent_log}" ]; then
@@ -945,10 +1032,79 @@ _dispatch_display_server() {
 	local _base_target="${1:-}"
 	[ "$#" -ge 1 ] && shift
 
-	if _has_wayland && command -v "${_base_target}-wayland" > "/dev/null" 2>&1; then
-		"${_base_target}-wayland" "$@"
-	elif _has_x11 && command -v "${_base_target}-x11" > "/dev/null" 2>&1; then
-		"${_base_target}-x11" "$@"
+	local _arg
+	for _arg in "$@"; do
+		case "${_arg}" in
+			-l|--list|--pipeline)
+				_show_wm_pipeline "all"
+				return 0
+				;;
+		esac
+	done
+
+	local _forced_backend=""
+	for _arg in "$@"; do
+		case "${_arg}" in
+			--sway|--labwc|--river|--cage|--hyprland|--niri|--wayfire|--dwl)
+				_forced_backend="wayland"
+				;;
+			--openbox|--cwm|--dwm|--fvwm|--twm|--matchbox|--matchbox-window-manager)
+				_forced_backend="x11"
+				;;
+		esac
+	done
+
+	local _idx=1
+	while [ "${_idx}" -le "$#" ]; do
+		eval "_curr=\${${_idx}}"
+		case "${_curr}" in
+			-w|--wm)
+				_next_idx=$(( _idx + 1 ))
+				if [ "${_next_idx}" -le "$#" ]; then
+					eval "_val=\${${_next_idx}}"
+					case "${_val}" in
+						sway|labwc|river|cage|hyprland|niri|wayfire|dwl)
+							_forced_backend="wayland"
+							;;
+						openbox|cwm|dwm|fvwm|twm|matchbox|matchbox-window-manager)
+							_forced_backend="x11"
+							;;
+					esac
+				fi
+				;;
+			--wm=*)
+				_val="${_curr#--wm=}"
+				case "${_val}" in
+					sway|labwc|river|cage|hyprland|niri|wayfire|dwl)
+						_forced_backend="wayland"
+						;;
+					openbox|cwm|dwm|fvwm|twm|matchbox|matchbox-window-manager)
+						_forced_backend="x11"
+						;;
+				esac
+				;;
+		esac
+		_idx=$(( _idx + 1 ))
+	done
+
+	local _fn=""
+	case "${_base_target}" in
+		window-manager|window_manager)             _fn="window_manager" ;;
+		graphical-launcher|graphical_launcher)     _fn="graphical_launcher" ;;
+		desktop-session|desktop_session)           _fn="desktop_session" ;;
+		start-session|start_session)               _fn="start_session" ;;
+		emacs-window-manager|emacs_window_manager) _fn="emacs_window_manager" ;;
+		*) _fn="$(printf '%s' "${_base_target}" | tr '-' '_')" ;;
+	esac
+
+	if [ "${_forced_backend}" = "wayland" ]; then
+		"${_fn}_wayland" "$@"
+	elif [ "${_forced_backend}" = "x11" ]; then
+		"${_fn}_x11" "$@"
+	elif _has_wayland && command -v "${_fn}_wayland" > "/dev/null" 2>&1; then
+		"${_fn}_wayland" "$@"
+	elif _has_x11 && command -v "${_fn}_x11" > "/dev/null" 2>&1; then
+		"${_fn}_x11" "$@"
 	else
 		_ui_err "Nenhum backend gráfico suportado (Wayland ou X11) disponível para '${_base_target}'."
 		return 127
@@ -1032,7 +1188,7 @@ _start_xorg() {
 	esac
 }
 
-start-session() {
+start_session() {
 	_sanitize_graphical_env
 	[ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ] && _ui_warn "Uma sessão gráfica já está ativa (${WAYLAND_DISPLAY:-${DISPLAY}})."
 	local _type=""
@@ -1073,70 +1229,26 @@ start-session() {
 		*)           _start_wayland "${_type}" || _start_xorg "${_type}" || { _ui_err "Ambiente '${_type}' não encontrado."; return 1; } ;;
 	esac
 }
+alias start-session="start_session"
 
-desktop-session-wayland() { start-session way "$@"; }
-alias way="desktop-session-wayland" wayland="desktop-session-wayland" start-way="desktop-session-wayland" start-wayland="desktop-session-wayland"
+desktop_session_wayland() { start_session way "$@"; }
+alias desktop-session-wayland="desktop_session_wayland" way="desktop_session_wayland" wayland="desktop_session_wayland" start-way="desktop_session_wayland" start-wayland="desktop_session_wayland"
 
-desktop-session-x11() { start-session xorg "$@"; }
-alias xorg="desktop-session-x11" x11="desktop-session-x11" start-xorg="desktop-session-x11" start-x11="desktop-session-x11"
+desktop_session_x11() { start_session xorg "$@"; }
+alias desktop-session-x11="desktop_session_x11" xorg="desktop_session_x11" x11="desktop_session_x11" start-xorg="desktop_session_x11" start-x11="desktop_session_x11"
 
-window-manager-wayland() {
-	unset EMACS_OS_MODE
-	_sanitize_graphical_env
-	local _flavor=""
-	while [ "$#" -gt 0 ]; do
-		case "$1" in
-			-g|--gnome)    _flavor="gnome"; shift ;;
-			-k|--kde)      _flavor="kde"; shift ;;
-			-x|--xfce)     _flavor="xfce"; shift ;;
-			-m|--mate)     _flavor="mate"; shift ;;
-			-c|--cinnamon) _flavor="cinnamon"; shift ;;
-			--lxqt)        _flavor="lxqt"; shift ;;
-			--lxde)        _flavor="lxde"; shift ;;
-			--budgie)      _flavor="budgie"; shift ;;
-			--pantheon)    _flavor="pantheon"; shift ;;
-			--deepin)      _flavor="deepin"; shift ;;
-			--cosmic)      _flavor="cosmic"; shift ;;
-			--)            shift; break ;;
-			*)             break ;;
-		esac
-	done
-	if [ "$#" -gt 0 ]; then
-		start-session way "$@"
-		return $?
-	fi
-	_wayland_session_env "${_flavor}"
-
-	local _cur_theme="${XCURSOR_THEME}"
-	local _cur_size="${XCURSOR_SIZE:-24}"
-	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
-
-	local _wm_term="foot -o dpi-aware=no"
-	for _t in foot alacritty kitty xterm; do
-		if command -v "${_t}" > "/dev/null" 2>&1; then
-			[ "${_t}" = "foot" ] && _wm_term="foot -o dpi-aware=no" || _wm_term="${_t}"
-			break
-		fi
-	done
-
-	local _run_dir="${XDG_RUNTIME_DIR:-/tmp}"
-	local _term_script="${_run_dir}/wwm-term-$$.sh"
-	local _browser_script="${_run_dir}/wwm-browser-$$.sh"
-	local _files_script="${_run_dir}/wwm-files-$$.sh"
-	local _emacs_script="${_run_dir}/wwm-emacs-$$.sh"
-	local _menu_script="${_run_dir}/wwm-menu-$$.sh"
-	local _status_script="${_run_dir}/wwm-status-$$.sh"
-	local _bar_script=""
-
-	local _has_gtk3_bar=0
-	if command -v python3 > "/dev/null" 2>&1 && python3 -c 'import gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk' > "/dev/null" 2>&1; then
-		_has_gtk3_bar=1
-		_bar_script="${_run_dir}/wwm-bar-$$.py"
-		cat << 'EOF_WBAR' >| "${_bar_script}"
-import os, sys, subprocess, json, datetime
+### --------------------------------
+### DESKTOP MENU & BAR GENERATION
+### --------------------------------
+_generate_wwm_bar_script() {
+	local _out_script="$1"
+	cat << 'EOF_WBAR' >| "${_out_script}"
+import os, sys, subprocess, json, datetime, shutil, shlex
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GLib
+
+BAR_H = 32
 
 class WwmBar(Gtk.Window):
     def __init__(self):
@@ -1147,18 +1259,22 @@ class WwmBar(Gtk.Window):
         self.set_resizable(False)
         self.set_accept_focus(False)
         self.set_focus_on_map(False)
+        self.set_type_hint(Gdk.WindowTypeHint.DOCK)
 
         screen = Gdk.Screen.get_default()
-        screen_w = screen.get_width() if screen else 1920
-        self.set_default_size(screen_w, 32)
-        self.set_size_request(screen_w, 32)
+        self.screen_w = screen.get_width() if screen else 1920
+        self.set_default_size(self.screen_w, BAR_H)
+        self.set_size_request(self.screen_w, BAR_H)
+        self.move(0, 0)
 
-        self.last_ws_state = None
+        self.has_sway = bool(os.environ.get("SWAYSOCK") and shutil.which("swaymsg"))
         self.managed_workspaces = {1}
-        self.last_app_con_id = None
+        self.current_fallback_ws = 1
+        self.last_ws_state = None
+        self.realize()
+        self.setup_struts()
 
         font_name = os.environ.get("WWM_FONT", "JetBrainsMono Nerd Font")
-
         css_provider = Gtk.CssProvider()
         css = f"""
         window {{
@@ -1181,7 +1297,7 @@ class WwmBar(Gtk.Window):
         button.app-btn {{
             background-color: #2b2b30;
             background-image: none;
-            color: #e5e9f0;
+            color: #ffffff;
             border: 1px solid #38383d;
             border-radius: 6px;
             padding: 2px 10px;
@@ -1192,13 +1308,13 @@ class WwmBar(Gtk.Window):
             background-color: #3584e4;
             background-image: none;
             color: #ffffff;
-            border-color: #4a96ef;
+            border-color: #3584e4;
         }}
         button.ws-inactive {{
-            background-color: #242429;
+            background-color: #1e1e22;
             background-image: none;
             color: #9a9996;
-            border: 1px solid #323238;
+            border: 1px solid #38383d;
             border-radius: 6px;
             padding: 2px 8px;
             margin: 3px 2px;
@@ -1206,16 +1322,16 @@ class WwmBar(Gtk.Window):
             min-height: 22px;
         }}
         button.ws-inactive:hover {{
-            background-color: #323238;
+            background-color: #2b2b30;
             background-image: none;
             color: #ffffff;
-            border-color: #48484f;
+            border-color: #3584e4;
         }}
         button.ws-active {{
-            background-color: #3584e4;
+            background-color: #2b2b30;
             background-image: none;
             color: #ffffff;
-            border: 1px solid #4a96ef;
+            border: 1px solid #3584e4;
             border-radius: 6px;
             padding: 2px 8px;
             margin: 3px 2px;
@@ -1224,10 +1340,10 @@ class WwmBar(Gtk.Window):
             font-weight: bold;
         }}
         button.ws-active:hover {{
-            background-color: #4a96ef;
+            background-color: #3584e4;
             background-image: none;
             color: #ffffff;
-            border-color: #62a0ea;
+            border-color: #3584e4;
         }}
         button.ws-ctrl-btn {{
             background-color: #2b2b30;
@@ -1244,13 +1360,13 @@ class WwmBar(Gtk.Window):
         button.ws-ctrl-btn:hover {{
             background-color: #3584e4;
             background-image: none;
-            border-color: #4a96ef;
+            border-color: #3584e4;
         }}
         button.danger-btn {{
             background-color: #2b2b30;
             background-image: none;
-            color: #f66151;
-            border: 1px solid #4a2528;
+            color: #ffffff;
+            border: 1px solid #38383d;
             border-radius: 6px;
             padding: 2px 10px;
             margin: 3px 2px;
@@ -1260,7 +1376,7 @@ class WwmBar(Gtk.Window):
             background-color: #e01b24;
             background-image: none;
             color: #ffffff;
-            border-color: #f66151;
+            border-color: #e01b24;
         }}
         label.clock-lbl {{
             color: #9a9996;
@@ -1291,7 +1407,6 @@ class WwmBar(Gtk.Window):
         btn_del.get_style_context().add_class("ws-ctrl-btn")
         btn_del.connect("clicked", self.on_del_ws)
         ws_ctrl_box.pack_start(btn_del, False, False, 0)
-
         main_box.pack_start(ws_ctrl_box, False, False, 2)
 
         center_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -1306,7 +1421,7 @@ class WwmBar(Gtk.Window):
 
         btn_exit = Gtk.Button(label="Exit")
         btn_exit.get_style_context().add_class("danger-btn")
-        btn_exit.connect("clicked", lambda b: subprocess.Popen(["swaymsg", "exit"]))
+        btn_exit.connect("clicked", self.on_exit_session)
         actions_box.pack_end(btn_exit, False, False, 0)
 
         btn_close = Gtk.Button(label="Close")
@@ -1326,7 +1441,7 @@ class WwmBar(Gtk.Window):
                 continue
             b = Gtk.Button(label=name)
             b.get_style_context().add_class("app-btn")
-            b.connect("clicked", lambda widget, c=cmd: subprocess.Popen(["swaymsg", "exec", c]))
+            b.connect("clicked", lambda widget, c=cmd: self.run_cmd(c))
             actions_box.pack_end(b, False, False, 0)
 
         self.update_workspaces()
@@ -1334,6 +1449,43 @@ class WwmBar(Gtk.Window):
         GLib.timeout_add(250, self.update_workspaces)
         GLib.timeout_add(1000, self.update_clock)
         self.show_all()
+
+    def setup_struts(self):
+        try:
+            gdk_win = self.get_window()
+            if gdk_win and hasattr(gdk_win, "get_xid"):
+                xid = gdk_win.get_xid()
+                sp = f"0, 0, {BAR_H}, 0, 0, 0, 0, 0, 0, {self.screen_w}, 0, 0"
+                st = f"0, 0, {BAR_H}, 0"
+                subprocess.run(["xprop", "-id", str(xid), "-f", "_NET_WM_STRUT_PARTIAL", "32c", "-set", "_NET_WM_STRUT_PARTIAL", sp], capture_output=True)
+                subprocess.run(["xprop", "-id", str(xid), "-f", "_NET_WM_STRUT", "32c", "-set", "_NET_WM_STRUT", st], capture_output=True)
+        except Exception:
+            pass
+
+    def run_cmd(self, cmd):
+        if not cmd:
+            return
+        if self.has_sway:
+            subprocess.Popen(["swaymsg", "exec", cmd])
+        else:
+            subprocess.Popen(cmd, shell=True)
+
+    def on_exit_session(self, widget=None):
+        exit_cmd = os.environ.get("WWM_EXIT_CMD", "")
+        if exit_cmd:
+            subprocess.Popen(exit_cmd, shell=True)
+        elif self.has_sway:
+            subprocess.Popen(["swaymsg", "exit"])
+        elif os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+            subprocess.Popen(["hyprctl", "dispatch", "exit"])
+        elif os.environ.get("RIVER_SOCKET"):
+            subprocess.Popen(["riverctl", "exit"])
+        elif shutil.which("labwc"):
+            subprocess.Popen(["labwc", "--exit"])
+        elif shutil.which("openbox"):
+            subprocess.Popen(["openbox", "--exit"])
+        else:
+            Gtk.main_quit()
 
     def get_target_app_con_id(self):
         try:
@@ -1371,7 +1523,6 @@ class WwmBar(Gtk.Window):
             win_props = node.get("window_properties") or {}
             instance = str(win_props.get("instance") or "")
             is_bar = (name == "wwm-bar" or app_id == "wwm-bar" or instance == "wwm-bar")
-
             if not children:
                 if not is_bar and node.get("id") and node.get("type") != "workspace":
                     leaves.append(node)
@@ -1394,77 +1545,112 @@ class WwmBar(Gtk.Window):
         return candidates[0].get("id")
 
     def on_close_app(self, widget=None):
-        target_id = self.get_target_app_con_id()
-        if target_id is not None:
-            subprocess.Popen(["swaymsg", f"[con_id={target_id}] kill"])
+        if self.has_sway:
+            target_id = self.get_target_app_con_id()
+            if target_id is not None:
+                subprocess.Popen(["swaymsg", f"[con_id={target_id}] kill"])
+        elif os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+            subprocess.Popen(["hyprctl", "dispatch", "killactive"])
+        elif os.environ.get("RIVER_SOCKET"):
+            subprocess.Popen(["riverctl", "close"])
+        else:
+            if shutil.which("xdotool"):
+                try:
+                    res = subprocess.run(["xdotool", "getactivewindow"], capture_output=True, text=True)
+                    act_id = res.stdout.strip()
+                    gdk_win = self.get_window()
+                    self_xid = str(gdk_win.get_xid()) if gdk_win else ""
+                    if act_id and act_id != self_xid:
+                        subprocess.Popen(["xdotool", "windowclose", act_id])
+                        return
+                except Exception:
+                    pass
+            if shutil.which("wmctrl"):
+                subprocess.Popen(["wmctrl", "-c", ":ACTIVE:"])
+            elif shutil.which("wlrctl"):
+                subprocess.Popen(["wlrctl", "window", "close"])
 
     def update_clock(self):
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
         self.clock_lbl.set_text(now)
         return True
 
-    def on_add_ws(self, widget=None):
-        used_nums = set()
-        try:
-            res = subprocess.run(["swaymsg", "-t", "get_workspaces"], capture_output=True, text=True)
-            ws_list = json.loads(res.stdout)
-            for ws in ws_list:
-                num = ws.get("num")
-                if num is not None:
-                    used_nums.add(num)
-        except Exception:
-            pass
-        all_existing = self.managed_workspaces.union(used_nums)
-        next_num = (max(all_existing) + 1) if all_existing else 1
-        self.managed_workspaces.add(next_num)
-        subprocess.Popen(["swaymsg", "workspace", "number", str(next_num)])
+    def get_workspaces_info(self):
+        if self.has_sway:
+            focused_num = 1
+            used_nums = set()
+            try:
+                res = subprocess.run(["swaymsg", "-t", "get_workspaces"], capture_output=True, text=True)
+                ws_list = json.loads(res.stdout)
+                for ws in ws_list:
+                    num = ws.get("num")
+                    if num is not None:
+                        used_nums.add(num)
+                    if ws.get("focused"):
+                        focused_num = num
+            except Exception:
+                focused_num = 1
+                used_nums = set([1])
+            all_ws = sorted(list(self.managed_workspaces.union(used_nums)))
+            return all_ws, focused_num
+
+        if shutil.which("wmctrl"):
+            try:
+                res = subprocess.run(["wmctrl", "-d"], capture_output=True, text=True)
+                lines = [l.strip() for l in res.stdout.strip().split("\n") if l.strip()]
+                if lines:
+                    all_ws = []
+                    focused_num = 1
+                    for l in lines:
+                        parts = l.split()
+                        idx = int(parts[0]) + 1
+                        all_ws.append(idx)
+                        if "*" in parts[1]:
+                            focused_num = idx
+                    return all_ws, focused_num
+            except Exception:
+                pass
+
+        all_ws = sorted(list(self.managed_workspaces))
+        return all_ws, self.current_fallback_ws
+
+    def switch_ws(self, num):
+        if self.has_sway:
+            subprocess.Popen(["swaymsg", "workspace", "number", str(num)])
+        elif shutil.which("wmctrl"):
+            subprocess.Popen(["wmctrl", "-s", str(num - 1)])
+        elif shutil.which("xdotool"):
+            subprocess.Popen(["xdotool", "set_desktop", str(num - 1)])
+        elif os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+            subprocess.Popen(["hyprctl", "dispatch", "workspace", str(num)])
+        self.current_fallback_ws = num
         self.update_workspaces()
 
+    def on_add_ws(self, widget=None):
+        all_ws, focused_num = self.get_workspaces_info()
+        next_num = (max(all_ws) + 1) if all_ws else 1
+        self.managed_workspaces.add(next_num)
+        self.switch_ws(next_num)
+
     def on_del_ws(self, widget=None):
-        focused_num = 1
-        used_nums = set()
-        try:
-            res = subprocess.run(["swaymsg", "-t", "get_workspaces"], capture_output=True, text=True)
-            ws_list = json.loads(res.stdout)
-            for ws in ws_list:
-                num = ws.get("num")
-                if num is not None:
-                    used_nums.add(num)
-                if ws.get("focused"):
-                    focused_num = num
-        except Exception:
-            pass
-        all_ws = sorted(list(self.managed_workspaces.union(used_nums)))
+        all_ws, focused_num = self.get_workspaces_info()
         if len(all_ws) > 1:
             remaining = [w for w in all_ws if w != focused_num]
             lower = [w for w in remaining if w < focused_num]
             target_num = max(lower) if lower else min(remaining)
-            subprocess.run(
-                ["swaymsg", f"[workspace=__focused__] move container to workspace number {target_num}"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
+            if self.has_sway:
+                subprocess.run(
+                    ["swaymsg", f"[workspace=__focused__] move container to workspace number {target_num}"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+            elif shutil.which("wmctrl"):
+                subprocess.run(["wmctrl", "-n", str(len(remaining))], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.managed_workspaces.discard(focused_num)
-            subprocess.Popen(["swaymsg", "workspace", "number", str(target_num)])
-            self.update_workspaces()
+            self.switch_ws(target_num)
 
     def update_workspaces(self):
-        focused_num = 1
-        used_nums = set()
-        try:
-            res = subprocess.run(["swaymsg", "-t", "get_workspaces"], capture_output=True, text=True)
-            ws_list = json.loads(res.stdout)
-            for ws in ws_list:
-                num = ws.get("num")
-                if num is not None:
-                    used_nums.add(num)
-                if ws.get("focused"):
-                    focused_num = num
-        except Exception:
-            focused_num = 1
-            used_nums = set([1])
-
-        all_ws = sorted(list(self.managed_workspaces.union(used_nums)))
+        all_ws, focused_num = self.get_workspaces_info()
         current_state = (tuple(all_ws), focused_num)
         if current_state == self.last_ws_state:
             return True
@@ -1479,7 +1665,7 @@ class WwmBar(Gtk.Window):
                 b.get_style_context().add_class("ws-active")
             else:
                 b.get_style_context().add_class("ws-inactive")
-            b.connect("clicked", lambda widget, n=num: subprocess.Popen(["swaymsg", "workspace", "number", str(n)]))
+            b.connect("clicked", lambda widget, n=num: self.switch_ws(n))
             self.ws_box.pack_start(b, False, False, 0)
         self.ws_box.show_all()
         return True
@@ -1487,499 +1673,20 @@ class WwmBar(Gtk.Window):
 win = WwmBar()
 Gtk.main()
 EOF_WBAR
-	fi
-
-	cat << EOF >| "${_term_script}"
-#!/bin/sh
-exec ${_wm_term} "\$@"
-EOF
-	chmod 0755 "${_term_script}"
-
-	cat << 'EOF' >| "${_browser_script}"
-#!/bin/sh
-for _b in firefox chromium google-chrome-stable google-chrome brave-browser; do
-	if command -v "${_b}" > "/dev/null" 2>&1; then
-		exec "${_b}" "$@"
-	fi
-done
-EOF
-	chmod 0755 "${_browser_script}"
-
-	cat << EOF >| "${_files_script}"
-#!/bin/sh
-for _fm in nautilus dolphin thunar pcmanfm caja nemo; do
-	if command -v "\${_fm}" > "/dev/null" 2>&1; then
-		exec "\${_fm}" "\$@"
-	fi
-done
-exec ${_wm_term} -e sh -c 'ls -la; exec sh'
-EOF
-	chmod 0755 "${_files_script}"
-
-	cat << 'EOF' >| "${_emacs_script}"
-#!/bin/sh
-export GDK_BACKEND="wayland"
-for _e in emacs-pgtk emacs; do
-	if command -v "${_e}" > "/dev/null" 2>&1; then
-		exec "${_e}" "$@"
-	fi
-done
-EOF
-	chmod 0755 "${_emacs_script}"
-
-	cat << EOF >| "${_menu_script}"
-#!/bin/sh
-if command -v wofi > "/dev/null" 2>&1; then
-	exec wofi --show drun
-elif command -v fuzzel > "/dev/null" 2>&1; then
-	exec fuzzel
-elif command -v rofi > "/dev/null" 2>&1; then
-	exec rofi -show drun
-elif command -v bemenu-run > "/dev/null" 2>&1; then
-	exec bemenu-run
-else
-	exec ${_wm_term}
-fi
-EOF
-	chmod 0755 "${_menu_script}"
-
-	cat << EOF >| "${_status_script}"
-#!/bin/sh
-_term="${_term_script}"
-_browser="${_browser_script}"
-_files="${_files_script}"
-_emacs="${_emacs_script}"
-_menu="${_menu_script}"
-
-(
-	printf '{"version":1,"click_events":true}\n[\n'
-	while :; do
-		_date_str="\$(date "+%Y-%m-%d %H:%M:%S")"
-		printf '[{"name":"browser","full_text":" Web Browser ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"term","full_text":" Terminal ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"files","full_text":" Files ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"emacs","full_text":" Emacs ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"menu","full_text":" Menu ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"close","full_text":" Close ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
-		printf '{"name":"exit","full_text":" Exit ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
-		printf '{"name":"time","full_text":" %s ","background":"#1e1e22","color":"#9a9996","border":"#38383d"}],\n' "\${_date_str}"
-		sleep 1
-	done
-) &
-_clock_pid=\$!
-trap "kill \${_clock_pid} 2> \"/dev/null\" || true; exit" EXIT TERM INT
-
-while IFS= read -r _click_line; do
-	case "\${_click_line}" in
-		*"\"name\""*"\"browser\""*) "\${_browser}" > "/dev/null" 2>&1 & ;;
-		*"\"name\""*"\"term\""*)    "\${_term}" > "/dev/null" 2>&1 & ;;
-		*"\"name\""*"\"files\""*)   "\${_files}" > "/dev/null" 2>&1 & ;;
-		*"\"name\""*"\"emacs\""*)   "\${_emacs}" > "/dev/null" 2>&1 & ;;
-		*"\"name\""*"\"menu\""*)    "\${_menu}" > "/dev/null" 2>&1 & ;;
-		*"\"name\""*"\"close\""*)   swaymsg kill > "/dev/null" 2>&1 & ;;
-		*"\"name\""*"\"exit\""*)    swaymsg exit > "/dev/null" 2>&1 & ;;
-	esac
-done
-EOF
-	chmod 0755 "${_status_script}"
-
-	if command -v sway > "/dev/null" 2>&1; then
-		local _sway_cfg="${_run_dir}/sway-wm-$$.conf"
-		cat << EOF >| "${_sway_cfg}"
-output * bg #1e1e22 solid_color
-font pango:${_ui_font} Bold 10
-titlebar_padding 10 6
-default_border pixel 2
-default_floating_border pixel 2
-client.focused #3584e4 #2b2b30 #ffffff #3584e4 #3584e4
-client.focused_inactive #38383d #1e1e22 #9a9996 #38383d #38383d
-client.unfocused #38383d #1e1e22 #9a9996 #38383d #38383d
-client.urgent #e01b24 #2b2b30 #ffffff #e01b24 #e01b24
-seat * xcursor_theme ${_cur_theme} ${_cur_size}
-seat * fallback true
-seat * hide_cursor when-typing disable
-seat * pointer_constraint enable
-input type:pointer {
-    accel_profile adaptive
-    pointer_accel 0.35
-    natural_scroll disabled
+	chmod 0755 "${_out_script}"
 }
-input type:touchpad {
-    accel_profile adaptive
-    pointer_accel 0.4
-    tap enabled
-    natural_scroll enabled
-    dwt enabled
-}
-input type:keyboard {
-    xkb_layout br
-    xkb_model abnt2
-    xkb_options numpad:mac
-    repeat_delay 200
-    repeat_rate 50
-    xkb_numlock enabled
-}
-focus_follows_mouse yes
-xwayland enable
-bindsym Mod4+Return exec ${_term_script}
-bindsym Ctrl+Mod1+t exec ${_term_script}
-bindsym Mod4+b exec ${_browser_script}
-bindsym Mod4+e exec ${_emacs_script}
-bindsym Mod4+d exec ${_menu_script}
-bindsym Mod4+1 workspace number 1
-bindsym Mod4+2 workspace number 2
-bindsym Mod4+3 workspace number 3
-bindsym Mod4+4 workspace number 4
-bindsym Mod4+5 workspace number 5
-bindsym Mod4+6 workspace number 6
-bindsym Mod4+7 workspace number 7
-bindsym Mod4+8 workspace number 8
-bindsym Mod4+9 workspace number 9
-bindsym Mod4+Shift+1 move container to workspace number 1
-bindsym Mod4+Shift+2 move container to workspace number 2
-bindsym Mod4+Shift+3 move container to workspace number 3
-bindsym Mod4+Shift+4 move container to workspace number 4
-bindsym Mod4+Shift+5 move container to workspace number 5
-bindsym Mod4+Shift+6 move container to workspace number 6
-bindsym Mod4+Shift+7 move container to workspace number 7
-bindsym Mod4+Shift+8 move container to workspace number 8
-bindsym Mod4+Shift+9 move container to workspace number 9
-bindsym Mod4+f fullscreen toggle
-bindsym Mod4+Shift+space floating toggle
-bindsym Mod4+Left focus left
-bindsym Mod4+Down focus down
-bindsym Mod4+Up focus up
-bindsym Mod4+Right focus right
-bindsym Mod1+Tab focus next
-bindsym Mod4+Tab focus next
-bindsym Mod4+q kill
-bindsym Mod1+F4 kill
-bindsym Mod4+Shift+q exec swaymsg exit
-EOF
-		if [ "${_has_gtk3_bar}" -eq 1 ]; then
-			cat << EOF >> "${_sway_cfg}"
-floating_minimum_size 1 x 1
-gaps top 32
-no_focus [instance="wwm-bar"]
-for_window [instance="wwm-bar"] floating enable, sticky enable, border none, resize set 100 ppt 32 px, move absolute position 0 0
-exec env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}"
-EOF
-		else
-			cat << EOF >> "${_sway_cfg}"
-bar {
-    position bottom
-    status_command "${_status_script}"
-    font pango:${_ui_font} Bold 10
-    colors {
-        background #1e1e22
-        statusline #ffffff
-        separator #38383d
-        focused_workspace #3584e4 #2b2b30 #ffffff
-        inactive_workspace #1e1e22 #1e1e22 #9a9996
-    }
-}
-EOF
-		fi
-		_exec_wayland sway -c "${_sway_cfg}"
-		local _sway_ret=$?
-		rm -f "${_sway_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
-		return "${_sway_ret}"
-	elif command -v labwc > "/dev/null" 2>&1; then
-		local _labwc_dir="${XDG_RUNTIME_DIR:-/tmp}/labwc-wm-$$"
-		mkdir -p "${_labwc_dir}"
-		cat << 'EOF' >| "${_labwc_dir}/themerc"
-window.active.title.bg.color: #1f1f28
-window.active.label.text.color: #dcd7ba
-window.inactive.title.bg.color: #16161e
-window.inactive.label.text.color: #727169
-border.width: 1
-border.color: #54546d
-window.active.border.color: #7e9cd8
-window.inactive.border.color: #54546d
-menu.border.width: 1
-menu.border.color: #54546d
-menu.items.bg.color: #1f1f28
-menu.items.text.color: #dcd7ba
-menu.items.active.bg.color: #2a2a37
-menu.items.active.text.color: #e6c384
-EOF
-		cat << 'EOF' >| "${_labwc_dir}/menu.xml"
-<?xml version="1.0" encoding="UTF-8"?>
-<openbox_menu xmlns="http://openbox.org/3.4/menu">
-  <menu id="root-menu" label="Universal Labwc">
-    <item label="Terminal (foot)">
-      <action name="Execute" command="foot -o dpi-aware=no"/>
-    </item>
-    <item label="Web Browser">
-      <action name="Execute" command="sh -c 'command -v firefox >/dev/null 2>&amp;1 &amp;&amp; exec firefox || command -v chrome >/dev/null 2>&amp;1 &amp;&amp; exec chrome || command -v chromium >/dev/null 2>&amp;1 &amp;&amp; exec chromium'"/>
-    </item>
-    <item label="Emacs">
-      <action name="Execute" command="sh -c 'command -v emacs-pgtk >/dev/null 2>&amp;1 &amp;&amp; exec emacs-pgtk || exec emacs'"/>
-    </item>
-    <item label="File Manager">
-      <action name="Execute" command="sh -c 'command -v pcmanfm >/dev/null 2>&amp;1 &amp;&amp; exec pcmanfm || command -v thunar >/dev/null 2>&amp;1 &amp;&amp; exec thunar || exec dolphin'"/>
-    </item>
-    <separator/>
-    <item label="Reconfigure">
-      <action name="Reconfigure"/>
-    </item>
-    <item label="Exit">
-      <action name="Exit"/>
-    </item>
-  </menu>
-</openbox_menu>
-EOF
-		cat << EOF >| "${_labwc_dir}/rc.xml"
-<?xml version="1.0"?>
-<labwc_config>
-  <theme>
-    <name>kiosk</name>
-    <cornerRadius>0</cornerRadius>
-    <border.width>1</border.width>
-    <border.color>#54546d</border.color>
-  </theme>
-  <keyboard>
-    <repeatRate>50</repeatRate>
-    <repeatDelay>200</repeatDelay>
-    <numlock>on</numlock>
-    <keybind key="W-Return"><action name="Execute" command="foot -o dpi-aware=no"/></keybind>
-    <keybind key="W-q"><action name="Close"/></keybind>
-    <keybind key="W-S-q"><action name="Exit"/></keybind>
-    <keybind key="A-F4"><action name="Close"/></keybind>
-  </keyboard>
-  <mouse>
-    <context name="Root">
-      <mousebind button="Right" action="Press">
-        <action name="ShowMenu"><menu>root-menu</menu></action>
-      </mousebind>
-    </context>
-  </mouse>
-  <libinput>
-    <device category="default">
-      <accelProfile>adaptive</accelProfile>
-      <accelSpeed>0.35</accelSpeed>
-      <tap>yes</tap>
-    </device>
-    <device category="touchpad">
-      <accelProfile>adaptive</accelProfile>
-      <accelSpeed>0.4</accelSpeed>
-      <tap>yes</tap>
-      <naturalScroll>yes</naturalScroll>
-    </device>
-  </libinput>
-</labwc_config>
-EOF
-		_exec_wayland labwc -C "${_labwc_dir}"
-		local _labwc_ret=$?
-		rm -rf "${_labwc_dir}" 2> "/dev/null" || true
-		return "${_labwc_ret}"
-	elif command -v river > "/dev/null" 2>&1; then
-		local _river_init="${XDG_RUNTIME_DIR:-/tmp}/river-wm-$$.sh"
-		cat << EOF >| "${_river_init}"
-#!/bin/sh
-riverctl border-width 1
-riverctl border-color-focused "0x7e9cd8"
-riverctl border-color-unfocused "0x54546d"
-riverctl xcursor-theme "${_cur_theme}" "${_cur_size}"
-riverctl input pointer-* accel-profile adaptive
-riverctl input pointer-* pointer-accel 0.35
-riverctl input touchpad-* accel-profile adaptive
-riverctl input touchpad-* pointer-accel 0.4
-riverctl input touchpad-* tap enabled
-riverctl input touchpad-* natural-scroll enabled
-riverctl keyboard-layout -model abnt2 -options numpad:mac br
-riverctl set-repeat 50 200
-riverctl default-attach-mode top
-riverctl map normal Super Return spawn "foot -o dpi-aware=no"
-riverctl map normal Super Q close
-riverctl map normal Super+Shift Q spawn "riverctl exit"
-EOF
-		chmod 0755 "${_river_init}"
-		_exec_wayland river -c "${_river_init}"
-		local _river_ret=$?
-		rm -f "${_river_init}" 2> "/dev/null" || true
-		return "${_river_ret}"
-	elif command -v cage > "/dev/null" 2>&1; then
-		_exec_wayland cage -s -- foot -o dpi-aware=no
-	elif command -v emacs > "/dev/null" 2>&1 || [ -f "${HOME}/.local/lib/libewm_core.so" ] || [ -f "${HOME}/.local/lib/libewm.so" ]; then
-		emacs-window-manager-wayland
-	else
-		desktop-session-wayland
-	fi
-}
-alias wwm="window-manager-wayland"
 
-window-manager-x11() {
-	unset EMACS_OS_MODE
-	_sanitize_graphical_env
-	local _flavor=""
-	while [ "$#" -gt 0 ]; do
-		case "$1" in
-			-g|--gnome)    _flavor="gnome"; shift ;;
-			-k|--kde)      _flavor="kde"; shift ;;
-			-x|--xfce)     _flavor="xfce"; shift ;;
-			-m|--mate)     _flavor="mate"; shift ;;
-			-c|--cinnamon) _flavor="cinnamon"; shift ;;
-			--lxqt)        _flavor="lxqt"; shift ;;
-			--lxde)        _flavor="lxde"; shift ;;
-			--budgie)      _flavor="budgie"; shift ;;
-			--pantheon)    _flavor="pantheon"; shift ;;
-			--deepin)      _flavor="deepin"; shift ;;
-			--cosmic)      _flavor="cosmic"; shift ;;
-			--)            shift; break ;;
-			*)             break ;;
-		esac
-	done
-	if [ "$#" -gt 0 ]; then
-		start-session xorg "$@"
-		return $?
-	fi
-	_x11_session_env "${_flavor}"
+_generate_openbox_menu_xml() {
+	local _out_menu="$1"
+	local _b_cmd="$2"
+	local _t_cmd="$3"
+	local _f_cmd="$4"
+	local _e_cmd="$5"
+	local _w_term="$6"
 
-	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
-
-	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
-	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
-	cat << 'OTM' >| "${_kiosk_theme_dir}/themerc"
-border.width: 3
-border.color: #38383d
-padding.width: 8
-padding.height: 6
-window.handle.width: 3
-window.client.padding.width: 0
-
-window.active.border.color: #3584e4
-window.active.title.bg: flat solid
-window.active.title.bg.color: #2b2b30
-window.active.label.bg: parentrelative
-window.active.label.text.color: #ffffff
-window.active.handle.bg: flat solid
-window.active.handle.bg.color: #2b2b30
-window.active.grip.bg: flat solid
-window.active.grip.bg.color: #3584e4
-window.active.button.unpressed.bg: parentrelative
-window.active.button.unpressed.image.color: #ffffff
-window.active.button.pressed.bg: flat solid
-window.active.button.pressed.bg.color: #3584e4
-window.active.button.pressed.image.color: #ffffff
-window.active.button.hover.bg: flat solid
-window.active.button.hover.bg.color: #3584e4
-window.active.button.hover.image.color: #ffffff
-window.active.button.disabled.bg: parentrelative
-window.active.button.disabled.image.color: #5e5c64
-window.inactive.border.color: #38383d
-window.inactive.title.bg: flat solid
-window.inactive.title.bg.color: #1e1e22
-window.inactive.label.bg: parentrelative
-window.inactive.label.text.color: #9a9996
-window.inactive.handle.bg: flat solid
-window.inactive.handle.bg.color: #1e1e22
-window.inactive.grip.bg: flat solid
-window.inactive.grip.bg.color: #2b2b30
-window.inactive.button.unpressed.bg: parentrelative
-window.inactive.button.unpressed.image.color: #9a9996
-window.inactive.button.pressed.bg: flat solid
-window.inactive.button.pressed.bg.color: #38383d
-window.inactive.button.pressed.image.color: #ffffff
-window.inactive.button.hover.bg: flat solid
-window.inactive.button.hover.bg.color: #38383d
-window.inactive.button.hover.image.color: #ffffff
-window.inactive.button.disabled.bg: parentrelative
-window.inactive.button.disabled.image.color: #5e5c64
-osd.border.width: 2
-osd.border.color: #3584e4
-osd.bg: flat solid
-osd.bg.color: #2b2b30
-osd.label.bg: parentrelative
-osd.label.text.color: #ffffff
-osd.hilight.bg: flat solid
-osd.hilight.bg.color: #3584e4
-osd.unhilight.bg: flat solid
-osd.unhilight.bg.color: #1e1e22
-osd.button.unpressed.bg: flat solid
-osd.button.unpressed.bg.color: #1e1e22
-osd.button.unpressed.text.color: #ffffff
-osd.button.unpressed.border.color: #38383d
-osd.button.pressed.bg: flat solid
-osd.button.pressed.bg.color: #3584e4
-osd.button.pressed.text.color: #ffffff
-osd.button.pressed.border.color: #3584e4
-osd.button.focused.bg: flat solid
-osd.button.focused.bg.color: #3584e4
-osd.button.focused.text.color: #ffffff
-osd.button.focused.border.color: #3584e4
-menu.border.width: 2
-menu.border.color: #38383d
-menu.title.bg: flat solid
-menu.title.bg.color: #1e1e22
-menu.title.text.color: #3584e4
-menu.items.bg: flat solid
-menu.items.bg.color: #242428
-menu.items.text.color: #ffffff
-menu.items.disabled.text.color: #5e5c64
-menu.items.active.bg: flat solid
-menu.items.active.bg.color: #3584e4
-menu.items.active.text.color: #ffffff
-menu.separator.color: #38383d
-OTM
-
-	local _wm_x11_term="xterm"
-	for _t in alacritty kitty xterm; do
-		if command -v "${_t}" > "/dev/null" 2>&1; then
-			_wm_x11_term="${_t}"
-			break
-		fi
-	done
-
-	local _run_dir="${XDG_RUNTIME_DIR:-/tmp}"
-	local _term_script="${_run_dir}/xwm-term-$$.sh"
-	local _browser_script="${_run_dir}/xwm-browser-$$.sh"
-	local _files_script="${_run_dir}/xwm-files-$$.sh"
-	local _emacs_script="${_run_dir}/xwm-emacs-$$.sh"
-
-	cat << EOF >| "${_term_script}"
-#!/bin/sh
-exec ${_wm_x11_term} "\$@"
-EOF
-	chmod 0755 "${_term_script}"
-
-	cat << 'EOF' >| "${_browser_script}"
-#!/bin/sh
-for _b in firefox chromium google-chrome-stable google-chrome brave-browser; do
-	if command -v "${_b}" > "/dev/null" 2>&1; then
-		exec "${_b}" "$@"
-	fi
-done
-EOF
-	chmod 0755 "${_browser_script}"
-
-	cat << EOF >| "${_files_script}"
-#!/bin/sh
-for _fm in nautilus dolphin thunar pcmanfm caja nemo; do
-	if command -v "\${_fm}" > "/dev/null" 2>&1; then
-		exec "\${_fm}" "\$@"
-	fi
-done
-exec ${_wm_x11_term} -e sh -c 'ls -la; exec sh'
-EOF
-	chmod 0755 "${_files_script}"
-
-	cat << 'EOF' >| "${_emacs_script}"
-#!/bin/sh
-for _e in emacs-gtk+x11 emacs-x11 emacs-lucid emacs-gtk emacs-nw emacs; do
-	if command -v "${_e}" > "/dev/null" 2>&1; then
-		exec "${_e}" "$@"
-	fi
-done
-EOF
-	chmod 0755 "${_emacs_script}"
-
-	if command -v openbox > "/dev/null" 2>&1; then
-		local _ob_menu_cfg="${_run_dir}/openbox-menu-$$.xml"
-		local _ob_wm_cfg="${_run_dir}/openbox-wm-$$.xml"
-		local _menu_gen_ok=0
-		if command -v python3 > "/dev/null" 2>&1; then
-			python3 - "${_ob_menu_cfg}" "${_browser_script}" "${_term_script}" "${_files_script}" "${_emacs_script}" "${_wm_x11_term}" << 'EOF_PY_MENU' > "/dev/null" 2>&1
+	local _gen_ok=0
+	if command -v python3 > "/dev/null" 2>&1; then
+		python3 - "${_out_menu}" "${_b_cmd}" "${_t_cmd}" "${_f_cmd}" "${_e_cmd}" "${_w_term}" << 'EOF_PY_MENU' > "/dev/null" 2>&1
 import os, sys, re, shlex, shutil
 
 menu_file = sys.argv[1]
@@ -2167,73 +1874,74 @@ lines.extend([
 with open(menu_file, "w", encoding="utf-8") as f:
     f.write("\n".join(lines) + "\n")
 EOF_PY_MENU
-			[ $? -eq 0 ] && [ -s "${_ob_menu_cfg}" ] && _menu_gen_ok=1
-		fi
+		[ $? -eq 0 ] && [ -s "${_out_menu}" ] && _gen_ok=1
+	fi
 
-		if [ "${_menu_gen_ok}" -ne 1 ]; then
-			local _cid _target_cat _tuple _t_key _rest _t_id _t_label _t_file
-			for _cid in editors dev net office graphics media tools sys; do
-				: >| "${_run_dir}/menu-cat-${_cid}-$$.xml"
+	if [ "${_gen_ok}" -ne 1 ]; then
+		local _cid _target_cat _tuple _t_key _rest _t_id _t_label _t_file _r_dir
+		_r_dir="${XDG_RUNTIME_DIR:-/tmp}"
+		for _cid in editors dev net office graphics media tools sys; do
+			: >| "${_r_dir}/menu-cat-${_cid}-$$.xml"
+		done
+		for _app_dir in "${HOME}/.local/share/applications" "${HOME}/.local/share/flatpak/exports/share/applications" "/var/lib/flatpak/exports/share/applications" "/usr/local/share/applications" "/usr/share/applications"; do
+			[ -d "${_app_dir}" ] || continue
+			for _df in "${_app_dir}"/*.desktop; do
+				[ -f "${_df}" ] || continue
+				_d_name="$(grep -m 1 '^Name=' "${_df}" 2> "/dev/null" | cut -d= -f2- | tr -d '\r\n' || true)"
+				_d_exec="$(grep -m 1 '^Exec=' "${_df}" 2> "/dev/null" | cut -d= -f2- | sed 's/[[:space:]]*%[a-zA-Z]//g' | tr -d '\r\n' || true)"
+				[ -z "${_d_name}" ] || [ -z "${_d_exec}" ] && continue
+				grep -q -E '^(NoDisplay|Hidden)=true' "${_df}" 2> "/dev/null" && continue
+				case "${_d_exec}" in
+					emacsclient*) _d_exec="${_e_cmd}" ;;
+				esac
+				_s_name="$(printf '%s' "${_d_name}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
+				_s_exec="$(printf '%s' "${_d_exec}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
+				_d_cat="$(grep -m 1 '^Categories=' "${_df}" 2> "/dev/null" | cut -d= -f2- | tr -d '\r\n' || true)"
+				case "${_d_cat}" in
+					*TextEditor*|*IDE*) _target_cat="editors" ;;
+					*Development*|*Building*|*Debugger*|*RevisionControl*|*Translation*|*WebDevelopment*) _target_cat="dev" ;;
+					*Network*|*WebBrowser*|*Email*|*InstantMessaging*|*Chat*|*FileTransfer*|*P2P*|*RemoteAccess*|*Feed*) _target_cat="net" ;;
+					*Office*|*WordProcessor*|*Spreadsheet*|*Presentation*|*Database*|*Publishing*|*Viewer*|*PDF*|*Calendar*|*ContactManagement*) _target_cat="office" ;;
+					*Graphics*|*2DGraphics*|*3DGraphics*|*VectorGraphics*|*RasterGraphics*|*Photography*|*Scanning*|*OCR*) _target_cat="graphics" ;;
+					*AudioVideo*|*Audio*|*Video*|*Player*|*Recorder*|*Midi*|*Mixer*|*Sequencer*|*Tuner*|*TV*|*Music*) _target_cat="media" ;;
+					*Utility*|*Accessories*|*Archiving*|*Compression*|*Calculator*|*Clock*|*FileTools*|*TextTools*|*Accessibility*) _target_cat="tools" ;;
+					*) _target_cat="sys" ;;
+				esac
+				printf '      <item label="%s"><action name="Execute"><command>sh -c &apos;%s&apos;</command></action></item>\n' "${_s_name}" "${_s_exec}" >> "${_r_dir}/menu-cat-${_target_cat}-$$.xml"
 			done
-			for _app_dir in "${HOME}/.local/share/applications" "${HOME}/.local/share/flatpak/exports/share/applications" "/var/lib/flatpak/exports/share/applications" "/usr/local/share/applications" "/usr/share/applications"; do
-				[ -d "${_app_dir}" ] || continue
-				for _df in "${_app_dir}"/*.desktop; do
-					[ -f "${_df}" ] || continue
-					_d_name="$(grep -m 1 '^Name=' "${_df}" 2> "/dev/null" | cut -d= -f2- | tr -d '\r\n' || true)"
-					_d_exec="$(grep -m 1 '^Exec=' "${_df}" 2> "/dev/null" | cut -d= -f2- | sed 's/[[:space:]]*%[a-zA-Z]//g' | tr -d '\r\n' || true)"
-					[ -z "${_d_name}" ] || [ -z "${_d_exec}" ] && continue
-					grep -q -E '^(NoDisplay|Hidden)=true' "${_df}" 2> "/dev/null" && continue
-					case "${_d_exec}" in
-						emacsclient*) _d_exec="${_emacs_script}" ;;
-					esac
-					_s_name="$(printf '%s' "${_d_name}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
-					_s_exec="$(printf '%s' "${_d_exec}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
-					_d_cat="$(grep -m 1 '^Categories=' "${_df}" 2> "/dev/null" | cut -d= -f2- | tr -d '\r\n' || true)"
-					case "${_d_cat}" in
-						*TextEditor*|*IDE*) _target_cat="editors" ;;
-						*Development*|*Building*|*Debugger*|*RevisionControl*|*Translation*|*WebDevelopment*) _target_cat="dev" ;;
-						*Network*|*WebBrowser*|*Email*|*InstantMessaging*|*Chat*|*FileTransfer*|*P2P*|*RemoteAccess*|*Feed*) _target_cat="net" ;;
-						*Office*|*WordProcessor*|*Spreadsheet*|*Presentation*|*Database*|*Publishing*|*Viewer*|*PDF*|*Calendar*|*ContactManagement*) _target_cat="office" ;;
-						*Graphics*|*2DGraphics*|*3DGraphics*|*VectorGraphics*|*RasterGraphics*|*Photography*|*Scanning*|*OCR*) _target_cat="graphics" ;;
-						*AudioVideo*|*Audio*|*Video*|*Player*|*Recorder*|*Midi*|*Mixer*|*Sequencer*|*Tuner*|*TV*|*Music*) _target_cat="media" ;;
-						*Utility*|*Accessories*|*Archiving*|*Compression*|*Calculator*|*Clock*|*FileTools*|*TextTools*|*Accessibility*) _target_cat="tools" ;;
-						*) _target_cat="sys" ;;
-					esac
-					printf '      <item label="%s"><action name="Execute"><command>sh -c &apos;%s&apos;</command></action></item>\n' "${_s_name}" "${_s_exec}" >> "${_run_dir}/menu-cat-${_target_cat}-$$.xml"
-				done
-			done
-			cat << EOF >| "${_ob_menu_cfg}"
+		done
+		cat << EOF >| "${_out_menu}"
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="Universal Environment">
     <item label="Web Browser">
-      <action name="Execute"><command>${_browser_script}</command></action>
+      <action name="Execute"><command>${_b_cmd}</command></action>
     </item>
     <item label="Terminal">
-      <action name="Execute"><command>${_term_script}</command></action>
+      <action name="Execute"><command>${_t_cmd}</command></action>
     </item>
     <item label="Files">
-      <action name="Execute"><command>${_files_script}</command></action>
+      <action name="Execute"><command>${_f_cmd}</command></action>
     </item>
     <item label="Emacs">
-      <action name="Execute"><command>${_emacs_script}</command></action>
+      <action name="Execute"><command>${_e_cmd}</command></action>
     </item>
     <separator/>
 EOF
-			for _tuple in "editors:cat-editors:Editors" "dev:cat-dev:Development" "net:cat-net:Internet" "office:cat-office:Office" "graphics:cat-graphics:Graphics" "media:cat-media:Media Player" "tools:cat-tools:Tools" "sys:cat-sys:System"; do
-				_t_key="${_tuple%%:*}"
-				_rest="${_tuple#*:}"
-				_t_id="${_rest%%:*}"
-				_t_label="${_rest#*:}"
-				_t_file="${_run_dir}/menu-cat-${_t_key}-$$.xml"
-				if [ -s "${_t_file}" ]; then
-					printf '    <menu id="%s" label="%s">\n' "${_t_id}" "${_t_label}" >> "${_ob_menu_cfg}"
-					cat "${_t_file}" >> "${_ob_menu_cfg}"
-					printf '    </menu>\n' >> "${_ob_menu_cfg}"
-				fi
-				rm -f "${_t_file}" 2> "/dev/null" || true
-			done
-			cat << EOF >> "${_ob_menu_cfg}"
+		for _tuple in "editors:cat-editors:Editors" "dev:cat-dev:Development" "net:cat-net:Internet" "office:cat-office:Office" "graphics:cat-graphics:Graphics" "media:cat-media:Media Player" "tools:cat-tools:Tools" "sys:cat-sys:System"; do
+			_t_key="${_tuple%%:*}"
+			_rest="${_tuple#*:}"
+			_t_id="${_rest%%:*}"
+			_t_label="${_rest#*:}"
+			_t_file="${_r_dir}/menu-cat-${_t_key}-$$.xml"
+			if [ -s "${_t_file}" ]; then
+				printf '    <menu id="%s" label="%s">\n' "${_t_id}" "${_t_label}" >> "${_out_menu}"
+				cat "${_t_file}" >> "${_out_menu}"
+				printf '    </menu>\n' >> "${_out_menu}"
+			fi
+			rm -f "${_t_file}" 2> "/dev/null" || true
+		done
+		cat << EOF >> "${_out_menu}"
     <separator/>
     <item label="Reconfigure">
       <action name="Reconfigure"/>
@@ -2244,9 +1952,804 @@ EOF
   </menu>
 </openbox_menu>
 EOF
-		fi
+	fi
+}
 
-		cat << EOF >| "${_ob_wm_cfg}"
+### --------------------------------
+### WAYLAND WINDOW MANAGERS
+### --------------------------------
+window_manager_wayland() {
+	unset EMACS_OS_MODE
+	_sanitize_graphical_env
+	local _flavor="" _selected_wm=""
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			-l|--list|--pipeline)
+				_show_wm_pipeline "wayland"
+				return 0
+				;;
+			-w|--wm)
+				if [ "$#" -ge 2 ]; then
+					_selected_wm="$2"
+					shift 2
+				else
+					shift
+				fi
+				;;
+			--wm=*)
+				_selected_wm="${1#--wm=}"
+				shift
+				;;
+			--sway|--labwc|--river|--cage|--hyprland|--niri|--wayfire|--dwl)
+				_selected_wm="${1#--}"
+				shift
+				;;
+			-g|--gnome)    _flavor="gnome"; shift ;;
+			-k|--kde)      _flavor="kde"; shift ;;
+			-x|--xfce)     _flavor="xfce"; shift ;;
+			-m|--mate)     _flavor="mate"; shift ;;
+			-c|--cinnamon) _flavor="cinnamon"; shift ;;
+			--lxqt)        _flavor="lxqt"; shift ;;
+			--lxde)        _flavor="lxde"; shift ;;
+			--budgie)      _flavor="budgie"; shift ;;
+			--pantheon)    _flavor="pantheon"; shift ;;
+			--deepin)      _flavor="deepin"; shift ;;
+			--cosmic)      _flavor="cosmic"; shift ;;
+			--)            shift; break ;;
+			*)             break ;;
+		esac
+	done
+
+	if [ "$#" -gt 0 ]; then
+		start-session way "$@"
+		return $?
+	fi
+	_wayland_session_env "${_flavor}"
+
+	local _cur_theme="${XCURSOR_THEME}"
+	local _cur_size="${XCURSOR_SIZE:-24}"
+	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
+
+	local _wm_term="foot -o dpi-aware=no"
+	for _t in foot alacritty kitty xterm; do
+		if command -v "${_t}" > "/dev/null" 2>&1; then
+			[ "${_t}" = "foot" ] && _wm_term="foot -o dpi-aware=no" || _wm_term="${_t}"
+			break
+		fi
+	done
+
+	local _run_dir="${XDG_RUNTIME_DIR:-/tmp}"
+	local _term_script="${_run_dir}/wwm-term-$$.sh"
+	local _browser_script="${_run_dir}/wwm-browser-$$.sh"
+	local _files_script="${_run_dir}/wwm-files-$$.sh"
+	local _emacs_script="${_run_dir}/wwm-emacs-$$.sh"
+	local _menu_script="${_run_dir}/wwm-menu-$$.sh"
+	local _status_script="${_run_dir}/wwm-status-$$.sh"
+	local _bar_script="${_run_dir}/wwm-bar-$$.py"
+
+	local _has_gtk3_bar=0
+	if command -v python3 > "/dev/null" 2>&1 && python3 -c 'import gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk' > "/dev/null" 2>&1; then
+		_has_gtk3_bar=1
+		_generate_wwm_bar_script "${_bar_script}"
+	fi
+
+	cat << EOF >| "${_term_script}"
+#!/bin/sh
+exec ${_wm_term} "\$@"
+EOF
+	chmod 0755 "${_term_script}"
+
+	cat << 'EOF' >| "${_browser_script}"
+#!/bin/sh
+for _b in firefox chromium google-chrome-stable google-chrome brave-browser; do
+	if command -v "${_b}" > "/dev/null" 2>&1; then
+		exec "${_b}" "$@"
+	fi
+done
+EOF
+	chmod 0755 "${_browser_script}"
+
+	cat << EOF >| "${_files_script}"
+#!/bin/sh
+for _fm in nautilus dolphin thunar pcmanfm caja nemo; do
+	if command -v "\${_fm}" > "/dev/null" 2>&1; then
+		exec "\${_fm}" "\$@"
+	fi
+done
+exec ${_wm_term} -e sh -c 'ls -la; exec sh'
+EOF
+	chmod 0755 "${_files_script}"
+
+	cat << 'EOF' >| "${_emacs_script}"
+#!/bin/sh
+export GDK_BACKEND="wayland"
+for _e in emacs-pgtk emacs; do
+	if command -v "${_e}" > "/dev/null" 2>&1; then
+		exec "${_e}" "$@"
+	fi
+done
+EOF
+	chmod 0755 "${_emacs_script}"
+
+	cat << EOF >| "${_menu_script}"
+#!/bin/sh
+if command -v wofi > "/dev/null" 2>&1; then
+	exec wofi --show drun
+elif command -v fuzzel > "/dev/null" 2>&1; then
+	exec fuzzel
+elif command -v rofi > "/dev/null" 2>&1; then
+	exec rofi -show drun
+elif command -v bemenu-run > "/dev/null" 2>&1; then
+	exec bemenu-run
+else
+	exec ${_wm_term}
+fi
+EOF
+	chmod 0755 "${_menu_script}"
+
+	cat << EOF >| "${_status_script}"
+#!/bin/sh
+_term="${_term_script}"
+_browser="${_browser_script}"
+_files="${_files_script}"
+_emacs="${_emacs_script}"
+_menu="${_menu_script}"
+
+(
+	printf '{"version":1,"click_events":true}\n[\n'
+	while :; do
+		_date_str="\$(date "+%Y-%m-%d %H:%M:%S")"
+		printf '[{"name":"browser","full_text":" Web Browser ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"term","full_text":" Terminal ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"files","full_text":" Files ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"emacs","full_text":" Emacs ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"menu","full_text":" Menu ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
+		printf '{"name":"close","full_text":" Close ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
+		printf '{"name":"exit","full_text":" Exit ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
+		printf '{"name":"time","full_text":" %s ","background":"#1e1e22","color":"#9a9996","border":"#38383d"}],\n' "\${_date_str}"
+		sleep 1
+	done
+) &
+_clock_pid=\$!
+trap "kill \${_clock_pid} 2> \"/dev/null\" || true; exit" EXIT TERM INT
+
+while IFS= read -r _click_line; do
+	case "\${_click_line}" in
+		*"\"name\""*"\"browser\""*) "\${_browser}" > "/dev/null" 2>&1 & ;;
+		*"\"name\""*"\"term\""*)    "\${_term}" > "/dev/null" 2>&1 & ;;
+		*"\"name\""*"\"files\""*)   "\${_files}" > "/dev/null" 2>&1 & ;;
+		*"\"name\""*"\"emacs\""*)   "\${_emacs}" > "/dev/null" 2>&1 & ;;
+		*"\"name\""*"\"menu\""*)    "\${_menu}" > "/dev/null" 2>&1 & ;;
+		*"\"name\""*"\"close\""*)   swaymsg kill > "/dev/null" 2>&1 & ;;
+		*"\"name\""*"\"exit\""*)    swaymsg exit > "/dev/null" 2>&1 & ;;
+	esac
+done
+EOF
+	chmod 0755 "${_status_script}"
+
+	local _target_wm="${_selected_wm}"
+	if [ -n "${_target_wm}" ]; then
+		if ! command -v "${_target_wm}" > "/dev/null" 2>&1; then
+			_ui_err "Compositor Wayland '${_target_wm}' não está instalado."
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			return 1
+		fi
+	else
+		local _w_cand
+		for _w_cand in $(_get_wayland_wm_pipeline); do
+			if command -v "${_w_cand}" > "/dev/null" 2>&1; then
+				_target_wm="${_w_cand}"
+				break
+			fi
+		done
+	fi
+
+	case "${_target_wm}" in
+		sway)
+			local _sway_cfg="${_run_dir}/sway-wm-$$.conf"
+			cat << EOF >| "${_sway_cfg}"
+output * bg #1e1e22 solid_color
+font pango:${_ui_font} Bold 10
+titlebar_padding 10 6
+default_border pixel 2
+default_floating_border pixel 2
+client.focused #3584e4 #2b2b30 #ffffff #3584e4 #3584e4
+client.focused_inactive #38383d #1e1e22 #9a9996 #38383d #38383d
+client.unfocused #38383d #1e1e22 #9a9996 #38383d #38383d
+client.urgent #e01b24 #2b2b30 #ffffff #e01b24 #e01b24
+seat * xcursor_theme ${_cur_theme} ${_cur_size}
+seat * fallback true
+seat * hide_cursor when-typing disable
+seat * pointer_constraint enable
+input type:pointer {
+    accel_profile adaptive
+    pointer_accel 0.35
+    natural_scroll disabled
+}
+input type:touchpad {
+    accel_profile adaptive
+    pointer_accel 0.4
+    tap enabled
+    natural_scroll enabled
+    dwt enabled
+}
+input type:keyboard {
+    xkb_layout br
+    xkb_model abnt2
+    xkb_options numpad:mac
+    repeat_delay 200
+    repeat_rate 50
+    xkb_numlock enabled
+}
+focus_follows_mouse yes
+xwayland enable
+bindsym Mod4+Return exec ${_term_script}
+bindsym Ctrl+Mod1+t exec ${_term_script}
+bindsym Mod4+b exec ${_browser_script}
+bindsym Mod4+e exec ${_emacs_script}
+bindsym Mod4+f exec ${_files_script}
+bindsym Mod4+d exec ${_menu_script}
+bindsym Mod4+1 workspace number 1
+bindsym Mod4+2 workspace number 2
+bindsym Mod4+3 workspace number 3
+bindsym Mod4+4 workspace number 4
+bindsym Mod4+5 workspace number 5
+bindsym Mod4+6 workspace number 6
+bindsym Mod4+7 workspace number 7
+bindsym Mod4+8 workspace number 8
+bindsym Mod4+9 workspace number 9
+bindsym Mod4+Shift+1 move container to workspace number 1
+bindsym Mod4+Shift+2 move container to workspace number 2
+bindsym Mod4+Shift+3 move container to workspace number 3
+bindsym Mod4+Shift+4 move container to workspace number 4
+bindsym Mod4+Shift+5 move container to workspace number 5
+bindsym Mod4+Shift+6 move container to workspace number 6
+bindsym Mod4+Shift+7 move container to workspace number 7
+bindsym Mod4+Shift+8 move container to workspace number 8
+bindsym Mod4+Shift+9 move container to workspace number 9
+bindsym Mod4+f fullscreen toggle
+bindsym Mod4+Shift+space floating toggle
+bindsym Mod4+Left focus left
+bindsym Mod4+Down focus down
+bindsym Mod4+Up focus up
+bindsym Mod4+Right focus right
+bindsym Mod1+Tab focus next
+bindsym Mod4+Tab focus next
+bindsym Mod4+q kill
+bindsym Mod1+F4 kill
+bindsym Mod4+Shift+q exec swaymsg exit
+EOF
+			if [ "${_has_gtk3_bar}" -eq 1 ]; then
+				cat << EOF >> "${_sway_cfg}"
+floating_minimum_size 1 x 1
+gaps top 32
+no_focus [instance="wwm-bar"]
+for_window [instance="wwm-bar"] floating enable, sticky enable, border none, resize set 100 ppt 32 px, move absolute position 0 0
+exec env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}"
+EOF
+			else
+				cat << EOF >> "${_sway_cfg}"
+bar {
+    position bottom
+    status_command "${_status_script}"
+    font pango:${_ui_font} Bold 10
+    colors {
+        background #1e1e22
+        statusline #ffffff
+        separator #38383d
+        focused_workspace #3584e4 #2b2b30 #ffffff
+        inactive_workspace #1e1e22 #1e1e22 #9a9996
+    }
+}
+EOF
+			fi
+			_exec_wayland sway -c "${_sway_cfg}"
+			local _ret=$?
+			rm -f "${_sway_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		labwc)
+			local _labwc_dir="${_run_dir}/labwc-wm-$$"
+			mkdir -p "${_labwc_dir}"
+			cat << 'EOF' >| "${_labwc_dir}/themerc"
+window.active.title.bg.color: #2b2b30
+window.active.label.text.color: #ffffff
+window.inactive.title.bg.color: #1e1e22
+window.inactive.label.text.color: #9a9996
+border.width: 2
+border.color: #38383d
+window.active.border.color: #3584e4
+window.inactive.border.color: #38383d
+menu.border.width: 2
+menu.border.color: #38383d
+menu.items.bg.color: #1e1e22
+menu.items.text.color: #ffffff
+menu.items.active.bg.color: #3584e4
+menu.items.active.text.color: #ffffff
+EOF
+			_generate_openbox_menu_xml "${_labwc_dir}/menu.xml" "${_browser_script}" "${_term_script}" "${_files_script}" "${_emacs_script}" "${_wm_term}"
+			cat << EOF >| "${_labwc_dir}/rc.xml"
+<?xml version="1.0"?>
+<labwc_config>
+  <theme>
+    <name>kiosk</name>
+    <cornerRadius>0</cornerRadius>
+    <border.width>2</border.width>
+    <border.color>#38383d</border.color>
+  </theme>
+  <keyboard>
+    <repeatRate>50</repeatRate>
+    <repeatDelay>200</repeatDelay>
+    <numlock>on</numlock>
+    <keybind key="W-Return"><action name="Execute" command="${_term_script}"/></keybind>
+    <keybind key="C-A-t"><action name="Execute" command="${_term_script}"/></keybind>
+    <keybind key="W-b"><action name="Execute" command="${_browser_script}"/></keybind>
+    <keybind key="W-e"><action name="Execute" command="${_emacs_script}"/></keybind>
+    <keybind key="W-f"><action name="Execute" command="${_files_script}"/></keybind>
+    <keybind key="W-q"><action name="Close"/></keybind>
+    <keybind key="W-S-q"><action name="Exit"/></keybind>
+    <keybind key="A-F4"><action name="Close"/></keybind>
+  </keyboard>
+  <mouse>
+    <context name="Titlebar">
+      <mousebind button="Left" action="Drag"><action name="Unmaximize"/><action name="Move"/></mousebind>
+    </context>
+    <context name="Root">
+      <mousebind button="Middle" action="Press">
+        <action name="ShowMenu"><menu>client-list-combined-menu</menu></action>
+      </mousebind>
+      <mousebind button="Right" action="Press">
+        <action name="ShowMenu"><menu>root-menu</menu></action>
+      </mousebind>
+    </context>
+  </mouse>
+  <libinput>
+    <device category="default">
+      <accelProfile>adaptive</accelProfile>
+      <accelSpeed>0.35</accelSpeed>
+      <tap>yes</tap>
+    </device>
+    <device category="touchpad">
+      <accelProfile>adaptive</accelProfile>
+      <accelSpeed>0.4</accelSpeed>
+      <tap>yes</tap>
+      <naturalScroll>yes</naturalScroll>
+    </device>
+  </libinput>
+</labwc_config>
+EOF
+			if [ "${_has_gtk3_bar}" -eq 1 ]; then
+				cat << EOF >| "${_labwc_dir}/autostart"
+#!/bin/sh
+env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
+EOF
+				chmod 0755 "${_labwc_dir}/autostart"
+			fi
+			_exec_wayland labwc -C "${_labwc_dir}"
+			local _ret=$?
+			rm -rf "${_labwc_dir}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		river)
+			local _river_init="${_run_dir}/river-wm-$$.sh"
+			cat << EOF >| "${_river_init}"
+#!/bin/sh
+riverctl border-width 2
+riverctl border-color-focused "0x3584e4"
+riverctl border-color-unfocused "0x38383d"
+riverctl background-color "0x1e1e22"
+riverctl xcursor-theme "${_cur_theme}" "${_cur_size}"
+riverctl input pointer-* accel-profile adaptive
+riverctl input pointer-* pointer-accel 0.35
+riverctl input touchpad-* accel-profile adaptive
+riverctl input touchpad-* pointer-accel 0.4
+riverctl input touchpad-* tap enabled
+riverctl input touchpad-* natural-scroll enabled
+riverctl keyboard-layout -model abnt2 -options numpad:mac br
+riverctl set-repeat 50 200
+riverctl default-attach-mode top
+riverctl map normal Super Return spawn "${_term_script}"
+riverctl map normal Control+Alt T spawn "${_term_script}"
+riverctl map normal Super B spawn "${_browser_script}"
+riverctl map normal Super E spawn "${_emacs_script}"
+riverctl map normal Super F spawn "${_files_script}"
+riverctl map normal Super Q close
+riverctl map normal Super+Shift Q spawn "riverctl exit"
+EOF
+			if [ "${_has_gtk3_bar}" -eq 1 ]; then
+				cat << EOF >> "${_river_init}"
+env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
+EOF
+			fi
+			chmod 0755 "${_river_init}"
+			_exec_wayland river -c "${_river_init}"
+			local _ret=$?
+			rm -f "${_river_init}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		hyprland)
+			local _hypr_cfg="${_run_dir}/hyprland-wm-$$.conf"
+			cat << EOF >| "${_hypr_cfg}"
+monitor=,preferred,auto,1
+general {
+    border_size = 2
+    gaps_in = 2
+    gaps_out = 4
+    col.active_border = rgb(3584e4)
+    col.inactive_border = rgb(38383d)
+}
+misc {
+    disable_hyprland_logo = true
+    background_color = rgb(1e1e22)
+}
+input {
+    kb_layout = br
+    kb_model = abnt2
+    kb_options = numpad:mac
+    repeat_rate = 50
+    repeat_delay = 200
+    touchpad {
+        natural_scroll = true
+        tap-to-click = true
+    }
+}
+bind = SUPER, Return, exec, ${_term_script}
+bind = CTRL ALT, T, exec, ${_term_script}
+bind = SUPER, B, exec, ${_browser_script}
+bind = SUPER, E, exec, ${_emacs_script}
+bind = SUPER, F, exec, ${_files_script}
+bind = SUPER, D, exec, ${_menu_script}
+bind = SUPER, Q, killactive
+bind = SUPER SHIFT, Q, exit
+bind = SUPER, 1, workspace, 1
+bind = SUPER, 2, workspace, 2
+bind = SUPER, 3, workspace, 3
+bind = SUPER, 4, workspace, 4
+bind = SUPER, 5, workspace, 5
+bind = SUPER, 6, workspace, 6
+bind = SUPER, 7, workspace, 7
+bind = SUPER, 8, workspace, 8
+bind = SUPER, 9, workspace, 9
+bind = SUPER SHIFT, 1, movetoworkspace, 1
+bind = SUPER SHIFT, 2, movetoworkspace, 2
+bind = SUPER SHIFT, 3, movetoworkspace, 3
+bind = SUPER SHIFT, 4, movetoworkspace, 4
+bind = SUPER SHIFT, 5, movetoworkspace, 5
+bind = SUPER SHIFT, 6, movetoworkspace, 6
+bind = SUPER SHIFT, 7, movetoworkspace, 7
+bind = SUPER SHIFT, 8, movetoworkspace, 8
+bind = SUPER SHIFT, 9, movetoworkspace, 9
+EOF
+			if [ "${_has_gtk3_bar}" -eq 1 ]; then
+				cat << EOF >> "${_hypr_cfg}"
+exec-once = env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}"
+EOF
+			fi
+			if command -v Hyprland > "/dev/null" 2>&1; then
+				_exec_wayland Hyprland --config "${_hypr_cfg}"
+			else
+				_exec_wayland hyprland --config "${_hypr_cfg}"
+			fi
+			local _ret=$?
+			rm -f "${_hypr_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		niri)
+			local _niri_cfg="${_run_dir}/niri-wm-$$.kdl"
+			cat << EOF >| "${_niri_cfg}"
+prefer-no-csd
+layout {
+    border {
+        width 2
+        active-color "#3584e4"
+        inactive-color "#38383d"
+    }
+}
+binds {
+    Mod+Return { spawn "${_term_script}"; }
+    Ctrl+Alt+T { spawn "${_term_script}"; }
+    Mod+B { spawn "${_browser_script}"; }
+    Mod+E { spawn "${_emacs_script}"; }
+    Mod+F { spawn "${_files_script}"; }
+    Mod+D { spawn "${_menu_script}"; }
+    Mod+Q { close-window; }
+    Mod+Shift+Q { quit; }
+}
+EOF
+			if [ "${_has_gtk3_bar}" -eq 1 ]; then
+				printf 'spawn-at-startup "env" "GDK_BACKEND=x11" "WWM_TERM=%s" "WWM_BROWSER=%s" "WWM_FILES=%s" "WWM_EMACS=%s" "WWM_MENU=%s" "WWM_FONT=%s" "python3" "%s"
+' "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_ui_font}" "${_bar_script}" >> "${_niri_cfg}"
+			fi
+			_exec_wayland niri --config "${_niri_cfg}"
+			local _ret=$?
+			rm -f "${_niri_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		wayfire)
+			local _wf_cfg="${_run_dir}/wayfire-wm-$$.ini"
+			cat << EOF >| "${_wf_cfg}"
+[core]
+plugins = autostart command wm-actions resize move grid
+close_top_view = <super> KEY_Q
+[command]
+binding_term = <super> KEY_ENTER
+command_term = ${_term_script}
+binding_browser = <super> KEY_B
+command_browser = ${_browser_script}
+binding_emacs = <super> KEY_E
+command_emacs = ${_emacs_script}
+binding_files = <super> KEY_F
+command_files = ${_files_script}
+binding_menu = <super> KEY_D
+command_menu = ${_menu_script}
+EOF
+			if [ "${_has_gtk3_bar}" -eq 1 ]; then
+				cat << EOF >> "${_wf_cfg}"
+[autostart]
+bar = env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}"
+EOF
+			fi
+			_exec_wayland wayfire -c "${_wf_cfg}"
+			local _ret=$?
+			rm -f "${_wf_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		dwl)
+			local _dwl_startup="${_run_dir}/dwl-startup-$$.sh"
+			cat << EOF >| "${_dwl_startup}"
+#!/bin/sh
+if [ "${_has_gtk3_bar}" -eq 1 ]; then
+	env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
+fi
+exec ${_wm_term}
+EOF
+			chmod 0755 "${_dwl_startup}"
+			_exec_wayland dwl -s "${_dwl_startup}"
+			local _ret=$?
+			rm -f "${_dwl_startup}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		cage)
+			_exec_wayland cage -s -- ${_wm_term}
+			local _ret=$?
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		*)
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			if command -v emacs > "/dev/null" 2>&1 || [ -f "${HOME}/.local/lib/libewm_core.so" ] || [ -f "${HOME}/.local/lib/libewm.so" ]; then
+				emacs-window-manager-wayland
+			else
+				desktop-session-wayland
+			fi
+			;;
+	esac
+}
+alias window-manager-wayland="window_manager_wayland" wwm="window_manager_wayland"
+
+### --------------------------------
+### X11 WINDOW MANAGERS
+### --------------------------------
+window_manager_x11() {
+	unset EMACS_OS_MODE
+	_sanitize_graphical_env
+	local _flavor="" _selected_wm=""
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			-l|--list|--pipeline)
+				_show_wm_pipeline "x11"
+				return 0
+				;;
+			-w|--wm)
+				if [ "$#" -ge 2 ]; then
+					_selected_wm="$2"
+					shift 2
+				else
+					shift
+				fi
+				;;
+			--wm=*)
+				_selected_wm="${1#--wm=}"
+				shift
+				;;
+			--openbox|--cwm|--dwm|--fvwm|--twm)
+				_selected_wm="${1#--}"
+				shift
+				;;
+			--matchbox|--matchbox-window-manager)
+				_selected_wm="matchbox-window-manager"
+				shift
+				;;
+			-g|--gnome)    _flavor="gnome"; shift ;;
+			-k|--kde)      _flavor="kde"; shift ;;
+			-x|--xfce)     _flavor="xfce"; shift ;;
+			-m|--mate)     _flavor="mate"; shift ;;
+			-c|--cinnamon) _flavor="cinnamon"; shift ;;
+			--lxqt)        _flavor="lxqt"; shift ;;
+			--lxde)        _flavor="lxde"; shift ;;
+			--budgie)      _flavor="budgie"; shift ;;
+			--pantheon)    _flavor="pantheon"; shift ;;
+			--deepin)      _flavor="deepin"; shift ;;
+			--cosmic)      _flavor="cosmic"; shift ;;
+			--)            shift; break ;;
+			*)             break ;;
+		esac
+	done
+
+	if [ "$#" -gt 0 ]; then
+		start-session xorg "$@"
+		return $?
+	fi
+	_x11_session_env "${_flavor}"
+
+	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
+
+	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
+	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
+	cat << 'OTM' >| "${_kiosk_theme_dir}/themerc"
+border.width: 3
+border.color: #38383d
+padding.width: 8
+padding.height: 6
+window.handle.width: 3
+window.client.padding.width: 0
+
+window.active.border.color: #3584e4
+window.active.title.bg: flat solid
+window.active.title.bg.color: #2b2b30
+window.active.label.bg: parentrelative
+window.active.label.text.color: #ffffff
+window.active.handle.bg: flat solid
+window.active.handle.bg.color: #2b2b30
+window.active.grip.bg: flat solid
+window.active.grip.bg.color: #3584e4
+window.active.button.unpressed.bg: parentrelative
+window.active.button.unpressed.image.color: #ffffff
+window.active.button.pressed.bg: flat solid
+window.active.button.pressed.bg.color: #3584e4
+window.active.button.pressed.image.color: #ffffff
+window.active.button.hover.bg: flat solid
+window.active.button.hover.bg.color: #3584e4
+window.active.button.hover.image.color: #ffffff
+window.active.button.disabled.bg: parentrelative
+window.active.button.disabled.image.color: #5e5c64
+window.inactive.border.color: #38383d
+window.inactive.title.bg: flat solid
+window.inactive.title.bg.color: #1e1e22
+window.inactive.label.bg: parentrelative
+window.inactive.label.text.color: #9a9996
+window.inactive.handle.bg: flat solid
+window.inactive.handle.bg.color: #1e1e22
+window.inactive.grip.bg: flat solid
+window.inactive.grip.bg.color: #2b2b30
+window.inactive.button.unpressed.bg: parentrelative
+window.inactive.button.unpressed.image.color: #9a9996
+window.inactive.button.pressed.bg: flat solid
+window.inactive.button.pressed.bg.color: #38383d
+window.inactive.button.pressed.image.color: #ffffff
+window.inactive.button.hover.bg: flat solid
+window.inactive.button.hover.bg.color: #38383d
+window.inactive.button.hover.image.color: #ffffff
+window.inactive.button.disabled.bg: parentrelative
+window.inactive.button.disabled.image.color: #5e5c64
+osd.border.width: 2
+osd.border.color: #3584e4
+osd.bg: flat solid
+osd.bg.color: #2b2b30
+osd.label.bg: parentrelative
+osd.label.text.color: #ffffff
+osd.hilight.bg: flat solid
+osd.hilight.bg.color: #3584e4
+osd.unhilight.bg: flat solid
+osd.unhilight.bg.color: #1e1e22
+osd.button.unpressed.bg: flat solid
+osd.button.unpressed.bg.color: #1e1e22
+osd.button.unpressed.text.color: #ffffff
+osd.button.unpressed.border.color: #38383d
+osd.button.pressed.bg: flat solid
+osd.button.pressed.bg.color: #3584e4
+osd.button.pressed.text.color: #ffffff
+osd.button.pressed.border.color: #3584e4
+osd.button.focused.bg: flat solid
+osd.button.focused.bg.color: #3584e4
+osd.button.focused.text.color: #ffffff
+osd.button.focused.border.color: #3584e4
+menu.border.width: 2
+menu.border.color: #38383d
+menu.title.bg: flat solid
+menu.title.bg.color: #1e1e22
+menu.title.text.color: #3584e4
+menu.items.bg: flat solid
+menu.items.bg.color: #242428
+menu.items.text.color: #ffffff
+menu.items.disabled.text.color: #5e5c64
+menu.items.active.bg: flat solid
+menu.items.active.bg.color: #3584e4
+menu.items.active.text.color: #ffffff
+menu.separator.color: #38383d
+OTM
+
+	local _wm_x11_term="xterm"
+	for _t in alacritty kitty xterm; do
+		if command -v "${_t}" > "/dev/null" 2>&1; then
+			_wm_x11_term="${_t}"
+			break
+		fi
+	done
+
+	local _run_dir="${XDG_RUNTIME_DIR:-/tmp}"
+	local _term_script="${_run_dir}/xwm-term-$$.sh"
+	local _browser_script="${_run_dir}/xwm-browser-$$.sh"
+	local _files_script="${_run_dir}/xwm-files-$$.sh"
+	local _emacs_script="${_run_dir}/xwm-emacs-$$.sh"
+	local _bar_script="${_run_dir}/xwm-bar-$$.py"
+
+	local _has_gtk3_bar=0
+	if command -v python3 > "/dev/null" 2>&1 && python3 -c 'import gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk' > "/dev/null" 2>&1; then
+		_has_gtk3_bar=1
+		_generate_wwm_bar_script "${_bar_script}"
+	fi
+
+	cat << EOF >| "${_term_script}"
+#!/bin/sh
+exec ${_wm_x11_term} "\$@"
+EOF
+	chmod 0755 "${_term_script}"
+
+	cat << 'EOF' >| "${_browser_script}"
+#!/bin/sh
+for _b in firefox chromium google-chrome-stable google-chrome brave-browser; do
+	if command -v "${_b}" > "/dev/null" 2>&1; then
+		exec "${_b}" "$@"
+	fi
+done
+EOF
+	chmod 0755 "${_browser_script}"
+
+	cat << EOF >| "${_files_script}"
+#!/bin/sh
+for _fm in nautilus dolphin thunar pcmanfm caja nemo; do
+	if command -v "\${_fm}" > "/dev/null" 2>&1; then
+		exec "\${_fm}" "\$@"
+	fi
+done
+exec ${_wm_x11_term} -e sh -c 'ls -la; exec sh'
+EOF
+	chmod 0755 "${_files_script}"
+
+	cat << 'EOF' >| "${_emacs_script}"
+#!/bin/sh
+for _e in emacs-gtk+x11 emacs-x11 emacs-lucid emacs-gtk emacs-nw emacs; do
+	if command -v "${_e}" > "/dev/null" 2>&1; then
+		exec "${_e}" "$@"
+	fi
+done
+EOF
+	chmod 0755 "${_emacs_script}"
+
+	local _target_wm="${_selected_wm}"
+	if [ -n "${_target_wm}" ]; then
+		if ! command -v "${_target_wm}" > "/dev/null" 2>&1; then
+			_ui_err "Gerenciador X11 '${_target_wm}' não está instalado."
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+			return 1
+		fi
+	else
+		local _x_cand
+		for _x_cand in $(_get_x11_wm_pipeline); do
+			if command -v "${_x_cand}" > "/dev/null" 2>&1; then
+				_target_wm="${_x_cand}"
+				break
+			fi
+		done
+	fi
+
+	case "${_target_wm}" in
+		openbox)
+			local _ob_menu_cfg="${_run_dir}/openbox-menu-$$.xml"
+			local _ob_wm_cfg="${_run_dir}/openbox-wm-$$.xml"
+			_generate_openbox_menu_xml "${_ob_menu_cfg}" "${_browser_script}" "${_term_script}" "${_files_script}" "${_emacs_script}" "${_wm_x11_term}"
+			cat << EOF >| "${_ob_wm_cfg}"
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_config xmlns="http://openbox.org/3.4/rc">
   <theme>
@@ -2274,7 +2777,7 @@ EOF
     </context>
     <context name="Titlebar">
       <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
-      <mousebind button="Left" action="Drag"><action name="Move"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Unmaximize"/><action name="Move"/></mousebind>
       <mousebind button="Left" action="DoubleClick"><action name="ToggleMaximize"/></mousebind>
     </context>
     <context name="Top">
@@ -2339,6 +2842,9 @@ EOF
       <mousebind button="Right" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
     </context>
     <context name="Root">
+      <mousebind button="Middle" action="Press">
+        <action name="ShowMenu"><menu>client-list-combined-menu</menu></action>
+      </mousebind>
       <mousebind button="Right" action="Press">
         <action name="ShowMenu"><menu>root-menu</menu></action>
       </mousebind>
@@ -2360,40 +2866,98 @@ EOF
   </keyboard>
 </openbox_config>
 EOF
-		_exec_x11 openbox --config-file "${_ob_wm_cfg}"
-		local _ob_ret=$?
-		rm -f "${_ob_menu_cfg}" "${_ob_wm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" 2> "/dev/null" || true
-		return "${_ob_ret}"
-	elif command -v openbox-session > "/dev/null" 2>&1; then
-		_exec_x11 openbox-session
-	elif command -v cwm > "/dev/null" 2>&1; then
-		local _cwm_cfg="${XDG_RUNTIME_DIR:-/tmp}/cwmrc-wm-$$"
-		cat << EOF >| "${_cwm_cfg}"
-color activeborder "#7e9cd8"
-color inactiveborder "#1f1f28"
-color menubg "#16161e"
-color menufg "#dcd7ba"
-bind-key 4-Return "${_wm_x11_term}"
-bind-key CM-t "${_wm_x11_term}"
-bind-key 4-b "${_wm_browser}"
-bind-key 4-e "${_wm_emacs}"
+			if [ "${_has_gtk3_bar}" -eq 1 ]; then
+				env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
+			fi
+			_exec_x11 openbox --config-file "${_ob_wm_cfg}"
+			local _ret=$?
+			rm -f "${_ob_menu_cfg}" "${_ob_wm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		cwm)
+			local _cwm_cfg="${_run_dir}/cwmrc-wm-$$"
+			cat << EOF >| "${_cwm_cfg}"
+color activeborder "#3584e4"
+color inactiveborder "#38383d"
+color menubg "#1e1e22"
+color menufg "#ffffff"
+gap 32 0 0 0
+bind-key 4-Return "${_term_script}"
+bind-key CM-t "${_term_script}"
+bind-key 4-b "${_browser_script}"
+bind-key 4-e "${_emacs_script}"
+bind-key 4-f "${_files_script}"
 bind-key 4-q window-close
 bind-key M-F4 window-close
 bind-key 4S-q quit
 EOF
-		_exec_x11 cwm -c "${_cwm_cfg}"
-		local _cwm_ret=$?
-		rm -f "${_cwm_cfg}" 2> "/dev/null" || true
-		return "${_cwm_ret}"
-	elif command -v matchbox-window-manager > "/dev/null" 2>&1; then
-		_exec_x11 sh -c '(command -v xterm > "/dev/null" 2>&1 && xterm &); exec matchbox-window-manager'
-	elif command -v emacs > "/dev/null" 2>&1; then
-		emacs-window-manager-x11
-	else
-		desktop-session-x11
-	fi
+			if [ "${_has_gtk3_bar}" -eq 1 ]; then
+				env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
+			fi
+			_exec_x11 cwm -c "${_cwm_cfg}"
+			local _ret=$?
+			rm -f "${_cwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		dwm)
+			if [ "${_has_gtk3_bar}" -eq 1 ]; then
+				env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
+			fi
+			_exec_x11 dwm
+			local _ret=$?
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		fvwm)
+			local _fvwm_cfg="${_run_dir}/fvwm-wm-$$.conf"
+			cat << EOF >| "${_fvwm_cfg}"
+EwmhBaseStruts 0 0 32 0
+Style * HilightBorderColor #3584e4, BorderColor #38383d
+Style * HilightFore #ffffff, HilightBack #2b2b30
+Style * ForeColor #9a9996, BackColor #1e1e22
+Key Return A 4 Exec exec ${_term_script}
+Key b A 4 Exec exec ${_browser_script}
+Key e A 4 Exec exec ${_emacs_script}
+Key f A 4 Exec exec ${_files_script}
+Key q A 4 Close
+Key q A 4S Quit
+EOF
+			if [ "${_has_gtk3_bar}" -eq 1 ]; then
+				env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
+			fi
+			_exec_x11 fvwm -f "${_fvwm_cfg}"
+			local _ret=$?
+			rm -f "${_fvwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		twm)
+			_exec_x11 twm
+			local _ret=$?
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		matchbox|matchbox-window-manager)
+			_exec_x11 sh -c '(command -v xterm > "/dev/null" 2>&1 && xterm &); exec matchbox-window-manager'
+			local _ret=$?
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		*)
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+			if command -v openbox-session > "/dev/null" 2>&1; then
+				_exec_x11 openbox-session
+			elif command -v emacs > "/dev/null" 2>&1; then
+				emacs-window-manager-x11
+			else
+				desktop-session-x11
+			fi
+			;;
+	esac
 }
-alias xwm="window-manager-x11"
+alias window-manager-x11="window_manager_x11" xwm="window_manager_x11"
 
-window-manager() { _dispatch_display_server "window-manager" "$@"; }
-alias wm="window-manager" win="window-manager" win-man="window-manager" window="window-manager"
+### --------------------------------
+### WINDOW MANAGER ENTRYPOINT
+### --------------------------------
+window_manager() { _dispatch_display_server "window-manager" "$@"; }
+alias window-manager="window_manager" wm="window_manager" win="window_manager" win-man="window_manager" window="window_manager"
