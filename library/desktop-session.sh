@@ -938,10 +938,10 @@ fi
 
 if [ "\${X11_NO_COMPOSITOR:-0}" != "1" ]; then
 	if command -v picom > "/dev/null" 2>&1; then
-		picom --backend glx --vsync -b > "/dev/null" 2>&1 || \
-		picom --backend xrender --vsync -b > "/dev/null" 2>&1 || true
+		killall -0 picom 2> "/dev/null" || picom --backend glx --vsync -b > "/dev/null" 2>&1 || \
+		killall -0 picom 2> "/dev/null" || picom --backend xrender --vsync -b > "/dev/null" 2>&1 || true
 	elif command -v xcompmgr > "/dev/null" 2>&1; then
-		xcompmgr -c -C -b > "/dev/null" 2>&1 || true
+		killall -0 xcompmgr 2> "/dev/null" || xcompmgr -c -C -b > "/dev/null" 2>&1 || true
 	fi
 fi
 
@@ -2207,7 +2207,8 @@ bindsym Mod4+Shift+6 move container to workspace number 6
 bindsym Mod4+Shift+7 move container to workspace number 7
 bindsym Mod4+Shift+8 move container to workspace number 8
 bindsym Mod4+Shift+9 move container to workspace number 9
-bindsym Mod4+f fullscreen toggle
+bindsym Mod4+Shift+f fullscreen toggle
+bindsym F11 fullscreen toggle
 bindsym Mod4+Shift+space floating toggle
 bindsym Mod4+Left focus left
 bindsym Mod4+Down focus down
@@ -2292,7 +2293,7 @@ EOF
   </keyboard>
   <mouse>
     <context name="Titlebar">
-      <mousebind button="Left" action="Drag"><action name="Unmaximize"/><action name="Move"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Move"/></mousebind>
     </context>
     <context name="Root">
       <mousebind button="Middle" action="Press">
@@ -2777,7 +2778,7 @@ EOF
     </context>
     <context name="Titlebar">
       <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
-      <mousebind button="Left" action="Drag"><action name="Unmaximize"/><action name="Move"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Move"/></mousebind>
       <mousebind button="Left" action="DoubleClick"><action name="ToggleMaximize"/></mousebind>
     </context>
     <context name="Top">

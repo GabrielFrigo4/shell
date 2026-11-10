@@ -432,7 +432,7 @@ EOF
   </keyboard>
   <mouse>
     <context name="Titlebar">
-      <mousebind button="Left" action="Drag"><action name="Unmaximize"/><action name="Move"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Move"/></mousebind>
     </context>
     <context name="Root">
       <mousebind button="Middle" action="Press">
@@ -1181,10 +1181,10 @@ fi
 
 if [ "\${X11_NO_COMPOSITOR:-0}" != "1" ]; then
 	if command -v picom > "/dev/null" 2>&1; then
-		picom --backend glx --vsync -b > "/dev/null" 2>&1 || \
-		picom --backend xrender --vsync -b > "/dev/null" 2>&1 || true
+		killall -0 picom 2> "/dev/null" || picom --backend glx --vsync -b > "/dev/null" 2>&1 || \
+		killall -0 picom 2> "/dev/null" || picom --backend xrender --vsync -b > "/dev/null" 2>&1 || true
 	elif command -v xcompmgr > "/dev/null" 2>&1; then
-		xcompmgr -c -C -b > "/dev/null" 2>&1 || true
+		killall -0 xcompmgr 2> "/dev/null" || xcompmgr -c -C -b > "/dev/null" 2>&1 || true
 	fi
 fi
 
@@ -1226,7 +1226,7 @@ case "${_target_wm}" in
       <mousebind button="Middle" action="Press"><action name="ShowMenu"><menu>client-list-combined-menu</menu></action></mousebind>
     </context>
     <context name="Titlebar">
-      <mousebind button="Left" action="Drag"><action name="Unmaximize"/><action name="Move"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Move"/></mousebind>
       <mousebind button="Left" action="DoubleClick"><action name="ToggleMaximize"/></mousebind>
     </context>
     <context name="Iconify">
