@@ -75,7 +75,13 @@ linux-host() {
 	fi
 
 	if [ $# -gt 0 ]; then
-		_prefix="${_tty_env}export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"
+		_tty_term=""
+		case "${TERM:-}" in
+			eat*|"") _tty_term="export TERM=xterm-256color COLORTERM=truecolor; " ;;
+			*)       _tty_term="export COLORTERM=\"\${COLORTERM:-truecolor}\"; " ;;
+		esac
+
+		_prefix="${_tty_env}${_tty_term}export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"
 		if [ -n "${_target_dir}" ]; then
 			ssh ${_ssh_opts} ${_tty} gabriel@192.168.8.2 "${_prefix} cd \"${_target_dir}\" 2> \"/dev/null\" || true; $*"
 		else
@@ -114,7 +120,13 @@ agy-lx() {
 		_ssh_opts="${_ssh_opts} -o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
 	fi
 
-	_prefix="${_tty_env}export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"
+	_tty_term=""
+	case "${TERM:-}" in
+		eat*|"") _tty_term="export TERM=xterm-256color COLORTERM=truecolor; " ;;
+		*)       _tty_term="export COLORTERM=\"\${COLORTERM:-truecolor}\"; " ;;
+	esac
+
+	_prefix="${_tty_env}${_tty_term}export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"
 
 	if [ -n "${_target_dir}" ]; then
 		ssh ${_ssh_opts} ${_tty} gabriel@192.168.8.2 "${_prefix} cd \"${_target_dir}\" 2> \"/dev/null\" || true; exec agy $*"
