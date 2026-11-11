@@ -73,7 +73,7 @@ _hyp_ssh_connect() {
 		ssh ${_ssh_opts} ${_tty} "${_user}@${_host}" "${_tty_env}$*"
 	else
 		# shellcheck disable=SC2086
-		ssh ${_ssh_opts} -t "${_user}@${_host}" "${_tty_env}exec \${SHELL:-/bin/sh} -l"
+		ssh ${_ssh_opts} -t "${_user}@${_host}" "${_tty_env}exec \${SHELL:-sh} -l"
 	fi
 }
 
@@ -429,7 +429,7 @@ linux() {
 				if [ "$#" -gt 0 ]; then
 					incus exec "${_container_name}" -- "$@"
 				else
-					incus exec "${_container_name}" -- /bin/sh -c 'exec $(which zsh 2>/dev/null || which bash 2>/dev/null || echo /bin/sh) -l'
+					incus exec "${_container_name}" -- /usr/bin/env sh -c 'exec $(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || command -v sh 2> "/dev/null" || echo sh) -l'
 				fi
 				;;
 			ssh)
@@ -439,7 +439,7 @@ linux() {
 				;;
 			"")
 				_hyp_incus_ensure_up "${_container_name}"
-				incus exec "${_container_name}" -- /bin/sh -c 'exec $(which zsh 2>/dev/null || which bash 2>/dev/null || echo /bin/sh) -l'
+				incus exec "${_container_name}" -- /usr/bin/env sh -c 'exec $(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || command -v sh 2> "/dev/null" || echo sh) -l'
 				;;
 			*)
 				_hyp_incus_ensure_up "${_container_name}"

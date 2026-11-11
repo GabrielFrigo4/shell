@@ -26,12 +26,12 @@ flowchart TD
 
 | Plataforma  | `uname -s`        | Shells Suportados                  | Módulos e Especializações                                                          |
 | :---------- | :---------------- | :--------------------------------- | :--------------------------------------------------------------------------------- |
-| **FreeBSD** | `FreeBSD`         | `zsh`, `bash`, `sh`                | Baseline POSIX `/bin/sh`, Bhyve VM Linux (`bhyve.sh`), compatibilidade Linux, ZFS  |
+| **FreeBSD** | `FreeBSD`         | `zsh`, `bash`, `sh`                | Baseline POSIX `sh`, Bhyve VM Linux (`bhyve.sh`), compatibilidade Linux, ZFS       |
 | **Linux**   | `Linux`           | `zsh`, `bash`                      | GNU Coreutils, systemd/OpenRC, D-Bus, paridade POSIX e GNU                         |
 | **macOS**   | `Darwin`          | `zsh`, `bash`                      | Homebrew (`/opt/homebrew` Apple Silicon vs `/usr/local` Intel), `pbcopy`/`pbpaste` |
 | **Windows** | `MINGW*`, `MSYS*` | `pwsh`, `nu`, `cmd`, `zsh`, `bash` | PowerShell 7+, NuShell nativo, CMD via Clink + Lua, UCRT64/MSYS2                   |
 | **OpenBSD** | `OpenBSD`         | `ksh` (`oksh`), `zsh`, `bash`      | Korn Shell canônico (`target/openbsd/ksh/`), permissões restritas e `doas`         |
-| **NetBSD**  | `NetBSD`          | `zsh`, `bash`                      | Almquist `/bin/sh`, ecossistema `pkgsrc`/`pkgin` e `libedit`                       |
+| **NetBSD**  | `NetBSD`          | `zsh`, `bash`                      | Almquist `sh`, ecossistema `pkgsrc`/`pkgin` e `libedit`                            |
 | **illumos** | `SunOS`           | `zsh`, `bash`                      | Kernel SVR4 moderno, dualidade `/usr/gnu/bin` vs `/usr/bin`, ZFS e SMF             |
 | **Comum**   | `*` (Universal)   | `sh`, `bash`, `zsh`, `fish`, `ksh` | Diretório `common/` modularizado por pastas com simetria estrutural total          |
 
@@ -41,7 +41,7 @@ flowchart TD
 
 Cada família de interpretador possui um subdiretório dedicado sob [`target/common/`](common/):
 
-- **[`common/sh/`](common/sh/):** Shells estritamente POSIX (`/bin/sh`), edição Emacs e histórico seguro `0600`.
+- **[`common/sh/`](common/sh/):** Shells estritamente POSIX (`sh`), edição Emacs e histórico seguro `0600`.
 - **[`common/bash/`](common/bash/):** Configurações de histórico compartilhado, `autocd`, `checkwinsize` e completions.
 - **[`common/zsh/`](common/zsh/):** Histórico compartilhado em tempo real, expansão estendida e cache de completion (`.zwc`).
 - **[`common/fish/`](common/fish/):** Runtime modular (`config.fish`, `prompt.fish`, `ui.fish`, `aliases.fish`).

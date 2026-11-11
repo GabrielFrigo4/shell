@@ -182,7 +182,7 @@ graphical_launcher_wayland() {
 	local _sh="$(_detect_enabled_shell)"
 
 	cat << EOF >| "${_wayland_runner}"
-#!/bin/sh
+#!/usr/bin/env sh
 _app_target="\$1"
 [ "\$#" -ge 1 ] && shift
 
@@ -293,7 +293,7 @@ EOF
 			local _sway_cfg="${XDG_RUNTIME_DIR:-/tmp}/sway-gui-$$.conf"
 			local _tabwatch="${XDG_RUNTIME_DIR:-/tmp}/wgui-tabwatch-$$.sh"
 			cat << 'EOF' >| "${_tabwatch}"
-#!/bin/sh
+#!/usr/bin/env sh
 while :; do
 	_count=$(swaymsg -t get_tree 2> "/dev/null" | grep -c '"pid":' || true)
 	if [ "${_count:-0}" -ge 2 ]; then
@@ -394,13 +394,13 @@ EOF
       <action name="Execute" command="foot -o dpi-aware=no"/>
     </item>
     <item label="Web Browser">
-      <action name="Execute" command="sh -c 'command -v firefox >/dev/null 2>&amp;1 &amp;&amp; exec firefox || command -v chrome >/dev/null 2>&amp;1 &amp;&amp; exec chrome || command -v chromium >/dev/null 2>&amp;1 &amp;&amp; exec chromium'"/>
+      <action name="Execute" command="sh -c 'command -v firefox > &quot;/dev/null&quot; 2>&amp;1 &amp;&amp; exec firefox || command -v chrome > &quot;/dev/null&quot; 2>&amp;1 &amp;&amp; exec chrome || command -v chromium > &quot;/dev/null&quot; 2>&amp;1 &amp;&amp; exec chromium'"/>
     </item>
     <item label="Emacs">
-      <action name="Execute" command="sh -c 'command -v emacs-pgtk >/dev/null 2>&amp;1 &amp;&amp; exec emacs-pgtk || exec emacs'"/>
+      <action name="Execute" command="sh -c 'command -v emacs-pgtk > &quot;/dev/null&quot; 2>&amp;1 &amp;&amp; exec emacs-pgtk || exec emacs'"/>
     </item>
     <item label="File Manager">
-      <action name="Execute" command="sh -c 'command -v pcmanfm >/dev/null 2>&amp;1 &amp;&amp; exec pcmanfm || command -v thunar >/dev/null 2>&amp;1 &amp;&amp; exec thunar || exec dolphin'"/>
+      <action name="Execute" command="sh -c 'command -v pcmanfm > &quot;/dev/null&quot; 2>&amp;1 &amp;&amp; exec pcmanfm || command -v thunar > &quot;/dev/null&quot; 2>&amp;1 &amp;&amp; exec thunar || exec dolphin'"/>
     </item>
     <separator/>
     <item label="Reconfigure">
@@ -470,7 +470,7 @@ EOF
 		river)
 			local _river_init="${XDG_RUNTIME_DIR:-/tmp}/river-gui-$$.sh"
 			cat << EOF >| "${_river_init}"
-#!/bin/sh
+#!/usr/bin/env sh
 riverctl border-width 0
 riverctl xcursor-theme "${_cur_theme}" "${_cur_size}"
 riverctl input pointer-* accel-profile adaptive
@@ -564,7 +564,7 @@ EOF
 		dwl)
 			local _dwl_startup="${XDG_RUNTIME_DIR:-/tmp}/dwl-gui-$$.sh"
 			cat << EOF >| "${_dwl_startup}"
-#!/bin/sh
+#!/usr/bin/env sh
 exec ${_exec_invocation}
 EOF
 			chmod 0755 "${_dwl_startup}"
@@ -1092,7 +1092,7 @@ EOF_TABBAR
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-gui-$$.sh"
 	cat << EOF >| "${_xinit_script}"
-#!/bin/sh
+#!/usr/bin/env sh
 unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
 export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-GNOME}"

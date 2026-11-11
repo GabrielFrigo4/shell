@@ -176,10 +176,10 @@ jobs:
                       script -q /dev/null bash -i -c 'echo "FreeBSD Bash prompt: ${PS1}"'
 
                       ### --------------------------------
-                      ### FreeBSD /bin/sh Interactive PTY
+                      ### FreeBSD sh Interactive PTY
                       ### --------------------------------
                       test -f "${HOME}/.shrc" || { echo "Missing .shrc"; exit 1; }
-                      ENV="${HOME}/.shrc" script -q /dev/null sh -i -c 'echo "FreeBSD /bin/sh prompt: ${PS1}"'
+                      ENV="${HOME}/.shrc" script -q /dev/null sh -i -c 'echo "FreeBSD sh prompt: ${PS1}"'
 
                       ### --------------------------------
                       ### Startup Latency Benchmark (bsh)

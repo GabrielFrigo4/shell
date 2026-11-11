@@ -48,7 +48,6 @@ Atualmente, o processo de boot carrega de 5 a 8 arquivos `.sh` separados via mú
         if [ -f "${_bundle}" ]; then
             . "${_bundle}"
         else
-            # Fallback automático para o modo modular padrão em disco
             for _f in "${SHELL_REPO_DIR}/library/"*.sh; do [ -f "${_f}" ] && . "${_f}"; done
             for _f in "${SHELL_REPO_DIR}/core/"*.sh; do [ -f "${_f}" ] && . "${_f}"; done
             . "${SHELL_REPO_DIR}/target/${OS_NAME}/${SHELL_NAME}/prompt.sh"

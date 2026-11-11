@@ -59,7 +59,7 @@ user@hostname:~/projects/myapp (main ✗) $
 
 ### 4. POSIX Sh (`theme/sh.sh`)
 
-- **Linha de Base FreeBSD 14+/15+ (`/bin/sh`):** Suporta expansão de parâmetros no `$PS1`/`$PS2` (`$VAR`, `${VAR}`, `$?`, `$$`) e sequências ANSI canônicas.
+- **Linha de Base FreeBSD 14+/15+ (`sh`):** Suporta expansão de parâmetros no `$PS1`/`$PS2` (`$VAR`, `${VAR}`, `$?`, `$$`) e sequências ANSI canônicas.
 - **Teto Físico de Memória (`PROMPTLEN = 192`):** O parser em C do FreeBSD (`bin/sh/parser.c`) aloca um buffer estático de 192 bytes sem alocação dinâmica no heap (`malloc`). Qualquer prompt acima de 191 bytes é truncado pelo sistema.
 - **Peculiaridades da `libedit`:** Utiliza delimitador único hexadecimal (`\x01` / `0x01`), descarta literais consecutivos sem caractere imprimível e desincroniza o cursor vertical em multilinhas (`\n`). Por isso, o tema adota rigorosamente **1 linha**.
 - **Decisão Arquitetural Upstream:** Os mantenedores do FreeBSD rejeitam intencionalmente parsers reentrantes e hooks arbitrários (`PROMPT_COMMAND`) para preservar a segurança contra injeção de comandos e manter a estabilidade no _single-user mode_.
@@ -87,7 +87,7 @@ Para garantir que o prompt utilize 100% do espaço útil do buffer físico sem r
 
 #### 📊 Matriz de Consumo e Headroom de Buffer no FreeBSD
 
-Medição auditada no buffer estático `char ps[PROMPTLEN]` do FreeBSD `/bin/sh` (`bin/sh/parser.c`) após processamento de `getprompt()` (`\[`/`\]` convertidos para `\x01` / `0x01`, `\e` para `0x1b` e glifos UTF-8 com seus 3–4 bytes físicos).
+Medição auditada no buffer estático `char ps[PROMPTLEN]` do FreeBSD `sh` (`bin/sh/parser.c`) após processamento de `getprompt()` (`\[`/`\]` convertidos para `\x01` / `0x01`, `\e` para `0x1b` e glifos UTF-8 com seus 3–4 bytes físicos).
 
 > **Perfil de Referência:** Usuário `gabrielf` (8B) | Host `freebsd` (7B) | SO `15.1` (4B) / `13.2` (4B).
 

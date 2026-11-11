@@ -1,18 +1,24 @@
 # ----------------------------------------------------------------
-# FreeBSD libedit Configuration (~/.editrc)
+# Config: FreeBSD libedit Configuration
 # ----------------------------------------------------------------
 
 bind -e
 settc bl "$<0>"
 
-# Native Command & Filename Tab Completion for /bin/sh
+### ================================
+### TAB COMPLETION
+### ================================
 sh:bind "^I" sh-complete
 
-# Incremental History Search (Ctrl+R / Ctrl+S)
+### ================================
+### HISTORY SEARCH
+### ================================
 bind "^R" em-inc-search-prev
 bind "^S" em-inc-search-next
 
-# Prefix History Navigation (Up / Down / PageUp / PageDown / Shift+Arrows)
+### ================================
+### HISTORY NAVIGATION
+### ================================
 bind "\e[A" ed-search-prev-history
 bind "\e[B" ed-search-next-history
 bind "\eOA" ed-search-prev-history
@@ -24,7 +30,9 @@ bind "\e[1;2B" ed-search-next-history
 bind "\e[a" ed-search-prev-history
 bind "\e[b" ed-search-next-history
 
-# Line Boundaries (Home / End / Ctrl+A / Ctrl+E across VT/XTerm/Rxvt)
+### ================================
+### LINE BOUNDARIES
+### ================================
 bind "^A" ed-move-to-beg
 bind "^E" ed-move-to-end
 bind "\e[H" ed-move-to-beg
@@ -36,7 +44,9 @@ bind "\eOF" ed-move-to-end
 bind "\e[4~" ed-move-to-end
 bind "\e[8~" ed-move-to-end
 
-# Word Navigation (Ctrl+Arrows / Alt+Arrows / Shift+Arrows / Meta+B/F)
+### ================================
+### WORD NAVIGATION
+### ================================
 bind "\eb" ed-prev-word
 bind "\ef" em-next-word
 bind "\e[1;5C" em-next-word
@@ -52,7 +62,9 @@ bind "\e[1;2D" ed-prev-word
 bind "\e[c" em-next-word
 bind "\e[d" ed-prev-word
 
-# Deletion & Word Killing (Delete / Ctrl+Delete / Ctrl+W / Alt+D / Alt+BS)
+### ================================
+### DELETION & WORD KILLING
+### ================================
 bind "\e[3~" ed-delete-next-char
 bind "\e[3;5~" em-delete-next-word
 bind "^?" ed-delete-prev-char
@@ -62,13 +74,17 @@ bind "\ed" em-delete-next-word
 bind "\e^?" ed-delete-prev-word
 bind "\e^H" ed-delete-prev-word
 
-# Line Operations & Screen Control (Ctrl+U / Ctrl+K / Ctrl+Y / Ctrl+L)
+### ================================
+### LINE & SCREEN OPERATIONS
+### ================================
 bind "^U" em-kill-line
 bind "^K" ed-kill-line
 bind "^Y" em-yank
 bind "^L" ed-clear-screen
 
-# Application Keypad Mode (NumPad Support)
+### ================================
+### APPLICATION KEYPAD
+### ================================
 bind -s "\eOp" "0"
 bind -s "\eOq" "1"
 bind -s "\eOr" "2"

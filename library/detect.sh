@@ -236,7 +236,7 @@ _detect_enabled_shell() {
 			esac
 		fi
 	fi
-	[ -z "${_shell_binary}" ] && _shell_binary="${SHELL:-/bin/sh}"
+	[ -z "${_shell_binary}" ] && _shell_binary="${SHELL:-$(command -v sh 2> "/dev/null" || echo sh)}"
 
 	case "${_target}" in
 		--name|-n|name) echo "${_shell_binary##*/}" ;;

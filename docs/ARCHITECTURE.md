@@ -58,11 +58,11 @@ Em conformidade com a filosofia UNIX:
 
 ## 🛡️ Portabilidade POSIX vs. Shells Modernos
 
-- **Camadas Base (`library/`, `core/`):** Escritas em estrita conformidade com o padrão **POSIX sh**. Devem rodar no `/bin/sh` nativo do FreeBSD sem nenhuma dependência de extensões do GNU Bash.
+- **Camadas Base (`library/`, `core/`):** Escritas em estrita conformidade com o padrão **POSIX sh**. Devem rodar no `sh` nativo do FreeBSD sem nenhuma dependência de extensões do GNU Bash.
 - **Prompts Especializados (`theme/`):**
     - **Zsh (`theme/zsh.sh`):** Utiliza o subsistema `zstyle`, `vcs_info` e autocompletion com menu interativo.
     - **Bash (`theme/bash.sh`):** Utiliza escape sequences nativas do Bash com suporte a cores 256/TrueColor e status Git.
-    - **POSIX Sh (`theme/sh.sh`):** Prompt atômico, leve e sem dependências, exclusivo para o FreeBSD `/bin/sh`.
+    - **POSIX Sh (`theme/sh.sh`):** Prompt atômico, leve e sem dependências, exclusivo para o FreeBSD `sh`.
     - **KornShell (`theme/ksh.sh`):** Prompt ultra-leve calibrado para `/bin/ksh` no OpenBSD com controle defensivo `\x01` (0x01) e ANSI nativo.
 
 ---
@@ -76,7 +76,7 @@ flowchart TD
     subgraph UNIX_STANDARDS ["🧭 Matriz Soberana de Shells Padrão"]
         LINUX["🐧 Linux: Zsh<br/>• Login via chsh -s $(which zsh)<br/>• Suporte nativo PAM e /etc/shells"]
         MACOS["🍎 macOS: Zsh<br/>• Padrão nativo Apple desde Catalina<br/>• /bin/zsh de fábrica"]
-        FREEBSD["😈 FreeBSD: /bin/sh<br/>• Padrão soberano da base<br/>• NÃO usar chsh para /usr/local/bin/zsh<br/>• Previne lock out em single-user mode"]
+        FREEBSD["😈 FreeBSD: sh<br/>• Padrão soberano da base<br/>• NÃO usar chsh para /usr/local/bin/zsh<br/>• Previne lock out em single-user mode"]
         OPENBSD["🐡 OpenBSD: /bin/ksh<br/>• PD-KSH auditado da base<br/>• Segurança radical (pledge/unveil)"]
         ILLUMOS["☀️ illumos: /bin/ksh<br/>• Ksh93 padrão System V Solaris<br/>• Integração nativa pfexec"]
         MSYS2["🪟 Windows MSYS2: Zsh<br/>• chsh NÃO funciona (sem PAM/libc UNIX)<br/>• Configuração via .ini (SHELL=/usr/bin/zsh)"]
@@ -97,12 +97,12 @@ flowchart TD
 
 ### 3. 😈 FreeBSD (Workstation & Server)
 
-- **Shell Padrão:** `/bin/sh` (com `libedit`).
+- **Shell Padrão:** `sh` (com `libedit`).
 - **Por que NÃO usar `chsh` para `/usr/local/bin/zsh`?**
     - No FreeBSD, o sistema base é estritamente segregado dos pacotes externos. A base reside em `/bin` e `/sbin`, enquanto pacotes adicionais (`pkg`) vão para `/usr/local/bin`.
     - Frequentemente, `/usr` ou `/usr/local` residem em datasets ZFS ou partições que podem não estar montadas durante uma recuperação ou modo monousuário (_single-user mode_ / emergência).
     - Se a conta do usuário ou do `root` tiver seu shell de login configurado para `/usr/local/bin/zsh` no `/etc/passwd` e o `/usr/local` falhar ao montar, **o sistema entra em bloqueio imediato (_lock out_), impedindo qualquer login**.
-    - O `/bin/sh` do FreeBSD é moderno, ultrarrápido e integra edição de linha e histórico via `libedit`. Ele é a âncora de segurança e estabilidade da máquina. O Zsh pode ser lançado sob demanda ou como sessão interativa do terminal gráfico, mas o shell de login na base permanece `/bin/sh`.
+    - O `sh` do FreeBSD é moderno, ultrarrápido e integra edição de linha e histórico via `libedit`. Ele é a âncora de segurança e estabilidade da máquina. O Zsh pode ser lançado sob demanda ou como sessão interativa do terminal gráfico, mas o shell de login na base permanece `sh`.
 
 ### 4. 🐡 OpenBSD (Segurança Pragmática)
 

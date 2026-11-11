@@ -16,10 +16,10 @@ Toda alteração de código, adição de alias, refatoração ou otimização no
 
 ## 1. Linha de Base de Portabilidade & Alvos Exclusivos (`sh` e `ksh`)
 
-- O shell nativo do FreeBSD (`/bin/sh`) é a régua máxima e baseline de portabilidade para scripts compartilhados em `library/`, `core/` e `install.sh`.
+- O shell nativo do FreeBSD (`sh`) é a régua máxima e baseline de portabilidade para scripts compartilhados em `library/`, `core/` e `install.sh`.
 - **Exclusividade e Não-Coexistência:** Nos targets interativos (`target/`), o alvo `sh` existe exclusivamente para o FreeBSD e o alvo `ksh` exclusivamente para o OpenBSD (`ksh` e `sh` nunca coexistem no mesmo SO). Todos os demais sistemas suportam estritamente `zsh` e `bash`.
-- **Adoção Universal de `$'\e...'` e `echo -n`:** O formato `echo -n $'\e...'` é suportado em todos os shells do ecossistema (FreeBSD `/bin/sh`, Zsh, Bash, OpenBSD ksh moderno e Dash moderno, além de formalizado no POSIX Issue 8). É o padrão canônico preferido para sequências de controle de terminal (`alias clear="echo -n $'\e[2J\e[3J\e[H'"`), eliminando a necessidade de notação críptica em octal (`\033`) do `printf`.
-- **Delimitadores de Largura Zero em Prompts (`\[...\]`):** No FreeBSD `/bin/sh` (`libedit`), OpenBSD `ksh` e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar entre `\[` e `\]` (ex: `_color_red="\[\e[1;91m\]"`). Sem isso, o editor conta bytes ANSI como colunas visíveis, quebrando o cálculo de linhas e o cursor.
+- **Adoção Universal de `$'\e...'` e `echo -n`:** O formato `echo -n $'\e...'` é suportado em todos os shells do ecossistema (FreeBSD `sh`, Zsh, Bash, OpenBSD ksh moderno e Dash moderno, além de formalizado no POSIX Issue 8). É o padrão canônico preferido para sequências de controle de terminal (`alias clear="echo -n $'\e[2J\e[3J\e[H'"`), eliminando a necessidade de notação críptica em octal (`\033`) do `printf`.
+- **Delimitadores de Largura Zero em Prompts (`\[...\]`):** No FreeBSD `sh` (`libedit`), OpenBSD `ksh` e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar entre `\[` e `\]` (ex: `_color_red="\[\e[1;91m\]"`). Sem isso, o editor conta bytes ANSI como colunas visíveis, quebrando o cálculo de linhas e o cursor.
 - Recursos do Zsh e Bash permanecem estritamente em `zsh/` e `bash/`.
 
 ## 2. Programação Defensiva Obrigatória
@@ -35,11 +35,11 @@ Toda alteração de código, adição de alias, refatoração ou otimização no
 
 ## 3. Convenção Estrita de Nomenclatura
 
-- **`kebab-case` (público):** Comandos destinados ao uso interativo (`mount-device`, `update-all`, `open-helix`, `path-front`). Suportados por Zsh, Bash e FreeBSD `/bin/sh`. Definidos diretamente, sem wrappers redundantes. Interpretadores que rejeitam hífen em funções por rigidez POSIX (como `dash`) não são alvo de execução deste repositório.
+- **`kebab-case` (público):** Comandos destinados ao uso interativo (`mount-device`, `update-all`, `open-helix`, `path-front`). Suportados por Zsh, Bash e FreeBSD `sh`. Definidos diretamente, sem wrappers redundantes. Interpretadores que rejeitam hífen em funções por rigidez POSIX (como `dash`) não são alvo de execução deste repositório.
 - **`_snake_case` (privado):** Funções internas de bootstrapping e variáveis locais temporárias (`_as_root`, `_detect_os`, `_pwd`). Mantém o autocompletion limpo.
 - **`SNAKE_CASE` (maiúsculo):** Constantes e variáveis de ambiente globais (`PATH`, `SHELL_REPO_DIR`, `SHELL_CONTEXT`).
 - **Nomenclatura Expressiva & Proibição de Abreviações Crípticas:** Variáveis e funções internas DEVEM ser descritivas e autoexplicativas (`_user_color`, `_prompt_symbol`, `_indicator`, `_delimiter`, `_target_length`, `_remaining_string`, `_module`, `_editor`, `_file`). Evite o uso de abreviações crípticas de uma ou duas letras para conceitos comuns (`_c` para cor, `_u` para usuário, `_ind`, `_sym`, `_del`, `_b`, `_f`, `_ed`, `_mod`).
-- **Exceções Técnicas Formais:** Termos que representam formalmente entidades da ciência da computação são plenamente aceitos (ex: a linguagem `C` em buffers como `_calc_c_len` e `_c_bytes` que interagem com o parser C do FreeBSD `/bin/sh`, além de acrônimos canônicos de sistemas e redes como `_os`, `_ip`, `_pid`, `_ppid`).
+- **Exceções Técnicas Formais:** Termos que representam formalmente entidades da ciência da computação são plenamente aceitos (ex: a linguagem `C` em buffers como `_calc_c_len` e `_c_bytes` que interagem com o parser C do FreeBSD `sh`, além de acrônimos canônicos de sistemas e redes como `_os`, `_ip`, `_pid`, `_ppid`).
 
 ## 4. Estrutura de Arquivos & Arquitetura de Comentários (Regra do Não-Vazamento)
 
@@ -103,7 +103,7 @@ Toda alteração de código, adição de alias, refatoração ou otimização no
     esac
     unset _current_sh
     ```
-- **Invocação pelo Shell Ativo (Active Shell Invocation):** Ao invocar sub-rotinas e instaladores (`install.sh`, `benchmark.sh`) dentro de funções do shell, utilize sempre o executável do shell ativo seguindo a cascata de preferência: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`, NUNCA `sh` cego. No topo de scripts utilitários em Linux, mantenha guard de auto-elevação para `zsh`/`bash` se iniciado sob `/bin/sh` (`dash`).
+- **Invocação pelo Shell Ativo (Active Shell Invocation):** Ao invocar sub-rotinas e instaladores (`install.sh`, `benchmark.sh`) dentro de funções do shell, utilize sempre o executável do shell ativo seguindo a cascata de preferência: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`, NUNCA `sh` cego. No topo de scripts utilitários em Linux, mantenha guard de auto-elevação para `zsh`/`bash` se iniciado sob `sh` (`dash`).
 
 ## 8. Ordem Canônica de Prevalência e Enumeração de Shells
 
@@ -111,7 +111,7 @@ Em qualquer enumeração, pipeline de CI/CD, script de benchmark, Makefile ou do
 
 1. **`zsh`** (topo da cadeia de ergonomia, autocompletion por menu e produtividade interativa)
 2. **`bash`** (padrão corporativo universal e compatibilidade retroativa)
-3. **`sh`** (FreeBSD `/bin/sh` como base system exclusivo) ou **`ksh`** (OpenBSD `/bin/ksh` como base system exclusivo)
+3. **`sh`** (FreeBSD `sh` como base system exclusivo) ou **`ksh`** (OpenBSD `/bin/ksh` como base system exclusivo)
 
 ## 9. Checklist de Validação
 

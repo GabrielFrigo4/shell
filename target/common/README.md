@@ -8,7 +8,7 @@
 
 | Diretório   | Shell                       | Domínio Principal                                                                         |
 | :---------- | :-------------------------- | :---------------------------------------------------------------------------------------- |
-| **`sh/`**   | POSIX `/bin/sh`             | Configuração estrita POSIX, edição Emacs, histórico em `~/.sh_history`, `set -C`          |
+| **`sh/`**   | POSIX `sh`                  | Configuração estrita POSIX, edição Emacs, histórico em `~/.sh_history`, `set -C`          |
 | **`bash/`** | GNU Bash (`bash`)           | Histórico compartilhado (`histappend`), `checkwinsize`, navegação (`autocd`), completions |
 | **`zsh/`**  | Z Shell (`zsh`)             | `SHARE_HISTORY`, navegação avançada (`AUTO_CD`), segurança e cache `.zcompdump.zwc`       |
 | **`fish/`** | Fish Shell (`fish`)         | Arquitetura modular (`config.fish`, `prompt.fish`, `ui.fish`, `aliases.fish`)             |

@@ -2,7 +2,7 @@
 name: universal-shell
 description: >-
     Comprehensive guide and operational runbook for extending, refactoring, and auditing the Universal Shell repository.
-    Covers interactive target matrix across operating systems, defensive guards, Clean Code standards, and FreeBSD /bin/sh parity.
+    Covers interactive target matrix across operating systems, defensive guards, Clean Code standards, and FreeBSD sh parity.
 ---
 
 # Universal Shell — Development & Architecture Runbook
@@ -33,10 +33,10 @@ Nem todo shell é suportado como alvo interativo em todos os sistemas operaciona
 | :------------------ | :--------------------------------------: | :---------------------------------------------------------------------------------------------------- |
 | **FreeBSD**         |         `zsh`, `bash`, **`sh`**          | **Único SO com `sh` interativo**. Parser C aceita `kebab-case`. Buffer restrito a 192 bytes.          |
 | **OpenBSD**         |         `zsh`, `bash`, **`ksh`**         | **Único SO com `ksh` interativo**. Parser pdksh com `kebab-case`. Largura zero delimitada por `\x01`. |
-| **Linux**           |              `zsh`, `bash`               | `/bin/sh` (Dash ou Bash `--posix`) rejeita `kebab-case` e NÃO DEVE ser interativo de usuário.         |
-| **macOS**           |              `zsh`, `bash`               | Zsh padrão; `/bin/sh` é Bash 3.2 obsoleto com `posixly_correct` que rejeita hífens.                   |
-| **illumos**         |              `zsh`, `bash`               | `/bin/sh` (Ksh93) rejeita hífens em funções. Suíte GNU em `/usr/gnu/bin`.                             |
-| **NetBSD**          |              `zsh`, `bash`               | `/bin/sh` ash puro rejeita hífens (`goodname()`). Berço histórico da `libedit`.                       |
+| **Linux**           |              `zsh`, `bash`               | `sh` (Dash ou Bash `--posix`) rejeita `kebab-case` e NÃO DEVE ser interativo de usuário.              |
+| **macOS**           |              `zsh`, `bash`               | Zsh padrão; `sh` é Bash 3.2 obsoleto com `posixly_correct` que rejeita hífens.                        |
+| **illumos**         |              `zsh`, `bash`               | `sh` (Ksh93) rejeita hífens em funções. Suíte GNU em `/usr/gnu/bin`.                                  |
+| **NetBSD**          |              `zsh`, `bash`               | `sh` ash puro rejeita hífens (`goodname()`). Berço histórico da `libedit`.                            |
 | **Windows (MSYS2)** |              `zsh`, `bash`               | Camada de emulação POSIX sobre NT. Penalidade severa de `fork()` (20-60ms). Zero subshells no boot.   |
 
 Em benchmarks, testes automatizados e documentações, a ordem de precedência ergonômica DEVE respeitar estritamente:
@@ -49,10 +49,10 @@ Em benchmarks, testes automatizados e documentações, a ordem de precedência e
 
 ## 3. Invariantes Arquiteturais Inegociáveis
 
-1. **Linha de Base FreeBSD `/bin/sh` & Alvos Nativos de Sistema Exclusivos:**
-    - O `/bin/sh` do FreeBSD é a referência canônica para scripts compartilhados em `library/`, `core/` e `install.sh`.
+1. **Linha de Base FreeBSD `sh` & Alvos Nativos de Sistema Exclusivos:**
+    - O `sh` do FreeBSD é a referência canônica para scripts compartilhados em `library/`, `core/` e `install.sh`.
     - **Alvos Nativos de Sistema Exclusivos:** O alvo interativo `sh` existe unicamente no FreeBSD (`target/freebsd/sh`), e o alvo interativo `ksh` existe unicamente no OpenBSD (`target/openbsd/ksh`). Todos os demais SOs DEVEM utilizar exclusivamente `bash` e `zsh` como alvos interativos.
-    - O formato `echo -n $'\e...'` é universalmente suportado em todo o ecossistema (FreeBSD `/bin/sh`, Zsh, Bash e Dash moderno, além do padrão POSIX Issue 8). No OpenBSD `ksh`, sequências de controle adotam bytes octais `\033` (via `printf '\033'`).
+    - O formato `echo -n $'\e...'` é universalmente suportado em todo o ecossistema (FreeBSD `sh`, Zsh, Bash e Dash moderno, além do padrão POSIX Issue 8). No OpenBSD `ksh`, sequências de controle adotam bytes octais `\033` (via `printf '\033'`).
     - Use expressamente `echo -n $'\e...'` para sequências de controle de terminal (ex: `alias clear="echo -n $'\e[2J\e[3J\e[H'"`), priorizando a clareza e legibilidade do `$'\e'` sobre o octal arcaico.
 
 2. **Programação Defensiva em Duas Zonas (`command -v`):**
@@ -86,7 +86,7 @@ Em benchmarks, testes automatizados e documentações, a ordem de precedência e
     - **Nomenclatura Semântica Expressiva (Zero Abreviações Crípticas):** Proibição categórica de variáveis de uma única letra ou abreviações contraídas (`_c`, `_u`, `_ind`, `_sym`, `_del`, `_b`, `_f`, `_ed`, `_mod`). Use sempre nomes explícitos e semânticos (`_user_color`, `_prompt_symbol`, `_indicator`, `_delimiter`, `_module`, `_file`), exceto referências formais da computação (a linguagem `C` em buffers de parser `_calc_c_len` / `_c_bytes`, e acrônimos de sistema consagrados como `_os`, `_ip`, `_pid`).
 
 5. **Delimitadores de Largura Zero em Prompts (`\[...\]` e `\e`):**
-    - No FreeBSD `/bin/sh` (`libedit`) e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar estritamente contidos entre `\[` e `\]` (ex: `_color_red="\[\e[1;91m\]"`).
+    - No FreeBSD `sh` (`libedit`) e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar estritamente contidos entre `\[` e `\]` (ex: `_color_red="\[\e[1;91m\]"`).
     - Sem `\[...\]`, a `libedit` computa bytes ANSI como colunas físicas ocupadas, quebrando a contagem de quebra de linha e causando sobreposição de caracteres (`\r`) e cursor travado sobre o início do prompt.
 
 6. **Heredocs Indentados com `cat <<- 'EOF'`:**
@@ -101,7 +101,7 @@ Em benchmarks, testes automatizados e documentações, a ordem de precedência e
     - Auto-correção de `$SHELL` DEVE usar casamento de padrão em memória (`case "${SHELL:-}" in *"/${_current_sh}") ;; ...`).
 9. **Execução pelo Shell Ativo (Active Shell Invocation):**
     - Ao disparar sub-scripts a partir de funções do shell (`install.sh`, `benchmark.sh`), execute SEMPRE através da cascata canônica: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`.
-    - NUNCA use `sh <script>` hardcoded: em Linux, `/bin/sh` pode ser `dash`, que rejeita a taxonomia canônica `kebab-case`. Em scripts utilitários, garanta guard de auto-elevação para `zsh`/`bash` no topo.
+    - NUNCA use `sh <script>` hardcoded: em Linux, `sh` pode ser `dash`, que rejeita a taxonomia canônica `kebab-case`. Em scripts utilitários, garanta guard de auto-elevação para `zsh`/`bash` no topo.
 
 10. **Engenharia de Performance e Boot Ultra-Rápido (< 20ms):**
     - **Zero Subshells no Boot-Time:** É expressamente VEDADO o uso de `find`, `sed`, `awk`, `grep`, `dd` e `ps` no carregamento interativo de qualquer shell. Cada fork de processo externo custa entre 2ms e 7ms.

@@ -696,7 +696,7 @@ _session_quote_args() {
 
 _session_cmd_file() {
 	local _file="${XDG_RUNTIME_DIR:-/tmp}/session-cmd-$$.sh"
-	printf '#!/bin/sh\nrm -f "$0"\nexec %s\n' "$(_session_quote_args "$@")" >| "${_file}"
+	printf '#!/usr/bin/env sh\nrm -f "$0"\nexec %s\n' "$(_session_quote_args "$@")" >| "${_file}"
 	chmod 0700 "${_file}"
 	printf '%s\n' "${_file}"
 }
@@ -849,7 +849,7 @@ _exec_x11() {
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-session-$$.sh"
 	cat << EOF >| "${_xinit_script}"
-#!/bin/sh
+#!/usr/bin/env sh
 unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
 export EMACS_OS_MODE="${EMACS_OS_MODE:-}"
@@ -2034,13 +2034,13 @@ window_manager_wayland() {
 	fi
 
 	cat << EOF >| "${_term_script}"
-#!/bin/sh
+#!/usr/bin/env sh
 exec ${_wm_term} "\$@"
 EOF
 	chmod 0755 "${_term_script}"
 
 	cat << 'EOF' >| "${_browser_script}"
-#!/bin/sh
+#!/usr/bin/env sh
 for _b in firefox chromium google-chrome-stable google-chrome brave-browser; do
 	if command -v "${_b}" > "/dev/null" 2>&1; then
 		exec "${_b}" "$@"
@@ -2050,7 +2050,7 @@ EOF
 	chmod 0755 "${_browser_script}"
 
 	cat << EOF >| "${_files_script}"
-#!/bin/sh
+#!/usr/bin/env sh
 for _fm in nautilus dolphin thunar pcmanfm caja nemo; do
 	if command -v "\${_fm}" > "/dev/null" 2>&1; then
 		exec "\${_fm}" "\$@"
@@ -2061,7 +2061,7 @@ EOF
 	chmod 0755 "${_files_script}"
 
 	cat << 'EOF' >| "${_emacs_script}"
-#!/bin/sh
+#!/usr/bin/env sh
 export GDK_BACKEND="wayland"
 for _e in emacs-pgtk emacs; do
 	if command -v "${_e}" > "/dev/null" 2>&1; then
@@ -2072,7 +2072,7 @@ EOF
 	chmod 0755 "${_emacs_script}"
 
 	cat << EOF >| "${_menu_script}"
-#!/bin/sh
+#!/usr/bin/env sh
 if command -v wofi > "/dev/null" 2>&1; then
 	exec wofi --show drun
 elif command -v fuzzel > "/dev/null" 2>&1; then
@@ -2088,7 +2088,7 @@ EOF
 	chmod 0755 "${_menu_script}"
 
 	cat << EOF >| "${_status_script}"
-#!/bin/sh
+#!/usr/bin/env sh
 _term="${_term_script}"
 _browser="${_browser_script}"
 _files="${_files_script}"
@@ -2321,7 +2321,7 @@ EOF
 EOF
 			if [ "${_has_gtk3_bar}" -eq 1 ]; then
 				cat << EOF >| "${_labwc_dir}/autostart"
-#!/bin/sh
+#!/usr/bin/env sh
 env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
 EOF
 				chmod 0755 "${_labwc_dir}/autostart"
@@ -2334,7 +2334,7 @@ EOF
 		river)
 			local _river_init="${_run_dir}/river-wm-$$.sh"
 			cat << EOF >| "${_river_init}"
-#!/bin/sh
+#!/usr/bin/env sh
 riverctl border-width 2
 riverctl border-color-focused "0x3584e4"
 riverctl border-color-unfocused "0x38383d"
@@ -2498,7 +2498,7 @@ EOF
 		dwl)
 			local _dwl_startup="${_run_dir}/dwl-startup-$$.sh"
 			cat << EOF >| "${_dwl_startup}"
-#!/bin/sh
+#!/usr/bin/env sh
 if [ "${_has_gtk3_bar}" -eq 1 ]; then
 	env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
 fi
@@ -2692,13 +2692,13 @@ OTM
 	fi
 
 	cat << EOF >| "${_term_script}"
-#!/bin/sh
+#!/usr/bin/env sh
 exec ${_wm_x11_term} "\$@"
 EOF
 	chmod 0755 "${_term_script}"
 
 	cat << 'EOF' >| "${_browser_script}"
-#!/bin/sh
+#!/usr/bin/env sh
 for _b in firefox chromium google-chrome-stable google-chrome brave-browser; do
 	if command -v "${_b}" > "/dev/null" 2>&1; then
 		exec "${_b}" "$@"
@@ -2708,7 +2708,7 @@ EOF
 	chmod 0755 "${_browser_script}"
 
 	cat << EOF >| "${_files_script}"
-#!/bin/sh
+#!/usr/bin/env sh
 for _fm in nautilus dolphin thunar pcmanfm caja nemo; do
 	if command -v "\${_fm}" > "/dev/null" 2>&1; then
 		exec "\${_fm}" "\$@"
@@ -2719,7 +2719,7 @@ EOF
 	chmod 0755 "${_files_script}"
 
 	cat << 'EOF' >| "${_emacs_script}"
-#!/bin/sh
+#!/usr/bin/env sh
 for _e in emacs-gtk+x11 emacs-x11 emacs-lucid emacs-gtk emacs-nw emacs; do
 	if command -v "${_e}" > "/dev/null" 2>&1; then
 		exec "${_e}" "$@"

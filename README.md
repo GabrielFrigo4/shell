@@ -80,13 +80,13 @@ flowchart TD
 | :---------------- | :-----------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Zsh (`zsh`)**   |    🟢 100%    | Shell primário interativo moderno. Autocompletion interativo com Tab e setas (`menu select`), case-insensitive e histórico estendido. Suportado em todas as plataformas. |
 | **Bash (`bash`)** |    🟢 100%    | Suporte universal nativo em Linux, macOS, BSDs, illumos e Windows. Readline completion interativo, histórico atômico sincronizado e busca por prefixo.                   |
-| **Sh (`sh`)**     |    🟢 100%    | Shell POSIX fundamental (**exclusivo do FreeBSD `/bin/sh`**). Mini prompt gráfico calibrado (128B/192B), histórico `libedit` completo e fallback TTY puro.               |
+| **Sh (`sh`)**     |    🟢 100%    | Shell POSIX fundamental (**exclusivo do FreeBSD `sh`**). Mini prompt gráfico calibrado (128B/192B), histórico `libedit` completo e fallback TTY puro.                    |
 | **Ksh (`ksh`)**   |    🟢 100%    | Shell nativo clássico (**exclusivo do OpenBSD `/bin/ksh`**). Prompt adaptativo dinâmico, histórico in-memory, bindings Emacs e zero overhead.                            |
 | **Dash (`dash`)** | ❌ Descartado | **Incompatibilidade POSIX:** BNF estrita proíbe nomes `kebab-case` (`-`) em funções (`update-all`, etc.). Auto-elevação para `zsh`/`bash` no instalador.                 |
 | **Fish (`fish`)** | ❌ Descartado | **Incompatibilidade POSIX:** Sintaxe própria incompatível com `source` em arquivos `.sh` e `export`.                                                                     |
 
-> 💡 **O Caso do FreeBSD `/bin/sh` & Engenharia Cirúrgica de Prompt:**
-> O `/bin/sh` do FreeBSD opera sobre a biblioteca `libedit` e possui um buffer estático em C (`#define PROMPTLEN 192` em FreeBSD 14+ e `128` em <= 13 em `bin/sh/parser.c`), sem `malloc` dinâmico para garantir estabilidade no modo monousuário. O parser em C converte `\[` e `\]` para `\x01` (1B) e `\e` para `0x1b` (1B), tornando a ocupação real em C menor do que a contagem bruta de caracteres da string. O motor dinâmico em `theme/sh.sh` calibra com precisão cirúrgica de bytes dois layouts: **`pill`** (192B) e **`micro`** (128B com fallback automático), aproveitando até 98% do buffer físico com texto útil (pastas e branches completas) sem estouro de memória. Detalhes completos em [docs/THEMES.md](docs/THEMES.md).
+> 💡 **O Caso do FreeBSD `sh` & Engenharia Cirúrgica de Prompt:**
+> O `sh` do FreeBSD opera sobre a biblioteca `libedit` e possui um buffer estático em C (`#define PROMPTLEN 192` em FreeBSD 14+ e `128` em <= 13 em `bin/sh/parser.c`), sem `malloc` dinâmico para garantir estabilidade no modo monousuário. O parser em C converte `\[` e `\]` para `\x01` (1B) e `\e` para `0x1b` (1B), tornando a ocupação real em C menor do que a contagem bruta de caracteres da string. O motor dinâmico em `theme/sh.sh` calibra com precisão cirúrgica de bytes dois layouts: **`pill`** (192B) e **`micro`** (128B com fallback automático), aproveitando até 98% do buffer físico com texto útil (pastas e branches completas) sem estouro de memória. Detalhes completos em [docs/THEMES.md](docs/THEMES.md).
 
 ---
 

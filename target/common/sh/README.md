@@ -1,6 +1,6 @@
 # 🐚 POSIX sh — Runtime Comum
 
-> Configuração canônica comum para interpretadores estritamente POSIX (`/bin/sh`).
+> Configuração canônica comum para interpretadores estritamente POSIX (`sh`).
 
 ---
 
