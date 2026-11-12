@@ -51,11 +51,25 @@ test:
 	elif command -v oksh > "/dev/null" 2>&1; then \
 		find target/openbsd/ksh target/common/ksh theme/ksh.sh -name "*.sh" -exec oksh -n {} +; \
 	fi
-	echo "🔍 Validando variáveis e aliases canônicos..."
+	if command -v fish > "/dev/null" 2>&1; then \
+		fish -n target/common/fish/aliases.fish; \
+	fi
+	echo "🔍 Validando variáveis e funções canônicas..."
 	grep -q 'PYTHONPYCACHEPREFIX=' core/environment.sh || { echo "❌ PYTHONPYCACHEPREFIX ausente em core/environment.sh" >&2; exit 1; }
-	for _a in l la ll lr lar llr; do \
-		grep -q "alias $${_a}=" core/environment.sh || { echo "❌ Alias $${_a} ausente em core/environment.sh" >&2; exit 1; } \
+	for _a in l la ll lt lr lar llr; do \
+		grep -qE "^$${_a}\(\)" core/environment.sh || { echo "❌ Função $${_a}() ausente em core/environment.sh" >&2; exit 1; }; \
 	done
+	echo "🧪 Validando comportamento limpo em pipe (sem ANSI ou glifos Nerd Fonts)..."
+	sh -c '. ./library/detect.sh 2> "/dev/null" && . ./core/environment.sh 2> "/dev/null"; \
+		for _fn in l la ll lr lar llr; do \
+			_out=$$("$${_fn}" core | cat); \
+			[ -n "$${_out}" ] || { echo "❌ Saída vazia em $${_fn} | cat" >&2; exit 1; }; \
+			printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" \
+				|| { echo "❌ Escape ANSI ou glifo Nerd Font detectado em $${_fn} | cat" >&2; exit 1; }; \
+		done; \
+		_out=$$(c Makefile | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1; \
+		_out=$$(g test Makefile | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1; \
+		_out=$$(f core | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1'
 	echo "✅ Sintaxe e invariantes do Shell validadas com sucesso!"
 
 prettier: format
