@@ -23,7 +23,7 @@ fi
 ### ================================
 ### THEME ISOLATION
 ### ================================
-export GTK_THEME="Emacs-Kanagawa-Dark"
+export GTK_THEME="Emacs-Doom-Dark"
 export GTK_APPLICATION_PREFER_DARK_THEME=1
 
 ### ================================

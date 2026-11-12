@@ -70,16 +70,33 @@ linux-host() {
 		*1*|*true*|*yes*) _is_raw=1 ;;
 	esac
 	if [ "${_is_raw}" -eq 1 ] || { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
+		_is_raw=1
 		_tty_env="${_tty_env}export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; unset COLORTERM; "
 		_ssh_opts="${_ssh_opts} -o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
 	fi
 
-	if [ $# -gt 0 ]; then
-		_tty_term=""
+	_tty_term=""
+	if [ -n "${INSIDE_EMACS:-}" ]; then
+		_tty_term="export TERM=xterm-256color COLORTERM=truecolor; "
+	else
 		case "${TERM:-}" in
-			eat*|"") _tty_term="export TERM=xterm-256color COLORTERM=truecolor; " ;;
-			*)       _tty_term="export COLORTERM=\"\${COLORTERM:-truecolor}\"; " ;;
+			eat*|xterm*|alacritty*|kitty*|foot*|ghostty*|wezterm*|rxvt*|tmux*|screen*|"")
+				_tty_term="export TERM=xterm-256color COLORTERM=truecolor; "
+				;;
+			linux|cons25*|wvt25*)
+				_tty_term="export COLORTERM=\"\${COLORTERM:-truecolor}\"; "
+				;;
+			*)
+				if [ "${_is_raw}" -eq 0 ]; then
+					_tty_term="export TERM=xterm-256color COLORTERM=truecolor; "
+				else
+					_tty_term="export COLORTERM=\"\${COLORTERM:-truecolor}\"; "
+				fi
+				;;
 		esac
+	fi
+
+	if [ $# -gt 0 ]; then
 
 		_prefix="${_tty_env}${_tty_term}export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"
 		if [ -n "${_target_dir}" ]; then
@@ -116,15 +133,31 @@ agy-lx() {
 		*1*|*true*|*yes*) _is_raw=1 ;;
 	esac
 	if [ "${_is_raw}" -eq 1 ] || { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
+		_is_raw=1
 		_tty_env="${_tty_env}export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; unset COLORTERM; "
 		_ssh_opts="${_ssh_opts} -o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
 	fi
 
 	_tty_term=""
-	case "${TERM:-}" in
-		eat*|"") _tty_term="export TERM=xterm-256color COLORTERM=truecolor; " ;;
-		*)       _tty_term="export COLORTERM=\"\${COLORTERM:-truecolor}\"; " ;;
-	esac
+	if [ -n "${INSIDE_EMACS:-}" ]; then
+		_tty_term="export TERM=xterm-256color COLORTERM=truecolor; "
+	else
+		case "${TERM:-}" in
+			eat*|xterm*|alacritty*|kitty*|foot*|ghostty*|wezterm*|rxvt*|tmux*|screen*|"")
+				_tty_term="export TERM=xterm-256color COLORTERM=truecolor; "
+				;;
+			linux|cons25*|wvt25*)
+				_tty_term="export COLORTERM=\"\${COLORTERM:-truecolor}\"; "
+				;;
+			*)
+				if [ "${_is_raw}" -eq 0 ]; then
+					_tty_term="export TERM=xterm-256color COLORTERM=truecolor; "
+				else
+					_tty_term="export COLORTERM=\"\${COLORTERM:-truecolor}\"; "
+				fi
+				;;
+		esac
+	fi
 
 	_prefix="${_tty_env}${_tty_term}export PATH=\"\${HOME}/.local/bin:\${HOME}/.gemini/antigravity-cli/bin:\${HOME}/.cargo/bin:\${PATH}\";"
 

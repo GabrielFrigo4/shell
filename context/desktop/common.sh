@@ -6,6 +6,7 @@
 ### TERMINAL EDITORS
 ### --------------------------------
 _restore_tty_cursor() {
+	[ -n "${INSIDE_EMACS:-}" ] && return 0
 	if [ -t 0 ]; then
 		command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
 	fi
@@ -353,7 +354,7 @@ emacs-kill() {
 }
 emacs-start() {
 	command -v emacs > "/dev/null" 2>&1 || { _ui_err "emacs not found."; return 127; }
-	GTK_THEME="Emacs-Kanagawa-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacs --daemon="${EMACS_SOCKET_NAME}"
+	GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacs --daemon="${EMACS_SOCKET_NAME}"
 	local _status=$?
 	_restore_tty_cursor
 	return ${_status}
@@ -400,14 +401,14 @@ emacs-client() {
 	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if [ "$#" -eq 0 ]; then
-			GTK_THEME="Emacs-Kanagawa-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacsclient --create-frame --alternate-editor "" -n
+			GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacsclient --create-frame --alternate-editor "" -n
 			_status=$?
 		else
-			GTK_THEME="Emacs-Kanagawa-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacsclient --create-frame --alternate-editor "" "$@"
+			GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacsclient --create-frame --alternate-editor "" "$@"
 			_status=$?
 		fi
 	else
-		GTK_THEME="Emacs-Kanagawa-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacsclient -t --alternate-editor "" "$@"
+		GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacsclient -t --alternate-editor "" "$@"
 		_status=$?
 	fi
 	_restore_tty_cursor
@@ -470,10 +471,10 @@ emacs-open() {
 	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if [ "$#" -eq 0 ]; then
-			(GTK_THEME="Emacs-Kanagawa-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command nohup emacsclient --create-frame --alternate-editor "" . < "/dev/null" > "/dev/null" 2>&1 &)
+			(GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command nohup emacsclient --create-frame --alternate-editor "" . < "/dev/null" > "/dev/null" 2>&1 &)
 			_status=$?
 		else
-			(GTK_THEME="Emacs-Kanagawa-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command nohup emacsclient --create-frame --alternate-editor "" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+			(GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command nohup emacsclient --create-frame --alternate-editor "" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 			_status=$?
 		fi
 	else
