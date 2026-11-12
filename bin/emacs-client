@@ -34,6 +34,11 @@ if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 			_is_kde=1
 		fi
 	fi
+	if [ "${_is_kde}" -eq 0 ]; then
+		if [ -e "${HOME}/.config/kdeglobals" ] || [ -d "/usr/local/share/plasma" ] || [ -d "/usr/share/plasma" ]; then
+			_is_kde=1
+		fi
+	fi
 	if [ "${_is_kde}" -eq 1 ]; then
 		export GTK_THEME="Breeze-Dark"
 		export GTK_APPLICATION_PREFER_DARK_THEME=1
