@@ -204,6 +204,9 @@ flowchart TD
 | `ll`                 | `eza`               | Listagem detalhada com metadados, permissões e Git (`eza -la --git` > `ls -laF`). | Rust                 |
 | `la`                 | `eza`               | Listagem completa incluindo arquivos ocultos (`eza -a` > `ls -a`).                | Rust                 |
 | `lt`                 | `eza`               | Exibição em árvore estruturada (`eza --tree` > `tree`).                           | Rust                 |
+| `lr`                 | `eza`               | Listagem recursiva compacta (`eza -R` > `ls -R`).                                 | Rust                 |
+| `lar`                | `eza`               | Listagem recursiva completa com ocultos (`eza -aR` > `ls -aR`).                   | Rust                 |
+| `llr`                | `eza`               | Listagem recursiva detalhada com Git (`eza -laR --git` > `ls -laR`).              | Rust                 |
 | `c <arquivo>`        | `bat`               | Visualização com destaque sintático sem paginação (`bat --paging=never` > `cat`). | Rust                 |
 | `b <arquivo>`        | `bat`               | Paginação com destaque sintático de código (`bat` > `less`).                      | Rust                 |
 | `f <nome>` / `ff`    | `fd`                | Busca ultrarrápida de arquivos (`fd` / `fd --hidden --no-ignore` > `find`).       | Rust                 |

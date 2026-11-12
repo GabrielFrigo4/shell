@@ -35,6 +35,12 @@ set "FASM2_STORE=%VIRTUAL_STORE%\Program Files\FASM2"
 set "FASMG_STORE=%VIRTUAL_STORE%\Program Files\FASMG"
 set "FASMARM_STORE=%VIRTUAL_STORE%\Program Files\FASMARM"
 
+if defined XDG_CACHE_HOME (
+	set "PYTHONPYCACHEPREFIX=%XDG_CACHE_HOME%\pycache"
+) else (
+	set "PYTHONPYCACHEPREFIX=%USERPROFILE%\.cache\pycache"
+)
+
 if not defined SHELL_REPO_DIR (
 	if exist "%~dp0..\..\..\shell.sh" (
 		set "SHELL_REPO_DIR=%~dp0..\..\.."

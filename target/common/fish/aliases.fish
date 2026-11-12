@@ -480,15 +480,24 @@ if type -q eza
     alias ll="eza -la --icons=auto --group-directories-first --git"
     alias la="eza -a --icons=auto --group-directories-first"
     alias lt="eza --tree --icons=auto --group-directories-first"
+    alias lr="eza -R --icons=auto --group-directories-first"
+    alias lar="eza -aR --icons=auto --group-directories-first"
+    alias llr="eza -laR --icons=auto --group-directories-first --git"
 else if type -q exa
     alias l="exa --group-directories-first"
     alias ll="exa -la --group-directories-first --git"
     alias la="exa -a --group-directories-first"
     alias lt="exa --tree --group-directories-first"
+    alias lr="exa -R --group-directories-first"
+    alias lar="exa -aR --group-directories-first"
+    alias llr="exa -laR --group-directories-first --git"
 else
     alias l="ls"
     alias ll="ls -laF"
     alias la="ls -a"
+    alias lr="ls -R"
+    alias lar="ls -aR"
+    alias llr="ls -laR"
 end
 
 if type -q bat

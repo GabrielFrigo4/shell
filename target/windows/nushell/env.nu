@@ -43,6 +43,7 @@ $env.PATH = $_cleaned_path
 
 $env.EMACS_SOCKET_NAME = ($env.HOME | path join ".emacs.d" "var" "server" "auth" "server");
 $env.MICRO_TRUECOLOR = 1;
+$env.PYTHONPYCACHEPREFIX = (if ($env.XDG_CACHE_HOME? | is-not-empty) { [$env.XDG_CACHE_HOME, "pycache"] | path join } else { [$env.HOME, ".cache", "pycache"] | path join })
 
 let _msys_root = ($env.MSYS2_ROOT? | default "C:\\msys64")
 let _msys_home_base = ($env.MSYS2_HOME? | default ([$_msys_root, "home"] | path join))

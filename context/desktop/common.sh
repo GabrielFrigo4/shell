@@ -353,7 +353,7 @@ emacs-kill() {
 }
 emacs-start() {
 	command -v emacs > "/dev/null" 2>&1 || { _ui_err "emacs not found."; return 127; }
-	command emacs --daemon="${EMACS_SOCKET_NAME}"
+	GTK_THEME="Emacs-Kanagawa-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacs --daemon="${EMACS_SOCKET_NAME}"
 	local _status=$?
 	_restore_tty_cursor
 	return ${_status}
@@ -367,36 +367,6 @@ emacs-restart() {
 
 emacs-client() {
 	command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacsclient not found."; return 127; }
-
-	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
-		_raw_de="${XDG_CURRENT_DESKTOP:-${XDG_SESSION_DESKTOP:-${DESKTOP_SESSION:-}}}"
-		_is_kde=0
-		case "$(printf '%s\n' "${_raw_de}" | tr '[:upper:]' '[:lower:]')" in
-			*kde*|*plasma*) _is_kde=1 ;;
-		esac
-		if [ "${_is_kde}" -eq 0 ] && command -v pgrep > "/dev/null" 2>&1; then
-			if pgrep -x plasmashell > "/dev/null" 2>&1 || pgrep -x kwin_wayland > "/dev/null" 2>&1 || pgrep -x kwin_x11 > "/dev/null" 2>&1; then
-				_is_kde=1
-			fi
-		fi
-		if [ "${_is_kde}" -eq 1 ]; then
-			export GTK_THEME="Breeze-Dark"
-			export GTK_APPLICATION_PREFER_DARK_THEME=1
-			export QT_QPA_PLATFORMTHEME="kde"
-			export QT_STYLE_OVERRIDE="Breeze-Dark"
-		else
-			export GTK_APPLICATION_PREFER_DARK_THEME=1
-			if [ -z "${GTK_THEME:-}" ]; then
-				if [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
-					_ini_theme="$(awk -F= '/^[[:space:]]*gtk-theme-name[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/gtk-3.0/settings.ini" 2> "/dev/null" | head -n 1)"
-					[ -n "${_ini_theme}" ] && export GTK_THEME="${_ini_theme}"
-				fi
-				[ -z "${GTK_THEME:-}" ] && export GTK_THEME="adw-gtk3-dark"
-			fi
-		fi
-		export SAL_USE_VCLPLUGIN="gtk3"
-		unset _raw_de _is_kde
-	fi
 
 	if command -v pgrep > "/dev/null" 2>&1 && pgrep -x emacs > "/dev/null" 2>&1; then
 		_probe_ok=0
@@ -430,14 +400,14 @@ emacs-client() {
 	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if [ "$#" -eq 0 ]; then
-			command emacsclient --create-frame --alternate-editor "" -n
+			GTK_THEME="Emacs-Kanagawa-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacsclient --create-frame --alternate-editor "" -n
 			_status=$?
 		else
-			command emacsclient --create-frame --alternate-editor "" "$@"
+			GTK_THEME="Emacs-Kanagawa-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacsclient --create-frame --alternate-editor "" "$@"
 			_status=$?
 		fi
 	else
-		command emacsclient -t --alternate-editor "" "$@"
+		GTK_THEME="Emacs-Kanagawa-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacsclient -t --alternate-editor "" "$@"
 		_status=$?
 	fi
 	_restore_tty_cursor
@@ -500,10 +470,10 @@ emacs-open() {
 	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if [ "$#" -eq 0 ]; then
-			(command nohup emacsclient --create-frame --alternate-editor "" . < "/dev/null" > "/dev/null" 2>&1 &)
+			(GTK_THEME="Emacs-Kanagawa-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command nohup emacsclient --create-frame --alternate-editor "" . < "/dev/null" > "/dev/null" 2>&1 &)
 			_status=$?
 		else
-			(command nohup emacsclient --create-frame --alternate-editor "" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+			(GTK_THEME="Emacs-Kanagawa-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command nohup emacsclient --create-frame --alternate-editor "" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 			_status=$?
 		fi
 	else
@@ -761,5 +731,4 @@ fi
 ### --------------------------------
 ### PYTHON ZERO-CRUFT POLICY
 ### --------------------------------
-export PYTHONDONTWRITEBYTECODE=1
-unset PYTHONPYCACHEPREFIX
+export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"

@@ -14,6 +14,16 @@ local startup = {
 	cwd = os.getcwd(),
 }
 
+if clink and clink.setenv then
+	local _cache_home = os.getenv("XDG_CACHE_HOME")
+	if _cache_home and _cache_home ~= "" then
+		clink.setenv("PYTHONPYCACHEPREFIX", _cache_home .. [[\pycache]])
+	else
+		local _user_prof = os.getenv("USERPROFILE") or os.getenv("HOME") or ""
+		clink.setenv("PYTHONPYCACHEPREFIX", _user_prof .. [[\.cache\pycache]])
+	end
+end
+
 -- ================================
 -- SYSTEM
 -- ================================
@@ -760,6 +770,9 @@ local aliases = {
 	["ls"] = [[busybox ls -F --color=auto]],
 	["ll"] = [[busybox ls -alF --color=auto]],
 	["la"] = [[busybox ls -A --color=auto]],
+	["lr"] = [[busybox ls -RF --color=auto]],
+	["lar"] = [[busybox ls -aRF --color=auto]],
+	["llr"] = [[busybox ls -laRF --color=auto]],
 	["pwd"] = [[cd]],
 	["cd"] = [[cd /d]],
 	["cp"] = [[busybox cp -i]],
@@ -827,6 +840,11 @@ local aliases = {
 	["r"] = has_cmd("rg") and [[rg --smart-case]] or [[findstr /I]],
 	["g"] = has_cmd("rg") and [[rg --smart-case]] or [[findstr /I]],
 	["l"] = has_cmd("eza") and [[eza --icons=auto --group-directories-first]] or [[busybox ls -F --color=auto]],
+	["ll"] = has_cmd("eza") and [[eza -la --icons=auto --group-directories-first --git]] or [[busybox ls -alF --color=auto]],
+	["la"] = has_cmd("eza") and [[eza -a --icons=auto --group-directories-first]] or [[busybox ls -A --color=auto]],
+	["lr"] = has_cmd("eza") and [[eza -R --icons=auto --group-directories-first]] or [[busybox ls -RF --color=auto]],
+	["lar"] = has_cmd("eza") and [[eza -aR --icons=auto --group-directories-first]] or [[busybox ls -aRF --color=auto]],
+	["llr"] = has_cmd("eza") and [[eza -laR --icons=auto --group-directories-first --git]] or [[busybox ls -laRF --color=auto]],
 	["c"] = has_cmd("bat") and [[bat --paging=never]] or [[busybox cat]],
 	["b"] = has_cmd("bat") and [[bat]] or [[busybox less -R]],
 	["f"] = has_cmd("fd") and [[fd]] or [[busybox find]],

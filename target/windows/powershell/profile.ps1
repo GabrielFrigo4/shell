@@ -12,6 +12,7 @@ $PSDefaultparameterValues['*:Encoding'] = 'utf8'
 
 $env:HOME = $env:USERPROFILE
 $SYSTEM32 = 'C:\Windows\System32'
+$env:PYTHONPYCACHEPREFIX = if ($env:XDG_CACHE_HOME) { Join-Path $env:XDG_CACHE_HOME 'pycache' } else { Join-Path $env:HOME '.cache\pycache' }
 
 function Get-Msys2UserHome {
 	$root     = if ($env:MSYS2_ROOT) { $env:MSYS2_ROOT } else { 'C:\msys64' }
@@ -1693,10 +1694,16 @@ if (Get-Command eza -ErrorAction SilentlyContinue) {
 	function Invoke-EzaLong { eza -la --icons=auto --group-directories-first --git @args }
 	function Invoke-EzaAll { eza -a --icons=auto --group-directories-first @args }
 	function Invoke-EzaTree { eza --tree --icons=auto --group-directories-first @args }
+	function Invoke-EzaRecurseCompact { eza -R --icons=auto --group-directories-first @args }
+	function Invoke-EzaRecurseAll { eza -aR --icons=auto --group-directories-first @args }
+	function Invoke-EzaRecurseLong { eza -laR --icons=auto --group-directories-first --git @args }
 	Set-Alias "l" "Invoke-EzaCompact" -Force -Option AllScope
 	Set-Alias "ll" "Invoke-EzaLong" -Force -Option AllScope
 	Set-Alias "la" "Invoke-EzaAll" -Force -Option AllScope
 	Set-Alias "lt" "Invoke-EzaTree" -Force -Option AllScope
+	Set-Alias "lr" "Invoke-EzaRecurseCompact" -Force -Option AllScope
+	Set-Alias "lar" "Invoke-EzaRecurseAll" -Force -Option AllScope
+	Set-Alias "llr" "Invoke-EzaRecurseLong" -Force -Option AllScope
 }
 
 if (Get-Command bat -ErrorAction SilentlyContinue) {

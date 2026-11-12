@@ -51,7 +51,12 @@ test:
 	elif command -v oksh > "/dev/null" 2>&1; then \
 		find target/openbsd/ksh target/common/ksh theme/ksh.sh -name "*.sh" -exec oksh -n {} +; \
 	fi
-	echo "✅ Sintaxe de todos os módulos de shell validada com sucesso!"
+	echo "🔍 Validando variáveis e aliases canônicos..."
+	grep -q 'PYTHONPYCACHEPREFIX=' core/environment.sh || { echo "❌ PYTHONPYCACHEPREFIX ausente em core/environment.sh" >&2; exit 1; }
+	for _a in l la ll lr lar llr; do \
+		grep -q "alias $${_a}=" core/environment.sh || { echo "❌ Alias $${_a} ausente em core/environment.sh" >&2; exit 1; } \
+	done
+	echo "✅ Sintaxe e invariantes do Shell validadas com sucesso!"
 
 prettier: format
 

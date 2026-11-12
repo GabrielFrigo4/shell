@@ -37,3 +37,8 @@ else
 fi
 export SAL_USE_VCLPLUGIN="gtk3"
 unset _ses_raw_de _ses_is_kde
+
+### ================================
+### PYTHON PERFORMANCE CACHE
+### ================================
+export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"

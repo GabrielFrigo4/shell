@@ -94,5 +94,4 @@ fi
 ### --------------------------------
 ### PYTHON PERFORMANCE CACHE
 ### --------------------------------
-unset PYTHONDONTWRITEBYTECODE
-export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/cpython"
+export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"

@@ -52,16 +52,7 @@ unset _env_os_name
 ### --------------------------------
 ### PYTHON BYTECODE & CACHE POLICY
 ### --------------------------------
-case "${SHELL_CONTEXT:-desktop}" in
-	server)
-		unset PYTHONDONTWRITEBYTECODE
-		export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/cpython"
-		;;
-	*)
-		export PYTHONDONTWRITEBYTECODE=1
-		unset PYTHONPYCACHEPREFIX
-		;;
-esac
+export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"
 
 ### --------------------------------
 ### AUTO-CORRECT SHELL
@@ -162,17 +153,26 @@ case "${_env_os}" in
 		_ls_l="command ls -lG"
 		_ls_ll="command ls -laFoG"
 		_ls_la="command ls -aG"
+		_ls_lr="command ls -RG"
+		_ls_llr="command ls -laFoRG"
+		_ls_lar="command ls -aRG"
 		;;
 	openbsd|illumos|solaris|sunos)
 		_ls_l="command ls -l"
 		_ls_ll="command ls -laF"
 		_ls_la="command ls -a"
+		_ls_lr="command ls -R"
+		_ls_llr="command ls -laFR"
+		_ls_lar="command ls -aR"
 		;;
 	*)
 		alias ls="command ls --color=auto"
 		_ls_l="command ls -l --color=auto"
 		_ls_ll="command ls -laF --color=auto"
 		_ls_la="command ls -a --color=auto"
+		_ls_lr="command ls -R --color=auto"
+		_ls_llr="command ls -laFR --color=auto"
+		_ls_lar="command ls -aR --color=auto"
 		;;
 esac
 
@@ -180,6 +180,9 @@ if { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; } || [ -z "${_eza
 	alias l="${_ls_l}"
 	alias ll="${_ls_ll}"
 	alias la="${_ls_la}"
+	alias lr="${_ls_lr}"
+	alias llr="${_ls_llr}"
+	alias lar="${_ls_lar}"
 	command -v tree > "/dev/null" 2>&1 && alias lt="tree"
 else
 	case "${_eza_bin}" in
@@ -188,16 +191,22 @@ else
 			alias ll="${_eza_bin} -la --icons=auto --group-directories-first --git"
 			alias la="${_eza_bin} -a --icons=auto --group-directories-first"
 			alias lt="${_eza_bin} --tree --icons=auto --group-directories-first"
+			alias lr="${_eza_bin} -R --icons=auto --group-directories-first"
+			alias lar="${_eza_bin} -aR --icons=auto --group-directories-first"
+			alias llr="${_eza_bin} -laR --icons=auto --group-directories-first --git"
 			;;
 		*exa)
 			alias l="${_eza_bin} --group-directories-first"
 			alias ll="${_eza_bin} -la --group-directories-first --git"
 			alias la="${_eza_bin} -a --group-directories-first"
 			alias lt="${_eza_bin} --tree --group-directories-first"
+			alias lr="${_eza_bin} -R --group-directories-first"
+			alias lar="${_eza_bin} -aR --group-directories-first"
+			alias llr="${_eza_bin} -laR --group-directories-first --git"
 			;;
 	esac
 fi
-unset _ls_l _ls_ll _ls_la _eza_bin
+unset _ls_l _ls_ll _ls_la _ls_lr _ls_llr _ls_lar _eza_bin
 
 ### --------------------------------
 ### SEARCH IN FILES

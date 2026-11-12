@@ -27,6 +27,12 @@ for p in "$HOME/.local/bin" "$HOME/.cargo/bin"
     end
 end
 
+if set -q XDG_CACHE_HOME
+    set -gx PYTHONPYCACHEPREFIX "$XDG_CACHE_HOME/pycache"
+else
+    set -gx PYTHONPYCACHEPREFIX "$HOME/.cache/pycache"
+end
+
 # ----------------------------------------------------------------
 # Modular Subsystems
 # ----------------------------------------------------------------

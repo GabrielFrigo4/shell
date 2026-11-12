@@ -600,6 +600,27 @@ def --wrapped lt [...rest] {
 		ls ...$rest
 	}
 }
+def --wrapped lr [...rest] {
+	if (which eza | is-not-empty) {
+		^eza -R --icons=auto --group-directories-first ...$rest
+	} else {
+		ls ...$rest
+	}
+}
+def --wrapped lar [...rest] {
+	if (which eza | is-not-empty) {
+		^eza -aR --icons=auto --group-directories-first ...$rest
+	} else {
+		ls -a ...$rest
+	}
+}
+def --wrapped llr [...rest] {
+	if (which eza | is-not-empty) {
+		^eza -laR --icons=auto --group-directories-first --git ...$rest
+	} else {
+		ls -l ...$rest
+	}
+}
 def --wrapped c [...rest] {
 	if (which bat | is-not-empty) {
 		^bat --paging=never ...$rest

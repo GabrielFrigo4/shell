@@ -596,9 +596,7 @@ _wayland_session_env() {
 	export SAL_USE_VCLPLUGIN="gtk3"
 
 	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
-	if [ "${_theme_flavor}" = "kde" ] || [ "${_theme_flavor}" = "plasma" ]; then
-		export GTK_THEME="Breeze-Dark"
-	elif [ -z "${GTK_THEME:-}" ] && [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
+	if [ -z "${GTK_THEME:-}" ] && [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
 		local _ini_gtk="$(grep -E '^[[:space:]]*gtk-theme-name[[:space:]]*=' "${HOME}/.config/gtk-3.0/settings.ini" 2> "/dev/null" | head -n 1 | cut -d= -f2- | tr -d ' "' || true)"
 		[ -n "${_ini_gtk}" ] && export GTK_THEME="${_ini_gtk}"
 	fi
@@ -661,9 +659,7 @@ _x11_session_env() {
 	export SAL_USE_VCLPLUGIN="gtk3"
 
 	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
-	if [ "${_theme_flavor}" = "kde" ] || [ "${_theme_flavor}" = "plasma" ]; then
-		export GTK_THEME="Breeze-Dark"
-	elif [ -z "${GTK_THEME:-}" ] && [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
+	if [ -z "${GTK_THEME:-}" ] && [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
 		local _ini_gtk="$(grep -E '^[[:space:]]*gtk-theme-name[[:space:]]*=' "${HOME}/.config/gtk-3.0/settings.ini" 2> "/dev/null" | head -n 1 | cut -d= -f2- | tr -d ' "' || true)"
 		[ -n "${_ini_gtk}" ] && export GTK_THEME="${_ini_gtk}"
 	fi

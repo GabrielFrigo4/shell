@@ -52,5 +52,4 @@ chost() {
 ### --------------------------------
 ### PYTHON EPHEMERAL POLICY
 ### --------------------------------
-export PYTHONDONTWRITEBYTECODE=1
-unset PYTHONPYCACHEPREFIX
+export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"
