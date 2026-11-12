@@ -425,15 +425,23 @@ _setup_cursor_env() {
 		else
 			printf 'gtk-icon-theme-name=%s\n' "${_icon_theme}" >> "${_cfg_tmp}" 2> "/dev/null" || true
 		fi
+		local _gtk_theme_val="adw-gtk3-dark"
+		if [ "${_de_key}" = "kde" ]; then
+			_gtk_theme_val="Breeze-Dark"
+		elif command -v _resolve_gtk_theme > "/dev/null" 2>&1; then
+			_gtk_theme_val="$(_resolve_gtk_theme "${_de_key}" 2> "/dev/null" || echo "adw-gtk3-dark")"
+		fi
+		[ -z "${_gtk_theme_val}" ] && _gtk_theme_val="adw-gtk3-dark"
+
 		if grep -q "^gtk-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
-			sed "s/^gtk-theme-name=.*/gtk-theme-name=adw-gtk3-dark/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+			sed "s/^gtk-theme-name=.*/gtk-theme-name=${_gtk_theme_val}/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
 		else
-			printf 'gtk-theme-name=adw-gtk3-dark\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
+			printf 'gtk-theme-name=%s\n' "${_gtk_theme_val}" >> "${_cfg_tmp}" 2> "/dev/null" || true
 		fi
 		if grep -q "^gtk-application-prefer-dark-theme=" "${_cfg_tmp}" 2> "/dev/null"; then
-			sed "s/^gtk-application-prefer-dark-theme=.*/gtk-application-prefer-dark-theme=true/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
+			sed "s/^gtk-application-prefer-dark-theme=.*/gtk-application-prefer-dark-theme=1/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
 		else
-			printf 'gtk-application-prefer-dark-theme=true\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
+			printf 'gtk-application-prefer-dark-theme=1\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
 		fi
 
 		mv -f "${_cfg_tmp}" "${_rt_file}" 2> "/dev/null" || true
@@ -442,7 +450,7 @@ _setup_cursor_env() {
 		_symlink="${HOME}/.config/${_gtk_ver}/settings.ini"
 		mkdir -p "${HOME}/.config/${_gtk_ver}" 2> "/dev/null" || true
 		rm -f "${_symlink}" 2> "/dev/null" || true
-		ln -s "${_rt_file}" "${_symlink}" 2> "/dev/null" || true
+		ln -s "${_rt_file}" "${_symlink}" 2> "/dev/null" || cp -f "${_rt_file}" "${_symlink}" 2> "/dev/null" || true
 	done
 
 	if [ -n "${DISPLAY:-}" ]; then
@@ -457,6 +465,116 @@ _setup_cursor_env() {
 		gsettings set org.gnome.desktop.interface cursor-blink true > "/dev/null" 2>&1 || true
 		gsettings set org.gnome.desktop.interface cursor-blink-time 1200 > "/dev/null" 2>&1 || true
 		gsettings set org.gnome.desktop.interface icon-theme "${_icon_theme}" > "/dev/null" 2>&1 || true
+	fi
+}
+
+### --------------------------------
+### SESSION THEME PROPAGATION
+### --------------------------------
+_propagate_session_theme_env() {
+	local _flavor="${1:-$(_detect_desktop_theme 2> "/dev/null" || echo "gnome")}"
+	local _gtk_theme="adw-gtk3-dark" _qt_theme="Breeze-Dark" _qt_platform="kde"
+	case "${_flavor}" in
+		kde|plasma)
+			_gtk_theme="Breeze-Dark"
+			_qt_theme="Breeze-Dark"
+			_qt_platform="kde"
+			;;
+		lxqt)
+			_gtk_theme="Breeze-Dark"
+			_qt_theme="Breeze-Dark"
+			_qt_platform="lxqt"
+			;;
+		*)
+			if command -v _detect_gtk_theme > "/dev/null" 2>&1; then
+				_gtk_theme="$(_detect_gtk_theme 2> "/dev/null" || echo "adw-gtk3-dark")"
+			fi
+			[ -z "${_gtk_theme}" ] && _gtk_theme="adw-gtk3-dark"
+			if command -v _detect_qt_theme > "/dev/null" 2>&1; then
+				_qt_theme="$(_detect_qt_theme 2> "/dev/null" || echo "")"
+			fi
+			if command -v _detect_qt_platform_theme > "/dev/null" 2>&1; then
+				_qt_platform="$(_detect_qt_platform_theme 2> "/dev/null" || echo "qt6ct")"
+			fi
+			;;
+	esac
+
+	local _env_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/environment.d"
+	mkdir -p "${_env_dir}" 2> "/dev/null" || true
+	cat <<- EOF >| "${_env_dir}/10-theme.conf"
+		GTK_THEME=${_gtk_theme}
+		GTK_APPLICATION_PREFER_DARK_THEME=1
+		QT_QPA_PLATFORMTHEME=${_qt_platform}
+		${_qt_theme:+QT_STYLE_OVERRIDE=${_qt_theme}}
+		SAL_USE_VCLPLUGIN=gtk3
+	EOF
+
+	local _xprofile="${HOME}/.xprofile"
+	if [ ! -f "${_xprofile}" ]; then
+		cat <<- EOF >| "${_xprofile}"
+			#!/usr/bin/env sh
+			export GTK_THEME="${_gtk_theme}"
+			export GTK_APPLICATION_PREFER_DARK_THEME=1
+			export QT_QPA_PLATFORMTHEME="${_qt_platform}"
+			${_qt_theme:+export QT_STYLE_OVERRIDE="${_qt_theme}"}
+			export SAL_USE_VCLPLUGIN="gtk3"
+		EOF
+		chmod 0755 "${_xprofile}" 2> "/dev/null" || true
+	else
+		for _var in "GTK_THEME=${_gtk_theme}" "GTK_APPLICATION_PREFER_DARK_THEME=1" "QT_QPA_PLATFORMTHEME=${_qt_platform}" "SAL_USE_VCLPLUGIN=gtk3"; do
+			_name="${_var%%=*}"
+			if grep -q "^[[:space:]]*export ${_name}=" "${_xprofile}" 2> "/dev/null"; then
+				sed "s/^[[:space:]]*export ${_name}=.*/export ${_var}/" "${_xprofile}" > "${_xprofile}.tmp.$$" 2> "/dev/null" && mv -f "${_xprofile}.tmp.$$" "${_xprofile}" 2> "/dev/null" || true
+			elif ! grep -q "^[[:space:]]*${_name}=" "${_xprofile}" 2> "/dev/null"; then
+				printf 'export %s\n' "${_var}" >> "${_xprofile}" 2> "/dev/null" || true
+			fi
+		done
+		if [ -n "${_qt_theme}" ]; then
+			if grep -q "^[[:space:]]*export QT_STYLE_OVERRIDE=" "${_xprofile}" 2> "/dev/null"; then
+				sed "s/^[[:space:]]*export QT_STYLE_OVERRIDE=.*/export QT_STYLE_OVERRIDE=\"${_qt_theme}\"/" "${_xprofile}" > "${_xprofile}.tmp.$$" 2> "/dev/null" && mv -f "${_xprofile}.tmp.$$" "${_xprofile}" 2> "/dev/null" || true
+			elif ! grep -q "^[[:space:]]*QT_STYLE_OVERRIDE=" "${_xprofile}" 2> "/dev/null"; then
+				printf 'export QT_STYLE_OVERRIDE="%s"\n' "${_qt_theme}" >> "${_xprofile}" 2> "/dev/null" || true
+			fi
+		fi
+	fi
+
+	local _profile="${HOME}/.profile"
+	if [ -f "${_profile}" ]; then
+		for _var in "GTK_THEME=${_gtk_theme}" "GTK_APPLICATION_PREFER_DARK_THEME=1" "QT_QPA_PLATFORMTHEME=${_qt_platform}" "SAL_USE_VCLPLUGIN=gtk3"; do
+			_name="${_var%%=*}"
+			if grep -q "^[[:space:]]*export ${_name}=" "${_profile}" 2> "/dev/null"; then
+				sed "s/^[[:space:]]*export ${_name}=.*/export ${_var}/" "${_profile}" > "${_profile}.tmp.$$" 2> "/dev/null" && mv -f "${_profile}.tmp.$$" "${_profile}" 2> "/dev/null" || true
+			elif ! grep -q "^[[:space:]]*${_name}=" "${_profile}" 2> "/dev/null"; then
+				printf 'export %s\n' "${_var}" >> "${_profile}" 2> "/dev/null" || true
+			fi
+		done
+	fi
+
+	local _zshenv="${HOME}/.zshenv"
+	if [ -f "${_zshenv}" ]; then
+		for _var in "GTK_THEME=${_gtk_theme}" "GTK_APPLICATION_PREFER_DARK_THEME=1" "QT_QPA_PLATFORMTHEME=${_qt_platform}" "SAL_USE_VCLPLUGIN=gtk3"; do
+			_name="${_var%%=*}"
+			if grep -q "^[[:space:]]*export ${_name}=" "${_zshenv}" 2> "/dev/null"; then
+				sed "s/^[[:space:]]*export ${_name}=.*/export ${_var}/" "${_zshenv}" > "${_zshenv}.tmp.$$" 2> "/dev/null" && mv -f "${_zshenv}.tmp.$$" "${_zshenv}" 2> "/dev/null" || true
+			elif ! grep -q "^[[:space:]]*${_name}=" "${_zshenv}" 2> "/dev/null"; then
+				printf 'export %s\n' "${_var}" >> "${_zshenv}" 2> "/dev/null" || true
+			fi
+		done
+	fi
+
+	local _bin_wrapper=""
+	if [ -n "${SHELL_REPO_DIR:-}" ] && [ -x "${SHELL_REPO_DIR}/bin/emacs-client" ]; then
+		_bin_wrapper="${SHELL_REPO_DIR}/bin/emacs-client"
+	elif [ -x "${HOME}/.local/share/shell/bin/emacs-client" ]; then
+		_bin_wrapper="${HOME}/.local/share/shell/bin/emacs-client"
+	elif [ -x "/usr/local/share/shell/bin/emacs-client" ]; then
+		_bin_wrapper="/usr/local/share/shell/bin/emacs-client"
+	fi
+	if [ -n "${_bin_wrapper}" ]; then
+		mkdir -p "${HOME}/.local/bin" 2> "/dev/null" || true
+		if [ ! -e "${HOME}/.local/bin/emacs-client" ] || [ -L "${HOME}/.local/bin/emacs-client" ]; then
+			ln -sf "${_bin_wrapper}" "${HOME}/.local/bin/emacs-client" 2> "/dev/null" || true
+		fi
 	fi
 }
 
@@ -477,18 +595,22 @@ _wayland_session_env() {
 	export GTK_APPLICATION_PREFER_DARK_THEME=1 ADW_DEBUG_COLOR_SCHEME="prefer-dark"
 	export SAL_USE_VCLPLUGIN="gtk3"
 
-	if [ -z "${GTK_THEME:-}" ] && [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
+	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
+	if [ "${_theme_flavor}" = "kde" ] || [ "${_theme_flavor}" = "plasma" ]; then
+		export GTK_THEME="Breeze-Dark"
+	elif [ -z "${GTK_THEME:-}" ] && [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
 		local _ini_gtk="$(grep -E '^[[:space:]]*gtk-theme-name[[:space:]]*=' "${HOME}/.config/gtk-3.0/settings.ini" 2> "/dev/null" | head -n 1 | cut -d= -f2- | tr -d ' "' || true)"
 		[ -n "${_ini_gtk}" ] && export GTK_THEME="${_ini_gtk}"
 	fi
 
-	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
 	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="adw-gtk3-dark"
 	export QT_QPA_PLATFORM="wayland;xcb"
 	case "${_theme_flavor}" in
 		kde|plasma)
-			export XDG_CURRENT_DESKTOP="KDE" DESKTOP_SESSION="${DESKTOP_SESSION:-kde}" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze"
+			export XDG_CURRENT_DESKTOP="KDE" DESKTOP_SESSION="${DESKTOP_SESSION:-kde}" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze-Dark"
+			export GTK_THEME="Breeze-Dark"
+			export GTK_APPLICATION_PREFER_DARK_THEME=1
 			;;
 		lxqt)
 			export XDG_CURRENT_DESKTOP="LXQt" DESKTOP_SESSION="${DESKTOP_SESSION:-lxqt}" QT_QPA_PLATFORMTHEME="lxqt" QT_STYLE_OVERRIDE="Breeze"
@@ -526,6 +648,7 @@ _wayland_session_env() {
 	export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
 
 	_setup_cursor_env "${_target_flavor}"
+	_propagate_session_theme_env "${_theme_flavor}"
 	_enable_numlock_console
 }
 
@@ -537,17 +660,21 @@ _x11_session_env() {
 	export GTK_APPLICATION_PREFER_DARK_THEME=1 ADW_DEBUG_COLOR_SCHEME="prefer-dark"
 	export SAL_USE_VCLPLUGIN="gtk3"
 
-	if [ -z "${GTK_THEME:-}" ] && [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
+	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
+	if [ "${_theme_flavor}" = "kde" ] || [ "${_theme_flavor}" = "plasma" ]; then
+		export GTK_THEME="Breeze-Dark"
+	elif [ -z "${GTK_THEME:-}" ] && [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
 		local _ini_gtk="$(grep -E '^[[:space:]]*gtk-theme-name[[:space:]]*=' "${HOME}/.config/gtk-3.0/settings.ini" 2> "/dev/null" | head -n 1 | cut -d= -f2- | tr -d ' "' || true)"
 		[ -n "${_ini_gtk}" ] && export GTK_THEME="${_ini_gtk}"
 	fi
 
-	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
 	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
 	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="adw-gtk3-dark"
 	case "${_theme_flavor}" in
 		kde|plasma)
-			export XDG_CURRENT_DESKTOP="KDE" DESKTOP_SESSION="${DESKTOP_SESSION:-kde}" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze"
+			export XDG_CURRENT_DESKTOP="KDE" DESKTOP_SESSION="${DESKTOP_SESSION:-kde}" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze-Dark"
+			export GTK_THEME="Breeze-Dark"
+			export GTK_APPLICATION_PREFER_DARK_THEME=1
 			;;
 		lxqt)
 			export XDG_CURRENT_DESKTOP="LXQt" DESKTOP_SESSION="${DESKTOP_SESSION:-lxqt}" QT_QPA_PLATFORMTHEME="lxqt" QT_STYLE_OVERRIDE="Breeze"
@@ -595,6 +722,7 @@ _x11_session_env() {
 	fi
 
 	_setup_cursor_env "${_theme_flavor}"
+	_propagate_session_theme_env "${_theme_flavor}"
 	_enable_numlock_console
 }
 

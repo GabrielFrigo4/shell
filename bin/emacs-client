@@ -1,0 +1,98 @@
+#!/usr/bin/env sh
+# ----------------------------------------------------------------
+# Wrapper: GNU Emacs Client with Auto-Recovery & Theme Guard
+# ----------------------------------------------------------------
+set -eu
+
+### ================================
+### ENVIRONMENT RESOLUTION
+### ================================
+if ! command -v emacsclient > "/dev/null" 2>&1; then
+	if [ -x "/usr/local/bin/emacsclient" ]; then
+		PATH="/usr/local/bin:${PATH}"
+	elif [ -x "/usr/bin/emacsclient" ]; then
+		PATH="/usr/bin:${PATH}"
+	fi
+fi
+
+if ! command -v emacsclient > "/dev/null" 2>&1; then
+	printf '%s\n' "emacsclient: command not found" >&2
+	exit 127
+fi
+
+### ================================
+### DESKTOP THEME PROPAGATION
+### ================================
+if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+	_raw_de="${XDG_CURRENT_DESKTOP:-${XDG_SESSION_DESKTOP:-${DESKTOP_SESSION:-}}}"
+	_is_kde=0
+	case "$(printf '%s\n' "${_raw_de}" | tr '[:upper:]' '[:lower:]')" in
+		*kde*|*plasma*) _is_kde=1 ;;
+	esac
+	if [ "${_is_kde}" -eq 0 ] && command -v pgrep > "/dev/null" 2>&1; then
+		if pgrep -x plasmashell > "/dev/null" 2>&1 || pgrep -x kwin_wayland > "/dev/null" 2>&1 || pgrep -x kwin_x11 > "/dev/null" 2>&1; then
+			_is_kde=1
+		fi
+	fi
+	if [ "${_is_kde}" -eq 1 ]; then
+		export GTK_THEME="Breeze-Dark"
+		export GTK_APPLICATION_PREFER_DARK_THEME=1
+		export QT_QPA_PLATFORMTHEME="kde"
+		export QT_STYLE_OVERRIDE="Breeze-Dark"
+	else
+		export GTK_APPLICATION_PREFER_DARK_THEME=1
+		if [ -z "${GTK_THEME:-}" ]; then
+			if [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
+				_ini_theme="$(awk -F= '/^[[:space:]]*gtk-theme-name[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/gtk-3.0/settings.ini" 2> "/dev/null" | head -n 1)"
+				[ -n "${_ini_theme}" ] && export GTK_THEME="${_ini_theme}"
+			fi
+			[ -z "${GTK_THEME:-}" ] && export GTK_THEME="adw-gtk3-dark"
+		fi
+	fi
+	export SAL_USE_VCLPLUGIN="gtk3"
+	unset _raw_de _is_kde
+fi
+
+### ================================
+### DAEMON HEALTHCHECK & AUTO-HEAL
+### ================================
+if command -v pgrep > "/dev/null" 2>&1 && pgrep -x emacs > "/dev/null" 2>&1; then
+	_probe_ok=0
+	if command -v timeout > "/dev/null" 2>&1; then
+		timeout 2 emacsclient -e '(+ 1 1)' > "/dev/null" 2>&1 && _probe_ok=1 || _probe_ok=0
+	else
+		(
+			emacsclient -e '(+ 1 1)' > "/dev/null" 2>&1 &
+			_probe_pid=$!
+			(
+				sleep 2 2> "/dev/null" || true
+				kill -0 "${_probe_pid}" 2> "/dev/null" && kill -9 "${_probe_pid}" 2> "/dev/null" || true
+			) &
+			_wd_pid=$!
+			wait "${_probe_pid}" 2> "/dev/null"
+			_probe_ret=$?
+			kill -9 "${_wd_pid}" 2> "/dev/null" || true
+			wait "${_wd_pid}" 2> "/dev/null" || true
+			exit "${_probe_ret}"
+		) && _probe_ok=1 || _probe_ok=0
+	fi
+	if [ "${_probe_ok}" -eq 0 ]; then
+		pkill -9 -x emacs > "/dev/null" 2>&1 || true
+		sleep 0.5 2> "/dev/null" || sleep 1 2> "/dev/null" || true
+		[ -n "${EMACS_SOCKET_NAME:-}" ] && rm -f "${EMACS_SOCKET_NAME}" 2> "/dev/null" || true
+	fi
+	unset _probe_ok
+fi
+
+### ================================
+### CLIENT EXECUTION
+### ================================
+if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+	if [ "$#" -eq 0 ]; then
+		exec emacsclient --create-frame --alternate-editor="" -n
+	else
+		exec emacsclient --create-frame --alternate-editor="" "$@"
+	fi
+else
+	exec emacsclient -t --alternate-editor="" "$@"
+fi

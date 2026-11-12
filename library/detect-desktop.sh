@@ -263,6 +263,17 @@ _resolve_gtk_theme() {
 		fi
 	fi
 
+	case "${_flavor}" in
+		kde)
+			if [ "$(_detect_color_scheme)" = "light" ]; then
+				echo "Breeze"
+			else
+				echo "Breeze-Dark"
+			fi
+			return 0
+			;;
+	esac
+
 	local _candidates=""
 	case "${_flavor}" in
 		kde)      _candidates="Breeze-Dark Breeze:dark Breeze adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
@@ -373,7 +384,7 @@ _detect_qt_platform_theme() {
 
 	case "${_desktop_env}" in
 		kde)
-			_DETECTED_QT_PLATFORM_THEME="xdgdesktopportal"
+			_DETECTED_QT_PLATFORM_THEME="kde"
 			;;
 		lxqt)
 			_DETECTED_QT_PLATFORM_THEME="lxqt"

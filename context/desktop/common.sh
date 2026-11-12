@@ -367,6 +367,66 @@ emacs-restart() {
 
 emacs-client() {
 	command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacsclient not found."; return 127; }
+
+	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+		_raw_de="${XDG_CURRENT_DESKTOP:-${XDG_SESSION_DESKTOP:-${DESKTOP_SESSION:-}}}"
+		_is_kde=0
+		case "$(printf '%s\n' "${_raw_de}" | tr '[:upper:]' '[:lower:]')" in
+			*kde*|*plasma*) _is_kde=1 ;;
+		esac
+		if [ "${_is_kde}" -eq 0 ] && command -v pgrep > "/dev/null" 2>&1; then
+			if pgrep -x plasmashell > "/dev/null" 2>&1 || pgrep -x kwin_wayland > "/dev/null" 2>&1 || pgrep -x kwin_x11 > "/dev/null" 2>&1; then
+				_is_kde=1
+			fi
+		fi
+		if [ "${_is_kde}" -eq 1 ]; then
+			export GTK_THEME="Breeze-Dark"
+			export GTK_APPLICATION_PREFER_DARK_THEME=1
+			export QT_QPA_PLATFORMTHEME="kde"
+			export QT_STYLE_OVERRIDE="Breeze-Dark"
+		else
+			export GTK_APPLICATION_PREFER_DARK_THEME=1
+			if [ -z "${GTK_THEME:-}" ]; then
+				if [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
+					_ini_theme="$(awk -F= '/^[[:space:]]*gtk-theme-name[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/gtk-3.0/settings.ini" 2> "/dev/null" | head -n 1)"
+					[ -n "${_ini_theme}" ] && export GTK_THEME="${_ini_theme}"
+				fi
+				[ -z "${GTK_THEME:-}" ] && export GTK_THEME="adw-gtk3-dark"
+			fi
+		fi
+		export SAL_USE_VCLPLUGIN="gtk3"
+		unset _raw_de _is_kde
+	fi
+
+	if command -v pgrep > "/dev/null" 2>&1 && pgrep -x emacs > "/dev/null" 2>&1; then
+		_probe_ok=0
+		if command -v timeout > "/dev/null" 2>&1; then
+			timeout 2 emacsclient -e '(+ 1 1)' > "/dev/null" 2>&1 && _probe_ok=1 || _probe_ok=0
+		else
+			(
+				command emacsclient -e '(+ 1 1)' > "/dev/null" 2>&1 &
+				_probe_pid=$!
+				(
+					sleep 2 2> "/dev/null" || true
+					kill -0 "${_probe_pid}" 2> "/dev/null" && kill -9 "${_probe_pid}" 2> "/dev/null" || true
+				) &
+				_wd_pid=$!
+				wait "${_probe_pid}" 2> "/dev/null"
+				_probe_ret=$?
+				kill -9 "${_wd_pid}" 2> "/dev/null" || true
+				wait "${_wd_pid}" 2> "/dev/null" || true
+				exit "${_probe_ret}"
+			) && _probe_ok=1 || _probe_ok=0
+		fi
+		if [ "${_probe_ok}" -eq 0 ]; then
+			_ui_warn "Emacs daemon unresponsive (deadlock detected). Terminating hung process..."
+			command pkill -9 -x emacs > "/dev/null" 2>&1 || true
+			sleep 0.5 2> "/dev/null" || sleep 1 2> "/dev/null" || true
+			[ -n "${EMACS_SOCKET_NAME:-}" ] && rm -f "${EMACS_SOCKET_NAME}" 2> "/dev/null" || true
+		fi
+		unset _probe_ok
+	fi
+
 	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if [ "$#" -eq 0 ]; then
@@ -519,7 +579,9 @@ alias esh="emacs-eshell"
 ### --------------------------------
 ### GUI INTEGRATION
 ### --------------------------------
-if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
+[ -n "${SHELL_REPO_DIR:-}" ] && [ -f "${SHELL_REPO_DIR}/target/common/session.sh" ] && . "${SHELL_REPO_DIR}/target/common/session.sh"
+
+if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 	if [ -z "${GTK_THEME:-}" ]; then
 		if [ -n "${_DETECTED_GTK_THEME:-}" ]; then
 			export GTK_THEME="${_DETECTED_GTK_THEME}"
@@ -554,6 +616,10 @@ if [ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ]; then
 	export _JAVA_AWT_WM_NONREPARENTING=1
 	export SAL_USE_VCLPLUGIN="gtk3"
 	export GTK_APPLICATION_PREFER_DARK_THEME=1
+
+	if command -v _propagate_session_theme_env > "/dev/null" 2>&1; then
+		_propagate_session_theme_env
+	fi
 
 	_default_cursor_paths="${HOME}/.local/share/icons:${HOME}/.icons:/usr/local/share/icons:/usr/share/icons"
 	case ":${XCURSOR_PATH:-}:" in
