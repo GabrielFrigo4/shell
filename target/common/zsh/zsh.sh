@@ -25,12 +25,24 @@ setopt HIST_EXPIRE_DUPS_FIRST HIST_FIND_NO_DUPS HIST_SAVE_NO_DUPS HIST_VERIFY
 unsetopt CORRECT BEEP
 setopt INTERACTIVE_COMMENTS RM_STAR_WAIT NO_CLOBBER
 disable r 2> "/dev/null" || true
+unalias r 2> "/dev/null" || true
+unset -f r 2> "/dev/null" || true
 
-if command -v rg > "/dev/null" 2>&1; then
-	alias r="rg --smart-case"
-elif command -v grep > "/dev/null" 2>&1; then
-	alias r="grep -Ei"
-fi
+r() {
+	if command -v rg > "/dev/null" 2>&1; then
+		if [ -t 1 ]; then
+			command rg --smart-case "$@"
+		else
+			command rg --smart-case --color=never "$@"
+		fi
+	elif command -v grep > "/dev/null" 2>&1; then
+		if [ -t 1 ]; then
+			grep -Ei "$@"
+		else
+			command grep -Ei "$@"
+		fi
+	fi
+}
 
 ### --------------------------------
 ### KEYBINDINGS & LINE EDITING

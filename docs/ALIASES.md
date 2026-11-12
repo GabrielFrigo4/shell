@@ -217,6 +217,12 @@ flowchart TD
 | `delta`              | `git-delta`         | Pager sintático e comparador de diffs Git com syntax highlighting.                | Rust                 |
 | `sd <busca> <troca>` | `sd`                | Substituição intuitiva e veloz baseada em regex (alternativa moderna ao `sed`).   | Rust                 |
 
+> [!NOTE]
+> **Detecção Inteligente de Pipe / Redirecionamento (`stdout` TTY vs. Pipe):** Todos os atalhos de listagem, busca, leitura e inspeção (`l`, `la`, `ll`, `lt`, `lr`, `lar`, `llr`, `c`, `b`, `g`, `r`, `f`, `ff`, `d`, `p`, `pst`) inspecionam em tempo de execução se `stdout` é um terminal interativo (`[ -t 1 ]` em POSIX/Zsh, `isatty stdout` em Fish, `is-terminal --stdout` em Nushell, `-not [Console]::IsOutputRedirected` em PowerShell):
+>
+> - **Em Terminal (TTY):** Mantêm a experiência visual rica (ícones Nerd Fonts, cores ANSI, metadados Git e paginação).
+> - **Em Pipe / Arquivo (`l | grep ...`, `ll > out.txt`, `b file | head`):** Desativam automaticamente ícones, escapes ANSI e paginação (`eza --icons=never --color=never`, `ls` sem `-G`/`--color=auto`, `tree -n`, `bat --plain --color=never --paging=never`, `rg`/`fd` com `--color=never`, `dust`/`procs` com `NO_COLOR=1`), entregando texto puro e limpo para composição UNIX.
+
 ### 🪟 Sessão Gráfica, Lançadores e Navegação
 
 | Comando / Alias                                              | Descrição                                                                                                        | Ferramenta Alvo & Fallback                                  |

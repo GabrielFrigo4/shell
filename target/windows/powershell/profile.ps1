@@ -1685,18 +1685,30 @@ function path-dedup {
 ### ================================
 
 if (Get-Command rg -ErrorAction SilentlyContinue) {
-	Set-Alias "r" "rg" -Force -Option AllScope
-	Set-Alias "g" "rg" -Force -Option AllScope
+	function Invoke-RipgrepSmart {
+		if (-not [Console]::IsOutputRedirected) { rg --smart-case @args }
+		else { rg --smart-case --color=never @args }
+	}
+	Set-Alias "r" "Invoke-RipgrepSmart" -Force -Option AllScope
+	Set-Alias "g" "Invoke-RipgrepSmart" -Force -Option AllScope
 }
 
 if (Get-Command eza -ErrorAction SilentlyContinue) {
-	function Invoke-EzaCompact { eza --icons=auto --group-directories-first @args }
-	function Invoke-EzaLong { eza -la --icons=auto --group-directories-first --git @args }
-	function Invoke-EzaAll { eza -a --icons=auto --group-directories-first @args }
-	function Invoke-EzaTree { eza --tree --icons=auto --group-directories-first @args }
-	function Invoke-EzaRecurseCompact { eza -R --icons=auto --group-directories-first @args }
-	function Invoke-EzaRecurseAll { eza -aR --icons=auto --group-directories-first @args }
-	function Invoke-EzaRecurseLong { eza -laR --icons=auto --group-directories-first --git @args }
+	function Invoke-EzaHelper {
+		param([string[]]$Flags, [Parameter(ValueFromRemainingArguments = $true)][string[]]$Rest)
+		if (-not [Console]::IsOutputRedirected) {
+			eza @Flags --icons=auto --group-directories-first @Rest
+		} else {
+			eza @Flags --icons=never --color=never --group-directories-first @Rest
+		}
+	}
+	function Invoke-EzaCompact { Invoke-EzaHelper @() @args }
+	function Invoke-EzaLong { Invoke-EzaHelper @("-la", "--git") @args }
+	function Invoke-EzaAll { Invoke-EzaHelper @("-a") @args }
+	function Invoke-EzaTree { Invoke-EzaHelper @("--tree") @args }
+	function Invoke-EzaRecurseCompact { Invoke-EzaHelper @("-R") @args }
+	function Invoke-EzaRecurseAll { Invoke-EzaHelper @("-aR") @args }
+	function Invoke-EzaRecurseLong { Invoke-EzaHelper @("-laR", "--git") @args }
 	Set-Alias "l" "Invoke-EzaCompact" -Force -Option AllScope
 	Set-Alias "ll" "Invoke-EzaLong" -Force -Option AllScope
 	Set-Alias "la" "Invoke-EzaAll" -Force -Option AllScope
@@ -1707,21 +1719,71 @@ if (Get-Command eza -ErrorAction SilentlyContinue) {
 }
 
 if (Get-Command bat -ErrorAction SilentlyContinue) {
-	function Invoke-BatPlain { bat --paging=never @args }
+	function Invoke-BatPlain {
+		if (-not [Console]::IsOutputRedirected) { bat --paging=never @args }
+		else { bat --plain --color=never --paging=never @args }
+	}
+	function Invoke-BatPaged {
+		if (-not [Console]::IsOutputRedirected) { bat @args }
+		else { bat --plain --color=never --paging=never @args }
+	}
 	Set-Alias "c" "Invoke-BatPlain" -Force -Option AllScope
-	Set-Alias "b" "bat" -Force -Option AllScope
+	Set-Alias "b" "Invoke-BatPaged" -Force -Option AllScope
 }
 
 if (Get-Command fd -ErrorAction SilentlyContinue) {
-	Set-Alias "f" "fd" -Force -Option AllScope
+	function Invoke-FdSmart {
+		if (-not [Console]::IsOutputRedirected) { fd @args }
+		else { fd --color=never @args }
+	}
+	function Invoke-FdAllSmart {
+		if (-not [Console]::IsOutputRedirected) { fd --hidden --no-ignore @args }
+		else { fd --hidden --no-ignore --color=never @args }
+	}
+	Set-Alias "f" "Invoke-FdSmart" -Force -Option AllScope
+	Set-Alias "ff" "Invoke-FdAllSmart" -Force -Option AllScope
 }
 
 if (Get-Command dust -ErrorAction SilentlyContinue) {
-	Set-Alias "d" "dust" -Force -Option AllScope
+	function Invoke-DustSmart {
+		if (-not [Console]::IsOutputRedirected) { dust @args }
+		else {
+			$prev = $env:NO_COLOR
+			$env:NO_COLOR = "1"
+			try { dust @args } finally {
+				if ($null -eq $prev) { Remove-Item Env:NO_COLOR -ErrorAction SilentlyContinue }
+				else { $env:NO_COLOR = $prev }
+			}
+		}
+	}
+	Set-Alias "d" "Invoke-DustSmart" -Force -Option AllScope
 }
 
 if (Get-Command procs -ErrorAction SilentlyContinue) {
-	Set-Alias "p" "procs" -Force -Option AllScope
+	function Invoke-ProcsSmart {
+		if (-not [Console]::IsOutputRedirected) { procs @args }
+		else {
+			$prev = $env:NO_COLOR
+			$env:NO_COLOR = "1"
+			try { procs --color disable @args } finally {
+				if ($null -eq $prev) { Remove-Item Env:NO_COLOR -ErrorAction SilentlyContinue }
+				else { $env:NO_COLOR = $prev }
+			}
+		}
+	}
+	function Invoke-ProcsTreeSmart {
+		if (-not [Console]::IsOutputRedirected) { procs --tree @args }
+		else {
+			$prev = $env:NO_COLOR
+			$env:NO_COLOR = "1"
+			try { procs --tree --color disable @args } finally {
+				if ($null -eq $prev) { Remove-Item Env:NO_COLOR -ErrorAction SilentlyContinue }
+				else { $env:NO_COLOR = $prev }
+			}
+		}
+	}
+	Set-Alias "p" "Invoke-ProcsSmart" -Force -Option AllScope
+	Set-Alias "pst" "Invoke-ProcsTreeSmart" -Force -Option AllScope
 }
 
 if (Get-Command btm -ErrorAction SilentlyContinue) {

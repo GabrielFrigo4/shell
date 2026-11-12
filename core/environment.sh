@@ -131,121 +131,195 @@ fi
 ### --------------------------------
 ### PACKAGE COMPATIBILITY ALIASES
 ### --------------------------------
-_env_os="${_DETECTED_OS-$(_detect_os)}"
-_bat_bin="${_DETECTED_BAT-$(_detect_bat)}"
-_fd_bin="${_DETECTED_FD-$(_detect_fd)}"
-_eza_bin="${_DETECTED_EZA-$(_detect_eza)}"
-_rg_bin="${_DETECTED_RG-$(_detect_rg)}"
+_SHELL_ENV_OS="${_DETECTED_OS-$(_detect_os)}"
+_SHELL_BAT_BIN="${_DETECTED_BAT-$(_detect_bat)}"
+_SHELL_FD_BIN="${_DETECTED_FD-$(_detect_fd)}"
+_SHELL_EZA_BIN="${_DETECTED_EZA-$(_detect_eza)}"
+_SHELL_RG_BIN="${_DETECTED_RG-$(_detect_rg)}"
 
-[ "${_bat_bin}" = "batcat" ] && alias bat="batcat"
-[ "${_fd_bin}" = "fdfind" ] && alias fd="fdfind"
-[ "${_fd_bin}" = "fd-find" ] && alias fd="fd-find"
+[ "${_SHELL_BAT_BIN}" = "batcat" ] && alias bat="batcat"
+[ "${_SHELL_FD_BIN}" = "fdfind" ] && alias fd="fdfind"
+[ "${_SHELL_FD_BIN}" = "fd-find" ] && alias fd="fd-find"
 
 ### --------------------------------
 ### DIRECTORY LISTING
 ### --------------------------------
-unalias ls grep cat find ssh agy 2> "/dev/null" || true
-unset -f ls grep cat find 2> "/dev/null" || true
+unalias ls grep cat find ssh agy l la ll lt lr lar llr c b g f ff d p pst 2> "/dev/null" || true
+unset -f ls grep cat find l la ll lt lr lar llr c b g f ff d p pst _shell_ls 2> "/dev/null" || true
 
-case "${_env_os}" in
+case "${_SHELL_ENV_OS}" in
 	freebsd|dragonfly*|macos|darwin|netbsd)
 		alias ls="command ls -G"
-		_ls_l="command ls -lG"
-		_ls_ll="command ls -laFoG"
-		_ls_la="command ls -aG"
-		_ls_lr="command ls -RG"
-		_ls_llr="command ls -laFoRG"
-		_ls_lar="command ls -aRG"
 		;;
 	openbsd|illumos|solaris|sunos)
-		_ls_l="command ls -l"
-		_ls_ll="command ls -laF"
-		_ls_la="command ls -a"
-		_ls_lr="command ls -R"
-		_ls_llr="command ls -laFR"
-		_ls_lar="command ls -aR"
 		;;
 	*)
 		alias ls="command ls --color=auto"
-		_ls_l="command ls -l --color=auto"
-		_ls_ll="command ls -laF --color=auto"
-		_ls_la="command ls -a --color=auto"
-		_ls_lr="command ls -R --color=auto"
-		_ls_llr="command ls -laFR --color=auto"
-		_ls_lar="command ls -aR --color=auto"
 		;;
 esac
 
-if { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; } || [ -z "${_eza_bin}" ]; then
-	alias l="${_ls_l}"
-	alias ll="${_ls_ll}"
-	alias la="${_ls_la}"
-	alias lr="${_ls_lr}"
-	alias llr="${_ls_llr}"
-	alias lar="${_ls_lar}"
-	command -v tree > "/dev/null" 2>&1 && alias lt="tree"
-else
-	case "${_eza_bin}" in
-		*eza)
-			alias l="${_eza_bin} --icons=auto --group-directories-first"
-			alias ll="${_eza_bin} -la --icons=auto --group-directories-first --git"
-			alias la="${_eza_bin} -a --icons=auto --group-directories-first"
-			alias lt="${_eza_bin} --tree --icons=auto --group-directories-first"
-			alias lr="${_eza_bin} -R --icons=auto --group-directories-first"
-			alias lar="${_eza_bin} -aR --icons=auto --group-directories-first"
-			alias llr="${_eza_bin} -laR --icons=auto --group-directories-first --git"
+_shell_ls() {
+	_mode="$1"
+	shift
+	_is_tty=0
+	[ -t 1 ] && _is_tty=1
+	if [ -n "${_SHELL_EZA_BIN:-}" ] && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
+		case "${_mode}" in
+			ll|llr) set -- --git "$@" ;;
+		esac
+		set -- --group-directories-first "$@"
+		case "${_SHELL_EZA_BIN}" in
+			*eza)
+				if [ "${_is_tty}" -eq 1 ]; then
+					set -- --icons=auto "$@"
+				else
+					set -- --icons=never --color=never "$@"
+				fi
+				;;
+			*exa)
+				[ "${_is_tty}" -eq 0 ] && set -- --color=never "$@"
+				;;
+		esac
+		case "${_mode}" in
+			l)   ;;
+			ll)  set -- -la "$@" ;;
+			la)  set -- -a "$@" ;;
+			lt)  set -- --tree "$@" ;;
+			lr)  set -- -R "$@" ;;
+			lar) set -- -aR "$@" ;;
+			llr) set -- -laR "$@" ;;
+		esac
+		command "${_SHELL_EZA_BIN}" "$@"
+		_rc=$?
+		unset _mode _is_tty
+		eval "unset _rc; return ${_rc}"
+	fi
+	if [ "${_mode}" = "lt" ]; then
+		if command -v tree > "/dev/null" 2>&1; then
+			if [ "${_is_tty}" -eq 1 ]; then
+				command tree "$@"
+			else
+				command tree -n "$@"
+			fi
+		else
+			command ls -R "$@"
+		fi
+		_rc=$?
+		unset _mode _is_tty
+		eval "unset _rc; return ${_rc}"
+	fi
+	_ls_o=""
+	_ls_c=""
+	case "${_SHELL_ENV_OS:-}" in
+		freebsd|dragonfly*|macos|darwin|netbsd)
+			_ls_o="o"
+			[ "${_is_tty}" -eq 1 ] && _ls_c="-G"
 			;;
-		*exa)
-			alias l="${_eza_bin} --group-directories-first"
-			alias ll="${_eza_bin} -la --group-directories-first --git"
-			alias la="${_eza_bin} -a --group-directories-first"
-			alias lt="${_eza_bin} --tree --group-directories-first"
-			alias lr="${_eza_bin} -R --group-directories-first"
-			alias lar="${_eza_bin} -aR --group-directories-first"
-			alias llr="${_eza_bin} -laR --group-directories-first --git"
+		openbsd|illumos|solaris|sunos) ;;
+		*)
+			[ "${_is_tty}" -eq 1 ] && _ls_c="--color=auto"
 			;;
 	esac
-fi
-unset _ls_l _ls_ll _ls_la _ls_lr _ls_llr _ls_lar _eza_bin
+	case "${_mode}" in
+		l)   set -- -l "$@" ;;
+		ll)  set -- "-laF${_ls_o}" "$@" ;;
+		la)  set -- -a "$@" ;;
+		lr)  set -- -R "$@" ;;
+		lar) set -- -aR "$@" ;;
+		llr) set -- "-laF${_ls_o}R" "$@" ;;
+	esac
+	[ -n "${_ls_c}" ] && set -- "${_ls_c}" "$@"
+	command ls "$@"
+	_rc=$?
+	unset _mode _is_tty _ls_o _ls_c
+	eval "unset _rc; return ${_rc}"
+}
+
+l()   { _shell_ls l "$@"; }
+ll()  { _shell_ls ll "$@"; }
+la()  { _shell_ls la "$@"; }
+lt()  { _shell_ls lt "$@"; }
+lr()  { _shell_ls lr "$@"; }
+lar() { _shell_ls lar "$@"; }
+llr() { _shell_ls llr "$@"; }
 
 ### --------------------------------
 ### SEARCH IN FILES
 ### --------------------------------
-case "${_env_os}" in
+case "${_SHELL_ENV_OS}" in
 	freebsd|dragonfly*|openbsd|netbsd|illumos|solaris|sunos) ;;
 	*) alias grep="command grep --color=auto" ;;
 esac
 
-if [ -n "${_rg_bin}" ] && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
-	alias g="${_rg_bin} --smart-case"
-else
-	alias g="grep -Ei"
-fi
-unset _rg_bin
+g() {
+	if [ -n "${_SHELL_RG_BIN:-}" ] && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
+		if [ -t 1 ]; then
+			command "${_SHELL_RG_BIN}" --smart-case "$@"
+		else
+			command "${_SHELL_RG_BIN}" --smart-case --color=never "$@"
+		fi
+	elif [ -t 1 ]; then
+		grep -Ei "$@"
+	else
+		command grep -Ei "$@"
+	fi
+}
 
 ### --------------------------------
 ### FILE PREVIEW
 ### --------------------------------
-if [ -n "${_bat_bin}" ] && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
-	alias c="${_bat_bin} --paging=never"
-	alias b="${_bat_bin}"
-else
-	alias c="cat"
-	alias b="${PAGER:-less}"
-fi
-unset _bat_bin
+c() {
+	if [ -n "${_SHELL_BAT_BIN:-}" ] && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
+		if [ -t 1 ]; then
+			command "${_SHELL_BAT_BIN}" --paging=never "$@"
+		else
+			command "${_SHELL_BAT_BIN}" --plain --color=never --paging=never "$@"
+		fi
+	else
+		command cat "$@"
+	fi
+}
+
+b() {
+	if [ -n "${_SHELL_BAT_BIN:-}" ] && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
+		if [ -t 1 ]; then
+			command "${_SHELL_BAT_BIN}" "$@"
+		else
+			command "${_SHELL_BAT_BIN}" --plain --color=never --paging=never "$@"
+		fi
+	elif [ -t 1 ]; then
+		command "${PAGER:-less}" "$@"
+	else
+		command cat "$@"
+	fi
+}
 
 ### --------------------------------
 ### FILE & PATH SEARCH
 ### --------------------------------
-if [ -n "${_fd_bin}" ] && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
-	alias f="${_fd_bin}"
-	alias ff="${_fd_bin} --hidden --no-ignore"
-else
-	alias f="find"
-	alias ff="find"
-fi
-unset _fd_bin _env_os
+f() {
+	if [ -n "${_SHELL_FD_BIN:-}" ] && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
+		if [ -t 1 ]; then
+			command "${_SHELL_FD_BIN}" "$@"
+		else
+			command "${_SHELL_FD_BIN}" --color=never "$@"
+		fi
+	else
+		command find "$@"
+	fi
+}
+
+ff() {
+	if [ -n "${_SHELL_FD_BIN:-}" ] && ! { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
+		if [ -t 1 ]; then
+			command "${_SHELL_FD_BIN}" --hidden --no-ignore "$@"
+		else
+			command "${_SHELL_FD_BIN}" --hidden --no-ignore --color=never "$@"
+		fi
+	else
+		command find "$@"
+	fi
+}
 
 ### --------------------------------
 ### SSH CLIENT TTY PROPAGATION
@@ -270,27 +344,54 @@ eval 'ssh() {
 ### --------------------------------
 ### DUST DISK USAGE
 ### --------------------------------
-_dust_bin="${_DETECTED_DUST-$(_detect_dust)}"
-if [ -n "${_dust_bin}" ]; then
-	alias d="${_dust_bin}"
-	alias dust="${_dust_bin}"
-else
-	alias d="du -h"
+_SHELL_DUST_BIN="${_DETECTED_DUST-$(_detect_dust)}"
+if [ -n "${_SHELL_DUST_BIN}" ]; then
+	alias dust="${_SHELL_DUST_BIN}"
 fi
-unset _dust_bin
+
+d() {
+	if [ -n "${_SHELL_DUST_BIN:-}" ]; then
+		if [ -t 1 ]; then
+			command "${_SHELL_DUST_BIN}" "$@"
+		else
+			NO_COLOR=1 command "${_SHELL_DUST_BIN}" "$@"
+		fi
+	else
+		command du -h "$@"
+	fi
+}
 
 ### --------------------------------
 ### PROCS PROCESS INSPECTION
 ### --------------------------------
-_procs_bin="${_DETECTED_PROCS-$(_detect_procs)}"
-if [ -n "${_procs_bin}" ]; then
-	alias p="${_procs_bin}"
-	alias procs="${_procs_bin}"
-	alias pst="${_procs_bin} --tree"
-else
-	alias p="ps aux"
+_SHELL_PROCS_BIN="${_DETECTED_PROCS-$(_detect_procs)}"
+if [ -n "${_SHELL_PROCS_BIN}" ]; then
+	alias procs="${_SHELL_PROCS_BIN}"
 fi
-unset _procs_bin
+
+p() {
+	if [ -n "${_SHELL_PROCS_BIN:-}" ]; then
+		if [ -t 1 ]; then
+			command "${_SHELL_PROCS_BIN}" "$@"
+		else
+			NO_COLOR=1 command "${_SHELL_PROCS_BIN}" --color disable "$@"
+		fi
+	else
+		command ps aux "$@"
+	fi
+}
+
+pst() {
+	if [ -n "${_SHELL_PROCS_BIN:-}" ]; then
+		if [ -t 1 ]; then
+			command "${_SHELL_PROCS_BIN}" --tree "$@"
+		else
+			NO_COLOR=1 command "${_SHELL_PROCS_BIN}" --tree --color disable "$@"
+		fi
+	else
+		command ps aux "$@"
+	fi
+}
 
 ### --------------------------------
 ### BOTTOM SYSTEM MONITOR

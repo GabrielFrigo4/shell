@@ -560,98 +560,147 @@ def --wrapped delta [...rest] {
 
 def --wrapped r [...rest] {
 	if (which rg | is-not-empty) {
-		^rg --smart-case ...$rest
+		if (is-terminal --stdout) {
+			^rg --smart-case ...$rest
+		} else {
+			^rg --smart-case --color=never ...$rest
+		}
 	} else {
 		find ...$rest
 	}
 }
 def --wrapped g [...rest] {
-	if (which rg | is-not-empty) {
-		^rg --smart-case ...$rest
+	r ...$rest
+}
+def --wrapped _shell_eza [flags: list<string>, ...rest] {
+	if (is-terminal --stdout) {
+		^eza ...$flags --icons=auto --group-directories-first ...$rest
 	} else {
-		find ...$rest
+		^eza ...$flags --icons=never --color=never --group-directories-first ...$rest
 	}
 }
 def --wrapped l [...rest] {
 	if (which eza | is-not-empty) {
-		^eza --icons=auto --group-directories-first ...$rest
+		_shell_eza [] ...$rest
 	} else {
 		ls ...$rest
 	}
 }
 def --wrapped ll [...rest] {
 	if (which eza | is-not-empty) {
-		^eza -la --icons=auto --group-directories-first --git ...$rest
+		_shell_eza [-la --git] ...$rest
 	} else {
 		ls -l ...$rest
 	}
 }
 def --wrapped la [...rest] {
 	if (which eza | is-not-empty) {
-		^eza -a --icons=auto --group-directories-first ...$rest
+		_shell_eza [-a] ...$rest
 	} else {
 		ls -a ...$rest
 	}
 }
 def --wrapped lt [...rest] {
 	if (which eza | is-not-empty) {
-		^eza --tree --icons=auto --group-directories-first ...$rest
+		_shell_eza [--tree] ...$rest
 	} else {
 		ls ...$rest
 	}
 }
 def --wrapped lr [...rest] {
 	if (which eza | is-not-empty) {
-		^eza -R --icons=auto --group-directories-first ...$rest
+		_shell_eza [-R] ...$rest
 	} else {
 		ls ...$rest
 	}
 }
 def --wrapped lar [...rest] {
 	if (which eza | is-not-empty) {
-		^eza -aR --icons=auto --group-directories-first ...$rest
+		_shell_eza [-aR] ...$rest
 	} else {
 		ls -a ...$rest
 	}
 }
 def --wrapped llr [...rest] {
 	if (which eza | is-not-empty) {
-		^eza -laR --icons=auto --group-directories-first --git ...$rest
+		_shell_eza [-laR --git] ...$rest
 	} else {
 		ls -l ...$rest
 	}
 }
 def --wrapped c [...rest] {
 	if (which bat | is-not-empty) {
-		^bat --paging=never ...$rest
+		if (is-terminal --stdout) {
+			^bat --paging=never ...$rest
+		} else {
+			^bat --plain --color=never --paging=never ...$rest
+		}
 	} else {
 		open ...$rest
 	}
 }
 def --wrapped b [...rest] {
 	if (which bat | is-not-empty) {
-		^bat ...$rest
+		if (is-terminal --stdout) {
+			^bat ...$rest
+		} else {
+			^bat --plain --color=never --paging=never ...$rest
+		}
 	} else {
 		open ...$rest
 	}
 }
 def --wrapped f [...rest] {
 	if (which fd | is-not-empty) {
-		^fd ...$rest
+		if (is-terminal --stdout) {
+			^fd ...$rest
+		} else {
+			^fd --color=never ...$rest
+		}
+	} else {
+		find ...$rest
+	}
+}
+def --wrapped ff [...rest] {
+	if (which fd | is-not-empty) {
+		if (is-terminal --stdout) {
+			^fd --hidden --no-ignore ...$rest
+		} else {
+			^fd --hidden --no-ignore --color=never ...$rest
+		}
 	} else {
 		find ...$rest
 	}
 }
 def --wrapped d [...rest] {
 	if (which dust | is-not-empty) {
-		^dust ...$rest
+		if (is-terminal --stdout) {
+			^dust ...$rest
+		} else {
+			with-env { NO_COLOR: "1" } { ^dust ...$rest }
+		}
 	} else {
 		ls ...$rest
 	}
 }
 def --wrapped p [...rest] {
 	if (which procs | is-not-empty) {
-		^procs ...$rest
+		if (is-terminal --stdout) {
+			^procs ...$rest
+		} else {
+			with-env { NO_COLOR: "1" } { ^procs --color disable ...$rest }
+		}
+	} else {
+		ps
+	}
+}
+def --wrapped pst [...rest] {
+	if (which procs | is-not-empty) {
+		if (is-terminal --stdout) {
+			^procs --tree ...$rest
+		} else {
+			with-env { NO_COLOR: "1" } { ^procs --tree --color disable ...$rest }
+		}
 	} else {
 		ps
 	}

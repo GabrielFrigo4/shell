@@ -467,66 +467,188 @@ alias oz="open-zed"
 # Module: Modern Single-Character & Rust CLI Tools
 # ----------------------------------------------------------------
 
-if type -q rg
-    alias r="rg --smart-case"
-    alias g="rg --smart-case"
-else
-    alias r="grep -Ei"
-    alias g="grep -Ei"
+function r
+    if type -q rg
+        if isatty stdout
+            command rg --smart-case $argv
+        else
+            command rg --smart-case --color=never $argv
+        end
+    else
+        command grep -Ei $argv
+    end
 end
 
-if type -q eza
-    alias l="eza --icons=auto --group-directories-first"
-    alias ll="eza -la --icons=auto --group-directories-first --git"
-    alias la="eza -a --icons=auto --group-directories-first"
-    alias lt="eza --tree --icons=auto --group-directories-first"
-    alias lr="eza -R --icons=auto --group-directories-first"
-    alias lar="eza -aR --icons=auto --group-directories-first"
-    alias llr="eza -laR --icons=auto --group-directories-first --git"
-else if type -q exa
-    alias l="exa --group-directories-first"
-    alias ll="exa -la --group-directories-first --git"
-    alias la="exa -a --group-directories-first"
-    alias lt="exa --tree --group-directories-first"
-    alias lr="exa -R --group-directories-first"
-    alias lar="exa -aR --group-directories-first"
-    alias llr="exa -laR --group-directories-first --git"
-else
-    alias l="ls"
-    alias ll="ls -laF"
-    alias la="ls -a"
-    alias lr="ls -R"
-    alias lar="ls -aR"
-    alias llr="ls -laR"
+function g
+    r $argv
 end
 
-if type -q bat
-    alias c="bat --paging=never"
-    alias b="bat"
-else
-    alias c="cat"
-    alias b="less"
+function _shell_ls --argument-names mode
+    set -l args $argv[2..-1]
+    if type -q eza
+        set -l opts --group-directories-first
+        if isatty stdout
+            set -p opts --icons=auto
+        else
+            set -p opts --icons=never --color=never
+        end
+        switch $mode
+            case l
+                command eza $opts $args
+            case ll
+                command eza -la $opts --git $args
+            case la
+                command eza -a $opts $args
+            case lt
+                command eza --tree $opts $args
+            case lr
+                command eza -R $opts $args
+            case lar
+                command eza -aR $opts $args
+            case llr
+                command eza -laR $opts --git $args
+        end
+    else if type -q exa
+        set -l opts --group-directories-first
+        if not isatty stdout
+            set -p opts --color=never
+        end
+        switch $mode
+            case l
+                command exa $opts $args
+            case ll
+                command exa -la $opts --git $args
+            case la
+                command exa -a $opts $args
+            case lt
+                command exa --tree $opts $args
+            case lr
+                command exa -R $opts $args
+            case lar
+                command exa -aR $opts $args
+            case llr
+                command exa -laR $opts --git $args
+        end
+    else
+        switch $mode
+            case lt
+                if type -q tree
+                    if isatty stdout
+                        command tree $args
+                    else
+                        command tree -n $args
+                    end
+                else
+                    command ls -R $args
+                end
+            case l
+                command ls $args
+            case ll
+                command ls -laF $args
+            case la
+                command ls -a $args
+            case lr
+                command ls -R $args
+            case lar
+                command ls -aR $args
+            case llr
+                command ls -laR $args
+        end
+    end
 end
 
-if type -q fd
-    alias f="fd"
-    alias ff="fd --hidden --no-ignore"
-else
-    alias f="find"
-    alias ff="find"
+function l; _shell_ls l $argv; end
+function ll; _shell_ls ll $argv; end
+function la; _shell_ls la $argv; end
+function lt; _shell_ls lt $argv; end
+function lr; _shell_ls lr $argv; end
+function lar; _shell_ls lar $argv; end
+function llr; _shell_ls llr $argv; end
+
+function c
+    if type -q bat
+        if isatty stdout
+            command bat --paging=never $argv
+        else
+            command bat --plain --color=never --paging=never $argv
+        end
+    else
+        command cat $argv
+    end
 end
 
-if type -q dust
-    alias d="dust"
-else
-    alias d="du -h"
+function b
+    if type -q bat
+        if isatty stdout
+            command bat $argv
+        else
+            command bat --plain --color=never --paging=never $argv
+        end
+    else if isatty stdout
+        command less $argv
+    else
+        command cat $argv
+    end
 end
 
-if type -q procs
-    alias p="procs"
-    alias pst="procs --tree"
-else
-    alias p="ps aux"
+function f
+    if type -q fd
+        if isatty stdout
+            command fd $argv
+        else
+            command fd --color=never $argv
+        end
+    else
+        command find $argv
+    end
+end
+
+function ff
+    if type -q fd
+        if isatty stdout
+            command fd --hidden --no-ignore $argv
+        else
+            command fd --hidden --no-ignore --color=never $argv
+        end
+    else
+        command find $argv
+    end
+end
+
+function d
+    if type -q dust
+        if isatty stdout
+            command dust $argv
+        else
+            NO_COLOR=1 command dust $argv
+        end
+    else
+        command du -h $argv
+    end
+end
+
+function p
+    if type -q procs
+        if isatty stdout
+            command procs $argv
+        else
+            NO_COLOR=1 command procs --color disable $argv
+        end
+    else
+        command ps aux $argv
+    end
+end
+
+function pst
+    if type -q procs
+        if isatty stdout
+            command procs --tree $argv
+        else
+            NO_COLOR=1 command procs --tree --color disable $argv
+        end
+    else
+        command ps aux $argv
+    end
 end
 
 if type -q btm
