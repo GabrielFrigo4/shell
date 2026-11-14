@@ -1,11 +1,15 @@
+# ----------------------------------------------------------------
+# Library: OS, Shell, Distro & Terminal Environment Detection
+# ----------------------------------------------------------------
+
 ### ================================
 ### CACHE ENGINE
 ### ================================
 
 ### --------------------------------
-### Cache Directory & Environment
+### CACHE DIRECTORY & ENVIRONMENT
 ### --------------------------------
-_SHELL_CACHE_DIR="${XDG_RUNTIME_DIR:-/tmp}/.universal_shell_cache_${USER:-${LOGNAME:-$(id -un 2> "/dev/null" || echo "user")}}"
+_SHELL_CACHE_DIR="${XDG_RUNTIME_DIR:-/tmp}/.universal_shell_cache_${USER:-${USERNAME:-${LOGNAME:-$(id -un 2> "/dev/null" || echo "user")}}}"
 _SHELL_CACHE_FILE="${_SHELL_CACHE_DIR}/cache.env"
 
 [ -f "${_SHELL_CACHE_FILE}" ] && . "${_SHELL_CACHE_FILE}" 2> "/dev/null"
@@ -38,12 +42,57 @@ _cache_read() {
 ### --------------------------------
 _cache_write() {
 	[ -d "${_SHELL_CACHE_DIR}" ] || command mkdir -p "${_SHELL_CACHE_DIR}" 2> "/dev/null" || return 1
-	[ -f "${_SHELL_CACHE_FILE}" ] || command touch "${_SHELL_CACHE_FILE}" 2> "/dev/null" || true
-	echo "${2}" >| "${_SHELL_CACHE_DIR}/${1}" 2> "/dev/null"
-	_var_name="_DETECTED_$(echo "${1}" | tr '[:lower:]' '[:upper:]')"
-	echo "${_var_name}=\"${2}\"" >> "${_SHELL_CACHE_FILE}" 2> "/dev/null" || true
+	printf '%s\n' "${2}" >| "${_SHELL_CACHE_DIR}/${1}" 2> "/dev/null"
+	local _var_name=""
+	case "${1}" in
+		os)                _var_name="_DETECTED_OS" ;;
+		distro)            _var_name="_DETECTED_DISTRO" ;;
+		distro_family)     _var_name="_DETECTED_DISTRO_FAMILY" ;;
+		distro_icon)       _var_name="_DETECTED_DISTRO_ICON" ;;
+		distro_version)    _var_name="_DETECTED_DISTRO_VERSION" ;;
+		kernel_release)    _var_name="_DETECTED_KERNEL_RELEASE" ;;
+		escalator)         _var_name="_DETECTED_ESCALATOR" ;;
+		desktop_env)       _var_name="_DETECTED_DESKTOP_ENV" ;;
+		color_scheme)      _var_name="_DETECTED_COLOR_SCHEME" ;;
+		gtk_theme)         _var_name="_DETECTED_GTK_THEME" ;;
+		qt_theme)          _var_name="_DETECTED_QT_THEME" ;;
+		qt_platform_theme) _var_name="_DETECTED_QT_PLATFORM_THEME" ;;
+		eza)               _var_name="_DETECTED_EZA" ;;
+		bat)               _var_name="_DETECTED_BAT" ;;
+		rg)                _var_name="_DETECTED_RG" ;;
+		fd)                _var_name="_DETECTED_FD" ;;
+		dust)              _var_name="_DETECTED_DUST" ;;
+		procs)             _var_name="_DETECTED_PROCS" ;;
+		bottom)            _var_name="_DETECTED_BOTTOM" ;;
+		zoxide)            _var_name="_DETECTED_ZOXIDE" ;;
+		*)                 _var_name="_DETECTED_$(printf '%s' "${1}" | tr '[:lower:]' '[:upper:]')" ;;
+	esac
+	if [ -f "${_SHELL_CACHE_FILE}" ]; then
+		local _found=0
+		local _tmp_cache="${_SHELL_CACHE_FILE}.tmp.$$"
+		local _line
+		: >| "${_tmp_cache}" 2> "/dev/null" || true
+		while IFS= read -r _line || [ -n "${_line}" ]; do
+			case "${_line}" in
+				"${_var_name}="*)
+					if [ "${_found}" -eq 0 ]; then
+						printf '%s="%s"\n' "${_var_name}" "${2}" >> "${_tmp_cache}" 2> "/dev/null"
+						_found=1
+					fi
+					;;
+				*)
+					printf '%s\n' "${_line}" >> "${_tmp_cache}" 2> "/dev/null"
+					;;
+			esac
+		done < "${_SHELL_CACHE_FILE}"
+		if [ "${_found}" -eq 0 ]; then
+			printf '%s="%s"\n' "${_var_name}" "${2}" >> "${_tmp_cache}" 2> "/dev/null"
+		fi
+		command mv -f "${_tmp_cache}" "${_SHELL_CACHE_FILE}" 2> "/dev/null" || command rm -f "${_tmp_cache}" 2> "/dev/null" || true
+	else
+		printf '%s="%s"\n' "${_var_name}" "${2}" >| "${_SHELL_CACHE_FILE}" 2> "/dev/null" || true
+	fi
 	eval "${_var_name}=\"\${2}\"" 2> "/dev/null" || true
-	unset _var_name
 }
 
 ### --------------------------------
@@ -51,11 +100,14 @@ _cache_write() {
 ### --------------------------------
 _cache_clean() {
 	[ -d "${_SHELL_CACHE_DIR}" ] && command rm -rf "${_SHELL_CACHE_DIR}" 2> "/dev/null" || true
-	unset _DETECTED_OS _DETECTED_SHELL _DETECTED_ENABLED_SHELL _DETECTED_DISTRO _DETECTED_DISTRO_FAMILY \
-		_DETECTED_DISTRO_ICON _DETECTED_DESKTOP_ENV _DETECTED_COLOR_SCHEME _DETECTED_GTK_THEME \
-		_DETECTED_QT_THEME _DETECTED_QT_PLATFORM_THEME _DETECTED_EZA \
-		_DETECTED_BAT _DETECTED_RG _DETECTED_FD _DETECTED_ZOXIDE _DETECTED_ESCALATOR \
-		_DETECTED_KERNEL_RELEASE _DETECTED_XCURSOR_THEME _DETECTED_XCURSOR_SIZE 2> "/dev/null" || true
+	command rm -rf "${XDG_CACHE_HOME:-${HOME}/.cache}/shell" 2> "/dev/null" || true
+	unset _DETECTED_OS _DETECTED_SHELL _DETECTED_DISTRO _DETECTED_DISTRO_FAMILY \
+		_DETECTED_DISTRO_ICON _DETECTED_DISTRO_VERSION _DETECTED_DESKTOP_ENV \
+		_DETECTED_COLOR_SCHEME _DETECTED_GTK_THEME _DETECTED_QT_THEME \
+		_DETECTED_QT_PLATFORM_THEME _DETECTED_EZA _DETECTED_BAT _DETECTED_RG \
+		_DETECTED_FD _DETECTED_DUST _DETECTED_PROCS _DETECTED_BOTTOM \
+		_DETECTED_ZOXIDE _DETECTED_ESCALATOR _DETECTED_KERNEL_RELEASE \
+		_IS_RAW_TTY_CACHED 2> "/dev/null" || true
 }
 
 ### ================================
@@ -76,7 +128,6 @@ _detect_os() {
 	case "$(uname -s)" in
 		Linux*)                        _DETECTED_OS="linux" ;;
 		FreeBSD*)                      _DETECTED_OS="freebsd" ;;
-		DragonFly*)                    _DETECTED_OS="dragonfly" ;;
 		OpenBSD*)                      _DETECTED_OS="openbsd" ;;
 		NetBSD*)                       _DETECTED_OS="netbsd" ;;
 		SunOS*)                        _DETECTED_OS="illumos" ;;
@@ -156,10 +207,10 @@ _detect_shell() {
 
 	if [ -z "${_name}" ]; then
 		if [ "${_os}" = "windows" ]; then
-			_name="$(command ps 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $8}' | command awk -F'/' '{print $NF}' | command sed 's/^-//; s/\.exe$//')"
+			_name="$(command ps 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid { cmd=$NF; sub(/.*\//, "", cmd); sub(/.*\\/, "", cmd); sub(/^-/, "", cmd); sub(/\.exe$/, "", cmd); print cmd; exit }')"
 		else
 			_name="$(command ps -p "${_pid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
-			[ -z "${_name}" ] && _name="$(command ps -o pid,comm 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid {print $2}' | command awk -F'/' '{print $NF}' | command sed 's/^-//; s/\.exe$//')"
+			[ -z "${_name}" ] && _name="$(command ps -o pid,comm 2> "/dev/null" | command awk -v pid="${_pid}" '$1 == pid { cmd=$2; sub(/.*\//, "", cmd); sub(/^-/, "", cmd); sub(/\.exe$/, "", cmd); print cmd; exit }')"
 		fi
 	fi
 
@@ -173,6 +224,11 @@ _detect_shell() {
 			_name="${_name#-}"
 		fi
 		[ -z "${_name}" ] && _name="$(command ps -p "${_parent_pid}" -o comm= 2> "/dev/null" | command sed 's/^-//')"
+	fi
+
+	if [ -z "${_name}" ]; then
+		_name="${SHELL:-sh}"
+		_name="${_name##*/}"
 	fi
 
 	case "${_name}" in
@@ -191,7 +247,6 @@ _detect_shell() {
 		*)                 _DETECTED_SHELL="${_name:-sh}" ;;
 	esac
 
-	[ -z "${_DETECTED_SHELL}" ] && _DETECTED_SHELL="$(command basename "${SHELL:-sh}")"
 	_DETECTED_SHELL="${_DETECTED_SHELL##*/}"
 	echo "${_DETECTED_SHELL}"
 }
@@ -203,7 +258,7 @@ _detect_enabled_shell() {
 	local _target="${1:-path}"
 	local _shell_binary=""
 	local _chsh_shell=""
-	local _user="${USER:-$(id -un 2> "/dev/null" || true)}"
+	local _user="${USER:-${USERNAME:-$(id -un 2> "/dev/null" || true)}}"
 
 	if [ -n "${_user}" ] && command -v getent > "/dev/null" 2>&1; then
 		_chsh_shell="$(getent passwd "${_user}" 2> "/dev/null" | cut -d: -f7)"
@@ -256,7 +311,7 @@ _detect_distro() {
 	fi
 
 	if [ -f "/etc/os-release" ]; then
-		local _os_id="$(. /etc/os-release && echo "${ID}")"
+		local _os_id="$(. /etc/os-release && echo "${ID:-}")"
 		if [ "${_os_id}" = "ubuntu" ]; then
 			case "$(. /etc/os-release && echo "${NAME:-} ${PRETTY_NAME:-}")" in
 				*[Kk]ubuntu*) _os_id="kubuntu" ;;
@@ -283,7 +338,6 @@ _detect_distro() {
 			OpenBSD*)   _DETECTED_DISTRO="openbsd" ;;
 			NetBSD*)    _DETECTED_DISTRO="netbsd" ;;
 			FreeBSD*)   _DETECTED_DISTRO="freebsd" ;;
-			DragonFly*) _DETECTED_DISTRO="dragonfly" ;;
 			SunOS*)     _DETECTED_DISTRO="illumos" ;;
 			Darwin*)    _DETECTED_DISTRO="macos" ;;
 			*)          _DETECTED_DISTRO="unknown" ;;
@@ -306,7 +360,7 @@ _detect_distro_family() {
 
 	local _distro_id="$(_detect_distro)"
 	local _distro_like=""
-	[ -f "/etc/os-release" ] && _distro_like="$(. /etc/os-release && echo "${ID_LIKE}")"
+	[ -f "/etc/os-release" ] && _distro_like="$(. /etc/os-release && echo "${ID_LIKE:-}")"
 
 	case "${_distro_id}" in
 		arch|manjaro|endeavouros|garuda|cachyos|artix)          _DETECTED_DISTRO_FAMILY="arch" ;;
@@ -321,7 +375,7 @@ _detect_distro_family() {
 		slackware)                            _DETECTED_DISTRO_FAMILY="slackware" ;;
 		guix)                                 _DETECTED_DISTRO_FAMILY="guix" ;;
 		openwrt)                                           _DETECTED_DISTRO_FAMILY="embedded" ;;
-		freebsd|ghostbsd|nomadbsd|dragonfly|openbsd|netbsd) _DETECTED_DISTRO_FAMILY="bsd" ;;
+		freebsd|ghostbsd|nomadbsd|openbsd|netbsd)          _DETECTED_DISTRO_FAMILY="bsd" ;;
 		omnios|smartos|openindiana|illumos)                _DETECTED_DISTRO_FAMILY="illumos" ;;
 		macos)                                _DETECTED_DISTRO_FAMILY="darwin" ;;
 		*)
@@ -396,7 +450,6 @@ _detect_distro_icon() {
 		gentoo)                             _DETECTED_DISTRO_ICON=" " ;;
 		nixos)                              _DETECTED_DISTRO_ICON=" " ;;
 		freebsd|ghostbsd|nomadbsd)          _DETECTED_DISTRO_ICON=" " ;;
-		dragonfly)                          _DETECTED_DISTRO_ICON=" " ;;
 		openbsd)                            _DETECTED_DISTRO_ICON=" " ;;
 		netbsd)                             _DETECTED_DISTRO_ICON=" " ;;
 		solaris|sunos)                      _DETECTED_DISTRO_ICON="󰖨 " ;;
@@ -406,10 +459,10 @@ _detect_distro_icon() {
 		*)
 			case "$(_detect_os)" in
 				linux) _DETECTED_DISTRO_ICON=" " ;; freebsd) _DETECTED_DISTRO_ICON=" " ;;
-				dragonfly) _DETECTED_DISTRO_ICON=" " ;; openbsd) _DETECTED_DISTRO_ICON=" " ;;
-				netbsd) _DETECTED_DISTRO_ICON=" " ;; solaris|sunos) _DETECTED_DISTRO_ICON="󰖨 " ;;
-				illumos) _DETECTED_DISTRO_ICON=" " ;; macos) _DETECTED_DISTRO_ICON=" " ;;
-				windows) _DETECTED_DISTRO_ICON=" " ;; *) _DETECTED_DISTRO_ICON=" " ;;
+				openbsd) _DETECTED_DISTRO_ICON=" " ;; netbsd) _DETECTED_DISTRO_ICON=" " ;;
+				solaris|sunos) _DETECTED_DISTRO_ICON="󰖨 " ;; illumos) _DETECTED_DISTRO_ICON=" " ;;
+				macos) _DETECTED_DISTRO_ICON=" " ;; windows) _DETECTED_DISTRO_ICON=" " ;;
+				*) _DETECTED_DISTRO_ICON=" " ;;
 			esac
 			;;
 	esac
@@ -446,26 +499,26 @@ _is_raw_tty() {
 		1|true|yes) _IS_RAW_TTY_CACHED=0; return 0 ;;
 	esac
 
-	local _dev="$(command tty 2> "/dev/null" || true)"
-
-	case "${_dev}" in
-		/dev/pts/*|/dev/ttyp*|/dev/ttys*)
-			_IS_RAW_TTY_CACHED=1
-			return 1
-			;;
-	esac
-
-	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${TERM_PROGRAM:-}" ] || [ -n "${KONSOLE_VERSION:-}" ]; then
-		_IS_RAW_TTY_CACHED=1
-		return 1
-	fi
-
 	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
 		*0*|*false*|*no*) _IS_RAW_TTY_CACHED=1; return 1 ;;
 	esac
 
+	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${TERM_PROGRAM:-}" ] || [ -n "${KONSOLE_VERSION:-}" ] || [ -n "${WT_SESSION:-}" ]; then
+		_IS_RAW_TTY_CACHED=1
+		return 1
+	fi
+
+	local _dev="${SSH_TTY:-${TTY:-}}"
+	if [ -z "${_dev}" ] && { [ -t 0 ] || [ -t 1 ]; }; then
+		_dev="$(command tty 2> "/dev/null" || true)"
+	fi
+
 	case "${_dev}" in
-		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/ttyC*|/dev/ttyE*|/dev/console)
+		/dev/pts/*|/dev/ttyp*|/dev/ttys*|/dev/pty*)
+			_IS_RAW_TTY_CACHED=1
+			return 1
+			;;
+		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/ttyC*|/dev/ttyE*|/dev/ttyq*|/dev/term/*|/dev/vt/*|/dev/console)
 			_IS_RAW_TTY_CACHED=0
 			return 0
 			;;
@@ -514,7 +567,7 @@ _detect_distro_version() {
 	if [ -z "${_DETECTED_DISTRO_VERSION:-}" ]; then
 		case "$(_detect_distro)" in
 			arch|void|gentoo)                 _DETECTED_DISTRO_VERSION="rolling" ;;
-			freebsd|openbsd|netbsd|dragonfly) _DETECTED_DISTRO_VERSION="$(uname -r 2> "/dev/null" | cut -d'-' -f1)" ;;
+			freebsd|openbsd|netbsd)           _DETECTED_DISTRO_VERSION="$(uname -r 2> "/dev/null" | cut -d'-' -f1)" ;;
 			macos)                            _DETECTED_DISTRO_VERSION="$(sw_vers -productVersion 2> "/dev/null" || uname -r)" ;;
 			*)                                _DETECTED_DISTRO_VERSION="$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "UNIX")" ;;
 		esac

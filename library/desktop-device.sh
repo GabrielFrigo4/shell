@@ -3,7 +3,7 @@
 # ----------------------------------------------------------------
 
 ### --------------------------------
-### Remote Servers
+### REMOTE SERVERS
 ### --------------------------------
 _resolve_vault_ssh_key() {
 	_explicit_key="${1:-}"
@@ -32,7 +32,11 @@ _resolve_vault_ssh_key() {
 }
 
 personal-server() {
-	_ip="${PERSONAL_SERVER_IP:-144.22.210.65}"
+	_ip="${PERSONAL_SERVER_IP:-}"
+	if [ -z "${_ip}" ]; then
+		_ui_err "PERSONAL_SERVER_IP não definida (configure no Vault ou variável de ambiente)."
+		return 1
+	fi
 	_user="${PERSONAL_SERVER_USER:-ubuntu}"
 	_key="$(_resolve_vault_ssh_key "${PERSONAL_SERVER_KEY:-}" "ssh-key-personal-server.key")"
 
@@ -52,7 +56,11 @@ personal-server() {
 }
 
 venture-server() {
-	_ip="${VENTURE_SERVER_IP:-137.131.238.161}"
+	_ip="${VENTURE_SERVER_IP:-}"
+	if [ -z "${_ip}" ]; then
+		_ui_err "VENTURE_SERVER_IP não definida (configure no Vault ou variável de ambiente)."
+		return 1
+	fi
 	_user="${VENTURE_SERVER_USER:-ubuntu}"
 	_key="$(_resolve_vault_ssh_key "${VENTURE_SERVER_KEY:-}" "ssh-key-venture-server.key")"
 
@@ -77,13 +85,13 @@ venture-server() {
 _find_desktop_device() {
 	local _rt _found
 
-	for _rt in "${XDG_RUNTIME_DIR}/gvfs" "/var/run/user/$(id -u)/gvfs" "/run/user/$(id -u)/gvfs" "${HOME}/.gvfs"; do
+	for _rt in "${XDG_RUNTIME_DIR:+${XDG_RUNTIME_DIR}/gvfs}" "/var/run/user/$(id -u)/gvfs" "/run/user/$(id -u)/gvfs" "${HOME}/.gvfs"; do
 		[ -d "${_rt}" ] || continue
 		_found=$(command find "${_rt}" -maxdepth 1 \( -name "mtp:*" -o -name "*mtp*" -o -name "sftp:*" \) 2> "/dev/null" | command head -n 1)
 		[ -n "${_found}" ] && [ -d "${_found}" ] && echo "${_found}" && return 0
 	done
 
-	for _rt in "${XDG_RUNTIME_DIR}" "/var/run/user/$(id -u)" "/run/user/$(id -u)" "/tmp"; do
+	for _rt in "${XDG_RUNTIME_DIR:-}" "/var/run/user/$(id -u)" "/run/user/$(id -u)" "/tmp"; do
 		[ -d "${_rt}" ] || continue
 		_found=$(command find "${_rt}" -maxdepth 4 -path "*kio-fuse*/*" \( -name "*mtp*" -o -name "*kdeconnect*" \) 2> "/dev/null" | command head -n 1)
 		[ -n "${_found}" ] && [ -d "${_found}" ] && echo "${_found}" && return 0
@@ -106,7 +114,7 @@ _find_kdeconnect_device() {
 	_mount_dir=$(command mount 2> "/dev/null" | command grep -iE 'kdeconnect|sshfs' | command awk '{for(i=1;i<=NF;i++) if($i=="on") print $(i+1)}' | command head -n 1)
 	[ -n "${_mount_dir}" ] && [ -d "${_mount_dir}" ] && echo "${_mount_dir}" && return 0
 
-	for _rt in "${XDG_RUNTIME_DIR}" "/var/run/user/$(id -u)" "/run/user/$(id -u)" "/tmp"; do
+	for _rt in "${XDG_RUNTIME_DIR:-}" "/var/run/user/$(id -u)" "/run/user/$(id -u)" "/tmp"; do
 		[ -d "${_rt}" ] || continue
 		_found=$(command find "${_rt}" -maxdepth 4 \( -path "*kio-fuse*/*" -o -path "*kdeconnect*/*" -o -name "*${_dev}*" \) 2> "/dev/null" | command head -n 1)
 		[ -n "${_found}" ] && [ -d "${_found}" ] && echo "${_found}" && return 0
@@ -116,12 +124,12 @@ _find_kdeconnect_device() {
 }
 
 _open_file_manager() {
-	[ -z "${1}" ] && return 0
-	[ -z "${DISPLAY}" ] && [ -z "${WAYLAND_DISPLAY}" ] && return 0
+	[ -z "${1:-}" ] && return 0
+	[ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ] && return 0
 	local _opener
 
 	_ui_info "Abrindo gerenciador de arquivos..."
-	if [ -n "${FILEMANAGER}" ] && command -v "${FILEMANAGER}" > "/dev/null" 2>&1; then
+	if [ -n "${FILEMANAGER:-}" ] && command -v "${FILEMANAGER}" > "/dev/null" 2>&1; then
 		(nohup "${FILEMANAGER}" "${1}" < "/dev/null" > "/dev/null" 2>&1 &)
 		return 0
 	fi

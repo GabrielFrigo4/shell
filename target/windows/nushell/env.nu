@@ -48,9 +48,9 @@ $env.PYTHONPYCACHEPREFIX = (if ($env.XDG_CACHE_HOME? | is-not-empty) { [$env.XDG
 let _msys_root = ($env.MSYS2_ROOT? | default "C:\\msys64")
 let _msys_home_base = ($env.MSYS2_HOME? | default ([$_msys_root, "home"] | path join))
 let _msys_user = ($env.MSYS2_USER? | default ($env.USERNAME? | default ""))
-let _msys_home = ([$_msys_home_base, $_msys_user] | path join)
-let _msys_home_lower = ([$_msys_home_base, ($_msys_user | str lowercase)] | path join)
-let _resolved_msys = if ($_msys_home | path exists) { $_msys_home } else if ($_msys_home_lower | path exists) { $_msys_home_lower } else { "" }
+let _msys_home = if ($_msys_user | is-not-empty) { [$_msys_home_base, $_msys_user] | path join } else { "" }
+let _msys_home_lower = if ($_msys_user | is-not-empty) { [$_msys_home_base, ($_msys_user | str lowercase)] | path join } else { "" }
+let _resolved_msys = if ($_msys_home | is-not-empty) and ($_msys_home | path exists) { $_msys_home } else if ($_msys_home_lower | is-not-empty) and ($_msys_home_lower | path exists) { $_msys_home_lower } else { "" }
 
 let _shell_candidates = [
 	($env.SHELL_REPO_DIR? | default ""),
@@ -70,14 +70,19 @@ if ($_active_shell | is-not-empty) and not ($env.SHELL_REPO_DIR? | default "" | 
 ### PROMPT THEME
 ### ================================
 
-let _win_build = (try {
-	let v = (do -i { ^cmd.exe /c ver } | complete | get stdout)
-	($v | parse -r "10\\.0\\.(?<bld>\\d+)" | get -o 0.bld | default "0" | into int)
-} catch { 0 })
-let _win_dv = (try {
-	let r = (do -i { ^reg.exe query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v DisplayVersion } | complete | get stdout)
-	($r | parse -r "DisplayVersion\\s+REG_SZ\\s+(?<dv>\\S+)" | get -o 0.dv | default "")
-} catch { "" })
+let _win_reg = (try { registry query --hklm 'SOFTWARE\Microsoft\Windows NT\CurrentVersion' } catch { [] })
+let _win_ver = if ($_win_reg | is-not-empty) {
+	let bld = ($_win_reg | where name == "CurrentBuildNumber" | get -o 0.value | default ($_win_reg | where name == "CurrentBuild" | get -o 0.value | default "0"))
+	let dv = ($_win_reg | where name == "DisplayVersion" | get -o 0.value | default "")
+	{ build: (try { $bld | into int } catch { 0 }), dv: $dv }
+} else {
+	let reg_out = (try { do { ^reg.exe query 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion' } | complete | get stdout } catch { "" })
+	let bld = (try { $reg_out | parse -r '(?:CurrentBuildNumber|CurrentBuild)\s+REG_SZ\s+(?<bld>\d+)' | get -o 0.bld | default "0" | into int } catch { 0 })
+	let dv = (try { $reg_out | parse -r 'DisplayVersion\s+REG_SZ\s+(?<dv>\S+)' | get -o 0.dv | default "" } catch { "" })
+	{ build: $bld, dv: $dv }
+}
+let _win_build = $_win_ver.build
+let _win_dv = $_win_ver.dv
 let _win_name = (if $_win_build >= 22000 {
 	if ($_win_dv | is-not-empty) { $"11 ($_win_dv)" } else { "11" }
 } else if $_win_build >= 10240 {
@@ -104,10 +109,10 @@ def create_left_prompt [] {
 	let user = ($env.USER? | default ($env.USERNAME? | default "user"))
 
 	mut git_info = ""
-	let branch = (do -i { git symbolic-ref --short HEAD } | complete)
+	let branch = (do { ^git symbolic-ref --short HEAD } | complete)
 	if $branch.exit_code == 0 and ($branch.stdout | str trim | is-not-empty) {
 		let bname = ($branch.stdout | str trim)
-		let dirty_check = (do -i { git status --porcelain=v1 -uno --ignore-submodules=dirty } | complete)
+		let dirty_check = (do { ^git status --porcelain=v1 -uno --ignore-submodules=dirty } | complete)
 		let indicator = (if ($dirty_check.stdout | str trim | is-not-empty) { $"($yellow)*" } else { "" })
 		$git_info = $" ($gray)($red)󰊢 ($magenta)($bname)($indicator)($gray)"
 	}

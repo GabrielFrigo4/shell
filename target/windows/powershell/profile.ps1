@@ -8,22 +8,23 @@
 ### CONFIGURACOES GERAIS
 ### ================================
 
-$PSDefaultparameterValues['*:Encoding'] = 'utf8'
+$PSDefaultParameterValues['*:Encoding'] = 'utf8'
 
 $env:HOME = $env:USERPROFILE
 $SYSTEM32 = 'C:\Windows\System32'
-$env:PYTHONPYCACHEPREFIX = if ($env:XDG_CACHE_HOME) { Join-Path $env:XDG_CACHE_HOME 'pycache' } else { Join-Path $env:HOME '.cache\pycache' }
+$env:PYTHONPYCACHEPREFIX = if ($env:XDG_CACHE_HOME) { [System.IO.Path]::Combine($env:XDG_CACHE_HOME, 'pycache') } else { [System.IO.Path]::Combine($env:HOME, '.cache', 'pycache') }
 
 function Get-Msys2UserHome {
 	$root     = if ($env:MSYS2_ROOT) { $env:MSYS2_ROOT } else { 'C:\msys64' }
-	$homeBase = if ($env:MSYS2_HOME) { $env:MSYS2_HOME } else { Join-Path $root 'home' }
+	$homeBase = if ($env:MSYS2_HOME) { $env:MSYS2_HOME } else { [System.IO.Path]::Combine($root, 'home') }
 	$user     = if ($env:MSYS2_USER) { $env:MSYS2_USER } else { $env:USERNAME }
 
-	$target = Join-Path $homeBase $user
-	if (-not (Test-Path $target)) {
-		$target = Join-Path $homeBase $user.ToLower()
+	if ([System.IO.Directory]::Exists($homeBase)) {
+		$target = [System.IO.Path]::Combine($homeBase, $user)
+		if ([System.IO.Directory]::Exists($target)) { return $target }
+		$lowerTarget = [System.IO.Path]::Combine($homeBase, $user.ToLower())
+		if ([System.IO.Directory]::Exists($lowerTarget)) { return $lowerTarget }
 	}
-	if (Test-Path $target) { return $target }
 	return $null
 }
 
@@ -33,17 +34,17 @@ function Get-Msys2Shell {
 		'C:\msys64',
 		'D:\msys64',
 		'E:\msys64',
-		(Join-Path $env:LOCALAPPDATA 'Programs\msys64'),
+		$(if ($env:LOCALAPPDATA) { [System.IO.Path]::Combine($env:LOCALAPPDATA, 'Programs', 'msys64') }),
 		'C:\Program Files\Git'
 	)
 	$candidateShells = @('zsh.exe', 'bash.exe', 'sh.exe', 'ksh.exe')
 	foreach ($shName in $candidateShells) {
 		foreach ($r in $roots) {
 			if ($r) {
-				$bin = Join-Path $r (Join-Path 'usr\bin' $shName)
-				if (Test-Path $bin) { return $bin }
-				$bin = Join-Path $r (Join-Path 'bin' $shName)
-				if (Test-Path $bin) { return $bin }
+				$bin = [System.IO.Path]::Combine($r, 'usr\bin', $shName)
+				if ([System.IO.File]::Exists($bin)) { return $bin }
+				$bin = [System.IO.Path]::Combine($r, 'bin', $shName)
+				if ([System.IO.File]::Exists($bin)) { return $bin }
 			}
 		}
 	}
@@ -62,42 +63,55 @@ $MsysHome = Get-Msys2UserHome
 
 $vaultCandidates = @(
 	$env:VAULT_DIR,
-	(Join-Path $HOME ".local\share\vault"),
-	(Join-Path $HOME ".config\vault"),
-	(Join-Path $HOME ".vault")
+	[System.IO.Path]::Combine($HOME, '.local\share\vault'),
+	[System.IO.Path]::Combine($HOME, '.config\vault'),
+	[System.IO.Path]::Combine($HOME, '.vault')
 )
 if ($MsysHome) {
 	$vaultCandidates += @(
-		(Join-Path $MsysHome ".local\share\vault"),
-		(Join-Path $MsysHome ".config\vault"),
-		(Join-Path $MsysHome ".vault")
+		[System.IO.Path]::Combine($MsysHome, '.local\share\vault'),
+		[System.IO.Path]::Combine($MsysHome, '.config\vault'),
+		[System.IO.Path]::Combine($MsysHome, '.vault')
 	)
 }
 
-$vaultDir = $vaultCandidates | Where-Object { $_ -and (Test-Path (Join-Path $_ "vault.ps1")) } | Select-Object -First 1
+$vaultDir = $null
+foreach ($candidate in $vaultCandidates) {
+	if ($candidate -and [System.IO.File]::Exists([System.IO.Path]::Combine($candidate, 'vault.ps1'))) {
+		$vaultDir = $candidate
+		break
+	}
+}
 
 if ($vaultDir) {
-	. (Join-Path $vaultDir "vault.ps1")
+	. ([System.IO.Path]::Combine($vaultDir, 'vault.ps1'))
 }
 
 $shellCandidates = @(
 	$env:SHELL_REPO_DIR,
-	(Join-Path $PSScriptRoot "..\..\.."),
-	(Join-Path $HOME ".local\share\shell"),
-	(Join-Path $HOME ".config\shell"),
-	(Join-Path $HOME ".shell"),
-	"C:\Program Files\Shell"
+	[System.IO.Path]::Combine($PSScriptRoot, '..\..\..'),
+	[System.IO.Path]::Combine($HOME, '.local\share\shell'),
+	[System.IO.Path]::Combine($HOME, '.config\shell'),
+	[System.IO.Path]::Combine($HOME, '.shell'),
+	'C:\Program Files\Shell'
 )
 if ($MsysHome) {
 	$shellCandidates += @(
-		(Join-Path $MsysHome ".local\share\shell"),
-		(Join-Path $MsysHome ".config\shell"),
-		(Join-Path $MsysHome ".shell")
+		[System.IO.Path]::Combine($MsysHome, '.local\share\shell'),
+		[System.IO.Path]::Combine($MsysHome, '.config\shell'),
+		[System.IO.Path]::Combine($MsysHome, '.shell')
 	)
 }
-$shellDir = $shellCandidates | Where-Object { $_ -and (Test-Path (Join-Path $_ "shell.sh")) } | Select-Object -First 1
+
+$shellDir = $null
+foreach ($candidate in $shellCandidates) {
+	if ($candidate -and [System.IO.File]::Exists([System.IO.Path]::Combine($candidate, 'shell.sh'))) {
+		$shellDir = $candidate
+		break
+	}
+}
 if ($shellDir -and -not $env:SHELL_REPO_DIR) {
-	$env:SHELL_REPO_DIR = (Resolve-Path $shellDir).Path
+	$env:SHELL_REPO_DIR = [System.IO.Path]::GetFullPath($shellDir)
 }
 
 $OneDrive  = "${Home}\onedrive"
@@ -113,22 +127,30 @@ $FASM2_STORE   = "${VIRTUAL_STORE}\Program Files\FASM2"
 $FASMG_STORE   = "${VIRTUAL_STORE}\Program Files\FASMG"
 $FASMARM_STORE = "${VIRTUAL_STORE}\Program Files\FASMARM"
 
-$IsAdmin = [bool](([System.Security.Principal.WindowsIdentity]::GetCurrent()).groups -match "S-1-5-32-544")
-$Machine = [Environment]::GetEnvironmentVariables([System.EnvironmentVariableTarget]::Machine)
-$User    = [Environment]::GetEnvironmentVariables([System.EnvironmentVariableTarget]::User)
+function Test-IsAdmin {
+	if ($null -eq $global:IsAdmin) {
+		$identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+		$principal = [System.Security.Principal.WindowsPrincipal]::new($identity)
+		$global:IsAdmin = $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
+	}
+	return $global:IsAdmin
+}
 
 ### ================================
 ### NAVEGACAO E EDICAO
 ### ================================
 
 function Edit-Profile-Logic {
-	$target = if ($PROFILE -and (Test-Path $PROFILE)) { $PROFILE } else { "${Home}\OneDrive\Documentos\PowerShell\profile.ps1" }
+	$target = if ($PROFILE) {
+		[System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($PROFILE), 'profile.ps1')
+	} else {
+		"${Home}\OneDrive\Documentos\PowerShell\profile.ps1"
+	}
 	notepad++ $target
 }
 function Edit-Profile-Visual {
 	$target = if ($PROFILE) {
-		$dir = Split-Path $PROFILE
-		Join-Path $dir "Microsoft.PowerShell_profile.ps1"
+		[System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($PROFILE), 'Microsoft.PowerShell_profile.ps1')
 	} else {
 		"${Home}\OneDrive\Documentos\PowerShell\Microsoft.PowerShell_profile.ps1"
 	}
@@ -173,10 +195,11 @@ function Start-Admin {
 		[parameter(Mandatory=$false)][switch] $PassThru
 	)
 
-	if ($NoNewWindow -and $IsAdmin) {
+	$elevated = Test-IsAdmin
+	if ($NoNewWindow -and $elevated) {
 		$process = Start-Process -FilePath $Name -ArgumentList $Args -NoNewWindow:$NoNewWindow -PassThru:$PassThru
 	}
-	elseif ($IsAdmin) {
+	elseif ($elevated) {
 		$process = Start-Process -FilePath $Name -ArgumentList $Args -WindowStyle $WindowStyle -PassThru:$PassThru
 	}
 	else {
@@ -217,9 +240,7 @@ function Setx-Machine {
 		[Parameter(Mandatory=$true)] [string]$Name,
 		[Parameter(Mandatory=$true)] [string]$Value
 	)
-	$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-	if ($IsAdmin) {
+	if (Test-IsAdmin) {
 		[Environment]::SetEnvironmentVariable($Name, $Value, [System.EnvironmentVariableTarget]::Machine)
 		Set-Item -Path "env:$Name" -Value $Value
 
@@ -495,8 +516,8 @@ Parâmetros:
 
 	$emacsCandidates = @(
 		(Join-Path $HOME ".emacs.d"),
-		(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE ".emacs.d" }),
-		(if ($env:APPDATA) { Join-Path $env:APPDATA ".emacs.d" }),
+		$(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE ".emacs.d" }),
+		$(if ($env:APPDATA) { Join-Path $env:APPDATA ".emacs.d" }),
 		(Join-Path $HOME ".config\emacs")
 	) | Where-Object { $_ -and (Test-Path (Join-Path $_ ".git")) } | Select-Object -Unique
 	$emacsPath = $emacsCandidates | Select-Object -First 1
@@ -524,7 +545,7 @@ Parâmetros:
 	}
 
 	$helixCandidates = @(
-		(if ($env:APPDATA) { Join-Path $env:APPDATA "helix" }),
+		$(if ($env:APPDATA) { Join-Path $env:APPDATA "helix" }),
 		(Join-Path $HOME "AppData\Roaming\helix"),
 		(Join-Path $HOME ".config\helix")
 	) | Where-Object { $_ -and (Test-Path (Join-Path $_ ".git")) } | Select-Object -Unique
@@ -546,7 +567,7 @@ Parâmetros:
 	}
 
 	$nvimCandidates = @(
-		(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "nvim" }),
+		$(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "nvim" }),
 		(Join-Path $HOME "AppData\Local\nvim"),
 		(Join-Path $HOME ".config\nvim")
 	) | Where-Object { $_ -and (Test-Path (Join-Path $_ ".git")) } | Select-Object -Unique
@@ -569,9 +590,9 @@ Parâmetros:
 
 	$vimCandidates = @(
 		(Join-Path $HOME "vimfiles"),
-		(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE "vimfiles" }),
+		$(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE "vimfiles" }),
 		(Join-Path $HOME ".vim"),
-		(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE ".vim" })
+		$(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE ".vim" })
 	) | Where-Object { $_ -and (Test-Path (Join-Path $_ ".git")) } | Select-Object -Unique
 	$vimPath = $vimCandidates | Select-Object -First 1
 
@@ -698,8 +719,8 @@ Parâmetros:
 function Update-EmacsModes {
 	$emacsCandidates = @(
 		(Join-Path $HOME ".emacs.d"),
-		(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE ".emacs.d" }),
-		(if ($env:APPDATA) { Join-Path $env:APPDATA ".emacs.d" }),
+		$(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE ".emacs.d" }),
+		$(if ($env:APPDATA) { Join-Path $env:APPDATA ".emacs.d" }),
 		(Join-Path $HOME ".config\emacs")
 	) | Where-Object { $_ -and (Test-Path (Join-Path $_ ".git")) } | Select-Object -Unique
 	$emacsPath = $emacsCandidates | Select-Object -First 1
@@ -1001,6 +1022,7 @@ Parâmetros:
 
 function Reinstall-Shell {
 	_ui_step "Recarregando ambiente do PowerShell..."
+	$global:_ShellCoreLoaded = $false
 	if ($PROFILE -and (Test-Path $PROFILE)) {
 		. $PROFILE
 	} elseif ($env:SHELL_REPO_DIR -and (Test-Path (Join-Path $env:SHELL_REPO_DIR "target\windows\powershell\profile.ps1"))) {
@@ -1020,8 +1042,15 @@ function Bench-Shell {
 
 function Clean-Cache {
 	_ui_step "Limpando caches temporários do Shell..."
-	if (Test-Path "$env:LOCALAPPDATA\Temp") {
-		Get-ChildItem -Path "$env:LOCALAPPDATA\Temp" -Filter "*shell*" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+	if ($env:LOCALAPPDATA) {
+		$tempDir = [System.IO.Path]::Combine($env:LOCALAPPDATA, 'Temp')
+		if ([System.IO.Directory]::Exists($tempDir)) {
+			Get-ChildItem -Path $tempDir -Filter "*shell*" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+		}
+		$shellCacheDir = [System.IO.Path]::Combine($env:LOCALAPPDATA, 'shell')
+		if ([System.IO.Directory]::Exists($shellCacheDir)) {
+			Get-ChildItem -Path $shellCacheDir -Filter "zoxide_init.ps1*" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+		}
 	}
 	_ui_ok "Cache do Universal Shell limpo com sucesso!"
 }
@@ -1152,8 +1181,6 @@ Set-Alias "show" "Show-Explorer" -Force -Option AllScope
 Set-Alias "clr" "clear" -Force -Option AllScope
 Set-Alias "ip" "Get-IP" -Force -Option AllScope
 
-Set-Alias "mkledit" "Edit-MakeLua" -Force -Option AllScope
-
 Set-Alias "admin" "Start-Admin" -Force -Option AllScope
 Set-Alias "admin-wt" "Start-Windows-Terminal-Admin" -Force -Option AllScope
 Set-Alias "admin-ch" "Start-Console-Host-Admin" -Force -Option AllScope
@@ -1179,17 +1206,12 @@ Set-Alias "u" "Update-All" -Force -Option AllScope
 Set-Alias "upall" "Update-All" -Force -Option AllScope
 Set-Alias "update-emacs-modes" "Update-EmacsModes" -Force -Option AllScope
 Set-Alias "upmodes" "Update-EmacsModes" -Force -Option AllScope
-Set-Alias "reinstall-shell" "Reinstall-Shell" -Force -Option AllScope
 Set-Alias "resh" "Reinstall-Shell" -Force -Option AllScope
-Set-Alias "bench-shell" "Bench-Shell" -Force -Option AllScope
 Set-Alias "bsh" "Bench-Shell" -Force -Option AllScope
 Set-Alias "shell-bench" "Bench-Shell" -Force -Option AllScope
-Set-Alias "clean-cache" "Clean-Cache" -Force -Option AllScope
 Set-Alias "ccache" "Clean-Cache" -Force -Option AllScope
 Set-Alias "cleancache" "Clean-Cache" -Force -Option AllScope
-Set-Alias "update-wifi" "Update-Wifi" -Force -Option AllScope
 Set-Alias "upwf" "Update-Wifi" -Force -Option AllScope
-Set-Alias "update-network" "Update-Network" -Force -Option AllScope
 Set-Alias "upnet" "Update-Network" -Force -Option AllScope
 Set-Alias "cleansys" "Clean-System" -Force -Option AllScope
 Set-Alias "clearsys" "Clean-System" -Force -Option AllScope
@@ -1197,9 +1219,7 @@ Set-Alias "sysclean" "Clean-System" -Force -Option AllScope
 Set-Alias "syscls" "Clean-System" -Force -Option AllScope
 Set-Alias "clear-system" "Clean-System" -Force -Option AllScope
 
-Remove-Item alias:gl -Force -ErrorAction SilentlyContinue
-Remove-Item alias:gp -Force -ErrorAction SilentlyContinue
-Remove-Item alias:gcm -Force -ErrorAction SilentlyContinue
+Remove-Item alias:gl,gp,gcm -Force -ErrorAction SilentlyContinue
 
 function Invoke-GitStatusSb { git status -sb @args }
 Set-Alias "gs" "Invoke-GitStatusSb" -Force -Option AllScope
@@ -1261,7 +1281,11 @@ function Resolve-VaultSshKey([string]$explicitKey, [string]$keyName) {
 }
 
 function personal-server {
-	$ip = if ($env:PERSONAL_SERVER_IP) { $env:PERSONAL_SERVER_IP } else { "144.22.210.65" }
+	$ip = $env:PERSONAL_SERVER_IP
+	if (-not $ip) {
+		_ui_err "PERSONAL_SERVER_IP não definida (configure no Vault ou variável de ambiente)."
+		return
+	}
 	$user = if ($env:PERSONAL_SERVER_USER) { $env:PERSONAL_SERVER_USER } else { "ubuntu" }
 	$key = Resolve-VaultSshKey $env:PERSONAL_SERVER_KEY "ssh-key-personal-server.key"
 	if ($key) {
@@ -1273,7 +1297,11 @@ function personal-server {
 }
 
 function venture-server {
-	$ip = if ($env:VENTURE_SERVER_IP) { $env:VENTURE_SERVER_IP } else { "137.131.238.161" }
+	$ip = $env:VENTURE_SERVER_IP
+	if (-not $ip) {
+		_ui_err "VENTURE_SERVER_IP não definida (configure no Vault ou variável de ambiente)."
+		return
+	}
 	$user = if ($env:VENTURE_SERVER_USER) { $env:VENTURE_SERVER_USER } else { "ubuntu" }
 	$key = Resolve-VaultSshKey $env:VENTURE_SERVER_KEY "ssh-key-venture-server.key"
 	if ($key) {
@@ -1684,7 +1712,45 @@ function path-dedup {
 ### MODERN RUST TOOLS ALIASES
 ### ================================
 
-if (Get-Command rg -ErrorAction SilentlyContinue) {
+function _Find-PathCommands([string[]]$Names) {
+	$remaining = [System.Collections.Generic.HashSet[string]]::new($Names, [System.StringComparer]::OrdinalIgnoreCase)
+	$resolved = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+	$seenDirs = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+	foreach ($rawDir in ($env:PATH -split ';')) {
+		if (-not $rawDir) { continue }
+		$dir = $rawDir.Trim()
+		if ($dir.Length -gt 3) { $dir = $dir.TrimEnd('\', '/') }
+		if (-not $dir -or -not $seenDirs.Add($dir)) { continue }
+		if (-not [System.IO.Directory]::Exists($dir)) { continue }
+
+		foreach ($cmdName in @($remaining)) {
+			$exePath = [System.IO.Path]::Combine($dir, "$cmdName.exe")
+			if ([System.IO.File]::Exists($exePath)) {
+				$resolved[$cmdName] = $exePath
+				$null = $remaining.Remove($cmdName)
+				continue
+			}
+			$cmdPath = [System.IO.Path]::Combine($dir, "$cmdName.cmd")
+			if ([System.IO.File]::Exists($cmdPath)) {
+				$resolved[$cmdName] = $cmdPath
+				$null = $remaining.Remove($cmdName)
+				continue
+			}
+			$batPath = [System.IO.Path]::Combine($dir, "$cmdName.bat")
+			if ([System.IO.File]::Exists($batPath)) {
+				$resolved[$cmdName] = $batPath
+				$null = $remaining.Remove($cmdName)
+			}
+		}
+		if ($remaining.Count -eq 0) { break }
+	}
+	return $resolved
+}
+
+$script:ModernToolPaths = _Find-PathCommands @('rg', 'eza', 'bat', 'fd', 'dust', 'procs', 'btm', 'delta', 'git-delta', 'zoxide')
+
+if ($script:ModernToolPaths.ContainsKey('rg')) {
 	function Invoke-RipgrepSmart {
 		if (-not [Console]::IsOutputRedirected) { rg --smart-case @args }
 		else { rg --smart-case --color=never @args }
@@ -1693,7 +1759,7 @@ if (Get-Command rg -ErrorAction SilentlyContinue) {
 	Set-Alias "g" "Invoke-RipgrepSmart" -Force -Option AllScope
 }
 
-if (Get-Command eza -ErrorAction SilentlyContinue) {
+if ($script:ModernToolPaths.ContainsKey('eza')) {
 	function Invoke-EzaHelper {
 		param([string[]]$Flags, [Parameter(ValueFromRemainingArguments = $true)][string[]]$Rest)
 		if (-not [Console]::IsOutputRedirected) {
@@ -1718,7 +1784,7 @@ if (Get-Command eza -ErrorAction SilentlyContinue) {
 	Set-Alias "llr" "Invoke-EzaRecurseLong" -Force -Option AllScope
 }
 
-if (Get-Command bat -ErrorAction SilentlyContinue) {
+if ($script:ModernToolPaths.ContainsKey('bat')) {
 	function Invoke-BatPlain {
 		if (-not [Console]::IsOutputRedirected) { bat --paging=never @args }
 		else { bat --plain --color=never --paging=never @args }
@@ -1731,7 +1797,7 @@ if (Get-Command bat -ErrorAction SilentlyContinue) {
 	Set-Alias "b" "Invoke-BatPaged" -Force -Option AllScope
 }
 
-if (Get-Command fd -ErrorAction SilentlyContinue) {
+if ($script:ModernToolPaths.ContainsKey('fd')) {
 	function Invoke-FdSmart {
 		if (-not [Console]::IsOutputRedirected) { fd @args }
 		else { fd --color=never @args }
@@ -1744,7 +1810,7 @@ if (Get-Command fd -ErrorAction SilentlyContinue) {
 	Set-Alias "ff" "Invoke-FdAllSmart" -Force -Option AllScope
 }
 
-if (Get-Command dust -ErrorAction SilentlyContinue) {
+if ($script:ModernToolPaths.ContainsKey('dust')) {
 	function Invoke-DustSmart {
 		if (-not [Console]::IsOutputRedirected) { dust @args }
 		else {
@@ -1759,7 +1825,7 @@ if (Get-Command dust -ErrorAction SilentlyContinue) {
 	Set-Alias "d" "Invoke-DustSmart" -Force -Option AllScope
 }
 
-if (Get-Command procs -ErrorAction SilentlyContinue) {
+if ($script:ModernToolPaths.ContainsKey('procs')) {
 	function Invoke-ProcsSmart {
 		if (-not [Console]::IsOutputRedirected) { procs @args }
 		else {
@@ -1786,17 +1852,42 @@ if (Get-Command procs -ErrorAction SilentlyContinue) {
 	Set-Alias "pst" "Invoke-ProcsTreeSmart" -Force -Option AllScope
 }
 
-if (Get-Command btm -ErrorAction SilentlyContinue) {
+if ($script:ModernToolPaths.ContainsKey('btm')) {
 	Set-Alias "t" "btm" -Force -Option AllScope
 }
 
-if (-not (Get-Command delta -ErrorAction SilentlyContinue) -and (Get-Command git-delta -ErrorAction SilentlyContinue)) {
+if (-not $script:ModernToolPaths.ContainsKey('delta') -and $script:ModernToolPaths.ContainsKey('git-delta')) {
 	Set-Alias "delta" "git-delta" -Force -Option AllScope
 }
 
-if (Get-Command zoxide -ErrorAction SilentlyContinue) {
-	Invoke-Expression (& zoxide init powershell | Out-String)
+if ($script:ModernToolPaths.ContainsKey('zoxide')) {
+	$zoxideBin = $script:ModernToolPaths['zoxide']
+	$cacheRoot = if ($env:LOCALAPPDATA) { [System.IO.Path]::Combine($env:LOCALAPPDATA, 'shell') } else { [System.IO.Path]::Combine($HOME, '.cache', 'shell') }
+	$zoxideCache = [System.IO.Path]::Combine($cacheRoot, 'zoxide_init.ps1')
+	$zoxideStamp = "$zoxideCache.stamp"
+	$expectedStamp = "{0}|{1}" -f $zoxideBin, [System.IO.File]::GetLastWriteTimeUtc($zoxideBin).Ticks
+
+	$cacheValid = [System.IO.File]::Exists($zoxideCache) -and
+		[System.IO.File]::Exists($zoxideStamp) -and
+		([System.IO.File]::ReadAllText($zoxideStamp) -eq $expectedStamp)
+
+	if (-not $cacheValid) {
+		if (-not [System.IO.Directory]::Exists($cacheRoot)) {
+			$null = [System.IO.Directory]::CreateDirectory($cacheRoot)
+		}
+		$zoxideScript = (& $zoxideBin init powershell | Out-String)
+		if ($zoxideScript) {
+			$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+			[System.IO.File]::WriteAllText($zoxideCache, $zoxideScript, $utf8NoBom)
+			[System.IO.File]::WriteAllText($zoxideStamp, $expectedStamp, $utf8NoBom)
+		}
+	}
+	if ([System.IO.File]::Exists($zoxideCache)) {
+		. $zoxideCache
+	}
 }
+
+$global:_ShellCoreLoaded = $true
 
 ### ================================
 ### GOOGLE ANTIGRAVITY CLI ALIASES

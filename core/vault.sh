@@ -1,3 +1,7 @@
+# ----------------------------------------------------------------
+# Core: Universal Vault & SSH Key Loader
+# ----------------------------------------------------------------
+
 ### ================================
 ### VAULT LOADER & SSH
 ### ================================
@@ -26,7 +30,7 @@ export VAULT_DIR
 ### SSH KEYS
 ### --------------------------------
 _ssh_cache="${_SHELL_CACHE_DIR:-${XDG_RUNTIME_DIR:-/tmp}/.universal_shell_cache_${USER:-user}}/ssh_agent_verified"
-if [ -n "${SSH_AUTH_SOCK}" ] && [ -S "${SSH_AUTH_SOCK}" ]; then
+if [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "${SSH_AUTH_SOCK}" ]; then
 	if [ -z "${SSH_AUTH_CHECKED:-}" ] && [ ! -f "${_ssh_cache}" ]; then
 		if ! ssh-add -l > "/dev/null" 2>&1; then
 			command -v vault-keys > "/dev/null" 2>&1 && vault-keys > "/dev/null" 2>&1

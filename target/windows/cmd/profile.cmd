@@ -3,32 +3,47 @@ rem ----------------------------------------------------------------
 rem Config: Windows CMD Profile
 rem ----------------------------------------------------------------
 
+if defined _SHELL_CMD_PROFILE_ACTIVE exit /b 0
+set "_SHELL_CMD_PROFILE_ACTIVE=1"
+
 rem ================================
 rem SETUP
 rem ================================
-if exist "%USERPROFILE%\.local\share\vault\vault.cmd" (
+if defined VAULT_DIR if exist "%VAULT_DIR%\vault.cmd" (
+	call "%VAULT_DIR%\vault.cmd"
+) else if exist "%USERPROFILE%\.local\share\vault\vault.cmd" (
 	call "%USERPROFILE%\.local\share\vault\vault.cmd"
 ) else if exist "%USERPROFILE%\.config\vault\vault.cmd" (
 	call "%USERPROFILE%\.config\vault\vault.cmd"
 ) else if exist "%USERPROFILE%\.vault\vault.cmd" (
 	call "%USERPROFILE%\.vault\vault.cmd"
+) else if defined MSYS2_HOME if exist "%MSYS2_HOME%\.local\share\vault\vault.cmd" (
+	call "%MSYS2_HOME%\.local\share\vault\vault.cmd"
+) else if exist "C:\msys64\home\%USERNAME%\.local\share\vault\vault.cmd" (
+	call "C:\msys64\home\%USERNAME%\.local\share\vault\vault.cmd"
 )
 
 rem ================================
 rem VARS
 rem ================================
 set "HOME=%USERPROFILE%"
-set "SYSTEM32=C:\Windows\System32"
+set "SYSTEM32=%SystemRoot%\System32"
 set "ONEDRIVE=%HOME%\OneDrive"
 set "DESKTOP=%ONEDRIVE%\Área de Trabalho"
 set "DOCUMENTS=%ONEDRIVE%\Documentos"
 set "IMAGES=%ONEDRIVE%\Imagens"
 set "WORKSPACE=%ONEDRIVE%\Workspace"
 set "DOWNLOADS=%HOME%\Downloads"
-set "CLINKPATH=%PROGRAMFILES(x86)%\clink"
+if exist "%LOCALAPPDATA%\clink" (
+	set "CLINK_PATH=%LOCALAPPDATA%\clink"
+) else if defined CLINK_DIR (
+	set "CLINK_PATH=%CLINK_DIR%"
+) else (
+	set "CLINK_PATH=%LOCALAPPDATA%\clink"
+)
 set "CMD_PROFILE=%HOME%\profile.cmd"
-set "LUA_PROFILE=%CLINKPATH%\profile.lua"
-set "PWSH_PROFILE=C:\Program Files\PowerShell\7\profile.ps1"
+set "LUA_PROFILE=%CLINK_PATH%\profile.lua"
+set "PWSH_PROFILE=%ProgramFiles%\PowerShell\7\profile.ps1"
 set "VIRTUAL_STORE=%LOCALAPPDATA%\VirtualStore"
 set "FASM_STORE=%VIRTUAL_STORE%\Program Files\FASM"
 set "FASM2_STORE=%VIRTUAL_STORE%\Program Files\FASM2"
@@ -48,23 +63,51 @@ if not defined SHELL_REPO_DIR (
 		set "SHELL_REPO_DIR=%USERPROFILE%\.local\share\shell"
 	) else if exist "%USERPROFILE%\.config\shell\shell.sh" (
 		set "SHELL_REPO_DIR=%USERPROFILE%\.config\shell"
+	) else if defined MSYS2_HOME if exist "%MSYS2_HOME%\.local\share\shell\shell.sh" (
+		set "SHELL_REPO_DIR=%MSYS2_HOME%\.local\share\shell"
+	) else if exist "C:\msys64\home\%USERNAME%\.local\share\shell\shell.sh" (
+		set "SHELL_REPO_DIR=C:\msys64\home\%USERNAME%\.local\share\shell"
 	) else if exist "%PROGRAMFILES%\Shell\shell.sh" (
 		set "SHELL_REPO_DIR=%PROGRAMFILES%\Shell"
 	)
 )
+
+set "_skip_doskey=0"
+if defined CLINK_DIR set "_skip_doskey=1"
+if defined CLINK_ACTIVE set "_skip_doskey=1"
+if "%_skip_doskey%"=="0" (
+	setlocal EnableDelayedExpansion
+	set "_cmd_line=!CMDCMDLINE!"
+	set "_cmd_clean= !_cmd_line:"= ! "
+	if not "!_cmd_clean: /c =!"=="!_cmd_clean!" (
+		endlocal
+		set "_skip_doskey=1"
+	) else (
+		endlocal
+	)
+)
+if "%_skip_doskey%"=="1" (
+	set "_skip_doskey="
+	set "_SHELL_CMD_PROFILE_ACTIVE="
+	exit /b 0
+)
+set "_skip_doskey="
+
+rem ================================
+rem DOSKEY FALLBACK
+rem ================================
 if not defined PWSH_EXE (
-	where pwsh >nul 2>&1 && (
+	if exist "%ProgramFiles%\PowerShell\7\pwsh.exe" (
 		set "PWSH_EXE=pwsh"
-	) || (
+	) else if exist "%LOCALAPPDATA%\Microsoft\WindowsApps\pwsh.exe" (
+		set "PWSH_EXE=pwsh"
+	) else (
 		set "PWSH_EXE=powershell"
 	)
 )
 
-set "PWSH_BOOT=if ($PROFILE.CurrentUserAllHosts -and (Test-Path $PROFILE.CurrentUserAllHosts)) { . $PROFILE.CurrentUserAllHosts }; if (Test-Path $PROFILE) { . $PROFILE }; if (-not (Get-Command Update-All -ErrorAction SilentlyContinue) -and (Test-Path '%SHELL_REPO_DIR%\target\windows\powershell\profile.ps1')) { . '%SHELL_REPO_DIR%\target\windows\powershell\profile.ps1' }"
+set "PWSH_BOOT=if ($PROFILE.CurrentUserAllHosts -and (Test-Path -LiteralPath $PROFILE.CurrentUserAllHosts)) { . $PROFILE.CurrentUserAllHosts }; if ($PROFILE -and (Test-Path -LiteralPath $PROFILE)) { . $PROFILE }; if (-not (Get-Command Update-All -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath '%SHELL_REPO_DIR%\target\windows\powershell\profile.ps1')) { . '%SHELL_REPO_DIR%\target\windows\powershell\profile.ps1' }"
 
-rem ================================
-rem ALIASES & DOSKEY
-rem ================================
 doskey upget=winget upgrade --all
 doskey upscp=scoop update ^&^& scoop update --all
 doskey upcho=choco upgrade all -y
@@ -144,11 +187,11 @@ doskey ant=start "" antigravity-ide $*
 doskey open-smart=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Invoke-OpenSmart $*"
 doskey o=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Invoke-OpenSmart $*"
 doskey open=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Invoke-OpenSmart $*"
-doskey take=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Invoke-TakeDir $*"
-doskey take-dir=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Invoke-TakeDir $*"
-doskey mkcd=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Invoke-TakeDir $*"
-doskey cdb=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Invoke-CdGitRoot"
-doskey cd-git-root=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Invoke-CdGitRoot"
+doskey take=(if not exist "$*" mkdir "$*") ^&^& cd /d "$*"
+doskey take-dir=(if not exist "$*" mkdir "$*") ^&^& cd /d "$*"
+doskey mkcd=(if not exist "$*" mkdir "$*") ^&^& cd /d "$*"
+doskey cdb=for /f "delims=" %i in ('git rev-parse --show-toplevel 2^>nul') do @cd /d "%i"
+doskey cd-git-root=for /f "delims=" %i in ('git rev-parse --show-toplevel 2^>nul') do @cd /d "%i"
 doskey hist=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Invoke-HistSearch $*"
 doskey hg=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Invoke-HistSearch $*"
 doskey extract=%PWSH_EXE% -NoProfile -ExecutionPolicy Bypass -Command "%PWSH_BOOT%; Invoke-ExtractArchive $*"
@@ -187,3 +230,5 @@ doskey agyra=agy -c --dangerously-skip-permissions $*
 doskey agyrd=agy -c --dangerously-skip-permissions $*
 doskey agy-return-auto=agy -c --dangerously-skip-permissions $*
 doskey agy-return-danger=agy -c --dangerously-skip-permissions $*
+
+set "_SHELL_CMD_PROFILE_ACTIVE="

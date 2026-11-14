@@ -12,15 +12,20 @@ unset IFS
 ### --------------------------------
 if [ -z "${ZSH_VERSION:-}" ]; then
 	_esc_test=$'\e'
-	if [ "${_esc_test}" = '\e' ] || ! (eval 'f-f() { :; }') 2> "/dev/null"; then
+	_kebab_ok=0
+	(eval 'f-f() { :; }') 2> "/dev/null" && _kebab_ok=1
+	if [ "${#_esc_test}" -ne 1 ] || [ "${_kebab_ok}" -eq 0 ]; then
 		unset _esc_test
 		if command -v zsh > "/dev/null" 2>&1; then
 			exec zsh "$0" "$@"
 		elif command -v bash > "/dev/null" 2>&1; then
 			exec bash "$0" "$@"
+		elif [ "${_kebab_ok}" -eq 0 ] || [ -z "${KSH_VERSION:-}" ]; then
+			printf '%s\n' "❌ Current shell lacks required syntax support and neither zsh nor bash is installed." >&2
+			exit 1
 		fi
 	fi
-	unset _esc_test
+	unset _esc_test _kebab_ok
 fi
 
 [ -f "${SHELL_REPO_DIR}/library/ui.sh" ] && . "${SHELL_REPO_DIR}/library/ui.sh"
@@ -141,8 +146,8 @@ esac
 ### --------------------------------
 ### DETECT ENVIRONMENT
 ### --------------------------------
-for _lib in "${SHELL_REPO_DIR}/library/"*.sh; do
-	[ -f "${_lib}" ] && . "${_lib}"
+for _lib in detect.sh detect-desktop.sh ui.sh functions.sh deploy.sh; do
+	[ -f "${SHELL_REPO_DIR}/library/${_lib}" ] && . "${SHELL_REPO_DIR}/library/${_lib}"
 done
 unset _lib
 _cache_clean
@@ -220,13 +225,21 @@ if [ "${OS_NAME}" != "windows" ]; then
 	else
 		chown -R "${_real_user}:${_real_group}" "${SHELL_REPO_DIR}" 2> "/dev/null" || true
 	fi
-	find "${SHELL_REPO_DIR}" -type d -exec chmod 0755 {} + 2> "/dev/null" || true
-	find "${SHELL_REPO_DIR}" -type f -exec chmod 0644 {} + 2> "/dev/null" || true
+	find "${SHELL_REPO_DIR}" -path "${SHELL_REPO_DIR}/.git" -prune -o -type d -exec chmod 0755 {} + 2> "/dev/null" || true
+	find "${SHELL_REPO_DIR}" -path "${SHELL_REPO_DIR}/.git" -prune -o -type f -exec chmod 0644 {} + 2> "/dev/null" || true
 	[ -f "${SHELL_REPO_DIR}/shell.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/shell.sh" 2> "/dev/null" || true
 	[ -f "${SHELL_REPO_DIR}/init.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/init.sh" 2> "/dev/null" || true
 	[ -f "${SHELL_REPO_DIR}/install.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/install.sh" 2> "/dev/null" || true
 	[ -f "${SHELL_REPO_DIR}/benchmark.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/benchmark.sh" 2> "/dev/null" || true
 	[ -d "${SHELL_REPO_DIR}/.githooks" ] && chmod 0755 "${SHELL_REPO_DIR}/.githooks/"* 2> "/dev/null" || true
+	if [ -d "${SHELL_REPO_DIR}/.scripts" ]; then
+		find "${SHELL_REPO_DIR}/.scripts" -type f 2> "/dev/null" | while IFS= read -r _script_item; do
+			read -r _first_line < "${_script_item}" 2> "/dev/null" || _first_line=""
+			case "${_first_line}" in
+				"#!"*) chmod 0755 "${_script_item}" 2> "/dev/null" || true ;;
+			esac
+		done
+	fi
 	command git config --global --add safe.directory "${SHELL_REPO_DIR}" 2> "/dev/null" || true
 fi
 
@@ -342,7 +355,7 @@ _install_shell_target() {
 			fi
 		else
 			if [ -f "${_zshenv}" ] && grep -qF "unsetopt GLOBAL_RCS" "${_zshenv}" 2> "/dev/null"; then
-				sed -i.bak '/unsetopt GLOBAL_RCS/s/^/# /' "${_zshenv}" 2> "/dev/null" && rm -f "${_zshenv}.bak"
+				sed '/unsetopt GLOBAL_RCS/s/^/# /' "${_zshenv}" >| "${_zshenv}.tmp" && mv -f "${_zshenv}.tmp" "${_zshenv}"
 			fi
 		fi
 	fi
@@ -429,9 +442,9 @@ _install_shell_target() {
 						cp "${HOME}/.oh-my-zsh/templates/zshrc.zsh-template" "${_rc_file}"
 					fi
 					if [ -f "${_rc_file}" ]; then
-						sed -i.bak "s/^# zstyle ':omz:update' mode disabled/zstyle ':omz:update' mode disabled/" "${_rc_file}" && rm -f "${_rc_file}.bak"
+						sed "s/^# zstyle ':omz:update' mode disabled/zstyle ':omz:update' mode disabled/" "${_rc_file}" >| "${_rc_file}.tmp" && mv -f "${_rc_file}.tmp" "${_rc_file}"
 						if ! grep -qF 'ZSH_DISABLE_COMPFIX' "${_rc_file}" 2> "/dev/null"; then
-							sed -i.bak '/^export ZSH=/i ZSH_DISABLE_COMPFIX="true"' "${_rc_file}" && rm -f "${_rc_file}.bak"
+							awk '/^export ZSH=/ { print "ZSH_DISABLE_COMPFIX=\"true\"" } { print }' "${_rc_file}" >| "${_rc_file}.tmp" && mv -f "${_rc_file}.tmp" "${_rc_file}"
 						fi
 					fi
 					[ -f "${HOME}/.zcompdump" ] && zsh -c 'zcompile "${HOME}/.zcompdump"' 2> "/dev/null" || true
@@ -442,9 +455,9 @@ _install_shell_target() {
 							_as_root cp "/root/.oh-my-zsh/templates/zshrc.zsh-template" "${_root_rc_file}"
 						fi
 						if _as_root test -f "${_root_rc_file}"; then
-							_as_root sed -i.bak "s/^# zstyle ':omz:update' mode disabled/zstyle ':omz:update' mode disabled/" "${_root_rc_file}" && _as_root rm -f "${_root_rc_file}.bak"
+							_as_root sh -c 'sed "s/^# zstyle '\'':omz:update'\'' mode disabled/zstyle '\'':omz:update'\'' mode disabled/" "$1" >| "$1.tmp" && mv -f "$1.tmp" "$1"' _ "${_root_rc_file}"
 							if ! _as_root grep -qF 'ZSH_DISABLE_COMPFIX' "${_root_rc_file}" 2> "/dev/null"; then
-								_as_root sed -i.bak '/^export ZSH=/i ZSH_DISABLE_COMPFIX="true"' "${_root_rc_file}" && _as_root rm -f "${_root_rc_file}.bak"
+								_as_root sh -c 'awk '\''/^export ZSH=/ { print "ZSH_DISABLE_COMPFIX=\"true\"" } { print }'\'' "$1" >| "$1.tmp" && mv -f "$1.tmp" "$1"' _ "${_root_rc_file}"
 							fi
 						fi
 					fi
@@ -458,15 +471,14 @@ _install_shell_target() {
 						cp "${HOME}/.oh-my-bash/templates/bashrc.osh-template" "${_rc_file}"
 					fi
 					if [ -f "${_rc_file}" ]; then
-						sed -i.bak 's/OSH_THEME="[^"]*"/OSH_THEME=""/' "${_rc_file}" && rm -f "${_rc_file}.bak"
-						sed -i.bak 's/^# DISABLE_AUTO_UPDATE="true"/DISABLE_AUTO_UPDATE="true"/' "${_rc_file}" && rm -f "${_rc_file}.bak"
+						sed -e 's/OSH_THEME="[^"]*"/OSH_THEME=""/' -e 's/^# DISABLE_AUTO_UPDATE="true"/DISABLE_AUTO_UPDATE="true"/' "${_rc_file}" >| "${_rc_file}.tmp" && mv -f "${_rc_file}.tmp" "${_rc_file}"
 						awk '
 							/^completions=\(/ { print "completions=(git ssh)"; skip=1; next }
 							/^aliases=\(/     { print "aliases=(general)"; skip=1; next }
 							/^plugins=\(/     { print "plugins=(bashmarks)"; skip=1; next }
 							skip && /^\)/     { skip=0; next }
 							!skip             { print }
-						' "${_rc_file}" > "${_rc_file}.tmp" && mv -f "${_rc_file}.tmp" "${_rc_file}"
+						' "${_rc_file}" >| "${_rc_file}.tmp" && mv -f "${_rc_file}.tmp" "${_rc_file}"
 					fi
 					if [ "${OS_NAME}" != "windows" ]; then
 						if ! _as_root test -d "/root/.oh-my-bash"; then
@@ -475,15 +487,14 @@ _install_shell_target() {
 							_as_root cp "/root/.oh-my-bash/templates/bashrc.osh-template" "${_root_rc_file}"
 						fi
 						if _as_root test -f "${_root_rc_file}"; then
-							_as_root sed -i.bak 's/OSH_THEME="[^"]*"/OSH_THEME=""/' "${_root_rc_file}" && _as_root rm -f "${_root_rc_file}.bak"
-							_as_root sed -i.bak 's/^# DISABLE_AUTO_UPDATE="true"/DISABLE_AUTO_UPDATE="true"/' "${_root_rc_file}" && _as_root rm -f "${_root_rc_file}.bak"
+							_as_root sh -c 'sed -e '\''s/OSH_THEME="[^"]*"/OSH_THEME=""/'\'' -e '\''s/^# DISABLE_AUTO_UPDATE="true"/DISABLE_AUTO_UPDATE="true"/'\'' "$1" >| "$1.tmp" && mv -f "$1.tmp" "$1"' _ "${_root_rc_file}"
 							_as_root sh -c 'awk '\''
 								/^completions=\(/ { print "completions=(git ssh)"; skip=1; next }
 								/^aliases=\(/     { print "aliases=(general)"; skip=1; next }
 								/^plugins=\(/     { print "plugins=(bashmarks)"; skip=1; next }
 								skip && /^\)/     { skip=0; next }
 								!skip             { print }
-							'\'' "$1" > "$1.tmp" && mv -f "$1.tmp" "$1"' _ "${_root_rc_file}"
+							'\'' "$1" >| "$1.tmp" && mv -f "$1.tmp" "$1"' _ "${_root_rc_file}"
 						fi
 					fi
 				fi
@@ -501,14 +512,24 @@ _install_shell_target() {
 	_setup_block="$(cat <<- EOF
 
 		### ================================
-		### Shell Environment Setup
+		### SHELL ENVIRONMENT SETUP
 		### ================================
 		${_repo_dir_line}
 		${_context_line}
 		${_userland_line}
 		export SHELL_FRAMEWORK=${SHELL_FRAMEWORK}
 
-		for _file in "\${SHELL_REPO_DIR}/library/"*.sh; do [ -f "\${_file}" ] && ${_source_cmd} "\${_file}"; done
+		for _file in detect.sh detect-desktop.sh ui.sh functions.sh; do
+			[ -f "\${SHELL_REPO_DIR}/library/\${_file}" ] && ${_source_cmd} "\${SHELL_REPO_DIR}/library/\${_file}"
+		done
+		for _file in "\${SHELL_REPO_DIR}/library/"*.sh; do
+			case "\${_file##*/}" in
+				deploy.sh|detect.sh|detect-desktop.sh|ui.sh|functions.sh) continue ;;
+				desktop-*.sh) [ "\${SHELL_CONTEXT:-desktop}" = "desktop" ] || continue ;;
+			esac
+			[ -f "\${_file}" ] && ${_source_cmd} "\${_file}"
+		done
+		[ -f "\${SHELL_REPO_DIR}/target/${OS_NAME}/environment.sh" ] && ${_source_cmd} "\${SHELL_REPO_DIR}/target/${OS_NAME}/environment.sh"
 		for _file in "\${SHELL_REPO_DIR}/core/"*.sh; do [ -f "\${_file}" ] && ${_source_cmd} "\${_file}"; done
 		unset _file
 
@@ -548,7 +569,7 @@ for _target in ${TARGET_SHELLS}; do
 				_fish_cfg="${XDG_CONFIG_HOME:-${HOME}/.config}/fish/config.fish"
 				if [ -f "${_fish_cfg}" ]; then
 					if grep -qF "SHELL_USERLAND" "${_fish_cfg}" 2> "/dev/null"; then
-						sed -i.bak "s/^set -gx SHELL_USERLAND .*/set -gx SHELL_USERLAND \"${SHELL_USERLAND}\"/" "${_fish_cfg}" 2> "/dev/null" && rm -f "${_fish_cfg}.bak"
+						sed "s/^set -gx SHELL_USERLAND .*/set -gx SHELL_USERLAND \"${SHELL_USERLAND}\"/" "${_fish_cfg}" >| "${_fish_cfg}.tmp" && mv -f "${_fish_cfg}.tmp" "${_fish_cfg}"
 					else
 						printf '\nset -gx SHELL_USERLAND "%s"\n' "${SHELL_USERLAND}" >> "${_fish_cfg}"
 					fi

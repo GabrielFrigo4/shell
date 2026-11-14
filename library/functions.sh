@@ -3,7 +3,7 @@
 # ----------------------------------------------------------------
 
 ### --------------------------------
-### Privilege Escalation
+### PRIVILEGE ESCALATION
 ### --------------------------------
 _as_root() {
 	local _escalator="$(_detect_privilege_escalator)"
@@ -21,44 +21,72 @@ _as_root() {
 ### PATH MANIPULATION
 ### --------------------------------
 path-front() {
-	case ":${PATH}:" in
-		*":${1}:"*) ;;
-		*)
-			if [ ! -d "${1}" ]; then
-				case "${1}" in
-					"${HOME}/"*) mkdir -p "${1}" 2> "/dev/null" || true ;;
-				esac
-			fi
-			[ -d "${1}" ] && export PATH="${1}:${PATH}"
-			;;
-	esac
+	local _prefix="" _arg _dir _rem _entry _rest=""
+	for _arg in "$@"; do
+		[ -z "${_arg}" ] && continue
+		_dir="${_arg}"
+		if [ ! -d "${_dir}" ]; then
+			case "${_dir}" in
+				"${HOME}/"*) mkdir -p "${_dir}" 2> "/dev/null" || true ;;
+			esac
+		fi
+		[ -d "${_dir}" ] || continue
+		case ":${_prefix}:" in
+			*":${_dir}:"*) ;;
+			*) _prefix="${_prefix:+${_prefix}:}${_dir}" ;;
+		esac
+	done
+	[ -z "${_prefix}" ] && return 0
+	_rem="${PATH:-}"
+	while [ -n "${_rem}" ]; do
+		case "${_rem}" in
+			*:*) _entry="${_rem%%:*}"; _rem="${_rem#*:}" ;;
+			*)   _entry="${_rem}"; _rem="" ;;
+		esac
+		[ -z "${_entry}" ] && continue
+		case ":${_prefix}:" in
+			*":${_entry}:"*) continue ;;
+		esac
+		case ":${_rest}:" in
+			*":${_entry}:"*) continue ;;
+		esac
+		_rest="${_rest:+${_rest}:}${_entry}"
+	done
+	export PATH="${_prefix}${_rest:+:${_rest}}"
 }
 
 path-back() {
-	case ":${PATH}:" in
-		*":${1}:"*) ;;
-		*)
-			if [ ! -d "${1}" ]; then
-				case "${1}" in
-					"${HOME}/"*) mkdir -p "${1}" 2> "/dev/null" || true ;;
-				esac
-			fi
-			[ -d "${1}" ] && export PATH="${PATH}:${1}"
-			;;
-	esac
+	local _arg _dir
+	for _arg in "$@"; do
+		[ -z "${_arg}" ] && continue
+		_dir="${_arg}"
+		case ":${PATH}:" in
+			*":${_dir}:"*) ;;
+			*)
+				if [ ! -d "${_dir}" ]; then
+					case "${_dir}" in
+						"${HOME}/"*) mkdir -p "${_dir}" 2> "/dev/null" || true ;;
+					esac
+				fi
+				[ -d "${_dir}" ] && export PATH="${PATH:+${PATH}:}${_dir}"
+				;;
+		esac
+	done
 }
 
 path-dedup() {
-	local _old_ifs="${IFS+x}" _saved_ifs="${IFS:-}" _new_path="" _dir
-	IFS=":"
-	for _dir in ${PATH}; do
+	local _rem="${PATH:-}" _new_path="" _dir
+	while [ -n "${_rem}" ]; do
+		case "${_rem}" in
+			*:*) _dir="${_rem%%:*}"; _rem="${_rem#*:}" ;;
+			*)   _dir="${_rem}"; _rem="" ;;
+		esac
 		[ -z "${_dir}" ] && continue
 		case ":${_new_path}:" in
 			*":${_dir}:"*) ;;
 			*) _new_path="${_new_path:+${_new_path}:}${_dir}" ;;
 		esac
 	done
-	if [ -n "${_old_ifs}" ]; then IFS="${_saved_ifs}"; else unset IFS; fi
 	export PATH="${_new_path}"
 }
 
@@ -76,6 +104,34 @@ alias ccache="clean-cache"
 ### --------------------------------
 ### RESILIENT GIT PULL & PUSH
 ### --------------------------------
+_git_pull_exec() {
+	local _dir="${1}" _ran_as_root="${2}" _escalator="${3}"
+	shift 3
+	if [ "${_ran_as_root}" -eq 1 ] && [ -n "${_escalator}" ]; then
+		command "${_escalator}" git -C "${_dir}" "$@"
+	else
+		command git -C "${_dir}" "$@"
+	fi
+}
+
+_git_pull_heal_perms() {
+	local _dir="${1}" _is_windows="${2}" _cur_uid="${3}" _ran_as_root="${4}" _real_u="${5}" _real_g="${6}"
+	if [ "${_is_windows}" -eq 0 ]; then
+		if [ "${_cur_uid}" -eq 0 ] || [ "${_ran_as_root}" -eq 1 ]; then
+			if [ -n "${_real_u}" ] && [ "${_real_u}" != "root" ]; then
+				if [ "${_cur_uid}" -eq 0 ]; then
+					chown -R "${_real_u}:${_real_g}" "${_dir}" 2> "/dev/null" || true
+					chmod -R u+rwX,go+rX "${_dir}" 2> "/dev/null" || true
+				else
+					_as_root chown -R "${_real_u}:${_real_g}" "${_dir}" 2> "/dev/null" || true
+					_as_root chmod -R u+rwX,go+rX "${_dir}" 2> "/dev/null" || true
+				fi
+			fi
+		fi
+	fi
+	command git config --global --add safe.directory "${_dir}" 2> "/dev/null" || true
+}
+
 _git_pull_resilient() {
 	local _dir="$1"
 	if command -v cygpath > "/dev/null" 2>&1; then
@@ -121,60 +177,35 @@ _git_pull_resilient() {
 		esac
 	fi
 
-	_git_exec() {
-		if [ "${_ran_as_root}" -eq 1 ] && [ -n "${_escalator}" ]; then
-			${_escalator} git -C "${_dir}" "$@"
-		else
-			command git -C "${_dir}" "$@"
-		fi
-	}
-
-	_heal_final_perms() {
-		if [ "${_is_windows}" -eq 0 ]; then
-			if [ "${_cur_uid}" -eq 0 ] || [ "${_ran_as_root}" -eq 1 ]; then
-				if [ -n "${_real_u}" ] && [ "${_real_u}" != "root" ]; then
-					if [ "${_cur_uid}" -eq 0 ]; then
-						chown -R "${_real_u}:${_real_g}" "${_dir}" 2> "/dev/null" || true
-						chmod -R u+rwX,go+rX "${_dir}" 2> "/dev/null" || true
-					else
-						_as_root chown -R "${_real_u}:${_real_g}" "${_dir}" 2> "/dev/null" || true
-						_as_root chmod -R u+rwX,go+rX "${_dir}" 2> "/dev/null" || true
-					fi
-				fi
-			fi
-		fi
-		command git config --global --add safe.directory "${_dir}" 2> "/dev/null" || true
-	}
-
-	_git_exec diff --numstat 2> "/dev/null" | while IFS="$(printf '\t')" read -r _additions _deletions _file; do
+	_git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" diff --numstat 2> "/dev/null" | while IFS="$(printf '\t')" read -r _additions _deletions _file; do
 		if [ "${_additions}" = "0" ] && [ "${_deletions}" = "0" ] && [ -n "${_file}" ]; then
-			_git_exec checkout -- "${_file}" > "/dev/null" 2>&1 || true
+			_git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" checkout -- "${_file}" < "/dev/null" > "/dev/null" 2>&1 || true
 		fi
 	done
 
 	local _has_stash=0
 	local _status
-	_status="$(_git_exec status --porcelain 2> "/dev/null" || true)"
+	_status="$(_git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" status --porcelain 2> "/dev/null" || true)"
 	if [ -n "${_status}" ]; then
 		local _stash_before _stash_after
-		_stash_before="$(_git_exec rev-parse -q --verify refs/stash 2> "/dev/null" || true)"
+		_stash_before="$(_git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" rev-parse -q --verify refs/stash 2> "/dev/null" || true)"
 		_ui_warn "Alterações locais ou arquivos novos detectados em ${_dir}."
 		_ui_sub "Criando auto-stash defensivo antes da sincronização..."
-		_git_exec stash push -u -m "autostash-before-update-$(date +%s)" > "/dev/null" 2>&1 || true
-		_stash_after="$(_git_exec rev-parse -q --verify refs/stash 2> "/dev/null" || true)"
+		_git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" stash push -u -m "autostash-before-update-$(date +%s)" > "/dev/null" 2>&1 || true
+		_stash_after="$(_git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" rev-parse -q --verify refs/stash 2> "/dev/null" || true)"
 		if [ -n "${_stash_after}" ] && [ "${_stash_before}" != "${_stash_after}" ]; then
 			_has_stash=1
 		fi
 	fi
 
 	local _current_branch
-	_current_branch="$(_git_exec branch --show-current 2> "/dev/null" || true)"
+	_current_branch="$(_git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" branch --show-current 2> "/dev/null" || true)"
 	if [ -z "${_current_branch}" ]; then
 		local _default_branch
-		_default_branch="$(_git_exec symbolic-ref --short refs/remotes/origin/HEAD 2> "/dev/null" | sed 's|^origin/||' || true)"
+		_default_branch="$(_git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" symbolic-ref --short refs/remotes/origin/HEAD 2> "/dev/null" | sed 's|^origin/||' || true)"
 		[ -z "${_default_branch}" ] && _default_branch="main"
-		if _git_exec show-ref --verify --quiet "refs/heads/${_default_branch}" 2> "/dev/null"; then
-			if _git_exec checkout "${_default_branch}" > "/dev/null" 2>&1; then
+		if _git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" show-ref --verify --quiet "refs/heads/${_default_branch}" 2> "/dev/null"; then
+			if _git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" checkout "${_default_branch}" > "/dev/null" 2>&1; then
 				_current_branch="${_default_branch}"
 			fi
 		fi
@@ -182,29 +213,29 @@ _git_pull_resilient() {
 
 	local _pull_ok=0
 	if [ -n "${_current_branch}" ]; then
-		if _git_exec pull --ff-only > "/dev/null" 2>&1; then
+		if _git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" pull --ff-only > "/dev/null" 2>&1; then
 			_pull_ok=1
-		elif _git_exec pull --rebase > "/dev/null" 2>&1; then
+		elif _git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" pull --rebase > "/dev/null" 2>&1; then
 			_pull_ok=1
-		elif _git_exec pull > "/dev/null" 2>&1; then
+		elif _git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" pull > "/dev/null" 2>&1; then
 			_pull_ok=1
 		fi
 	else
-		if _git_exec fetch > "/dev/null" 2>&1; then
+		if _git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" fetch > "/dev/null" 2>&1; then
 			_pull_ok=1
 		fi
 	fi
 
 	if [ "${_pull_ok}" -eq 1 ]; then
 		if [ "${_has_stash}" -eq 1 ]; then
-			if ! _git_exec stash pop > "/dev/null" 2>&1; then
-				_git_exec reset --merge > "/dev/null" 2>&1 || _git_exec checkout -f > "/dev/null" 2>&1 || true
+			if ! _git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" stash pop > "/dev/null" 2>&1; then
+				_git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" reset --merge > "/dev/null" 2>&1 || _git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" checkout -f > "/dev/null" 2>&1 || true
 				_ui_warn "Conflito detectado ao restaurar alterações locais em ${_dir}."
 				_ui_info "Sua versão local foi preservada com segurança em 'git stash list'."
 			fi
-			_git_exec diff --numstat 2> "/dev/null" | while IFS="$(printf '\t')" read -r _additions _deletions _file; do
+			_git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" diff --numstat 2> "/dev/null" | while IFS="$(printf '\t')" read -r _additions _deletions _file; do
 				if [ "${_additions}" = "0" ] && [ "${_deletions}" = "0" ] && [ -n "${_file}" ]; then
-					_git_exec checkout -- "${_file}" > "/dev/null" 2>&1 || true
+					_git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" checkout -- "${_file}" < "/dev/null" > "/dev/null" 2>&1 || true
 				fi
 			done
 		fi
@@ -214,13 +245,13 @@ _git_pull_resilient() {
 		fi
 
 		if [ -f "${_dir}/.gitmodules" ]; then
-			_git_exec submodule update --init --recursive > "/dev/null" 2>&1 || true
+			_git_pull_exec "${_dir}" "${_ran_as_root}" "${_escalator}" submodule update --init --recursive > "/dev/null" 2>&1 || true
 		fi
-		_heal_final_perms
+		_git_pull_heal_perms "${_dir}" "${_is_windows}" "${_cur_uid}" "${_ran_as_root}" "${_real_u}" "${_real_g}"
 		return 0
 	fi
 
-	_heal_final_perms
+	_git_pull_heal_perms "${_dir}" "${_is_windows}" "${_cur_uid}" "${_ran_as_root}" "${_real_u}" "${_real_g}"
 	_ui_err "Falha na sincronização Git de ${_dir}."
 	return 1
 }
@@ -293,17 +324,37 @@ update-git() {
 		esac
 	done
 
-	_target_root="${PWD}"
-	_git_mode="pull"
-	_max_depth=""
+	local _target_root="${PWD}"
+	local _git_mode="pull"
+	local _max_depth=""
+	local _root_set=0
+	local _depth_label _arg _repo_list _git_entry _repo_dir _branch _status _ahead_behind _diverged _status_line _fail_count
 
 	for _arg in "$@"; do
 		case "${_arg}" in
 			--status|-s)  _git_mode="status" ;;
 			--dry-run|-n) _git_mode="dry-run" ;;
-			--depth=*)    _max_depth="${_arg#*=}" ;;
-			-*) ;;
-			*)            [ -d "${_arg}" ] && _target_root="${_arg}" ;;
+			--depth=*)
+				_max_depth="${_arg#*=}"
+				case "${_max_depth}" in
+					""|*[!0-9]*)
+						_ui_err "Profundidade inválida: ${_arg}"
+						return 1
+						;;
+				esac
+				;;
+			-*)
+				_ui_err "Opção inválida: ${_arg}"
+				return 1
+				;;
+			*)
+				if [ "${_root_set}" -eq 1 ]; then
+					_ui_err "Argumento inesperado: ${_arg}"
+					return 1
+				fi
+				_target_root="${_arg}"
+				_root_set=1
+				;;
 		esac
 	done
 
@@ -320,17 +371,22 @@ update-git() {
 	else
 		_ui_step "Buscando e atualizando repositórios Git em: ${_target_root} (profundidade: ${_depth_label})"
 	fi
-	echo ""
+	printf '\n'
 
 	set -- "${_target_root}"
 	if [ -n "${_max_depth}" ]; then
 		set -- "$@" -maxdepth "$(( _max_depth + 1 ))"
 	fi
 
-	find "$@" \( -type d -name ".git" -print -prune \) -o \( -type f -name ".git" -print \) 2> "/dev/null" | \
+	_repo_list="$(find "$@" \( -type d -name ".git" -print -prune \) -o \( -type f -name ".git" -print \) 2> "/dev/null" | \
 		awk '{ n=split($0, a, "/"); print n, $0 }' | \
 		sort -n -k1,1 | \
-		cut -d' ' -f2- | while read -r _git_entry; do
+		cut -d' ' -f2-)"
+
+	_fail_count=0
+	if [ -n "${_repo_list}" ]; then
+		while IFS= read -r _git_entry <&3; do
+			[ -z "${_git_entry}" ] && continue
 			_repo_dir="$(dirname "${_git_entry}")"
 			if [ "${_git_mode}" = "status" ]; then
 				_branch="$(git -C "${_repo_dir}" branch --show-current 2> "/dev/null" || true)"
@@ -349,7 +405,13 @@ update-git() {
 					if [ -n "${_ahead_behind}" ] && [ "${_ahead_behind}" != "0	0" ] && [ "${_ahead_behind}" != "0 0" ]; then
 						_ui_sub "  ↳ Commits (local/remote): ${_ahead_behind}"
 					fi
-					[ -n "${_status}" ] && git -C "${_repo_dir}" status -s | head -n 5 | while read -r _status_line; do _ui_sub "    ${_status_line}"; done
+					if [ -n "${_status}" ]; then
+						while IFS= read -r _status_line <&4; do
+							[ -n "${_status_line}" ] && _ui_sub "    ${_status_line}"
+						done 4<< EOF
+$(printf '%s\n' "${_status}" | head -n 5)
+EOF
+					fi
 				else
 					_ui_ok "${_repo_dir} [${_branch}]: sincronizado e limpo"
 				fi
@@ -357,13 +419,22 @@ update-git() {
 				_ui_sub "[DRY-RUN PULL] ${_repo_dir}"
 			else
 				_ui_sub "Atualizando ${_repo_dir}..."
-				_git_pull_resilient "${_repo_dir}" || _ui_warn "Falha ao atualizar ${_repo_dir}"
+				if ! _git_pull_resilient "${_repo_dir}"; then
+					_ui_warn "Falha ao atualizar ${_repo_dir}"
+					_fail_count="$(( _fail_count + 1 ))"
+				fi
 			fi
-		done
+		done 3<< EOF
+${_repo_list}
+EOF
+	fi
 
-	echo ""
+	printf '\n'
+	if [ "${_fail_count}" -gt 0 ]; then
+		_ui_warn "Operação Git (${_git_mode}) concluída com ${_fail_count} falha(s)."
+		return 1
+	fi
 	_ui_ok "Operação Git (${_git_mode}) concluída!"
-	unset _target_root _git_mode _max_depth _depth_label _arg _git_entry _repo_dir _branch _status _ahead_behind _diverged _status_line
 }
 alias plgit="update-git"
 alias upgit="update-git"
@@ -392,17 +463,37 @@ push-git() {
 		esac
 	done
 
-	_target_root="${PWD}"
-	_git_mode="push"
-	_max_depth=""
+	local _target_root="${PWD}"
+	local _git_mode="push"
+	local _max_depth=""
+	local _root_set=0
+	local _depth_label _arg _repo_list _git_entry _repo_dir _unpushed _branch _commit_line _fail_count
 
 	for _arg in "$@"; do
 		case "${_arg}" in
 			--status|-s)  _git_mode="status" ;;
 			--dry-run|-n) _git_mode="dry-run" ;;
-			--depth=*)    _max_depth="${_arg#*=}" ;;
-			-*) ;;
-			*)            [ -d "${_arg}" ] && _target_root="${_arg}" ;;
+			--depth=*)
+				_max_depth="${_arg#*=}"
+				case "${_max_depth}" in
+					""|*[!0-9]*)
+						_ui_err "Profundidade inválida: ${_arg}"
+						return 1
+						;;
+				esac
+				;;
+			-*)
+				_ui_err "Opção inválida: ${_arg}"
+				return 1
+				;;
+			*)
+				if [ "${_root_set}" -eq 1 ]; then
+					_ui_err "Argumento inesperado: ${_arg}"
+					return 1
+				fi
+				_target_root="${_arg}"
+				_root_set=1
+				;;
 		esac
 	done
 
@@ -419,17 +510,22 @@ push-git() {
 	else
 		_ui_step "Buscando e enviando repositórios Git em: ${_target_root} (profundidade: ${_depth_label})"
 	fi
-	echo ""
+	printf '\n'
 
 	set -- "${_target_root}"
 	if [ -n "${_max_depth}" ]; then
 		set -- "$@" -maxdepth "$(( _max_depth + 1 ))"
 	fi
 
-	find "$@" \( -type d -name ".git" -print -prune \) -o \( -type f -name ".git" -print \) 2> "/dev/null" | \
+	_repo_list="$(find "$@" \( -type d -name ".git" -print -prune \) -o \( -type f -name ".git" -print \) 2> "/dev/null" | \
 		awk '{ n=split($0, a, "/"); print n, $0 }' | \
 		sort -nr -k1,1 | \
-		cut -d' ' -f2- | while read -r _git_entry; do
+		cut -d' ' -f2-)"
+
+	_fail_count=0
+	if [ -n "${_repo_list}" ]; then
+		while IFS= read -r _git_entry <&3; do
+			[ -z "${_git_entry}" ] && continue
 			_repo_dir="$(dirname "${_git_entry}")"
 			_unpushed="$(git -C "${_repo_dir}" cherry -v 2> "/dev/null" || true)"
 			_branch="$(git -C "${_repo_dir}" branch --show-current 2> "/dev/null" || true)"
@@ -437,21 +533,34 @@ push-git() {
 			if [ -n "${_unpushed}" ]; then
 				if [ "${_git_mode}" = "status" ]; then
 					_ui_warn "${_repo_dir} [${_branch}]: commits pendentes de envio"
-					echo "${_unpushed}" | while read -r _commit_line; do _ui_sub "  ↳ ${_commit_line}"; done
+					while IFS= read -r _commit_line <&4; do
+						[ -n "${_commit_line}" ] && _ui_sub "  ↳ ${_commit_line}"
+					done 4<< EOF
+${_unpushed}
+EOF
 				elif [ "${_git_mode}" = "dry-run" ]; then
 					_ui_sub "[DRY-RUN PUSH] ${_repo_dir} (${_branch})"
 				else
 					_ui_sub "Enviando ${_repo_dir} (${_branch})..."
-					_git_push_resilient "${_repo_dir}" || _ui_warn "Falha ao enviar ${_repo_dir}"
+					if ! _git_push_resilient "${_repo_dir}"; then
+						_ui_warn "Falha ao enviar ${_repo_dir}"
+						_fail_count="$(( _fail_count + 1 ))"
+					fi
 				fi
 			else
 				[ "${_git_mode}" = "status" ] && _ui_ok "${_repo_dir} [${_branch}]: nada a enviar"
 			fi
-		done
+		done 3<< EOF
+${_repo_list}
+EOF
+	fi
 
-	echo ""
+	printf '\n'
+	if [ "${_fail_count}" -gt 0 ]; then
+		_ui_warn "Operação Push Git (${_git_mode}) concluída com ${_fail_count} falha(s)."
+		return 1
+	fi
 	_ui_ok "Operação Push Git (${_git_mode}) concluída!"
-	unset _target_root _git_mode _max_depth _depth_label _arg _git_entry _repo_dir _unpushed _branch _commit_line
 }
 alias psgit="push-git"
 
@@ -459,17 +568,19 @@ alias psgit="push-git"
 ### POWEROFF & REBOOT SYSTEM
 ### --------------------------------
 poweroff() {
-	case "$(_detect_os)" in
-		windows) shutdown.exe /s /t 0 "$@"; return $? ;;
-		freebsd) _flag="-p" ;;
-		*)       _flag="-h" ;;
+	local _os="${_DETECTED_OS:-$(_detect_os)}"
+	local _flag="-h"
+	case "${_os}" in
+		windows)                shutdown.exe /s /t 0 "$@"; return $? ;;
+		illumos|sunos)          _as_root poweroff "$@"; return $? ;;
+		freebsd|openbsd|netbsd) _flag="-p" ;;
 	esac
 	_as_root shutdown "${_flag}" now "$@"
-	unset _flag
 }
 
 reboot() {
-	case "$(_detect_os)" in
+	local _os="${_DETECTED_OS:-$(_detect_os)}"
+	case "${_os}" in
 		windows) shutdown.exe /r /t 0 "$@"; return $? ;;
 		*)       _as_root shutdown -r now "$@" ;;
 	esac
@@ -478,8 +589,23 @@ reboot() {
 ### ================================
 ### VERSION CONTROL - GOT & GIT
 ### ================================
+_is_got_worktree() {
+	local _dir="${PWD}"
+	while :; do
+		if [ -d "${_dir}/.got" ] || [ -f "${_dir}/.got/base-commit" ]; then
+			return 0
+		fi
+		case "${_dir}" in
+			""|"/") return 1 ;;
+		esac
+		[ "${_dir%/*}" = "${_dir}" ] && return 1
+		_dir="${_dir%/*}"
+		[ -z "${_dir}" ] && _dir="/"
+	done
+}
+
 vcs-status() {
-	if [ -d ".got" ] || [ -f ".got/base-commit" ]; then
+	if _is_got_worktree; then
 		got status "$@"
 	elif [ -d ".git" ] || git rev-parse --git-dir > "/dev/null" 2>&1; then
 		git status --short "$@"
@@ -490,7 +616,7 @@ vcs-status() {
 }
 
 vcs-diff() {
-	if [ -d ".got" ] || [ -f ".got/base-commit" ]; then
+	if _is_got_worktree; then
 		got diff "$@"
 	elif [ -d ".git" ] || git rev-parse --git-dir > "/dev/null" 2>&1; then
 		git diff "$@"
@@ -525,10 +651,10 @@ got-init() {
 ### --------------------------------
 take-dir() {
 	if [ "$#" -eq 0 ]; then
-		echo "Uso: take <diretorio>" >&2
+		printf "Uso: take <diretorio>\n" >&2
 		return 1
 	fi
-	command mkdir -p "$1" && cd "$1"
+	command mkdir -p -- "$1" && cd -- "$1"
 }
 
 cd-git-root() {
@@ -537,7 +663,7 @@ cd-git-root() {
 		_ui_err "Não está dentro de um repositório git."
 		return 1
 	}
-	cd "${_root}"
+	cd -- "${_root}"
 }
 
 hist-search() {

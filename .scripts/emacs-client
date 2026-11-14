@@ -29,7 +29,23 @@ export GTK_APPLICATION_PREFER_DARK_THEME=1
 ### ================================
 ### DAEMON HEALTHCHECK & AUTO-HEAL
 ### ================================
-if command -v pgrep > "/dev/null" 2>&1 && pgrep -x emacs > "/dev/null" 2>&1; then
+_emacs_uid="$(id -u 2> "/dev/null" || echo 1000)"
+_emacs_sock_dir="${XDG_RUNTIME_DIR:-/tmp}/emacs${_emacs_uid}"
+if [ -n "${EMACS_SOCKET_NAME:-}" ]; then
+	case "${EMACS_SOCKET_NAME}" in
+		*/*) _emacs_socket="${EMACS_SOCKET_NAME}" ;;
+		*)   _emacs_socket="${_emacs_sock_dir}/${EMACS_SOCKET_NAME}" ;;
+	esac
+else
+	_emacs_socket="${_emacs_sock_dir}/server"
+fi
+
+_has_daemon=0
+if command -v pgrep > "/dev/null" 2>&1 && pgrep -f "emacs.*--.*daemon" > "/dev/null" 2>&1; then
+	_has_daemon=1
+fi
+
+if [ "${_has_daemon}" -eq 1 ] || [ -S "${_emacs_socket}" ] || [ -e "${_emacs_socket}" ]; then
 	_probe_ok=0
 	if command -v timeout > "/dev/null" 2>&1; then
 		timeout 2 emacsclient -e '(+ 1 1)' > "/dev/null" 2>&1 && _probe_ok=1 || _probe_ok=0
@@ -50,12 +66,22 @@ if command -v pgrep > "/dev/null" 2>&1 && pgrep -x emacs > "/dev/null" 2>&1; the
 		) && _probe_ok=1 || _probe_ok=0
 	fi
 	if [ "${_probe_ok}" -eq 0 ]; then
-		pkill -9 -x emacs > "/dev/null" 2>&1 || true
-		sleep 0.5 2> "/dev/null" || sleep 1 2> "/dev/null" || true
-		[ -n "${EMACS_SOCKET_NAME:-}" ] && rm -f "${EMACS_SOCKET_NAME}" 2> "/dev/null" || true
+		if [ "${_has_daemon}" -eq 1 ]; then
+			if command -v pkill > "/dev/null" 2>&1; then
+				pkill -9 -f "emacs.*--.*daemon" > "/dev/null" 2>&1 || true
+			else
+				for _daemon_pid in $(pgrep -f "emacs.*--.*daemon" 2> "/dev/null" || true); do
+					[ "${_daemon_pid}" != "$$" ] && kill -9 "${_daemon_pid}" 2> "/dev/null" || true
+				done
+				unset _daemon_pid
+			fi
+			sleep 0.5 2> "/dev/null" || sleep 1 2> "/dev/null" || true
+		fi
+		[ -e "${_emacs_socket}" ] && rm -f "${_emacs_socket}" 2> "/dev/null" || true
 	fi
 	unset _probe_ok
 fi
+unset _emacs_uid _emacs_sock_dir _emacs_socket _has_daemon
 
 ### ================================
 ### CLIENT EXECUTION

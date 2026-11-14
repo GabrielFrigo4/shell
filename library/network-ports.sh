@@ -3,9 +3,18 @@
 # ----------------------------------------------------------------
 
 ### --------------------------------
-### Update Wi-Fi
+### UPDATE WI-FI
 ### --------------------------------
+_wifi_xml_escape() {
+	printf '%s' "${1:-}" | tr -d '\r\n' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g' -e "s/'/\&apos;/g"
+}
+
+_wifi_conf_escape() {
+	printf '%s' "${1:-}" | tr -d '\r\n' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+}
+
 update-wifi() {
+	local _rc=0
 	_ui_step "Atualizando configurações de Wi-Fi..."
 
 	if ! env | grep -q "^WIFI_SSID_"; then
@@ -16,141 +25,188 @@ update-wifi() {
 	if command -v nmcli > "/dev/null" 2>&1; then
 		_ui_info "Network Manager (nmcli) detectado. Aplicando perfis..."
 
-		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r _name _ssid; do
-			_suffix="${_name#WIFI_SSID_}"
-			_password_var="WIFI_PASS_${_suffix}"
-			eval _password="\$${_password_var}"
+		env | grep "^WIFI_SSID_" | sort | {
+			_pipe_rc=0
+			while IFS='=' read -r _name _ssid; do
+				_suffix="${_name#WIFI_SSID_}"
+				_password_var="WIFI_PASS_${_suffix}"
+				eval "_password=\"\${${_password_var}:-}\""
 
-			if [ -n "${_ssid}" ] && [ -n "${_password}" ]; then
-				if nmcli connection show "${_ssid}" > "/dev/null" 2>&1; then
-					_ui_sub "Atualizando rede: '${_ssid}'"
-					nmcli connection modify "${_ssid}" wifi-sec.psk "${_password}" > "/dev/null" 2>&1
-				else
-					_ui_sub "Adicionando rede: '${_ssid}'"
-					nmcli connection add type wifi con-name "${_ssid}" ssid "${_ssid}" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${_password}" > "/dev/null" 2>&1
+				if [ -n "${_ssid}" ] && [ -n "${_password}" ]; then
+					if nmcli connection show "${_ssid}" > "/dev/null" 2>&1; then
+						_ui_sub "Atualizando rede: '${_ssid}'"
+						if ! nmcli connection modify "${_ssid}" wifi-sec.psk "${_password}" > "/dev/null" 2>&1; then
+							_pipe_rc=1
+						fi
+					else
+						_ui_sub "Adicionando rede: '${_ssid}'"
+						if ! nmcli connection add type wifi con-name "${_ssid}" ssid "${_ssid}" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${_password}" > "/dev/null" 2>&1; then
+							_pipe_rc=1
+						fi
+					fi
 				fi
-			fi
-		done
-		_ui_ok "Configurações de Wi-Fi aplicadas no Linux!"
+			done
+			exit "${_pipe_rc}"
+		} || _rc=$?
+
+		if [ "${_rc}" -eq 0 ]; then
+			_ui_ok "Configurações de Wi-Fi aplicadas no Linux!"
+		else
+			_ui_err "Falha ao aplicar configurações de Wi-Fi via nmcli."
+		fi
+		return "${_rc}"
 
 	elif [ "$(command uname -s 2> "/dev/null")" = "FreeBSD" ] || [ -f "/etc/wpa_supplicant.conf" ]; then
 		_ui_info "FreeBSD/wpa_supplicant detectado. Sincronizando perfis..."
 
-		_temporary_config=$(command mktemp)
-		cat <<-EOF >| "${_temporary_config}"
-			ctrl_interface=/var/run/wpa_supplicant
-			ctrl_interface_group=wheel
-			update_config=1
+		(
+			umask 077
+			_temporary_config="$(command mktemp)" || exit 1
+			trap 'command rm -f "${_temporary_config}"' EXIT INT TERM
+			chmod 0600 "${_temporary_config}" 2> "/dev/null" || true
 
-		EOF
+			cat <<- 'EOF' >| "${_temporary_config}"
+				ctrl_interface=/var/run/wpa_supplicant
+				ctrl_interface_group=wheel
+				update_config=1
 
-		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r _name _ssid; do
-			_suffix="${_name#WIFI_SSID_}"
-			_password_var="WIFI_PASS_${_suffix}"
-			eval _password="\$${_password_var}"
+			EOF
 
-			if [ -n "${_ssid}" ] && [ -n "${_password}" ]; then
-				_ui_sub "Mapeando rede: '${_ssid}'"
-				cat <<-EOF >> "${_temporary_config}"
-					network={
-					    ssid="${_ssid}"
-					    psk="${_password}"
-					}
+			env | grep "^WIFI_SSID_" | sort | {
+				_pipe_rc=0
+				while IFS='=' read -r _name _ssid; do
+					_suffix="${_name#WIFI_SSID_}"
+					_password_var="WIFI_PASS_${_suffix}"
+					eval "_password=\"\${${_password_var}:-}\""
 
-				EOF
-			fi
-		done
+					if [ -n "${_ssid}" ] && [ -n "${_password}" ]; then
+						_ui_sub "Mapeando rede: '${_ssid}'"
+						_ssid_esc="$(_wifi_conf_escape "${_ssid}")"
+						_pass_esc="$(_wifi_conf_escape "${_password}")"
+						if ! printf 'network={\n    ssid="%s"\n    psk="%s"\n}\n\n' "${_ssid_esc}" "${_pass_esc}" >> "${_temporary_config}"; then
+							_pipe_rc=1
+						fi
+					fi
+				done
+				exit "${_pipe_rc}"
+			} || exit $?
 
-		_wifi_dir="/etc"
-		_wifi_target="${_wifi_dir}/wpa_supplicant.conf"
+			_wifi_dir="/etc"
+			_wifi_target="${_wifi_dir}/wpa_supplicant.conf"
 
-		if _as_root cmp -s "${_temporary_config}" "${_wifi_target}" 2> "/dev/null"; then
-			_ui_info "FreeBSD ${_wifi_target} já está atualizado."
-		else
-			_ui_sub "Alterações detectadas! Sobrescrevendo ${_wifi_target}..."
-			_as_root cp "${_temporary_config}" "${_wifi_target}"
-
-			_ui_sub "Reiniciando stack de rede (netif)..."
-			_as_root service netif restart > "/dev/null" 2>&1 || true
-		fi
-
-		_wifibox_dir="/usr/local/etc/wifibox"
-		_wifibox_target="${_wifibox_dir}/wpa_supplicant/wpa_supplicant.conf"
-
-		if [ -d "${_wifibox_dir}" ] || command -v wifibox > "/dev/null" 2>&1 || [ -f "${_wifibox_target}" ]; then
-			_ui_info "Wifibox detectado. Sincronizando configuração..."
-			_as_root mkdir -p "${_wifibox_dir}/wpa_supplicant"
-
-			if _as_root cmp -s "${_temporary_config}" "${_wifibox_target}" 2> "/dev/null"; then
-				_ui_info "Configuração do Wifibox já está atualizada."
+			if _as_root cmp -s "${_temporary_config}" "${_wifi_target}" 2> "/dev/null"; then
+				_ui_info "FreeBSD ${_wifi_target} já está atualizado."
 			else
-				_ui_sub "Alterações detectadas! Sobrescrevendo ${_wifibox_target}..."
-				_as_root cp "${_temporary_config}" "${_wifibox_target}"
+				_ui_sub "Alterações detectadas! Sobrescrevendo ${_wifi_target}..."
+				_as_root cp "${_temporary_config}" "${_wifi_target}" || exit 1
+				_as_root chmod 0600 "${_wifi_target}" 2> "/dev/null" || true
 
-				if _as_root service wifibox status > "/dev/null" 2>&1; then
-					_ui_sub "Reiniciando serviço wifibox..."
-					_as_root service wifibox restart > "/dev/null" 2>&1 || true
+				_ui_sub "Reiniciando stack de rede (netif)..."
+				_as_root service netif restart > "/dev/null" 2>&1 || true
+			fi
+
+			_wifibox_dir="/usr/local/etc/wifibox"
+			_wifibox_target="${_wifibox_dir}/wpa_supplicant/wpa_supplicant.conf"
+
+			if [ -d "${_wifibox_dir}" ] || command -v wifibox > "/dev/null" 2>&1 || [ -f "${_wifibox_target}" ]; then
+				_ui_info "Wifibox detectado. Sincronizando configuração..."
+				_as_root mkdir -p "${_wifibox_dir}/wpa_supplicant" || exit 1
+
+				if _as_root cmp -s "${_temporary_config}" "${_wifibox_target}" 2> "/dev/null"; then
+					_ui_info "Configuração do Wifibox já está atualizada."
+				else
+					_ui_sub "Alterações detectadas! Sobrescrevendo ${_wifibox_target}..."
+					_as_root cp "${_temporary_config}" "${_wifibox_target}" || exit 1
+					_as_root chmod 0600 "${_wifibox_target}" 2> "/dev/null" || true
+
+					if _as_root service wifibox status > "/dev/null" 2>&1; then
+						_ui_sub "Reiniciando serviço wifibox..."
+						_as_root service wifibox restart > "/dev/null" 2>&1 || true
+					fi
 				fi
 			fi
-		fi
+		) || _rc=$?
 
-		command rm -f "${_temporary_config}"
-		_ui_ok "Configurações de Wi-Fi aplicadas no FreeBSD!"
+		if [ "${_rc}" -eq 0 ]; then
+			_ui_ok "Configurações de Wi-Fi aplicadas no FreeBSD!"
+		else
+			_ui_err "Falha ao aplicar configurações de Wi-Fi no wpa_supplicant."
+		fi
+		return "${_rc}"
 
 	elif command -v netsh > "/dev/null" 2>&1; then
 		_ui_info "Windows Network Shell (netsh) detectado. Sincronizando perfis..."
 
-		env | grep "^WIFI_SSID_" | sort | while IFS='=' read -r _name _ssid; do
-			_suffix="${_name#WIFI_SSID_}"
-			_password_var="WIFI_PASS_${_suffix}"
-			eval _password="\$${_password_var}"
+		env | grep "^WIFI_SSID_" | sort | {
+			_pipe_rc=0
+			_xml_file=""
+			trap '[ -n "${_xml_file:-}" ] && command rm -f "${_xml_file}"' EXIT INT TERM
+			umask 077
 
-			if [ -n "${_ssid}" ] && [ -n "${_password}" ]; then
-				_ui_sub "Injetando perfil: '${_ssid}'"
-				_xml_file=$(command mktemp)
+			while IFS='=' read -r _name _ssid; do
+				_suffix="${_name#WIFI_SSID_}"
+				_password_var="WIFI_PASS_${_suffix}"
+				eval "_password=\"\${${_password_var}:-}\""
 
-				cat <<-EOF >| "${_xml_file}"
-					<?xml version="1.0"?>
-					<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
-					    <name>${_ssid}</name>
-					    <SSIDConfig>
-					        <SSID>
-					            <name>${_ssid}</name>
-					        </SSID>
-					    </SSIDConfig>
-					    <connectionType>ESS</connectionType>
-					    <connectionMode>auto</connectionMode>
-					    <MSM>
-					        <security>
-					            <authEncryption>
-					                <authentication>WPA2PSK</authentication>
-					                <encryption>AES</encryption>
-					                <useOneX>false</useOneX>
-					            </authEncryption>
-					            <sharedKey>
-					                <keyType>passPhrase</keyType>
-					                <protected>false</protected>
-					                <keyMaterial>${_password}</keyMaterial>
-					            </sharedKey>
-					        </security>
-					    </MSM>
-					</WLANProfile>
-				EOF
+				if [ -n "${_ssid}" ] && [ -n "${_password}" ]; then
+					_ui_sub "Injetando perfil: '${_ssid}'"
+					_ssid_xml="$(_wifi_xml_escape "${_ssid}")"
+					_pass_xml="$(_wifi_xml_escape "${_password}")"
+					_xml_file="$(command mktemp)" || { _pipe_rc=1; break; }
+					chmod 0600 "${_xml_file}" 2> "/dev/null" || true
 
-				_windows_path="${_xml_file}"
-				command -v cygpath > "/dev/null" 2>&1 && _windows_path=$(cygpath -w "${_xml_file}")
+					cat <<- EOF >| "${_xml_file}"
+						<?xml version="1.0"?>
+						<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+						    <name>${_ssid_xml}</name>
+						    <SSIDConfig>
+						        <SSID>
+						            <name>${_ssid_xml}</name>
+						        </SSID>
+						    </SSIDConfig>
+						    <connectionType>ESS</connectionType>
+						    <connectionMode>auto</connectionMode>
+						    <MSM>
+						        <security>
+						            <authEncryption>
+						                <authentication>WPA2PSK</authentication>
+						                <encryption>AES</encryption>
+						                <useOneX>false</useOneX>
+						            </authEncryption>
+						            <sharedKey>
+						                <keyType>passPhrase</keyType>
+						                <protected>false</protected>
+						                <keyMaterial>${_pass_xml}</keyMaterial>
+						            </sharedKey>
+						        </security>
+						    </MSM>
+						</WLANProfile>
+					EOF
 
-				command netsh wlan add profile filename="${_windows_path}" > "/dev/null" 2>&1
-				command rm -f "${_xml_file}"
-			fi
-		done
-		_ui_ok "Configurações de Wi-Fi aplicadas no Windows!"
+					_windows_path="${_xml_file}"
+					command -v cygpath > "/dev/null" 2>&1 && _windows_path="$(cygpath -w "${_xml_file}")"
+
+					if ! command netsh wlan add profile filename="${_windows_path}" > "/dev/null" 2>&1; then
+						_pipe_rc=1
+					fi
+					command rm -f "${_xml_file}"
+					_xml_file=""
+				fi
+			done
+			exit "${_pipe_rc}"
+		} || _rc=$?
+
+		if [ "${_rc}" -eq 0 ]; then
+			_ui_ok "Configurações de Wi-Fi aplicadas no Windows!"
+		else
+			_ui_err "Falha ao aplicar perfil de Wi-Fi via netsh."
+		fi
+		return "${_rc}"
 
 	else
 		_ui_err "Nenhum gerenciador de Wi-Fi suportado (nmcli/wpa_supplicant/netsh) encontrado."
+		return 1
 	fi
-
-	unset _name _ssid _suffix _password_var _password _temporary_config _xml_file _windows_path _wifi_dir _wifi_target _wifibox_dir _wifibox_target 2> "/dev/null" || true
 }
 
 ### --------------------------------
@@ -158,7 +214,7 @@ update-wifi() {
 ### --------------------------------
 update-network() {
 	_ui_step "Atualizando subsistema de rede..."
-	update-wifi
+	update-wifi || return $?
 	_ui_ok "Atualização de rede concluída com sucesso!"
 }
 
@@ -166,6 +222,7 @@ update-network() {
 ### UPDATE LINUX HOST BHYVE
 ### --------------------------------
 update-linux() {
+	local _arg _lx_ip _lx_user _lx_zvol _wait_count _probe _ret
 	for _arg in "$@"; do
 		case "${_arg}" in
 			--help|-h)
@@ -187,10 +244,19 @@ update-linux() {
 		return 0
 	fi
 
+	_lx_ip="${LINUX_HOST_IP:-}"
+	_lx_user="${LINUX_HOST_USER:-${USER:-linux}}"
+	_lx_zvol="${FREEBSD_LINUX_ZVOL:-}"
+
+	if [ -z "${_lx_ip}" ]; then
+		_ui_err "LINUX_HOST_IP não configurado. Defina LINUX_HOST_IP antes de executar update-linux."
+		return 1
+	fi
+
 	_ui_step "Preparando atualização da máquina virtual Linux-host (Bhyve)..."
 	if command -v _ensure_debian_running > "/dev/null" 2>&1; then
 		_ensure_debian_running
-	elif ! nc -z -w 1 192.168.8.2 22 > "/dev/null" 2>&1; then
+	elif ! nc -z -w 1 "${_lx_ip}" 22 > "/dev/null" 2>&1; then
 		if ! pgrep -f "bhyve.*debian" > "/dev/null" 2>&1; then
 			_ui_step "Iniciando máquina virtual Debian no Bhyve..."
 			if command -v _as_root > "/dev/null" 2>&1; then
@@ -201,8 +267,8 @@ update-linux() {
 		fi
 		_wait_count=0
 		while [ "${_wait_count}" -lt 30 ]; do
-			if nc -z -w 1 192.168.8.2 22 > "/dev/null" 2>&1; then
-				_probe="$(ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=accept-new gabriel@192.168.8.2 true 2>&1 || true)"
+			if nc -z -w 1 "${_lx_ip}" 22 > "/dev/null" 2>&1; then
+				_probe="$(ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=accept-new "${_lx_user}@${_lx_ip}" true 2>&1 || true)"
 				case "${_probe}" in
 					*nologin*|*"booting up"*) ;;
 					*) break ;;
@@ -214,16 +280,26 @@ update-linux() {
 	fi
 
 	if command -v zfs > "/dev/null" 2>&1; then
-		_ui_sub "Criando snapshot de proteção ZFS (pre-update)..."
-		_as_root zfs destroy zroot/vm/debian@pre-update-old 2> "/dev/null" || true
-		_as_root zfs rename zroot/vm/debian@pre-update zroot/vm/debian@pre-update-old 2> "/dev/null" || true
-		_as_root zfs snapshot zroot/vm/debian@pre-update 2> "/dev/null" || true
+		if [ -n "${_lx_zvol}" ]; then
+			_ui_sub "Criando snapshot de proteção ZFS (pre-update) em ${_lx_zvol}..."
+			_as_root zfs destroy "${_lx_zvol}@pre-update-old" 2> "/dev/null" || true
+			_as_root zfs rename "${_lx_zvol}@pre-update" "${_lx_zvol}@pre-update-old" 2> "/dev/null" || true
+			_as_root zfs snapshot "${_lx_zvol}@pre-update" 2> "/dev/null" || true
+		else
+			_ui_info "FREEBSD_LINUX_ZVOL não definido; snapshot ZFS ignorado."
+		fi
 	fi
 
 	_ui_step "Disparando atualização completa no linux-host via Universal Shell..."
-	if ssh -q gabriel@192.168.8.2 "command -v zsh > '/dev/null' 2>&1 && [ -f \"\${HOME}/.zshrc\" ]"; then
-		ssh -t gabriel@192.168.8.2 "zsh -ic 'update-all'" && \
+	if ssh -q "${_lx_user}@${_lx_ip}" "command -v zsh > '/dev/null' 2>&1 && [ -f \"\${HOME}/.zshrc\" ]"; then
+		_ret=0
+		ssh -t "${_lx_user}@${_lx_ip}" "zsh -ic 'update-all'" || _ret=$?
+		if [ "${_ret}" -eq 0 ]; then
 			_ui_ok "Máquina virtual Linux-host atualizada com sucesso via Universal Shell!"
+		else
+			_ui_err "Atualização remota no linux-host falhou (código ${_ret})."
+		fi
+		return "${_ret}"
 	else
 		_ui_warn "Universal Shell (~/.zshrc) não encontrado no linux-host. Instale o Universal Shell no guest para suportar 'update-all'."
 		return 1

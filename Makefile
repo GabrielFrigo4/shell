@@ -47,12 +47,14 @@ test:
 		find . -name "*.sh" -not -path "*/.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec sh -n {} +; \
 	fi
 	if command -v ksh > "/dev/null" 2>&1; then \
-		find target/openbsd/ksh target/common/ksh theme/ksh.sh -name "*.sh" -exec ksh -n {} +; \
+		find core library target/openbsd/ksh target/common/ksh theme/ksh.sh -name "*.sh" -exec ksh -n {} +; \
 	elif command -v oksh > "/dev/null" 2>&1; then \
-		find target/openbsd/ksh target/common/ksh theme/ksh.sh -name "*.sh" -exec oksh -n {} +; \
+		find core library target/openbsd/ksh target/common/ksh theme/ksh.sh -name "*.sh" -exec oksh -n {} +; \
 	fi
 	if command -v fish > "/dev/null" 2>&1; then \
-		fish -n target/common/fish/aliases.fish; \
+		for _fish_file in target/common/fish/*.fish; do \
+			[ -f "$${_fish_file}" ] && fish -n "$${_fish_file}" || exit 1; \
+		done; \
 	fi
 	echo "🔍 Validando variáveis e funções canônicas..."
 	grep -q 'PYTHONPYCACHEPREFIX=' core/environment.sh || { echo "❌ PYTHONPYCACHEPREFIX ausente em core/environment.sh" >&2; exit 1; }
@@ -61,7 +63,7 @@ test:
 	done
 	if grep -q '^_shell_ls()' core/environment.sh; then \
 		echo "🧪 Validando comportamento limpo em pipe (sem ANSI ou glifos Nerd Fonts)..."; \
-		sh -c '. ./library/detect.sh 2> "/dev/null" && . ./core/environment.sh 2> "/dev/null"; \
+		sh -c '. ./library/detect.sh 2> "/dev/null" && . ./library/functions.sh 2> "/dev/null" && . ./core/environment.sh 2> "/dev/null"; \
 			for _fn in l la ll lr lar llr; do \
 				_out=$$("$${_fn}" core | cat); \
 				[ -n "$${_out}" ] || { echo "❌ Saída vazia em $${_fn} | cat" >&2; exit 1; }; \
@@ -70,7 +72,7 @@ test:
 			done; \
 			_out=$$(c Makefile | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1; \
 			_out=$$(g test Makefile | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1; \
-			_out=$$(f core | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1'; \
+			_out=$$(f Makefile | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1'; \
 	fi
 	echo "✅ Sintaxe e invariantes do Shell validadas com sucesso!"
 
@@ -115,6 +117,6 @@ ci: test
 ### ================================
 clean:
 	echo "🧹 Limpando artefatos temporários, caches e ambientes virtuais..."
-	rm -rf .venv bin/ build/ dist/ .tmp/ *.log
+	rm -rf .venv build/ dist/ .tmp/ *.log
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2> "/dev/null" || true
 	echo "✅ Workspace limpo!"

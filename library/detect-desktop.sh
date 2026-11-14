@@ -545,7 +545,7 @@ _detect_zoxide() {
 ### WINDOW MANAGER PIPELINES
 ### --------------------------------
 _get_x11_wm_pipeline() {
-	local _os="${1:-$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')}"
+	local _os="${1:-${_DETECTED_OS-$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')}}"
 	case "${_os}" in
 		openbsd)
 			printf '%s\n' "openbox cwm dwm fvwm twm matchbox-window-manager"
@@ -562,7 +562,7 @@ _get_wayland_wm_pipeline() {
 
 _show_wm_pipeline() {
 	local _target="${1:-all}"
-	local _os="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+	local _os="${_DETECTED_OS-$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')}"
 
 	if [ "${_target}" = "wayland" ] || [ "${_target}" = "all" ]; then
 		_ui_banner "PIPELINE WAYLAND (${_os})"

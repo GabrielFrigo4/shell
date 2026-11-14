@@ -5,15 +5,20 @@
 ### ================================
 ### ANSI ESCAPE SEQUENCES
 ### ================================
-_ui_color_reset=$'\e[0m'
-_ui_color_bold=$'\e[1m'
-_ui_color_cyan=$'\e[1;36m'
-_ui_color_green=$'\e[1;32m'
-_ui_color_yellow=$'\e[1;33m'
-_ui_color_red=$'\e[1;31m'
-_ui_color_blue=$'\e[1;34m'
-_ui_color_magenta=$'\e[1;35m'
-_ui_color_dim=$'\e[2m'
+_esc=$'\e'
+if [ "${#_esc}" -ne 1 ]; then
+	_esc="$(printf '\x1b')"
+fi
+_ui_color_reset="${_esc}[0m"
+_ui_color_bold="${_esc}[1m"
+_ui_color_cyan="${_esc}[1;36m"
+_ui_color_green="${_esc}[1;32m"
+_ui_color_yellow="${_esc}[1;33m"
+_ui_color_red="${_esc}[1;31m"
+_ui_color_blue="${_esc}[1;34m"
+_ui_color_magenta="${_esc}[1;35m"
+_ui_color_dim="${_esc}[2m"
+unset _esc
 
 _ui_has_color() {
 	[ -t 1 ] || return 1
@@ -28,70 +33,64 @@ _ui_has_color() {
 ### ================================
 _ui_step() {
 	if _ui_has_color; then
-		echo -n "${_ui_color_cyan}==>${_ui_color_reset} "
+		printf '%s==>%s %s\n' "${_ui_color_cyan}" "${_ui_color_reset}" "$*"
 	else
-		echo -n "==> "
+		printf '==> %s\n' "$*"
 	fi
-	echo "$*"
 }
 
 _ui_sub() {
 	if _ui_has_color; then
-		echo -n "${_ui_color_blue}  ↳${_ui_color_reset} "
+		printf '%s  ↳%s %s\n' "${_ui_color_blue}" "${_ui_color_reset}" "$*"
 	else
-		echo -n "  -> "
+		printf '  -> %s\n' "$*"
 	fi
-	echo "$*"
 }
 
 _ui_ok() {
 	if _ui_has_color; then
-		echo -n "${_ui_color_green}  ✅${_ui_color_reset} "
+		printf '%s  ✅%s %s\n' "${_ui_color_green}" "${_ui_color_reset}" "$*"
 	else
-		echo -n "  OK "
+		printf '  OK %s\n' "$*"
 	fi
-	echo "$*"
 }
 
 _ui_warn() {
 	if _ui_has_color; then
-		echo -n "${_ui_color_yellow}  ⚠️ ${_ui_color_reset} "
+		printf '%s  ⚠️ %s %s\n' "${_ui_color_yellow}" "${_ui_color_reset}" "$*"
 	else
-		echo -n "  WARN "
+		printf '  WARN %s\n' "$*"
 	fi
-	echo "$*"
 }
 
 _ui_err() {
 	if [ -t 2 ]; then
-		echo -n "${_ui_color_red}  ❌${_ui_color_reset} " >&2
+		printf '%s  ❌%s %s\n' "${_ui_color_red}" "${_ui_color_reset}" "$*" >&2
 	else
-		echo -n "  FAIL " >&2
+		printf '  FAIL %s\n' "$*" >&2
 	fi
-	echo "$*" >&2
 }
 
 _ui_info() {
 	if _ui_has_color; then
-		echo -n "${_ui_color_magenta}  ℹ️ ${_ui_color_reset} "
+		printf '%s  ℹ️ %s %s\n' "${_ui_color_magenta}" "${_ui_color_reset}" "$*"
 	else
-		echo -n "  INFO "
+		printf '  INFO %s\n' "$*"
 	fi
-	echo "$*"
 }
 
 _ui_banner() {
 	local _title="$1"
 	local _separator="================================================================"
-	echo ""
+	printf '\n'
 	if _ui_has_color; then
-		echo "${_ui_color_cyan}${_separator}${_ui_color_reset}"
-		echo "${_ui_color_bold}  ${_title}${_ui_color_reset}"
-		echo "${_ui_color_cyan}${_separator}${_ui_color_reset}"
+		printf '%s%s%s\n' "${_ui_color_cyan}" "${_separator}" "${_ui_color_reset}"
+		printf '%s  %s%s\n' "${_ui_color_bold}" "${_title}" "${_ui_color_reset}"
+		printf '%s%s%s\n' "${_ui_color_cyan}" "${_separator}" "${_ui_color_reset}"
 	else
-		echo "${_separator}"
-		echo "  ${_title}"
-		echo "${_separator}"
+		printf '%s\n' "${_separator}"
+		printf '  %s\n' "${_title}"
+		printf '%s\n' "${_separator}"
 	fi
-	echo ""
+	printf '\n'
 }

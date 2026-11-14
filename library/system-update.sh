@@ -3,7 +3,7 @@
 # ----------------------------------------------------------------
 
 ### --------------------------------
-### Package Managers
+### PACKAGE MANAGERS
 ### --------------------------------
 update-pacman() {
 	command -v pacman > "/dev/null" 2>&1 || { _ui_err "pacman não encontrado no sistema."; return 127; }
@@ -47,7 +47,7 @@ update-apk() {
 
 update-pkg() {
 	command -v pkg > "/dev/null" 2>&1 || { _ui_err "pkg não encontrado no sistema."; return 127; }
-	_ui_step "Executando atualização de pacotes via pkg (FreeBSD/DragonFly)..."
+	_ui_step "Executando atualização de pacotes via pkg (FreeBSD)..."
 	_as_root pkg update && _as_root pkg upgrade --yes "$@"
 }
 
@@ -161,61 +161,94 @@ update-slackpkg() {
 ### --------------------------------
 update-system() {
 	_ui_step "Atualizando pacotes do sistema operacional..."
+	local _ret=0 _handled=1
+
 	case "$(_detect_distro_family)" in
-		arch)      command -v pacman > "/dev/null" 2>&1 && update-pacman "$@" ;;
-		debian)    command -v apt > "/dev/null" 2>&1 && update-apt "$@" ;;
+		arch)
+			if command -v pacman > "/dev/null" 2>&1; then update-pacman "$@" || _ret=$?; else _handled=0; fi
+			;;
+		debian)
+			if command -v apt > "/dev/null" 2>&1; then update-apt "$@" || _ret=$?; else _handled=0; fi
+			;;
 		fedora)
 			if command -v dnf > "/dev/null" 2>&1; then
-				update-dnf "$@"
+				update-dnf "$@" || _ret=$?
 			elif command -v tdnf > "/dev/null" 2>&1; then
-				update-tdnf "$@"
+				update-tdnf "$@" || _ret=$?
+			else
+				_handled=0
 			fi
 			;;
-		suse)      command -v zypper > "/dev/null" 2>&1 && update-zypper "$@" ;;
-		void)      command -v xbps-install > "/dev/null" 2>&1 && update-xbps "$@" ;;
-		alpine)    command -v apk > "/dev/null" 2>&1 && update-apk "$@" ;;
-		gentoo)    command -v emerge > "/dev/null" 2>&1 && update-emerge "$@" ;;
-		nixos)     command -v nixos-rebuild > "/dev/null" 2>&1 && update-nix "$@" ;;
-		solus)     command -v eopkg > "/dev/null" 2>&1 && update-eopkg "$@" ;;
-		slackware) command -v slackpkg > "/dev/null" 2>&1 && update-slackpkg "$@" ;;
-		guix)      command -v guix > "/dev/null" 2>&1 && update-guix "$@" ;;
-		embedded)  command -v opkg > "/dev/null" 2>&1 && update-opkg "$@" ;;
-		bsd)
-			case "$(_detect_os)" in
-				freebsd|dragonfly) command -v pkg > "/dev/null" 2>&1 && update-pkg "$@" ;;
-				openbsd)           command -v pkg_add > "/dev/null" 2>&1 && update-pkg-add "$@" ;;
-				netbsd)            command -v pkgin > "/dev/null" 2>&1 && update-pkgin "$@" ;;
-			esac
+		suse)
+			if command -v zypper > "/dev/null" 2>&1; then update-zypper "$@" || _ret=$?; else _handled=0; fi
 			;;
-		illumos)
-			if [ -f "/etc/release" ] && grep -qiE "omnios|openindiana|solaris" "/etc/release" 2> "/dev/null"; then
-				update-ips "$@"
-			elif command -v pkgin > "/dev/null" 2>&1; then
-				update-pkgin "$@"
-			elif command -v pkg > "/dev/null" 2>&1; then
-				update-ips "$@"
-			fi
+		void)
+			if command -v xbps-install > "/dev/null" 2>&1; then update-xbps "$@" || _ret=$?; else _handled=0; fi
 			;;
-		darwin)    command -v brew > "/dev/null" 2>&1 && update-brew "$@" ;;
+		alpine)
+			if command -v apk > "/dev/null" 2>&1; then update-apk "$@" || _ret=$?; else _handled=0; fi
+			;;
+		gentoo)
+			if command -v emerge > "/dev/null" 2>&1; then update-emerge "$@" || _ret=$?; else _handled=0; fi
+			;;
+		nixos)
+			if command -v nixos-rebuild > "/dev/null" 2>&1; then update-nix "$@" || _ret=$?; else _handled=0; fi
+			;;
+		solus)
+			if command -v eopkg > "/dev/null" 2>&1; then update-eopkg "$@" || _ret=$?; else _handled=0; fi
+			;;
+		slackware)
+			if command -v slackpkg > "/dev/null" 2>&1; then update-slackpkg "$@" || _ret=$?; else _handled=0; fi
+			;;
+		guix)
+			if command -v guix > "/dev/null" 2>&1; then update-guix "$@" || _ret=$?; else _handled=0; fi
+			;;
+		embedded)
+			if command -v opkg > "/dev/null" 2>&1; then update-opkg "$@" || _ret=$?; else _handled=0; fi
+			;;
 		*)
 			case "$(_detect_os)" in
-				freebsd|dragonfly) command -v pkg > "/dev/null" 2>&1 && update-pkg "$@" ;;
-				openbsd)           command -v pkg_add > "/dev/null" 2>&1 && update-pkg-add "$@" ;;
-				netbsd)            command -v pkgin > "/dev/null" 2>&1 && update-pkgin "$@" ;;
+				freebsd)
+					if command -v pkg > "/dev/null" 2>&1; then update-pkg "$@" || _ret=$?; else _handled=0; fi
+					;;
+				openbsd)
+					if command -v pkg_add > "/dev/null" 2>&1; then update-pkg-add "$@" || _ret=$?; else _handled=0; fi
+					;;
+				netbsd)
+					if command -v pkgin > "/dev/null" 2>&1; then update-pkgin "$@" || _ret=$?; else _handled=0; fi
+					;;
 				illumos)
 					if [ -f "/etc/release" ] && grep -qiE "omnios|openindiana|solaris" "/etc/release" 2> "/dev/null"; then
-						update-ips "$@"
+						update-ips "$@" || _ret=$?
 					elif command -v pkgin > "/dev/null" 2>&1; then
-						update-pkgin "$@"
+						update-pkgin "$@" || _ret=$?
 					elif command -v pkg > "/dev/null" 2>&1; then
-						update-ips "$@"
+						update-ips "$@" || _ret=$?
+					else
+						_handled=0
 					fi
 					;;
-				macos)             command -v brew > "/dev/null" 2>&1 && update-brew "$@" ;;
-				windows)           command -v pacman > "/dev/null" 2>&1 && update-pacman "$@" ;;
+				macos)
+					if command -v brew > "/dev/null" 2>&1; then update-brew "$@" || _ret=$?; else _handled=0; fi
+					;;
+				windows)
+					if command -v pacman > "/dev/null" 2>&1; then update-pacman "$@" || _ret=$?; else _handled=0; fi
+					;;
+				*)
+					_handled=0
+					;;
 			esac
 			;;
 	esac
+
+	if [ "${_handled}" -eq 0 ]; then
+		_ui_err "Nenhum gerenciador de pacotes suportado foi detectado para esta plataforma."
+		return 127
+	fi
+	if [ "${_ret}" -ne 0 ]; then
+		_ui_err "Falha na atualização dos pacotes do sistema (código ${_ret})."
+		return "${_ret}"
+	fi
 	_ui_ok "Pacotes do sistema operacional atualizados com sucesso!"
 }
 
@@ -248,7 +281,7 @@ clean-system() {
 				  - Solus:               eopkg delete-cache
 				  - Guix:                guix gc
 				  - OpenWrt:             limpeza de listas do opkg
-				  - FreeBSD / DragonFly: pkg autoremove --yes && pkg clean --yes
+				  - FreeBSD:             pkg autoremove --yes && pkg clean --yes
 				  - OpenBSD:             pkg_delete -a
 				  - NetBSD / illumos:    pkgin autoremove && pkgin clean
 				  - macOS:               brew cleanup --prune=all
@@ -356,12 +389,12 @@ clean-system() {
 		embedded)
 			if command -v opkg > "/dev/null" 2>&1; then
 				_ui_sub "Limpando caches de listas do opkg..."
-				rm -rf /var/opkg-lists/* > "/dev/null" 2>&1 || true
+				_as_root rm -rf /var/opkg-lists/* > "/dev/null" 2>&1 || true
 			fi
 			;;
 		bsd|illumos|*)
 			case "$(_detect_os)" in
-				freebsd|dragonfly)
+				freebsd)
 					if command -v pkg > "/dev/null" 2>&1; then
 						_ui_sub "Removendo pacotes órfãos via pkg autoremove..."
 						_as_root pkg autoremove --yes

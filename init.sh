@@ -3,7 +3,16 @@
 # Interface: Universal Shell Runtime Initializer
 # ----------------------------------------------------------------
 
-_init_src="${BASH_SOURCE[0]:-${0}}"
+if [ -n "${ZSH_VERSION:-}" ]; then
+	case "${ZSH_EVAL_CONTEXT:-}" in
+		*:file*) eval '_init_src="${(%):-%x}"' 2> "/dev/null" || _init_src="${0}" ;;
+		*)       _init_src="${0}" ;;
+	esac
+elif [ -n "${BASH_VERSION:-}" ]; then
+	eval '_init_src="${BASH_SOURCE[0]:-${0}}"' 2> "/dev/null" || _init_src="${0}"
+else
+	_init_src="${0}"
+fi
 case "${_init_src}" in
 	-*|"") _init_dir="" ;;
 	*/*)  _init_dir="${_init_src%/*}" ;;

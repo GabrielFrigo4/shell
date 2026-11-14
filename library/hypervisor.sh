@@ -3,7 +3,7 @@
 # ----------------------------------------------------------------
 
 ### ================================
-### HELPERS DE HIPERVISOR E CONEXÃO
+### HELPERS DE HIPERVISOR
 ### ================================
 
 _hyp_get_os() {
@@ -21,7 +21,7 @@ _hyp_get_os() {
 }
 
 _hyp_virsh_cmd() {
-	_uri="${LIBVIRT_DEFAULT_URI:-qemu:///system}"
+	local _uri="${LIBVIRT_DEFAULT_URI:-qemu:///system}"
 	if virsh -c "${_uri}" list > "/dev/null" 2>&1; then
 		virsh -c "${_uri}" "$@"
 	elif virsh list > "/dev/null" 2>&1; then
@@ -34,9 +34,9 @@ _hyp_virsh_cmd() {
 }
 
 _hyp_resolve_kvm_ip() {
-	_vm_name="$1"
-	_fallback_ip="$2"
-	_detected_ip="$(_hyp_virsh_cmd domifaddr "${_vm_name}" 2> "/dev/null" | awk '$3 == "ipv4" {print $4}' | cut -d'/' -f1 | head -n 1 || true)"
+	local _vm_name="$1"
+	local _fallback_ip="$2"
+	local _detected_ip="$(_hyp_virsh_cmd domifaddr "${_vm_name}" 2> "/dev/null" | awk '$3 == "ipv4" {print $4}' | cut -d'/' -f1 | head -n 1 || true)"
 	if [ -n "${_detected_ip}" ]; then
 		echo "${_detected_ip}"
 	else
@@ -45,24 +45,24 @@ _hyp_resolve_kvm_ip() {
 }
 
 _hyp_ssh_connect() {
-	_user="$1"
-	_host="$2"
+	local _user="$1"
+	local _host="$2"
 	[ "$#" -ge 2 ] && shift 2
 
-	_tty=""
+	local _tty=""
 	[ -t 0 ] && [ -t 1 ] && _tty="-t"
 
-	_host_os_name="$(_hyp_get_os)"
+	local _host_os_name="$(_hyp_get_os)"
 	[ "${_host_os_name}" = "unknown" ] && _host_os_name="$(uname -s 2> "/dev/null" || echo "unix")"
 
-	_tty_env="export HOST_OS=\"${_host_os_name}\"; "
-	_ssh_opts="-o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -o SendEnv=HOST_OS -o SetEnv=HOST_OS=${_host_os_name}"
-	_is_raw=0
+	local _tty_env="export HOST_OS=\"${_host_os_name}\"; "
+	local _ssh_opts="-o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -o SendEnv=HOST_OS -o SetEnv=HOST_OS=${_host_os_name}"
+	local _is_raw=0
 	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
 		*1*|*true*|*yes*) _is_raw=1 ;;
 	esac
 	if [ "${_is_raw}" -eq 1 ] || { command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; }; then
-		_raw_term="xterm"
+		local _raw_term="xterm"
 		[ "${TERM:-}" = "linux" ] && _raw_term="linux"
 		_tty_env="${_tty_env}export RAW_TTY=1 LC_RAW_TTY=1 UNIVERSAL_RAW_TTY=1; unset COLORTERM; export TERM=${_raw_term}; "
 		_ssh_opts="${_ssh_opts} -o SendEnv=LC_RAW_TTY -o SetEnv=LC_RAW_TTY=1"
@@ -78,10 +78,13 @@ _hyp_ssh_connect() {
 }
 
 _hyp_bhyve_ensure_up() {
-	_b_lbl="$1"
-	_b_vm="$2"
-	_b_ip="$3"
-	_b_user="${4:-${LINUX_HOST_USER:-gabriel}}"
+	local _b_lbl="$1"
+	local _b_vm="$2"
+	local _b_ip="$3"
+	local _b_user="${4:-${LINUX_HOST_USER:-${USER:-debian}}}"
+	local _probe _is_run _wait_count
+
+	[ -z "${_b_ip}" ] && return 1
 
 	if command -v nc > "/dev/null" 2>&1; then
 		if nc -z -w 1 "${_b_ip}" 22 > "/dev/null" 2>&1; then
@@ -131,11 +134,11 @@ _hyp_bhyve_ensure_up() {
 }
 
 _hyp_bhyve_dispatch() {
-	_label="$1"
-	_vm_name="$2"
-	_vm_user="$3"
-	_vm_ip="$4"
-	_action="${5:-}"
+	local _label="$1"
+	local _vm_name="$2"
+	local _vm_user="$3"
+	local _vm_ip="$4"
+	local _action="${5:-}"
 	[ "$#" -ge 5 ] && shift 5
 
 	case "${_action}" in
@@ -168,14 +171,17 @@ _hyp_bhyve_dispatch() {
 			_as_root vm console "${_vm_name}"
 			;;
 		ssh)
+			[ -n "${_vm_ip}" ] || { _ui_err "${_label}: host IP não configurado (defina via Vault ou variável de ambiente)."; return 1; }
 			_hyp_bhyve_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}" "${_vm_user}"
 			_hyp_ssh_connect "${_vm_user}" "${_vm_ip}" "$@"
 			;;
 		"")
+			[ -n "${_vm_ip}" ] || { _ui_err "${_label}: host IP não configurado (defina via Vault ou variável de ambiente)."; return 1; }
 			_hyp_bhyve_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}" "${_vm_user}"
 			_hyp_ssh_connect "${_vm_user}" "${_vm_ip}"
 			;;
 		*)
+			[ -n "${_vm_ip}" ] || { _ui_err "${_label}: host IP não configurado (defina via Vault ou variável de ambiente)."; return 1; }
 			_hyp_bhyve_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}" "${_vm_user}"
 			_hyp_ssh_connect "${_vm_user}" "${_vm_ip}" "${_action}" "$@"
 			;;
@@ -183,12 +189,13 @@ _hyp_bhyve_dispatch() {
 }
 
 _hyp_kvm_ensure_up() {
-	_k_lbl="$1"
-	_k_vm="$2"
-	_k_ip="$3"
+	local _k_lbl="$1"
+	local _k_vm="$2"
+	local _k_ip="$3"
+	local _target_ip _wait_count
 
 	_target_ip="$(_hyp_resolve_kvm_ip "${_k_vm}" "${_k_ip}")"
-	if command -v nc > "/dev/null" 2>&1; then
+	if [ -n "${_target_ip}" ] && command -v nc > "/dev/null" 2>&1; then
 		if nc -z -w 1 "${_target_ip}" 22 > "/dev/null" 2>&1; then
 			return 0
 		fi
@@ -202,7 +209,7 @@ _hyp_kvm_ensure_up() {
 	_wait_count=0
 	while [ "${_wait_count}" -lt 15 ]; do
 		_target_ip="$(_hyp_resolve_kvm_ip "${_k_vm}" "${_k_ip}")"
-		if command -v nc > "/dev/null" 2>&1; then
+		if [ -n "${_target_ip}" ] && command -v nc > "/dev/null" 2>&1; then
 			if nc -z -w 1 "${_target_ip}" 22 > "/dev/null" 2>&1; then
 				return 0
 			fi
@@ -213,11 +220,12 @@ _hyp_kvm_ensure_up() {
 }
 
 _hyp_kvm_dispatch() {
-	_label="$1"
-	_vm_name="$2"
-	_vm_user="$3"
-	_vm_ip="$4"
-	_action="${5:-}"
+	local _label="$1"
+	local _vm_name="$2"
+	local _vm_user="$3"
+	local _vm_ip="$4"
+	local _action="${5:-}"
+	local _target_ip
 	[ "$#" -ge 5 ] && shift 5
 
 	if ! command -v virsh > "/dev/null" 2>&1; then
@@ -248,23 +256,26 @@ _hyp_kvm_dispatch() {
 		ssh)
 			_hyp_kvm_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}"
 			_target_ip="$(_hyp_resolve_kvm_ip "${_vm_name}" "${_vm_ip}")"
+			[ -n "${_target_ip}" ] || { _ui_err "${_label}: IP não resolvido via domifaddr/env."; return 1; }
 			_hyp_ssh_connect "${_vm_user}" "${_target_ip}" "$@"
 			;;
 		"")
 			_hyp_kvm_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}"
 			_target_ip="$(_hyp_resolve_kvm_ip "${_vm_name}" "${_vm_ip}")"
+			[ -n "${_target_ip}" ] || { _ui_err "${_label}: IP não resolvido via domifaddr/env."; return 1; }
 			_hyp_ssh_connect "${_vm_user}" "${_target_ip}"
 			;;
 		*)
 			_hyp_kvm_ensure_up "${_label}" "${_vm_name}" "${_vm_ip}"
 			_target_ip="$(_hyp_resolve_kvm_ip "${_vm_name}" "${_vm_ip}")"
+			[ -n "${_target_ip}" ] || { _ui_err "${_label}: IP não resolvido via domifaddr/env."; return 1; }
 			_hyp_ssh_connect "${_vm_user}" "${_target_ip}" "${_action}" "$@"
 			;;
 	esac
 }
 
 _hyp_bastille_ensure_up() {
-	_jail="$1"
+	local _jail="$1"
 	if command -v jls > "/dev/null" 2>&1; then
 		jls -j "${_jail}" > "/dev/null" 2>&1 && return 0
 	fi
@@ -273,7 +284,7 @@ _hyp_bastille_ensure_up() {
 }
 
 _hyp_incus_ensure_up() {
-	_ct="$1"
+	local _ct="$1"
 	if incus info "${_ct}" 2> "/dev/null" | grep -qi "^Status:[[:space:]]*Running"; then
 		return 0
 	fi
@@ -281,11 +292,17 @@ _hyp_incus_ensure_up() {
 	incus start "${_ct}" > "/dev/null" 2>&1 || true
 }
 
+_hyp_incus_login_shell() {
+	local _ct="$1"
+	incus exec "${_ct}" -- /usr/bin/env sh -c 's="$(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || command -v sh 2> "/dev/null" || echo sh)"; exec "${s}" -l'
+}
+
 ### ================================
 ### FREEBSD
 ### ================================
 freebsd() {
-	_host_os="$(_hyp_get_os)"
+	local _host_os="$(_hyp_get_os)"
+	local _jail_name _action _fb_ip _fb_user _vm_name
 
 	if [ "$#" -gt 0 ]; then
 		case "$1" in
@@ -342,7 +359,8 @@ freebsd() {
 				_as_root bastille console "${_jail_name}"
 				;;
 			ssh)
-				_fb_ip="${FREEBSD_HOST_IP:-${FREEBSD_IP:-192.168.8.3}}"
+				_fb_ip="${FREEBSD_HOST_IP:-${FREEBSD_IP:-}}"
+				[ -n "${_fb_ip}" ] || { _ui_err "FREEBSD_HOST_IP não configurado (defina via Vault ou variável de ambiente)."; return 1; }
 				_fb_user="${FREEBSD_HOST_USER:-${FREEBSD_USER:-freebsd}}"
 				_hyp_ssh_connect "${_fb_user}" "${_fb_ip}" "$@"
 				;;
@@ -357,7 +375,7 @@ freebsd() {
 		esac
 	else
 		_vm_name="${FREEBSD_VM_NAME:-FreeBSD}"
-		_fb_ip="${FREEBSD_HOST_IP:-${FREEBSD_IP:-192.168.8.3}}"
+		_fb_ip="${FREEBSD_HOST_IP:-${FREEBSD_IP:-}}"
 		_fb_user="${FREEBSD_HOST_USER:-${FREEBSD_USER:-freebsd}}"
 		_action="${1:-}"
 		[ "$#" -gt 0 ] && shift
@@ -371,7 +389,8 @@ fb() { freebsd "$@"; }
 ### LINUX
 ### ================================
 linux() {
-	_host_os="$(_hyp_get_os)"
+	local _host_os="$(_hyp_get_os)"
+	local _container_name _action _lx_ip _lx_user _vm_name
 
 	if [ "$#" -gt 0 ]; then
 		case "$1" in
@@ -429,17 +448,21 @@ linux() {
 				if [ "$#" -gt 0 ]; then
 					incus exec "${_container_name}" -- "$@"
 				else
-					incus exec "${_container_name}" -- /usr/bin/env sh -c 'exec $(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || command -v sh 2> "/dev/null" || echo sh) -l'
+					_hyp_incus_login_shell "${_container_name}"
 				fi
 				;;
 			ssh)
-				_lx_ip="${LINUX_HOST_IP:-192.168.8.2}"
-				_lx_user="${LINUX_HOST_USER:-${USER}}"
+				_lx_ip="${LINUX_HOST_IP:-}"
+				_lx_user="${LINUX_HOST_USER:-${USER:-debian}}"
+				if [ -z "${_lx_ip}" ]; then
+					_ui_err "LINUX_HOST_IP não configurado. Defina LINUX_HOST_IP para conectar via SSH."
+					return 1
+				fi
 				_hyp_ssh_connect "${_lx_user}" "${_lx_ip}" "$@"
 				;;
 			"")
 				_hyp_incus_ensure_up "${_container_name}"
-				incus exec "${_container_name}" -- /usr/bin/env sh -c 'exec $(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || command -v sh 2> "/dev/null" || echo sh) -l'
+				_hyp_incus_login_shell "${_container_name}"
 				;;
 			*)
 				_hyp_incus_ensure_up "${_container_name}"
@@ -453,23 +476,34 @@ linux() {
 		case "${_action}" in
 			--start|-s|start|up)
 				[ "$#" -ge 1 ] && shift 1
-				_lx_ip="${LINUX_HOST_IP:-192.168.8.2}"
-				_lx_user="${LINUX_HOST_USER:-gabriel}"
+				_lx_ip="${LINUX_HOST_IP:-}"
+				_lx_user="${LINUX_HOST_USER:-${USER:-debian}}"
 				_ui_step "Iniciando VM Linux no Bhyve (${_vm_name})..."
 				if command -v _as_root > "/dev/null" 2>&1; then
 					_as_root vm start "${_vm_name}" > "/dev/null" 2>&1 || true
 				elif command -v vm > "/dev/null" 2>&1; then
 					sudo vm start "${_vm_name}" > "/dev/null" 2>&1 || true
 				fi
-				_hyp_bhyve_ensure_up "Linux" "${_vm_name}" "${_lx_ip}" "${_lx_user}"
-				if [ "$#" -gt 0 ]; then
+				if [ -n "${_lx_ip}" ]; then
+					_hyp_bhyve_ensure_up "Linux" "${_vm_name}" "${_lx_ip}" "${_lx_user}"
+					if [ "$#" -gt 0 ]; then
+						if command -v linux-host > "/dev/null" 2>&1; then
+							linux-host "$@"
+						else
+							_hyp_ssh_connect "${_lx_user}" "${_lx_ip}" "$@"
+						fi
+					else
+						_ui_ok "VM Linux (${_vm_name}) iniciada e pronta para conexões!"
+					fi
+				elif [ "$#" -gt 0 ]; then
 					if command -v linux-host > "/dev/null" 2>&1; then
 						linux-host "$@"
 					else
-						_hyp_ssh_connect "${_lx_user}" "${_lx_ip}" "$@"
+						_ui_err "LINUX_HOST_IP não configurado. Defina LINUX_HOST_IP para conectar via SSH."
+						return 1
 					fi
 				else
-					_ui_ok "VM Linux (${_vm_name}) iniciada e pronta para conexões!"
+					_ui_ok "VM Linux (${_vm_name}) iniciada (defina LINUX_HOST_IP para aguardar SSH)."
 				fi
 				;;
 			--stop|--close|-c|-k|stop|down|poweroff)
@@ -488,8 +522,12 @@ linux() {
 				;;
 			ssh)
 				[ "$#" -ge 1 ] && shift 1
-				_lx_ip="${LINUX_HOST_IP:-192.168.8.2}"
-				_lx_user="${LINUX_HOST_USER:-gabriel}"
+				_lx_ip="${LINUX_HOST_IP:-}"
+				_lx_user="${LINUX_HOST_USER:-${USER:-debian}}"
+				if [ -z "${_lx_ip}" ]; then
+					_ui_err "LINUX_HOST_IP não configurado. Defina LINUX_HOST_IP para conectar via SSH."
+					return 1
+				fi
 				_hyp_bhyve_ensure_up "Linux" "${_vm_name}" "${_lx_ip}" "${_lx_user}"
 				_hyp_ssh_connect "${_lx_user}" "${_lx_ip}" "$@"
 				;;
@@ -497,8 +535,12 @@ linux() {
 				if command -v linux-host > "/dev/null" 2>&1; then
 					linux-host "$@"
 				else
-					_lx_ip="${LINUX_HOST_IP:-192.168.8.2}"
-					_lx_user="${LINUX_HOST_USER:-gabriel}"
+					_lx_ip="${LINUX_HOST_IP:-}"
+					_lx_user="${LINUX_HOST_USER:-${USER:-debian}}"
+					if [ -z "${_lx_ip}" ]; then
+						_ui_err "LINUX_HOST_IP não configurado. Defina LINUX_HOST_IP para conectar via SSH."
+						return 1
+					fi
 					_hyp_bhyve_ensure_up "Linux" "${_vm_name}" "${_lx_ip}" "${_lx_user}"
 					_hyp_ssh_connect "${_lx_user}" "${_lx_ip}" "$@"
 				fi
@@ -513,7 +555,8 @@ lx() { linux "$@"; }
 ### OPENBSD
 ### ================================
 openbsd() {
-	_host_os="$(_hyp_get_os)"
+	local _host_os="$(_hyp_get_os)"
+	local _vm_name _ob_ip _ob_user _action
 
 	if [ "$#" -gt 0 ]; then
 		case "$1" in
@@ -540,7 +583,7 @@ openbsd() {
 	fi
 
 	_vm_name="${OPENBSD_VM_NAME:-OpenBSD}"
-	_ob_ip="${OPENBSD_HOST_IP:-${OPENBSD_IP:-192.168.8.4}}"
+	_ob_ip="${OPENBSD_HOST_IP:-${OPENBSD_IP:-}}"
 	_ob_user="${OPENBSD_HOST_USER:-${OPENBSD_USER:-openbsd}}"
 	_action="${1:-}"
 	[ "$#" -gt 0 ] && shift
@@ -558,7 +601,8 @@ ob() { openbsd "$@"; }
 ### NETBSD
 ### ================================
 netbsd() {
-	_host_os="$(_hyp_get_os)"
+	local _host_os="$(_hyp_get_os)"
+	local _vm_name _nb_ip _nb_user _action
 
 	if [ "$#" -gt 0 ]; then
 		case "$1" in
@@ -585,7 +629,7 @@ netbsd() {
 	fi
 
 	_vm_name="${NETBSD_VM_NAME:-NetBSD}"
-	_nb_ip="${NETBSD_HOST_IP:-${NETBSD_IP:-192.168.8.5}}"
+	_nb_ip="${NETBSD_HOST_IP:-${NETBSD_IP:-}}"
 	_nb_user="${NETBSD_HOST_USER:-${NETBSD_USER:-netbsd}}"
 	_action="${1:-}"
 	[ "$#" -gt 0 ] && shift

@@ -13,12 +13,12 @@ let _msys_root = ($env.MSYS2_ROOT? | default "C:\\msys64")
 let _msys_home_base = ($env.MSYS2_HOME? | default ([$_msys_root, "home"] | path join))
 let _msys_user = ($env.MSYS2_USER? | default ($env.USERNAME? | default ""))
 
-let _msys_target = ([$_msys_home_base, $_msys_user] | path join)
-let _msys_target_lower = ([$_msys_home_base, ($_msys_user | str lowercase)] | path join)
+let _msys_target = if ($_msys_user | is-not-empty) { [$_msys_home_base, $_msys_user] | path join } else { "" }
+let _msys_target_lower = if ($_msys_user | is-not-empty) { [$_msys_home_base, ($_msys_user | str lowercase)] | path join } else { "" }
 
-let MsysHome = if ($_msys_target | path exists) {
+let MsysHome = if ($_msys_target | is-not-empty) and ($_msys_target | path exists) {
 	$_msys_target
-} else if ($_msys_target_lower | path exists) {
+} else if ($_msys_target_lower | is-not-empty) and ($_msys_target_lower | path exists) {
 	$_msys_target_lower
 } else {
 	""
@@ -30,7 +30,7 @@ def get-msys-shell [] {
 		"C:\\msys64",
 		"D:\\msys64",
 		"E:\\msys64",
-		([($env.LOCALAPPDATA? | default ""), "Programs", "msys64"] | path join),
+		(if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "Programs", "msys64"] | path join } else { "" }),
 		"C:\\Program Files\\Git"
 	]
 	let candidate_shells = ["zsh.exe", "bash.exe", "sh.exe", "ksh.exe"]
@@ -54,32 +54,34 @@ def get-msys-shell [] {
 }
 
 def get-git-cmd [] {
+	let user_home = ($env.USERPROFILE? | default ($env.HOME? | default ""))
 	let candidates = [
 		"C:\\Program Files\\Git\\cmd\\git.exe",
 		"C:\\Program Files\\Git\\bin\\git.exe",
 		"C:\\Program Files (x86)\\Git\\cmd\\git.exe",
 		(if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "Programs", "Git", "cmd", "git.exe"] | path join } else { "" }),
 		(if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "Programs", "Git", "bin", "git.exe"] | path join } else { "" }),
-		([$env.USERPROFILE, "scoop", "shims", "git.exe"] | path join)
+		(if ($user_home | is-not-empty) { [$user_home, "scoop", "shims", "git.exe"] | path join } else { "" })
 	]
 	for c in $candidates {
 		if ($c | is-not-empty) and ($c | path exists) { return $c }
 	}
-	let detected = (which -a git | where { |it| not ($it.path | str contains "msys64") } | get -o 0.path | default "git")
+	let detected = (which -a git | where { |it| not ($it.path | str lowercase | str contains "msys64") } | get -o 0.path | default "git")
 	$detected
 }
 
 def get-gh-cmd [] {
+	let user_home = ($env.USERPROFILE? | default ($env.HOME? | default ""))
 	let candidates = [
 		"C:\\Program Files\\GitHub CLI\\gh.exe",
 		"C:\\Program Files (x86)\\GitHub CLI\\gh.exe",
 		(if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "Programs", "GitHub CLI", "gh.exe"] | path join } else { "" }),
-		([$env.USERPROFILE, "scoop", "shims", "gh.exe"] | path join)
+		(if ($user_home | is-not-empty) { [$user_home, "scoop", "shims", "gh.exe"] | path join } else { "" })
 	]
 	for c in $candidates {
 		if ($c | is-not-empty) and ($c | path exists) { return $c }
 	}
-	let detected = (which -a gh | where { |it| not ($it.path | str contains "msys64") } | get -o 0.path | default "")
+	let detected = (which -a gh | where { |it| not ($it.path | str lowercase | str contains "msys64") } | get -o 0.path | default "")
 	$detected
 }
 
@@ -96,6 +98,7 @@ let _active_vault = ($_vault_candidates | where { |p| ($p | is-not-empty) and ($
 
 if ($_active_vault | is-not-empty) {
 	let _pattern = ($"($_active_vault)/**/*.env" | str replace -a '\' '/')
+	let _vault_home = ($env.USERPROFILE? | default ($env.HOME? | default "~"))
 	for f in (glob $_pattern) {
 		let base_name = ($f | path basename)
 		if ($base_name | str contains "template") or ($base_name | str contains "example") {
@@ -105,17 +108,22 @@ if ($_active_vault | is-not-empty) {
 		if $is_locked {
 			continue
 		}
-		let raw_lines = (open $f | lines | where { |it|
-			let trimmed = ($it | str trim)
-			($trimmed | is-not-empty) and (not ($trimmed | str starts-with '#')) and ($trimmed | str contains '=')
-		})
+		let raw_lines = (try {
+			open --raw $f | decode utf-8 | lines | where { |it|
+				let trimmed = ($it | str trim)
+				($trimmed | is-not-empty) and (not ($trimmed | str starts-with '#')) and ($trimmed | str contains '=')
+			}
+		} catch { [] })
 		for line in $raw_lines {
 			let parts = ($line | split row -n 2 '=')
-			let key = ($parts | get 0 | str trim)
+			let key = ($parts | get 0 | str trim | str replace -r '^export\s+' '')
+			if ($key | is-empty) {
+				continue
+			}
 			mut val = ($parts | get 1 | str trim | str replace -r '^"(.*)"$' '$1' | str replace -r "^'(.*)'$" '$1')
 			$val = ($val | str replace -r '\$\{VAULT_DIR:-[^\}]+\}' $_active_vault)
 			$val = ($val | str replace -a '${VAULT_DIR}' $_active_vault | str replace -a '$VAULT_DIR' $_active_vault)
-			$val = ($val | str replace -a '${HOME}' ($env.USERPROFILE? | default ($env.HOME? | default "~")) | str replace -a '$HOME' ($env.USERPROFILE? | default ($env.HOME? | default "~")))
+			$val = ($val | str replace -a '${HOME}' $_vault_home | str replace -a '$HOME' $_vault_home)
 			load-env { $key: $val }
 		}
 	}
@@ -125,7 +133,7 @@ if ($_active_vault | is-not-empty) {
 ### SHELL VARIABLES
 ### ================================
 
-let Home = $"($env.USERPROFILE)";
+let Home = ($env.USERPROFILE? | default ($env.HOME? | default "~"));
 let System32 = "C:\\Windows\\System32";
 let OneDrive = $"($Home)\\onedrive";
 let Desktop = $"($OneDrive)\\Área de Trabalho";
@@ -133,7 +141,7 @@ let Documents = $"($OneDrive)\\Documentos";
 let Images = $"($OneDrive)\\Imagens";
 let Workspace = $"($OneDrive)\\Workspace";
 let Downloads = $"($Home)\\Downloads";
-let VIRTUAL_STORE = $"($env.LOCALAPPDATA)\\VirtualStore";
+let VIRTUAL_STORE = $"($env.LOCALAPPDATA? | default $"($Home)\\AppData\\Local")\\VirtualStore";
 let FASM_STORE = $"($VIRTUAL_STORE)\\Program Files\\FASM";
 let FASM2_STORE = $"($VIRTUAL_STORE)\\Program Files\\FASM2";
 let FASMG_STORE = $"($VIRTUAL_STORE)\\Program Files\\FASMG";
@@ -216,7 +224,11 @@ alias Show-Machine = explorer.exe $"($System32)";
 alias Show-Msys = explorer.exe (if ($MsysHome | is-not-empty) { $MsysHome } else { "C:\\msys64" });
 
 def --wrapped personal-server [...rest] {
-	let ip = ($env.PERSONAL_SERVER_IP? | default "144.22.210.65")
+	let ip = ($env.PERSONAL_SERVER_IP? | default "")
+	if ($ip | is-empty) {
+		_ui_err "PERSONAL_SERVER_IP não definida (configure no Vault ou variável de ambiente)."
+		return
+	}
 	let user = ($env.PERSONAL_SERVER_USER? | default "ubuntu")
 	let key = (resolve-vault-ssh-key ($env.PERSONAL_SERVER_KEY? | default "") "ssh-key-personal-server.key")
 	if ($key | is-not-empty) {
@@ -228,7 +240,11 @@ def --wrapped personal-server [...rest] {
 }
 
 def --wrapped venture-server [...rest] {
-	let ip = ($env.VENTURE_SERVER_IP? | default "137.131.238.161")
+	let ip = ($env.VENTURE_SERVER_IP? | default "")
+	if ($ip | is-empty) {
+		_ui_err "VENTURE_SERVER_IP não definida (configure no Vault ou variável de ambiente)."
+		return
+	}
 	let user = ($env.VENTURE_SERVER_USER? | default "ubuntu")
 	let key = (resolve-vault-ssh-key ($env.VENTURE_SERVER_KEY? | default "") "ssh-key-venture-server.key")
 	if ($key | is-not-empty) {
@@ -265,10 +281,12 @@ alias open-emacs-nw = emacs-open-nw;
 def emacs-eshell [dir?: string] {
 	let target_dir = if ($dir | is-empty) { "." } else { $dir }
 	let full_dir = if ($target_dir | path exists) { ($target_dir | path expand | str replace -a '\' '/') } else { "." }
+	let safe_dir = ($full_dir | str replace -a '"' '\"')
+	let eval_expr = '(progn (cd "' + $safe_dir + '/")(aweshell/new))'
 	if (which emacsclientw | is-not-empty) {
-		^emacsclientw --create-frame --alternate-editor "" --eval $"(progn (cd \"($full_dir)/\")(aweshell/new))"
+		^emacsclientw --create-frame --alternate-editor "" --eval $eval_expr
 	} else if (which runemacs | is-not-empty) {
-		^runemacs --eval $"(progn (cd \"($full_dir)/\")(aweshell/new))"
+		^runemacs --eval $eval_expr
 	} else {
 		_ui_err "emacs not found."
 	}
@@ -412,10 +430,20 @@ alias open-codium = codium .;
 alias ocm = codium .;
 alias open-zed = zed .;
 alias oz = zed .;
-alias open-antigravity = antigravity-ide .;
-alias open-ant = antigravity-ide .;
-alias oa = antigravity-ide .;
-alias ant = antigravity-ide;
+def open-antigravity [...args: string] {
+	let target = if ($args | is-empty) { "." } else { $args | str join " " }
+	let safe_target = ($target | str replace -a "'" "''")
+	^pwsh -NoProfile -Command $"Start-Process -FilePath 'antigravity-ide' -ArgumentList '($safe_target)' -WindowStyle Hidden"
+}
+alias open-ant = open-antigravity;
+alias oa = open-antigravity;
+def ant [...args: string] {
+	if ($args | is-empty) {
+		^pwsh -NoProfile -Command "Start-Process -FilePath 'antigravity-ide' -WindowStyle Hidden"
+	} else {
+		open-antigravity ...$args
+	}
+}
 
 def open-kate [...args: string] {
 	let target = if ($args | is-empty) { "." } else { $args | str join " " }
@@ -473,28 +501,32 @@ def open-smart [...args: string] {
 			explorer.exe $target
 		} else {
 			let doc_exts = [".pdf", ".epub", ".djvu", ".sqlite", ".sqlite3", ".db", ".org", ".md", ".txt", ".tex", ".el", ".sh", ".py", ".c", ".h", ".rs", ".go", ".js", ".ts", ".json", ".yaml", ".yml", ".toml", ".xml", ".csv", ".log", ".diff", ".patch", ".zip", ".tar", ".gz", ".xz", ".7z"]
-			let ext = ($target | path parse | get extension | str downcase)
+			let ext = ($target | path parse | get extension | str lowercase)
 			let dot_ext = $".($ext)"
+			let safe_target = ($target | str replace -a "'" "''")
 			if ($doc_exts | any { |e| $e == $dot_ext }) and (which emacsclientw | is-not-empty) {
-				^pwsh -NoProfile -Command $"Start-Process -FilePath 'emacsclientw' -ArgumentList @('-n', '($target)') -WindowStyle Hidden"
+				let ps_cmd = "Start-Process -FilePath 'emacsclientw' -ArgumentList @('-n', '" + $safe_target + "') -WindowStyle Hidden"
+				^pwsh -NoProfile -Command $ps_cmd
 			} else {
-				^pwsh -NoProfile -Command $"Start-Process '($target)'"
+				^pwsh -NoProfile -Command $"Start-Process '($safe_target)'"
 			}
 		}
 	}
 }
 alias o = open-smart;
 
-def take [dir: string] {
+def --env take [dir: string] {
 	mkdir $dir
 	cd $dir
 }
 alias take-dir = take;
 alias mkcd = take;
 
-def cd-git-root [] {
-	let root = (do -i { ^git rev-parse --show-toplevel } | str trim)
-	if ($root | is-not-empty) {
+def --env cd-git-root [] {
+	let git_bin = (get-git-cmd)
+	let res = (do { ^$git_bin rev-parse --show-toplevel } | complete)
+	let root = ($res.stdout | str trim)
+	if $res.exit_code == 0 and ($root | is-not-empty) {
 		cd $root
 	} else {
 		_ui_err "Não está dentro de um repositório git."
@@ -761,10 +793,6 @@ def --wrapped glog [...rest] { ^git log --oneline --decorate --graph -n 20 ...$r
 ### EMISSAO E UI SEMANTICA
 ### ================================
 
-# ----------------------------------------------------------------
-# Utility: Universal Shell UI & Emission Helper (Nushell)
-# ----------------------------------------------------------------
-
 def _ui_step [msg: string] { print $"(ansi cyan_bold)==>(ansi reset) ($msg)" }
 def _ui_sub  [msg: string] { print $"(ansi blue_bold)  ↳(ansi reset) ($msg)" }
 def _ui_ok   [msg: string] { print $"(ansi green_bold)  ✅(ansi reset) ($msg)" }
@@ -881,13 +909,14 @@ def upgit [
 	_ui_step $"($action_title) repositórios Git em: ($target_root)"
 	print ""
 
-	let g1 = (try { glob $"($target_root)/.git" } catch { [] })
-	let g2 = (try { glob $"($target_root)/*/.git" } catch { [] })
-	let g3 = (try { glob $"($target_root)/*/*/.git" } catch { [] })
+	let norm_root = ($target_root | str replace -a '\' '/' | str trim -r -c '/')
+	let g1 = (try { glob $"($norm_root)/.git" } catch { [] })
+	let g2 = (try { glob $"($norm_root)/*/.git" } catch { [] })
+	let g3 = (try { glob $"($norm_root)/*/*/.git" } catch { [] })
 	let repos = ($g1 | append $g2 | append $g3 | uniq)
 
 	if ($repos | is-empty) {
-		_ui_info $"Nenhum repositório Git encontrado em ($target_root) (profundidade máxima: 3)."
+		_ui_info $"Nenhum repositório Git encontrado em ($target_root) \(profundidade máxima: 3\)."
 		return
 	}
 
@@ -935,20 +964,22 @@ def psgit [
 	_ui_step $"($action_title) repositórios Git em: ($target_root)"
 	print ""
 
-	let g1 = (try { glob $"($root)/.git" } catch { [] })
-	let g2 = (try { glob $"($root)/*/.git" } catch { [] })
-	let g3 = (try { glob $"($root)/*/*/.git" } catch { [] })
+	let norm_root = ($target_root | str replace -a '\' '/' | str trim -r -c '/')
+	let g1 = (try { glob $"($norm_root)/.git" } catch { [] })
+	let g2 = (try { glob $"($norm_root)/*/.git" } catch { [] })
+	let g3 = (try { glob $"($norm_root)/*/*/.git" } catch { [] })
 	let repos = ($g3 | append $g2 | append $g1 | uniq)
 
 	if ($repos | is-empty) {
-		_ui_info $"Nenhum repositório Git encontrado em ($root) (profundidade máxima: 3)."
+		_ui_info $"Nenhum repositório Git encontrado em ($target_root) \(profundidade máxima: 3\)."
 		return
 	}
 
+	let git_bin = (get-git-cmd)
 	for repo in $repos {
 		let dir = ($repo | path dirname)
-		let unpushed = (do { ^git -C $dir cherry -v } | complete).stdout | str trim
-		let branch = (do { ^git -C $dir branch --show-current } | complete).stdout | str trim
+		let unpushed = (do { ^$git_bin -C $dir cherry -v } | complete).stdout | str trim
+		let branch = (do { ^$git_bin -C $dir branch --show-current } | complete).stdout | str trim
 		let branch_lbl = if ($branch | is-empty) { "detached" } else { $branch }
 
 		if ($unpushed | is-not-empty) {
@@ -959,7 +990,7 @@ def psgit [
 				_ui_sub $"[DRY-RUN PUSH] ($dir) [($branch_lbl)]"
 			} else {
 				_ui_sub $"Enviando ($dir) [($branch_lbl)]..."
-				let res = (do { ^git -C $dir push } | complete)
+				let res = (do { ^$git_bin -C $dir push } | complete)
 				if $res.exit_code == 0 {
 					_ui_ok $"($dir): push concluído com sucesso!"
 				} else {
@@ -986,13 +1017,14 @@ def sync-extensions [
 	...args: string
 ] {
 	_ui_step "Sincronizando extensões de IDE declarativas..."
+	let user_home = ($env.USERPROFILE? | default ($env.HOME? | default ""))
 	let candidates = [
 		($env.PROFILE_DIR? | default ""),
-		([$env.USERPROFILE, ".local", "share", "profile"] | path join),
-		([$env.USERPROFILE, ".config", "profile"] | path join),
-		([$env.USERPROFILE, ".profile"] | path join),
-		([$env.USERPROFILE, "OneDrive", "Documentos", "Profile"] | path join),
-		([$env.USERPROFILE, "Documents", "Profile"] | path join),
+		(if ($user_home | is-not-empty) { [$user_home, ".local", "share", "profile"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".config", "profile"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".profile"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, "OneDrive", "Documentos", "Profile"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, "Documents", "Profile"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".local", "share", "profile"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".config", "profile"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".profile"] | path join } else { "" })
@@ -1010,7 +1042,12 @@ def sync-extensions [
 
 		let sh = (get-msys-shell)
 		if ($sh | is-not-empty) {
-			let target_posix = ($target | str replace -a '\' '/' | str replace -r '^[Cc]:' '/c' | str replace -r '^[Dd]:' '/d')
+			let target_fwd = ($target | str replace -a '\' '/')
+			let target_posix = if ($target_fwd =~ '^[A-Za-z]:') {
+				$"/($target_fwd | str substring 0..<1 | str lowercase)($target_fwd | str substring 2..)"
+			} else {
+				$target_fwd
+			}
 			^$sh -c $"MSYS=winsymlinks:nativestrict '($target_posix)/profile.sh' extensions ($sub_args)"
 		} else {
 			_ui_warn "Ambiente MSYS2/POSIX shell não detectado no PATH."
@@ -1033,11 +1070,12 @@ def uped [
 	_ui_step $"($action_title) Suíte de Editores no Windows..."
 	mut found = false
 
+	let user_home = ($env.USERPROFILE? | default ($env.HOME? | default ""))
 	let emacs_paths = [
-		([$env.HOME?, ".emacs.d"] | path join),
-		([$env.USERPROFILE, ".emacs.d"] | path join),
+		(if ($env.HOME? | is-not-empty) { [$env.HOME, ".emacs.d"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".emacs.d"] | path join } else { "" }),
 		(if ($env.APPDATA? | is-not-empty) { [$env.APPDATA, ".emacs.d"] | path join } else { "" }),
-		([$env.USERPROFILE, ".config", "emacs"] | path join),
+		(if ($user_home | is-not-empty) { [$user_home, ".config", "emacs"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".emacs.d"] | path join } else { "" })
 	]
 	let emacs_dir = ($emacs_paths | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
@@ -1065,8 +1103,8 @@ def uped [
 
 	let helix_paths = [
 		(if ($env.APPDATA? | is-not-empty) { [$env.APPDATA, "helix"] | path join } else { "" }),
-		([$env.USERPROFILE, "AppData", "Roaming", "helix"] | path join),
-		([$env.USERPROFILE, ".config", "helix"] | path join),
+		(if ($user_home | is-not-empty) { [$user_home, "AppData", "Roaming", "helix"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".config", "helix"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".config", "helix"] | path join } else { "" })
 	]
 	let helix_dir = ($helix_paths | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
@@ -1087,8 +1125,8 @@ def uped [
 
 	let nvim_paths = [
 		(if ($env.LOCALAPPDATA? | is-not-empty) { [$env.LOCALAPPDATA, "nvim"] | path join } else { "" }),
-		([$env.USERPROFILE, "AppData", "Local", "nvim"] | path join),
-		([$env.USERPROFILE, ".config", "nvim"] | path join),
+		(if ($user_home | is-not-empty) { [$user_home, "AppData", "Local", "nvim"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".config", "nvim"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".config", "nvim"] | path join } else { "" })
 	]
 	let nvim_dir = ($nvim_paths | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
@@ -1109,9 +1147,9 @@ def uped [
 
 	let vim_paths = [
 		(if ($env.HOME? | is-not-empty) { [$env.HOME, "vimfiles"] | path join } else { "" }),
-		([$env.USERPROFILE, "vimfiles"] | path join),
+		(if ($user_home | is-not-empty) { [$user_home, "vimfiles"] | path join } else { "" }),
 		(if ($env.HOME? | is-not-empty) { [$env.HOME, ".vim"] | path join } else { "" }),
-		([$env.USERPROFILE, ".vim"] | path join),
+		(if ($user_home | is-not-empty) { [$user_home, ".vim"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".vim"] | path join } else { "" })
 	]
 	let vim_dir = ($vim_paths | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
@@ -1155,13 +1193,14 @@ def uprc [
 	let is_ext = $extensions
 	let is_pull = $pull
 
+	let user_home = ($env.USERPROFILE? | default ($env.HOME? | default ""))
 	let candidates = [
 		($env.PROFILE_DIR? | default ""),
-		([$env.USERPROFILE, ".local", "share", "profile"] | path join),
-		([$env.USERPROFILE, ".config", "profile"] | path join),
-		([$env.USERPROFILE, ".profile"] | path join),
-		([$env.USERPROFILE, "OneDrive", "Documentos", "Profile"] | path join),
-		([$env.USERPROFILE, "Documents", "Profile"] | path join),
+		(if ($user_home | is-not-empty) { [$user_home, ".local", "share", "profile"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".config", "profile"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".profile"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, "OneDrive", "Documentos", "Profile"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, "Documents", "Profile"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".local", "share", "profile"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".config", "profile"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".profile"] | path join } else { "" })
@@ -1193,7 +1232,12 @@ def uprc [
 				] | compact
 				let sub_args = ($sync_flags | append $args | str join " ")
 
-				let target_posix = ($target | str replace -a '\' '/' | str replace -r '^[Cc]:' '/c' | str replace -r '^[Dd]:' '/d')
+				let target_fwd = ($target | str replace -a '\' '/')
+				let target_posix = if ($target_fwd =~ '^[A-Za-z]:') {
+					$"/($target_fwd | str substring 0..<1 | str lowercase)($target_fwd | str substring 2..)"
+				} else {
+					$target_fwd
+				}
 				^$sh -c $"MSYS=winsymlinks:nativestrict '($target_posix)/profile.sh' sync ($sub_args)"
 			} else {
 				_ui_warn "Ambiente MSYS2/POSIX shell não detectado no PATH (excluído WSL em System32)."
@@ -1220,7 +1264,7 @@ def vault-perms [path?: string] {
 		]
 		$candidates | where { |p| ($p | is-not-empty) and ($p | path exists) } | get -o 0
 	}
-	if ($target == null or not ($target | path exists)) {
+	if ($target | is-empty) or (not ($target | path exists)) {
 		_ui_err $"Diretório do Vault não encontrado: ($target)"
 		return
 	}
@@ -1241,12 +1285,13 @@ def upvt [
 ] {
 	let is_status = $status
 	let is_dry = $dry_run
+	let user_home = ($env.USERPROFILE? | default ($env.HOME? | default ""))
 
 	let candidates = [
 		($env.VAULT_DIR? | default ""),
-		([$env.USERPROFILE, ".local", "share", "vault"] | path join),
-		([$env.USERPROFILE, ".config", "vault"] | path join),
-		([$env.USERPROFILE, ".vault"] | path join),
+		(if ($user_home | is-not-empty) { [$user_home, ".local", "share", "vault"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".config", "vault"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".vault"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".local", "share", "vault"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".config", "vault"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".vault"] | path join } else { "" })
@@ -1320,11 +1365,12 @@ def upsh [
 	let is_status = $status
 	let is_dry = $dry_run
 
+	let user_home = ($env.USERPROFILE? | default ($env.HOME? | default ""))
 	let candidates = [
 		($env.SHELL_REPO_DIR? | default ""),
-		([$env.USERPROFILE, ".local", "share", "shell"] | path join),
-		([$env.USERPROFILE, ".config", "shell"] | path join),
-		([$env.USERPROFILE, ".shell"] | path join),
+		(if ($user_home | is-not-empty) { [$user_home, ".local", "share", "shell"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".config", "shell"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".shell"] | path join } else { "" }),
 		"C:\\Program Files\\Shell",
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".local", "share", "shell"] | path join } else { "" }),
 		(if ($MsysHome | is-not-empty) { [$MsysHome, ".config", "shell"] | path join } else { "" }),
@@ -1372,12 +1418,14 @@ def upsh [
 			}
 		}
 		let pwsh_dir = ([$target, "target", "windows", "powershell"] | path join)
-		let docs_cands = [
-			([$env.USERPROFILE, "OneDrive", "Documentos", "PowerShell"] | path join),
-			([$env.USERPROFILE, "OneDrive", "Documents", "PowerShell"] | path join),
-			([$env.USERPROFILE, "Documentos", "PowerShell"] | path join),
-			([$env.USERPROFILE, "Documents", "PowerShell"] | path join)
-		]
+		let docs_cands = if ($user_home | is-not-empty) {
+			[
+				([$user_home, "OneDrive", "Documentos", "PowerShell"] | path join),
+				([$user_home, "OneDrive", "Documents", "PowerShell"] | path join),
+				([$user_home, "Documentos", "PowerShell"] | path join),
+				([$user_home, "Documents", "PowerShell"] | path join)
+			]
+		} else { [] }
 		for d in $docs_cands {
 			if ($d | path exists) and ($pwsh_dir | path exists) {
 				mut pwsh_synced = false
@@ -1491,11 +1539,12 @@ alias syscls = clean-system;
 alias clear-system = clean-system;
 
 def update-emacs-modes [] {
+	let user_home = ($env.USERPROFILE? | default ($env.HOME? | default ""))
 	let emacs_paths = [
-		([$env.HOME?, ".emacs.d"] | path join),
-		([$env.USERPROFILE, ".emacs.d"] | path join),
+		(if ($env.HOME? | is-not-empty) { [$env.HOME, ".emacs.d"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".emacs.d"] | path join } else { "" }),
 		(if ($env.APPDATA? | is-not-empty) { [$env.APPDATA, ".emacs.d"] | path join } else { "" }),
-		([$env.USERPROFILE, ".config", "emacs"] | path join)
+		(if ($user_home | is-not-empty) { [$user_home, ".config", "emacs"] | path join } else { "" })
 	]
 	let emacs_dir = ($emacs_paths | where { |p| ($p | is-not-empty) and ([$p, ".git"] | path join | path exists) } | get -o 0)
 	if ($emacs_dir | is-empty) {
@@ -1510,19 +1559,24 @@ alias upmodes = update-emacs-modes;
 
 def reinstall-shell [] {
 	_ui_step "Recarregando ambiente do NuShell..."
-	let nu_config = ($env.NU_CONFIG_DIR? | default ([$env.USERPROFILE, "AppData", "Roaming", "nushell"] | path join))
-	let config_file = ([$nu_config, "config.nu"] | path join)
-	if ($config_file | path exists) {
-		source $config_file
-	}
+	let nu_config = ($env.NU_CONFIG_DIR? | default $nu.default-config-dir)
+	let env_file = if ($env.NU_CONFIG_DIR? | is-not-empty) { [$nu_config, "env.nu"] | path join } else { $nu.env-path }
+	let config_file = if ($env.NU_CONFIG_DIR? | is-not-empty) { [$nu_config, "config.nu"] | path join } else { $nu.config-path }
 	_ui_ok "NuShell recarregado com sucesso!"
+	if ($env_file | path exists) and ($config_file | path exists) {
+		exec $nu.current-exe --env-config $env_file --config $config_file
+	} else if ($config_file | path exists) {
+		exec $nu.current-exe --config $config_file
+	} else {
+		exec $nu.current-exe
+	}
 }
 alias resh = reinstall-shell;
 
 def bench-shell [] {
 	_ui_step "Medindo tempo de inicialização do NuShell..."
 	let start = (date now)
-	^nu -n -c "exit"
+	^$nu.current-exe -n -c "exit"
 	let elapsed = ((date now) - $start)
 	_ui_ok $"Latência de boot limpo: ($elapsed)"
 }
@@ -1550,21 +1604,3 @@ def update-network [] {
 }
 alias upnet = update-network;
 def er [] { ek; es };
-def oa [...args: string] {
-	let app = "antigravity-ide"
-	let target = if ($args | is-empty) { "." } else { $args | str join " " }
-	^pwsh -NoProfile -Command $"Start-Process -FilePath '($app)' -ArgumentList '($target)' -WindowStyle Hidden"
-}
-def ant [...args: string] {
-	let app = "antigravity-ide"
-	if ($args | is-empty) {
-		^pwsh -NoProfile -Command $"Start-Process -FilePath '($app)' -WindowStyle Hidden"
-	} else {
-		let args_str = ($args | str join " ")
-		^pwsh -NoProfile -Command $"Start-Process -FilePath '($app)' -ArgumentList '($args_str)' -WindowStyle Hidden"
-	}
-}
-
-### ================================
-### SHELL CONFIGURATION
-### ================================

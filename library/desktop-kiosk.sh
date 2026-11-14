@@ -3,124 +3,25 @@
 # ----------------------------------------------------------------
 
 ### --------------------------------
-### GRAPHICAL HELPERS
-### --------------------------------
-if ! command -v _sanitize_graphical_env > "/dev/null" 2>&1; then
-	_sanitize_graphical_env() {
-		unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED
-		export COLORTERM="truecolor"
-		export MICRO_TRUECOLOR=1
-	}
-fi
-
-if ! command -v _get_shell_log_dir > "/dev/null" 2>&1; then
-	_get_shell_log_dir() {
-		local _log_dir="${XDG_STATE_HOME:-${HOME}/.local/state}/shell/logs"
-		[ -d "${_log_dir}" ] || mkdir -p "${_log_dir}" 2> "/dev/null" || true
-		printf '%s\n' "${_log_dir}"
-	}
-fi
-
-if ! command -v _resolve_graphical_app > "/dev/null" 2>&1; then
-	_resolve_graphical_app() {
-		local _target="${1:-}"
-		case "${_target}" in
-			vscode|code|code-oss|codium)
-				if ! command -v "${_target}" > "/dev/null" 2>&1; then
-					for _c in code code-oss codium vscode; do
-						if command -v "${_c}" > "/dev/null" 2>&1; then
-							echo "${_c}"
-							return 0
-						fi
-					done
-				fi
-				;;
-			chrome|chromium|google-chrome)
-				if ! command -v "${_target}" > "/dev/null" 2>&1; then
-					for _c in chrome chromium google-chrome brave-browser brave; do
-						if command -v "${_c}" > "/dev/null" 2>&1; then
-							echo "${_c}"
-							return 0
-						fi
-					done
-				fi
-				;;
-		esac
-		echo "${_target}"
-	}
-fi
-
-if ! command -v _resolve_desktop_font > "/dev/null" 2>&1; then
-	_resolve_desktop_font() {
-		local _target_flavor="${1:-}"
-		if command -v fc-list > "/dev/null" 2>&1; then
-			if fc-list : family 2> "/dev/null" | grep -qi "JetBrainsMono Nerd Font"; then
-				printf '%s\n' "JetBrainsMono Nerd Font"
-				return 0
-			fi
-			case "${_target_flavor}" in
-				kde|plasma|lxqt)
-					if fc-list : family 2> "/dev/null" | grep -qi "^Noto Sans$"; then
-						printf '%s\n' "Noto Sans"
-						return 0
-					fi
-					;;
-				gnome|budgie)
-					for _f in "Adwaita Sans" "Cantarell"; do
-						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
-							printf '%s\n' "${_f}"
-							return 0
-						fi
-					done
-					;;
-				pantheon)
-					for _f in "Inter" "Open Sans" "Cantarell"; do
-						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
-							printf '%s\n' "${_f}"
-							return 0
-						fi
-					done
-					;;
-				deepin)
-					for _f in "Noto Sans" "Source Han Sans" "Cantarell"; do
-						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
-							printf '%s\n' "${_f}"
-							return 0
-						fi
-					done
-					;;
-				cosmic)
-					for _f in "Fira Sans" "Noto Sans"; do
-						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
-							printf '%s\n' "${_f}"
-							return 0
-						fi
-					done
-					;;
-				mate|cinnamon|xfce|lxde)
-					for _f in "Ubuntu" "DejaVu Sans"; do
-						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
-							printf '%s\n' "${_f}"
-							return 0
-						fi
-					done
-					;;
-			esac
-			for _f in "Adwaita Sans" "Cantarell" "Noto Sans" "Ubuntu" "DejaVu Sans"; do
-				if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
-					printf '%s\n' "${_f}"
-					return 0
-				fi
-			done
-		fi
-		printf '%s\n' "Sans"
-	}
-fi
-
-### --------------------------------
 ### EPHEMERAL GRAPHICAL LAUNCHERS
 ### --------------------------------
+_kiosk_ensure_session() {
+	command -v _sanitize_graphical_env > "/dev/null" 2>&1 && return 0
+	if [ -n "${SHELL_REPO_DIR:-}" ] && [ -f "${SHELL_REPO_DIR}/library/desktop-session.sh" ]; then
+		. "${SHELL_REPO_DIR}/library/desktop-session.sh"
+	elif [ -f "${HOME}/.local/share/shell/library/desktop-session.sh" ]; then
+		. "${HOME}/.local/share/shell/library/desktop-session.sh"
+	elif [ -f "/usr/local/share/shell/library/desktop-session.sh" ]; then
+		. "/usr/local/share/shell/library/desktop-session.sh"
+	elif [ -f "./library/desktop-session.sh" ]; then
+		. "./library/desktop-session.sh"
+	else
+		return 1
+	fi
+}
+
 graphical_launcher_wayland() {
+	_kiosk_ensure_session || return 1
 	unset EMACS_OS_MODE
 	_sanitize_graphical_env
 
@@ -596,6 +497,7 @@ EOF
 alias graphical-launcher-wayland="graphical_launcher_wayland" wgui="graphical_launcher_wayland"
 
 graphical_launcher_x11() {
+	_kiosk_ensure_session || return 1
 	unset EMACS_OS_MODE
 	_sanitize_graphical_env
 
@@ -675,7 +577,19 @@ graphical_launcher_x11() {
 	esac
 
 	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
-	export GTK_THEME="${GTK_THEME:-adw-gtk3-dark}"
+	local _gtk_theme="${GTK_THEME:-}"
+	if [ -z "${_gtk_theme}" ]; then
+		case "${_theme_flavor}" in
+			kde|plasma|lxqt) _gtk_theme="Breeze-Dark" ;;
+			*)
+				if command -v _detect_gtk_theme > "/dev/null" 2>&1; then
+					_gtk_theme="$(_detect_gtk_theme 2> "/dev/null" || true)"
+				fi
+				[ -z "${_gtk_theme}" ] && _gtk_theme="adw-gtk3-dark"
+				;;
+		esac
+	fi
+	export GTK_THEME="${_gtk_theme:-adw-gtk3-dark}"
 	export GTK_APPLICATION_PREFER_DARK_THEME=1
 	export SAL_USE_VCLPLUGIN="gtk3"
 	export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
@@ -1170,7 +1084,7 @@ fi
 if command -v xsettingsd > "/dev/null" 2>&1; then
 	_xsettings_cfg="\${XDG_RUNTIME_DIR:-/tmp}/xsettingsd-\$\$.conf"
 	cat << EOF_XSET >| "\${_xsettings_cfg}"
-Net/ThemeName "adw-gtk3-dark"
+Net/ThemeName "${_gtk_theme:-adw-gtk3-dark}"
 Net/IconThemeName "${_icon_theme}"
 Gtk/CursorThemeName "${_valid_theme}"
 Gtk/CursorThemeSize 24
@@ -1181,10 +1095,12 @@ fi
 
 if [ "\${X11_NO_COMPOSITOR:-0}" != "1" ]; then
 	if command -v picom > "/dev/null" 2>&1; then
-		killall -0 picom 2> "/dev/null" || picom --backend glx --vsync -b > "/dev/null" 2>&1 || \
-		killall -0 picom 2> "/dev/null" || picom --backend xrender --vsync -b > "/dev/null" 2>&1 || true
+		{ pgrep -x picom > "/dev/null" 2>&1 || pkill -0 -x picom > "/dev/null" 2>&1; } || \
+			picom --backend glx --vsync -b > "/dev/null" 2>&1 || \
+			picom --backend xrender --vsync -b > "/dev/null" 2>&1 || true
 	elif command -v xcompmgr > "/dev/null" 2>&1; then
-		killall -0 xcompmgr 2> "/dev/null" || xcompmgr -c -C -b > "/dev/null" 2>&1 || true
+		{ pgrep -x xcompmgr > "/dev/null" 2>&1 || pkill -0 -x xcompmgr > "/dev/null" 2>&1; } || \
+			xcompmgr -c -C -b > "/dev/null" 2>&1 || true
 	fi
 fi
 
@@ -1364,6 +1280,7 @@ EOF
 alias graphical-launcher-x11="graphical_launcher_x11" xgui="graphical_launcher_x11"
 
 graphical_launcher() {
+	_kiosk_ensure_session || return 1
 	_dispatch_display_server "graphical-launcher" "$@"
 }
 alias graphical-launcher="graphical_launcher" gui="graphical_launcher"
@@ -1372,6 +1289,7 @@ alias graphical-launcher="graphical_launcher" gui="graphical_launcher"
 ### EMACS OS WINDOW MANAGERS
 ### --------------------------------
 emacs_window_manager_wayland() {
+	_kiosk_ensure_session || return 1
 	_sanitize_graphical_env
 
 	local _flavor=""
@@ -1444,6 +1362,7 @@ emacs_window_manager_wayland() {
 alias emacs-window-manager-wayland="emacs_window_manager_wayland" wewm="emacs_window_manager_wayland" wew="emacs_window_manager_wayland"
 
 emacs_window_manager_x11() {
+	_kiosk_ensure_session || return 1
 	_sanitize_graphical_env
 
 	local _flavor=""
@@ -1487,6 +1406,7 @@ emacs_window_manager_x11() {
 alias emacs-window-manager-x11="emacs_window_manager_x11" xewm="emacs_window_manager_x11" xew="emacs_window_manager_x11" exwm="emacs_window_manager_x11" exw="emacs_window_manager_x11"
 
 emacs_window_manager() {
+	_kiosk_ensure_session || return 1
 	_dispatch_display_server "emacs-window-manager" "$@"
 }
 alias emacs-window-manager="emacs_window_manager" ewm="emacs_window_manager" ew="emacs_window_manager"

@@ -1,11 +1,26 @@
+# ----------------------------------------------------------------
+# Core: Universal Environment, Variables, Aliases & Userland
+# ----------------------------------------------------------------
+
 ### ================================
 ### CORE ENVIRONMENT
 ### ================================
 
 ### --------------------------------
-### Variables & Sovereign Locale
+### VARIABLES & SOVEREIGN LOCALE
 ### --------------------------------
 unset CDPATH
+
+if [ -z "${_DETECTED_OS:-}" ]; then
+	if command -v _detect_os > "/dev/null" 2>&1; then
+		_DETECTED_OS="$(_detect_os)"
+	else
+		_DETECTED_OS="$(uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+	fi
+fi
+if [ -z "${_DETECTED_SHELL:-}" ] && command -v _detect_shell > "/dev/null" 2>&1; then
+	_DETECTED_SHELL="$(_detect_shell)"
+fi
 
 if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 	export RAW_TTY=1
@@ -22,9 +37,26 @@ fi
 
 if [ -z "${LANG:-}" ] || [ "${LANG}" = "C" ] || [ "${LANG}" = "POSIX" ]; then
 	if [ -r "/etc/locale.conf" ]; then
-		_conf_lang="$(grep -E '^[[:space:]]*LANG=' "/etc/locale.conf" 2> "/dev/null" | cut -d= -f2- | tr -d '"'\''')"
-		[ -n "${_conf_lang}" ] && export LANG="${_conf_lang}"
-		unset _conf_lang
+		while IFS= read -r _line || [ -n "${_line}" ]; do
+			while :; do
+				case "${_line}" in
+					" "*|"	"*) _line="${_line#?}" ;;
+					*) break ;;
+				esac
+			done
+			case "${_line}" in
+				LANG=*)
+					_conf_lang="${_line#LANG=}"
+					_conf_lang="${_conf_lang%\"}"
+					_conf_lang="${_conf_lang#\"}"
+					_conf_lang="${_conf_lang%\'}"
+					_conf_lang="${_conf_lang#\'}"
+					[ -n "${_conf_lang}" ] && export LANG="${_conf_lang}"
+					break
+					;;
+			esac
+		done < "/etc/locale.conf"
+		unset _line _conf_lang
 	fi
 	[ -z "${LANG:-}" ] && export LANG="pt_BR.UTF-8"
 fi
@@ -33,21 +65,23 @@ fi
 ### --------------------------------
 ### GRAPHICS ACCELERATION
 ### --------------------------------
-_env_os_name="${_DETECTED_OS-$(_detect_os)}"
-case "${_env_os_name}" in
+case "${_DETECTED_OS}" in
 	freebsd)
-		[ -z "${LIBVA_DRIVER_NAME:-}" ] && export LIBVA_DRIVER_NAME="iHD"
-		[ -z "${KDEVARTMP:-}" ] && export KDEVARTMP="/tmp"
-		;;
-	linux)
 		if [ -z "${LIBVA_DRIVER_NAME:-}" ] && [ -d "/dev/dri" ]; then
-			if [ -r "/sys/class/drm/card0/device/vendor" ] && [ "$(cat /sys/class/drm/card0/device/vendor 2> "/dev/null")" = "0x8086" ]; then
+			if kldstat -q -n i915kms 2> "/dev/null" || pciconf -l 2> "/dev/null" | command grep -q 'vgapci.*vendor=0x8086'; then
 				export LIBVA_DRIVER_NAME="iHD"
 			fi
 		fi
+		[ -z "${KDEVARTMP:-}" ] && export KDEVARTMP="/tmp"
+		;;
+	linux)
+		if [ -z "${LIBVA_DRIVER_NAME:-}" ] && [ -d "/dev/dri" ] && [ -r "/sys/class/drm/card0/device/vendor" ]; then
+			read -r _drm_vendor < "/sys/class/drm/card0/device/vendor" 2> "/dev/null" || _drm_vendor=""
+			[ "${_drm_vendor}" = "0x8086" ] && export LIBVA_DRIVER_NAME="iHD"
+			unset _drm_vendor
+		fi
 		;;
 esac
-unset _env_os_name
 
 ### --------------------------------
 ### PYTHON BYTECODE & CACHE POLICY
@@ -57,11 +91,17 @@ export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"
 ### --------------------------------
 ### AUTO-CORRECT SHELL
 ### --------------------------------
-_current_sh="${_DETECTED_SHELL:-$(_detect_shell)}"
-case "${SHELL:-}" in
-	*"/${_current_sh}") ;;
-	*) export SHELL="$(command -v "${_current_sh}" 2> "/dev/null")" ;;
-esac
+_current_sh="${_DETECTED_SHELL:-}"
+if [ -n "${_current_sh}" ]; then
+	case "${SHELL:-}" in
+		*"/${_current_sh}") ;;
+		*)
+			_sh_path="$(command -v "${_current_sh}" 2> "/dev/null" || true)"
+			[ -n "${_sh_path}" ] && export SHELL="${_sh_path}"
+			unset _sh_path
+			;;
+	esac
+fi
 unset _current_sh
 
 ### --------------------------------
@@ -131,11 +171,12 @@ fi
 ### --------------------------------
 ### PACKAGE COMPATIBILITY ALIASES
 ### --------------------------------
-_SHELL_ENV_OS="${_DETECTED_OS-$(_detect_os)}"
+_SHELL_ENV_OS="${_DETECTED_OS}"
 _SHELL_BAT_BIN="${_DETECTED_BAT-$(_detect_bat)}"
 _SHELL_FD_BIN="${_DETECTED_FD-$(_detect_fd)}"
 _SHELL_EZA_BIN="${_DETECTED_EZA-$(_detect_eza)}"
 _SHELL_RG_BIN="${_DETECTED_RG-$(_detect_rg)}"
+_SHELL_GNU_LS_BIN=""
 
 [ "${_SHELL_BAT_BIN}" = "batcat" ] && alias bat="batcat"
 [ "${_SHELL_FD_BIN}" = "fdfind" ] && alias fd="fdfind"
@@ -148,10 +189,10 @@ unalias ls grep cat find ssh agy l la ll lt lr lar llr c b g f ff d p pst 2> "/d
 unset -f ls grep cat find l la ll lt lr lar llr c b g f ff d p pst _shell_ls 2> "/dev/null" || true
 
 case "${_SHELL_ENV_OS}" in
-	freebsd|dragonfly*|macos|darwin|netbsd)
+	freebsd|macos|darwin)
 		alias ls="command ls -G"
 		;;
-	openbsd|illumos|solaris|sunos)
+	openbsd|netbsd|illumos|solaris|sunos)
 		;;
 	*)
 		alias ls="command ls --color=auto"
@@ -194,6 +235,16 @@ _shell_ls() {
 		unset _mode _is_tty
 		eval "unset _rc; return ${_rc}"
 	fi
+	_ls_bin="ls"
+	_ls_is_gnu=0
+	if [ -n "${_SHELL_GNU_LS_BIN:-}" ]; then
+		_ls_bin="${_SHELL_GNU_LS_BIN}"
+		_ls_is_gnu=1
+	else
+		case "${_SHELL_ENV_OS:-}" in
+			linux|windows) _ls_is_gnu=1 ;;
+		esac
+	fi
 	if [ "${_mode}" = "lt" ]; then
 		if command -v tree > "/dev/null" 2>&1; then
 			if [ "${_is_tty}" -eq 1 ]; then
@@ -202,24 +253,30 @@ _shell_ls() {
 				command tree -n "$@"
 			fi
 		else
-			command ls -R "$@"
+			command "${_ls_bin}" -R "$@"
 		fi
 		_rc=$?
-		unset _mode _is_tty
+		unset _mode _is_tty _ls_bin _ls_is_gnu
 		eval "unset _rc; return ${_rc}"
 	fi
 	_ls_o=""
 	_ls_c=""
-	case "${_SHELL_ENV_OS:-}" in
-		freebsd|dragonfly*|macos|darwin|netbsd)
-			_ls_o="o"
-			[ "${_is_tty}" -eq 1 ] && _ls_c="-G"
-			;;
-		openbsd|illumos|solaris|sunos) ;;
-		*)
-			[ "${_is_tty}" -eq 1 ] && _ls_c="--color=auto"
-			;;
-	esac
+	_ls_g=""
+	if [ "${_ls_is_gnu}" -eq 1 ]; then
+		[ "${_is_tty}" -eq 1 ] && _ls_c="--color=auto"
+		_ls_g="--group-directories-first"
+	else
+		case "${_SHELL_ENV_OS:-}" in
+			freebsd|macos|darwin)
+				_ls_o="o"
+				[ "${_is_tty}" -eq 1 ] && _ls_c="-G"
+				;;
+			netbsd|openbsd|illumos|solaris|sunos) ;;
+			*)
+				[ "${_is_tty}" -eq 1 ] && _ls_c="--color=auto"
+				;;
+		esac
+	fi
 	case "${_mode}" in
 		l)   set -- -l "$@" ;;
 		ll)  set -- "-laF${_ls_o}" "$@" ;;
@@ -228,10 +285,11 @@ _shell_ls() {
 		lar) set -- -aR "$@" ;;
 		llr) set -- "-laF${_ls_o}R" "$@" ;;
 	esac
+	[ -n "${_ls_g}" ] && set -- "${_ls_g}" "$@"
 	[ -n "${_ls_c}" ] && set -- "${_ls_c}" "$@"
-	command ls "$@"
+	command "${_ls_bin}" "$@"
 	_rc=$?
-	unset _mode _is_tty _ls_o _ls_c
+	unset _mode _is_tty _ls_bin _ls_is_gnu _ls_o _ls_c _ls_g
 	eval "unset _rc; return ${_rc}"
 }
 
@@ -247,7 +305,7 @@ llr() { _shell_ls llr "$@"; }
 ### SEARCH IN FILES
 ### --------------------------------
 case "${_SHELL_ENV_OS}" in
-	freebsd|dragonfly*|openbsd|netbsd|illumos|solaris|sunos) ;;
+	freebsd|openbsd|netbsd|illumos|solaris|sunos) ;;
 	*) alias grep="command grep --color=auto" ;;
 esac
 
@@ -377,7 +435,10 @@ p() {
 			NO_COLOR=1 command "${_SHELL_PROCS_BIN}" --color disable "$@"
 		fi
 	else
-		command ps aux "$@"
+		case "${_SHELL_ENV_OS:-}" in
+			illumos|solaris|sunos) command ps -ef "$@" ;;
+			*)                     command ps aux "$@" ;;
+		esac
 	fi
 }
 
@@ -389,7 +450,10 @@ pst() {
 			NO_COLOR=1 command "${_SHELL_PROCS_BIN}" --tree --color disable "$@"
 		fi
 	else
-		command ps aux "$@"
+		case "${_SHELL_ENV_OS:-}" in
+			illumos|solaris|sunos) command ps -ef "$@" ;;
+			*)                     command ps aux "$@" ;;
+		esac
 	fi
 }
 
@@ -412,26 +476,47 @@ unset _btm_bin
 ### --------------------------------
 ### ZOXIDE SMART NAVIGATION
 ### --------------------------------
+unalias z zi 2> "/dev/null" || true
 _zoxide_bin="${_DETECTED_ZOXIDE-$(_detect_zoxide)}"
 if [ -n "${_zoxide_bin}" ]; then
 	_ZO_DOCTOR=0
 	export _ZO_DOCTOR
-	case "${_DETECTED_SHELL-$(_detect_shell)}" in
-		zsh)
-			eval "$("${_zoxide_bin}" init zsh --hook prompt)"
-			__zoxide_oldpwd="$(__zoxide_pwd)"
-			__zoxide_hook() {
-				_pwd_tmp="$(__zoxide_pwd)"
-				if [ "${__zoxide_oldpwd}" != "${_pwd_tmp}" ]; then
-					__zoxide_oldpwd="${_pwd_tmp}"
-					command zoxide add -- "${__zoxide_oldpwd}" 2> "/dev/null"
-				fi
-				unset _pwd_tmp
-			}
-			;;
-		bash) eval "$("${_zoxide_bin}" init bash)" ;;
-		*)	eval "$("${_zoxide_bin}" init posix --hook prompt)" ;;
+	case "${_DETECTED_SHELL:-posix}" in
+		zsh)  _zoxide_mode="zsh" ;;
+		bash) _zoxide_mode="bash" ;;
+		*)    _zoxide_mode="posix" ;;
 	esac
+	_zoxide_cache_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/shell"
+	_zoxide_cache="${_zoxide_cache_dir}/zoxide_${_zoxide_mode}.sh"
+	if [ ! -s "${_zoxide_cache}" ] || [ "${_zoxide_bin}" -nt "${_zoxide_cache}" ]; then
+		mkdir -p "${_zoxide_cache_dir}" 2> "/dev/null" || true
+		case "${_zoxide_mode}" in
+			zsh)  "${_zoxide_bin}" init zsh --hook prompt >| "${_zoxide_cache}" 2> "/dev/null" || rm -f "${_zoxide_cache}" ;;
+			bash) "${_zoxide_bin}" init bash >| "${_zoxide_cache}" 2> "/dev/null" || rm -f "${_zoxide_cache}" ;;
+			*)    "${_zoxide_bin}" init posix --hook prompt >| "${_zoxide_cache}" 2> "/dev/null" || rm -f "${_zoxide_cache}" ;;
+		esac
+	fi
+	if [ -s "${_zoxide_cache}" ]; then
+		. "${_zoxide_cache}"
+	else
+		case "${_zoxide_mode}" in
+			zsh)  eval "$("${_zoxide_bin}" init zsh --hook prompt)" ;;
+			bash) eval "$("${_zoxide_bin}" init bash)" ;;
+			*)    eval "$("${_zoxide_bin}" init posix --hook prompt)" ;;
+		esac
+	fi
+	if [ "${_zoxide_mode}" = "zsh" ] && command -v __zoxide_pwd > "/dev/null" 2>&1; then
+		__zoxide_oldpwd="$(__zoxide_pwd)"
+		__zoxide_hook() {
+			_pwd_tmp="$(__zoxide_pwd)"
+			if [ "${__zoxide_oldpwd}" != "${_pwd_tmp}" ]; then
+				__zoxide_oldpwd="${_pwd_tmp}"
+				command zoxide add -- "${__zoxide_oldpwd}" 2> "/dev/null"
+			fi
+			unset _pwd_tmp
+		}
+	fi
+	unset _zoxide_mode _zoxide_cache_dir _zoxide_cache
 else
 	alias z="cd"
 fi
@@ -445,9 +530,14 @@ if command -v shopt > "/dev/null" 2>&1; then
 else
 	alias /="cd /" 2> "/dev/null" || true
 fi
-alias -- ~="cd ~" ..="cd .." ...="cd ../.." ....="cd ../../.." -="cd -"
+alias ~="cd ~" ..="cd .." ...="cd ../.." ....="cd ../../.."
+alias -- -="cd -" 2> "/dev/null" || alias -="cd -" 2> "/dev/null" || true
 alias take="take-dir" mkcd="take-dir" cdb="cd-git-root"
-alias clear="[ -t 1 ] && echo -n \$'\e[2J\e[3J\e[H'"
+_shell_esc=$'\e'
+if [ "${#_shell_esc}" -ne 1 ]; then
+	_shell_esc="$(printf '\x1b')"
+fi
+alias clear="if [ -t 1 ]; then printf '%s[2J%s[3J%s[H' '${_shell_esc}' '${_shell_esc}' '${_shell_esc}'; fi"
 
 ### --------------------------------
 ### UTILITY & BENCHMARK ALIASES
@@ -499,7 +589,7 @@ if command -v tog > "/dev/null" 2>&1; then
 fi
 
 ### ================================
-### GOOGLE ANTIGRAVITY CLI & ALIASES
+### ANTIGRAVITY CLI & ALIASES
 ### ================================
 eval 'agy() {
 	if [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
@@ -524,55 +614,199 @@ alias agyra="agy -c --dangerously-skip-permissions" agyrd="agy -c --dangerously-
 
 if [ -t 1 ]; then
 	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
-		if [ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ]; then
-			echo -n $'\e%G\e[?16;238;0c\e]P0000000\e]P17f0000\e]P2007f00\e]P3c4a100\e]P43366a3\e]P57f007f\e]P6007f7f\e]P7bfbfbf\e]P873828a\e]P9ff0000\e]Pa00ff00\e]Pbffff00\e]Pc739ecf\e]Pdff00ff\e]Pe00ffff\e]Pfffffff'
+		if [ "${TERM:-}" = "linux" ] && [ "${_SHELL_ENV_OS:-}" = "linux" ]; then
+			printf '%s' "${_shell_esc}%G${_shell_esc}[?16;238;0c${_shell_esc}]P0000000${_shell_esc}]P17f0000${_shell_esc}]P2007f00${_shell_esc}]P3c4a100${_shell_esc}]P43366a3${_shell_esc}]P57f007f${_shell_esc}]P6007f7f${_shell_esc}]P7bfbfbf${_shell_esc}]P873828a${_shell_esc}]P9ff0000${_shell_esc}]Pa00ff00${_shell_esc}]Pbffff00${_shell_esc}]Pc739ecf${_shell_esc}]Pdff00ff${_shell_esc}]Pe00ffff${_shell_esc}]Pfffffff"
 			command -v stty > "/dev/null" 2>&1 && stty iutf8 2> "/dev/null" || true
 		fi
 	else
-		echo -n $'\e[1 q'
+		printf '%s[1 q' "${_shell_esc}"
 	fi
 fi
+unset _shell_esc
 
 ### ================================
 ### USERLAND MANAGEMENT
 ### ================================
+_userland_gnu_path_strip() {
+	_rem="${PATH:-}"
+	_clean_p=""
+	while [ -n "${_rem}" ]; do
+		case "${_rem}" in
+			*:*) _entry="${_rem%%:*}"; _rem="${_rem#*:}" ;;
+			*)   _entry="${_rem}"; _rem="" ;;
+		esac
+		case "${_entry}" in
+			""|"/usr/gnu/bin"|"/usr/pkg/gnu/bin"|"/usr/local/gnu/bin"|*/gnubin|*/libexec/gnubin) continue ;;
+		esac
+		_clean_p="${_clean_p:+${_clean_p}:}${_entry}"
+	done
+	export PATH="${_clean_p}"
+	unset _rem _clean_p _entry
+}
+
+_userland_build_gnu_cache() {
+	_u_os="${1}"
+	_gnu_cache="${2}"
+	[ -n "${ZSH_VERSION:-}" ] && setopt LOCAL_OPTIONS NULL_GLOB 2> "/dev/null" || true
+	_gnu_cache_dir="${_gnu_cache%/*}"
+	mkdir -p "${_gnu_cache_dir}" 2> "/dev/null" || return 1
+	_gnu_tmp="${_gnu_cache}.tmp.$$"
+	: >| "${_gnu_tmp}" 2> "/dev/null" || return 1
+
+	set --
+	for _pkg_dir in "/usr/local/bin" "/usr/pkg/bin" "/opt/local/bin" "/opt/homebrew/bin"; do
+		[ -d "${_pkg_dir}" ] && set -- "$@" "${_pkg_dir}"
+	done
+	for _opt_root in "/opt/homebrew/opt" "/usr/local/opt"; do
+		if [ -d "${_opt_root}" ]; then
+			for _pkg_dir in "${_opt_root}/"*/bin; do
+				[ -d "${_pkg_dir}" ] && set -- "$@" "${_pkg_dir}"
+			done
+		fi
+	done
+
+	_seen=" "
+	_alias_names=""
+	_gnu_ls_bin=""
+	for _pkg_dir in "$@"; do
+		for _gbin in "${_pkg_dir}/g"*; do
+			[ -f "${_gbin}" ] && [ -x "${_gbin}" ] || continue
+			_gname="${_gbin##*/}"
+			_base="${_gname#g}"
+			case "${_base}" in
+				""|*[!a-zA-Z0-9_-]*) continue ;;
+			esac
+			case "${_gname}" in
+				gcc|git|gdb|gpg|gpg2|gpgv|gpg-agent|gzip|gunzip|go|gofmt|gs|gperf|gprof|gcov|gcov-tool|gawkbug|grun) continue ;;
+			esac
+			case "${_base}" in
+				cc|c++|it|db|pg|zip|unzip|o|s|perf|prof|cov|echo|printf|pwd|test|true|false|kill|sh|bash|zsh|ksh|csh|tcsh|su|login|vi|ex) continue ;;
+			esac
+			case "${_seen}" in
+				*" ${_base} "*) continue ;;
+			esac
+			_is_candidate=0
+			if [ -x "/bin/${_base}" ] || [ -x "/usr/bin/${_base}" ]; then
+				_is_candidate=1
+			else
+				case "${_base}" in
+					stat|date|nproc|realpath|readlink|seq|shuf|timeout|truncate|tac|numfmt|base64|base32|basenc|sha1sum|sha224sum|sha256sum|sha384sum|sha512sum|md5sum|b2sum|cksum|sum|dircolors|vdir|dir|watch|pinky|ptx|stdbuf|factor|tsort|unexpand|expand|fmt|fold|nl|pr|shred|split|csplit|comm|join|paste|sort|uniq|cut|tr|head|tail|wc|tee|cat|cp|mv|rm|ln|ls|mkdir|rmdir|mktemp|touch|chmod|chown|chgrp|df|du|dd|env|id|who|whoami|users|groups|uname|tty|arch|hostid|uptime|basename|dirname|link|unlink|mkfifo|mknod|pathchk|printenv|sleep|stty|sync|yes|expr|install|awk|sed|grep|egrep|fgrep|tar|find|xargs|diff|cmp|sdiff|diff3|make|patch|m4|indent)
+						_is_candidate=1
+						;;
+				esac
+			fi
+			[ "${_is_candidate}" -eq 1 ] || continue
+			_gver="$("${_gbin}" --version < "/dev/null" 2> "/dev/null" | head -n 5)"
+			case "${_gver}" in
+				*GNU*|*"Free Software Foundation"*) ;;
+				*) continue ;;
+			esac
+			_seen="${_seen}${_base} "
+			_alias_names="${_alias_names:+${_alias_names} }${_base}"
+			case "${_base}" in
+				ls)
+					_gnu_ls_bin="${_gname}"
+					printf 'alias ls="%s --color=auto"\n' "${_gname}" >> "${_gnu_tmp}"
+					;;
+				grep|egrep|fgrep)
+					printf 'alias %s="%s --color=auto"\n' "${_base}" "${_gname}" >> "${_gnu_tmp}"
+					;;
+				*)
+					printf 'alias %s="%s"\n' "${_base}" "${_gname}" >> "${_gnu_tmp}"
+					;;
+			esac
+		done
+	done
+
+	printf '_SHELL_GNU_ALIASES="%s"\n' "${_alias_names}" >> "${_gnu_tmp}"
+	if [ -n "${_gnu_ls_bin}" ]; then
+		printf '_SHELL_GNU_LS_BIN="%s"\n' "${_gnu_ls_bin}" >> "${_gnu_tmp}"
+	fi
+	mv -f "${_gnu_tmp}" "${_gnu_cache}"
+	unset _u_os _gnu_cache _gnu_cache_dir _gnu_tmp _pkg_dir _opt_root _seen _alias_names _gnu_ls_bin _gbin _gname _base _is_candidate _gver
+}
 
 _userland_set_gnu() {
 	_silent="${1:-}"
 	export SHELL_USERLAND="gnu"
-	_u_os="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+	_u_os="${_DETECTED_OS:-$(uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')}"
+	[ -n "${ZSH_VERSION:-}" ] && setopt LOCAL_OPTIONS NULL_GLOB 2> "/dev/null" || true
+	_SHELL_GNU_LS_BIN=""
 	case "${_u_os}" in
-		freebsd|openbsd|netbsd|dragonfly*|macos|darwin)
-			for _gnubin in "/usr/local/libexec/gnubin" "/opt/homebrew/opt/coreutils/libexec/gnubin" "/usr/local/opt/coreutils/libexec/gnubin"; do
-				if [ -d "${_gnubin}" ]; then
-					case ":${PATH}:" in
-						*":${_gnubin}:"*) ;;
-						*) export PATH="${_gnubin}:${PATH}" ;;
-					esac
+		freebsd|openbsd|netbsd|macos|darwin|illumos|solaris|sunos)
+			set --
+			for _gnubin in "/usr/gnu/bin" "/usr/pkg/gnu/bin" "/usr/local/gnu/bin" "/usr/local/libexec/gnubin"; do
+				[ -d "${_gnubin}" ] && set -- "$@" "${_gnubin}"
+			done
+			for _opt_root in "/opt/homebrew/opt" "/usr/local/opt"; do
+				if [ -d "${_opt_root}" ]; then
+					for _gnubin in "${_opt_root}/"*/libexec/gnubin; do
+						[ -d "${_gnubin}" ] && set -- "$@" "${_gnubin}"
+					done
 				fi
 			done
-			command -v gsed > "/dev/null" 2>&1 && alias sed="gsed"
-			command -v gawk > "/dev/null" 2>&1 && alias awk="gawk"
-			command -v ggrep > "/dev/null" 2>&1 && alias grep="ggrep"
-			command -v gtar > "/dev/null" 2>&1 && alias tar="gtar"
-			command -v gfind > "/dev/null" 2>&1 && alias find="gfind"
-			command -v gmake > "/dev/null" 2>&1 && alias make="gmake"
-			command -v gstat > "/dev/null" 2>&1 && alias stat="gstat"
-			command -v gdate > "/dev/null" 2>&1 && alias date="gdate"
-			command -v gls > "/dev/null" 2>&1 && alias ls="gls --color=auto"
+			if [ "$#" -gt 0 ]; then
+				path-front "$@"
+			fi
+
+			_gnu_cache="${XDG_CACHE_HOME:-${HOME}/.cache}/shell/gnu_aliases_${_u_os}.sh"
+			_cache_stale=0
+			if [ ! -s "${_gnu_cache}" ]; then
+				_cache_stale=1
+			else
+				for _pkg_dir in "/usr/local/bin" "/usr/pkg/bin" "/opt/local/bin" "/opt/homebrew/bin"; do
+					if [ -d "${_pkg_dir}" ] && [ "${_pkg_dir}" -nt "${_gnu_cache}" ]; then
+						_cache_stale=1
+						break
+					fi
+				done
+				if [ "${_cache_stale}" -eq 0 ]; then
+					for _opt_root in "/opt/homebrew/opt" "/usr/local/opt"; do
+						if [ -d "${_opt_root}" ]; then
+							for _pkg_dir in "${_opt_root}/"*/bin; do
+								if [ -d "${_pkg_dir}" ] && [ "${_pkg_dir}" -nt "${_gnu_cache}" ]; then
+									_cache_stale=1
+									break 2
+								fi
+							done
+						fi
+					done
+				fi
+			fi
+			if [ "${_cache_stale}" -eq 1 ]; then
+				_userland_build_gnu_cache "${_u_os}" "${_gnu_cache}" || true
+			fi
+			[ -s "${_gnu_cache}" ] && . "${_gnu_cache}"
+
+			if [ -z "${_SHELL_GNU_LS_BIN:-}" ]; then
+				if command -v gls > "/dev/null" 2>&1; then
+					_SHELL_GNU_LS_BIN="gls"
+					alias ls="gls --color=auto"
+				else
+					for _gnubin in "$@"; do
+						if [ -x "${_gnubin}/ls" ]; then
+							_SHELL_GNU_LS_BIN="ls"
+							alias ls="command ls --color=auto"
+							break
+						fi
+					done
+				fi
+			fi
+			unset _gnubin _opt_root _pkg_dir _gnu_cache _cache_stale
 			;;
 		*)
 			unalias make tar cpio cat nc man 2> "/dev/null" || true
 			alias ls="command ls --color=auto"
 			alias grep="command grep --color=auto"
+			_SHELL_GNU_LS_BIN="ls"
 			;;
 	esac
-	unset _u_os _gnubin
+	unset _u_os
 	if [ "${_silent}" != "--silent" ]; then
 		if command -v _ui_ok > "/dev/null" 2>&1; then
 			_ui_ok "Userland alternado para GNU."
 		else
-			echo "Userland alternado para GNU."
+			printf '%s\n' "Userland alternado para GNU."
 		fi
 	fi
 }
@@ -580,30 +814,19 @@ _userland_set_gnu() {
 _userland_set_bsd() {
 	_silent="${1:-}"
 	export SHELL_USERLAND="bsd"
-	_u_os="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+	_u_os="${_DETECTED_OS:-$(uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')}"
 	case "${_u_os}" in
-		freebsd|openbsd|netbsd|dragonfly*|macos|darwin)
-			_clean_p=""
-			_old_ifs="${IFS+x}"
-			_saved_ifs="${IFS:-}"
-			IFS=":"
-			for _entry in ${PATH}; do
-				case "${_entry}" in
-					*/gnubin) continue ;;
-					"") continue ;;
-				esac
-				_clean_p="${_clean_p:+${_clean_p}:}${_entry}"
-			done
-			if [ -n "${_old_ifs}" ]; then IFS="${_saved_ifs}"; else unset IFS; fi
-			export PATH="${_clean_p}"
-			unset _clean_p _old_ifs _saved_ifs _entry
-			unalias sed awk grep tar find make stat date ls 2> "/dev/null" || true
+		freebsd|openbsd|netbsd|macos|darwin|illumos|solaris|sunos)
+			_userland_gnu_path_strip
+			[ -n "${_SHELL_GNU_ALIASES:-}" ] && eval "unalias ${_SHELL_GNU_ALIASES}" 2> "/dev/null" || true
+			unalias sed awk grep egrep fgrep tar find xargs diff cmp sdiff diff3 patch make m4 indent stat date ls cat cp mv rm ln mkdir rmdir mktemp touch chmod chown chgrp head tail sort uniq cut tr wc df du dd readlink realpath nproc seq timeout 2> "/dev/null" || true
+			unset _SHELL_GNU_ALIASES _SHELL_GNU_LS_BIN
 			case "${_u_os}" in
-				openbsd|illumos|solaris|sunos) alias ls="command ls -l" ;;
-				*)                             alias ls="command ls -G" ;;
+				freebsd|macos|darwin) alias ls="command ls -G" ;;
 			esac
 			;;
 		*)
+			unset _SHELL_GNU_LS_BIN
 			command -v bmake > "/dev/null" 2>&1 && alias make="bmake"
 			command -v bsdtar > "/dev/null" 2>&1 && alias tar="bsdtar"
 			command -v bsdcpio > "/dev/null" 2>&1 && alias cpio="bsdcpio"
@@ -617,7 +840,7 @@ _userland_set_bsd() {
 		if command -v _ui_ok > "/dev/null" 2>&1; then
 			_ui_ok "Userland alternado para BSD."
 		else
-			echo "Userland alternado para BSD."
+			printf '%s\n' "Userland alternado para BSD."
 		fi
 	fi
 }
@@ -625,29 +848,20 @@ _userland_set_bsd() {
 _userland_set_default() {
 	_silent="${1:-}"
 	export SHELL_USERLAND="default"
-	_u_os="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
-	_clean_p=""
-	_old_ifs="${IFS+x}"
-	_saved_ifs="${IFS:-}"
-	IFS=":"
-	for _entry in ${PATH}; do
-		case "${_entry}" in
-			*/gnubin) continue ;;
-			"") continue ;;
-		esac
-		_clean_p="${_clean_p:+${_clean_p}:}${_entry}"
-	done
-	if [ -n "${_old_ifs}" ]; then IFS="${_saved_ifs}"; else unset IFS; fi
-	export PATH="${_clean_p}"
-	unset _clean_p _old_ifs _saved_ifs _entry
+	_u_os="${_DETECTED_OS:-$(uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')}"
+	_userland_gnu_path_strip
+	[ -n "${_SHELL_GNU_ALIASES:-}" ] && eval "unalias ${_SHELL_GNU_ALIASES}" 2> "/dev/null" || true
+	unalias sed awk grep egrep fgrep tar find xargs diff cmp sdiff diff3 patch make m4 indent stat date ls cat cp mv rm ln mkdir rmdir mktemp touch chmod chown chgrp head tail sort uniq cut tr wc df du dd readlink realpath nproc seq timeout cpio nc man 2> "/dev/null" || true
+	unset _SHELL_GNU_ALIASES _SHELL_GNU_LS_BIN
 
-	unalias sed awk grep tar find make stat date ls cpio cat nc man 2> "/dev/null" || true
 	case "${_u_os}" in
-		freebsd|dragonfly*|macos|darwin|netbsd)
+		freebsd|macos|darwin)
 			alias ls="command ls -G"
 			;;
-		openbsd|illumos|solaris|sunos)
-			alias ls="command ls -l"
+		illumos|solaris|sunos)
+			[ -d "/usr/gnu/bin" ] && path-back "/usr/gnu/bin"
+			;;
+		openbsd|netbsd)
 			;;
 		*)
 			alias ls="command ls --color=auto"
@@ -659,7 +873,7 @@ _userland_set_default() {
 		if command -v _ui_ok > "/dev/null" 2>&1; then
 			_ui_ok "Userland restaurado para o padrão do SO hospedeiro."
 		else
-			echo "Userland restaurado para o padrão do SO hospedeiro."
+			printf '%s\n' "Userland restaurado para o padrão do SO hospedeiro."
 		fi
 	fi
 }
@@ -679,7 +893,7 @@ userland() {
 			if command -v _ui_info > "/dev/null" 2>&1; then
 				_ui_info "Userland ativo: ${SHELL_USERLAND:-default}"
 			else
-				echo "Userland ativo: ${SHELL_USERLAND:-default}"
+				printf '%s\n' "Userland ativo: ${SHELL_USERLAND:-default}"
 			fi
 			;;
 		*)

@@ -16,7 +16,7 @@ _deploy_win_paths() {
 		MINGW*|MSYS*|CYGWIN*|*_NT*)
 			_is_win=1
 			if command -v cygpath > "/dev/null" 2>&1; then
-				_win_home="$(cygpath -u "${USERPROFILE:-/c/Users/${USER}}")"
+				_win_home="$(cygpath -u "${USERPROFILE:-/c/Users/${USER:-${USERNAME:-user}}}")"
 				_win_app="$(cygpath -u "${APPDATA:-${_win_home}/AppData/Roaming}")"
 				_win_local="$(cygpath -u "${LOCALAPPDATA:-${_win_home}/AppData/Local}")"
 				_od_win="${OneDriveConsumer:-${OneDrive:-${USERPROFILE}\\OneDrive}}"
@@ -74,6 +74,8 @@ _deploy_item() {
 	unlink "${_dst}" 2> "/dev/null" || true
 	rm -rf "${_dst}" 2> "/dev/null" || true
 
+	_had_msys="${MSYS+x}"
+	_old_msys="${MSYS:-}"
 	export MSYS="winsymlinks:nativestrict"
 	if ln -sf "${_src}" "${_dst}" 2> "/dev/null"; then
 		_ui_ok "[LINK] ${_dst}"
@@ -81,7 +83,13 @@ _deploy_item() {
 		cp -rf "${_src}" "${_dst}"
 		_ui_warn "[COPY] ${_dst}"
 	fi
-	chmod 0644 "${_dst}" 2> "/dev/null" || true
+	if [ -n "${_had_msys}" ]; then
+		export MSYS="${_old_msys}"
+	else
+		unset MSYS
+	fi
+	[ -L "${_dst}" ] || chmod 0644 "${_dst}" 2> "/dev/null" || true
+	unset _had_msys _old_msys
 }
 
 ### ================================

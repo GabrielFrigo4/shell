@@ -5,117 +5,109 @@
 ### --------------------------------
 ### GRAPHICAL HELPERS
 ### --------------------------------
-if ! command -v _sanitize_graphical_env > "/dev/null" 2>&1; then
-	_sanitize_graphical_env() {
-		unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED
-		export COLORTERM="truecolor"
-		export MICRO_TRUECOLOR=1
-	}
-fi
+_sanitize_graphical_env() {
+	unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED
+	export COLORTERM="truecolor"
+	export MICRO_TRUECOLOR=1
+}
 
-if ! command -v _get_shell_log_dir > "/dev/null" 2>&1; then
-	_get_shell_log_dir() {
-		local _log_dir="${XDG_STATE_HOME:-${HOME}/.local/state}/shell/logs"
-		[ -d "${_log_dir}" ] || mkdir -p "${_log_dir}" 2> "/dev/null" || true
-		printf '%s\n' "${_log_dir}"
-	}
-fi
+_get_shell_log_dir() {
+	local _log_dir="${XDG_STATE_HOME:-${HOME}/.local/state}/shell/logs"
+	[ -d "${_log_dir}" ] || mkdir -p "${_log_dir}" 2> "/dev/null" || true
+	printf '%s\n' "${_log_dir}"
+}
 
-if ! command -v _resolve_graphical_app > "/dev/null" 2>&1; then
-	_resolve_graphical_app() {
-		local _target="${1:-}"
-		case "${_target}" in
-			vscode|code|code-oss|codium)
-				if ! command -v "${_target}" > "/dev/null" 2>&1; then
-					for _c in code code-oss codium vscode; do
-						if command -v "${_c}" > "/dev/null" 2>&1; then
-							echo "${_c}"
-							return 0
-						fi
-					done
-				fi
-				;;
-			chrome|chromium|google-chrome)
-				if ! command -v "${_target}" > "/dev/null" 2>&1; then
-					for _c in chrome chromium google-chrome brave-browser brave; do
-						if command -v "${_c}" > "/dev/null" 2>&1; then
-							echo "${_c}"
-							return 0
-						fi
-					done
-				fi
-				;;
-		esac
-		echo "${_target}"
-	}
-fi
-
-if ! command -v _resolve_desktop_font > "/dev/null" 2>&1; then
-	_resolve_desktop_font() {
-		local _target_flavor="${1:-}"
-		if command -v fc-list > "/dev/null" 2>&1; then
-			if fc-list : family 2> "/dev/null" | grep -qi "JetBrainsMono Nerd Font"; then
-				printf '%s\n' "JetBrainsMono Nerd Font"
-				return 0
-			fi
-			case "${_target_flavor}" in
-				kde|plasma|lxqt)
-					if fc-list : family 2> "/dev/null" | grep -qi "^Noto Sans$"; then
-						printf '%s\n' "Noto Sans"
+_resolve_graphical_app() {
+	local _target="${1:-}" _candidate
+	case "${_target}" in
+		vscode|code|code-oss|codium)
+			if ! command -v "${_target}" > "/dev/null" 2>&1; then
+				for _candidate in code code-oss codium vscode; do
+					if command -v "${_candidate}" > "/dev/null" 2>&1; then
+						echo "${_candidate}"
 						return 0
 					fi
-					;;
-				gnome|budgie)
-					for _f in "Adwaita Sans" "Cantarell"; do
-						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
-							printf '%s\n' "${_f}"
-							return 0
-						fi
-					done
-					;;
-				pantheon)
-					for _f in "Inter" "Open Sans" "Cantarell"; do
-						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
-							printf '%s\n' "${_f}"
-							return 0
-						fi
-					done
-					;;
-				deepin)
-					for _f in "Noto Sans" "Source Han Sans" "Cantarell"; do
-						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
-							printf '%s\n' "${_f}"
-							return 0
-						fi
-					done
-					;;
-				cosmic)
-					for _f in "Fira Sans" "Noto Sans"; do
-						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
-							printf '%s\n' "${_f}"
-							return 0
-						fi
-					done
-					;;
-				mate|cinnamon|xfce|lxde)
-					for _f in "Ubuntu" "DejaVu Sans"; do
-						if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
-							printf '%s\n' "${_f}"
-							return 0
-						fi
-					done
-					;;
-			esac
-			for _f in "Adwaita Sans" "Cantarell" "Noto Sans" "Ubuntu" "DejaVu Sans"; do
-				if fc-list : family 2> "/dev/null" | grep -qi "^${_f}$"; then
-					printf '%s\n' "${_f}"
+				done
+			fi
+			;;
+		chrome|chromium|google-chrome)
+			if ! command -v "${_target}" > "/dev/null" 2>&1; then
+				for _candidate in chrome chromium google-chrome brave-browser brave; do
+					if command -v "${_candidate}" > "/dev/null" 2>&1; then
+						echo "${_candidate}"
+						return 0
+					fi
+				done
+			fi
+			;;
+	esac
+	echo "${_target}"
+}
+
+_resolve_desktop_font() {
+	local _target_flavor="${1:-}" _font
+	if command -v fc-list > "/dev/null" 2>&1; then
+		if fc-list : family 2> "/dev/null" | grep -qi "JetBrainsMono Nerd Font"; then
+			printf '%s\n' "JetBrainsMono Nerd Font"
+			return 0
+		fi
+		case "${_target_flavor}" in
+			kde|plasma|lxqt)
+				if fc-list : family 2> "/dev/null" | grep -qi "^Noto Sans$"; then
+					printf '%s\n' "Noto Sans"
 					return 0
 				fi
-			done
-		fi
-		printf '%s\n' "Sans"
-	}
-fi
+				;;
+			gnome|budgie)
+				for _font in "Adwaita Sans" "Cantarell"; do
+					if fc-list : family 2> "/dev/null" | grep -qi "^${_font}$"; then
+						printf '%s\n' "${_font}"
+						return 0
+					fi
+				done
+				;;
+			pantheon)
+				for _font in "Inter" "Open Sans" "Cantarell"; do
+					if fc-list : family 2> "/dev/null" | grep -qi "^${_font}$"; then
+						printf '%s\n' "${_font}"
+						return 0
+					fi
+				done
+				;;
+			deepin)
+				for _font in "Noto Sans" "Source Han Sans" "Cantarell"; do
+					if fc-list : family 2> "/dev/null" | grep -qi "^${_font}$"; then
+						printf '%s\n' "${_font}"
+						return 0
+					fi
+				done
+				;;
+			cosmic)
+				for _font in "Fira Sans" "Noto Sans"; do
+					if fc-list : family 2> "/dev/null" | grep -qi "^${_font}$"; then
+						printf '%s\n' "${_font}"
+						return 0
+					fi
+				done
+				;;
+			mate|cinnamon|xfce|lxde)
+				for _font in "Ubuntu" "DejaVu Sans"; do
+					if fc-list : family 2> "/dev/null" | grep -qi "^${_font}$"; then
+						printf '%s\n' "${_font}"
+						return 0
+					fi
+				done
+				;;
+		esac
+		for _font in "Adwaita Sans" "Cantarell" "Noto Sans" "Ubuntu" "DejaVu Sans"; do
+			if fc-list : family 2> "/dev/null" | grep -qi "^${_font}$"; then
+				printf '%s\n' "${_font}"
+				return 0
+			fi
+		done
+	fi
+	printf '%s\n' "Sans"
+}
 
 ### --------------------------------
 ### CONSOLE & CURSOR HELPERS
@@ -524,14 +516,14 @@ _propagate_session_theme_env() {
 		for _var in "GTK_THEME=${_gtk_theme}" "GTK_APPLICATION_PREFER_DARK_THEME=1" "QT_QPA_PLATFORMTHEME=${_qt_platform}" "SAL_USE_VCLPLUGIN=gtk3"; do
 			_name="${_var%%=*}"
 			if grep -q "^[[:space:]]*export ${_name}=" "${_xprofile}" 2> "/dev/null"; then
-				sed "s/^[[:space:]]*export ${_name}=.*/export ${_var}/" "${_xprofile}" > "${_xprofile}.tmp.$$" 2> "/dev/null" && mv -f "${_xprofile}.tmp.$$" "${_xprofile}" 2> "/dev/null" || true
+				sed "s/^[[:space:]]*export ${_name}=.*/export ${_var}/" "${_xprofile}" >| "${_xprofile}.tmp.$$" 2> "/dev/null" && mv -f "${_xprofile}.tmp.$$" "${_xprofile}" 2> "/dev/null" || rm -f "${_xprofile}.tmp.$$" 2> "/dev/null" || true
 			elif ! grep -q "^[[:space:]]*${_name}=" "${_xprofile}" 2> "/dev/null"; then
 				printf 'export %s\n' "${_var}" >> "${_xprofile}" 2> "/dev/null" || true
 			fi
 		done
 		if [ -n "${_qt_theme}" ]; then
 			if grep -q "^[[:space:]]*export QT_STYLE_OVERRIDE=" "${_xprofile}" 2> "/dev/null"; then
-				sed "s/^[[:space:]]*export QT_STYLE_OVERRIDE=.*/export QT_STYLE_OVERRIDE=\"${_qt_theme}\"/" "${_xprofile}" > "${_xprofile}.tmp.$$" 2> "/dev/null" && mv -f "${_xprofile}.tmp.$$" "${_xprofile}" 2> "/dev/null" || true
+				sed "s/^[[:space:]]*export QT_STYLE_OVERRIDE=.*/export QT_STYLE_OVERRIDE=\"${_qt_theme}\"/" "${_xprofile}" >| "${_xprofile}.tmp.$$" 2> "/dev/null" && mv -f "${_xprofile}.tmp.$$" "${_xprofile}" 2> "/dev/null" || rm -f "${_xprofile}.tmp.$$" 2> "/dev/null" || true
 			elif ! grep -q "^[[:space:]]*QT_STYLE_OVERRIDE=" "${_xprofile}" 2> "/dev/null"; then
 				printf 'export QT_STYLE_OVERRIDE="%s"\n' "${_qt_theme}" >> "${_xprofile}" 2> "/dev/null" || true
 			fi
@@ -543,7 +535,7 @@ _propagate_session_theme_env() {
 		for _var in "GTK_THEME=${_gtk_theme}" "GTK_APPLICATION_PREFER_DARK_THEME=1" "QT_QPA_PLATFORMTHEME=${_qt_platform}" "SAL_USE_VCLPLUGIN=gtk3"; do
 			_name="${_var%%=*}"
 			if grep -q "^[[:space:]]*export ${_name}=" "${_profile}" 2> "/dev/null"; then
-				sed "s/^[[:space:]]*export ${_name}=.*/export ${_var}/" "${_profile}" > "${_profile}.tmp.$$" 2> "/dev/null" && mv -f "${_profile}.tmp.$$" "${_profile}" 2> "/dev/null" || true
+				sed "s/^[[:space:]]*export ${_name}=.*/export ${_var}/" "${_profile}" >| "${_profile}.tmp.$$" 2> "/dev/null" && mv -f "${_profile}.tmp.$$" "${_profile}" 2> "/dev/null" || rm -f "${_profile}.tmp.$$" 2> "/dev/null" || true
 			elif ! grep -q "^[[:space:]]*${_name}=" "${_profile}" 2> "/dev/null"; then
 				printf 'export %s\n' "${_var}" >> "${_profile}" 2> "/dev/null" || true
 			fi
@@ -555,7 +547,7 @@ _propagate_session_theme_env() {
 		for _var in "GTK_THEME=${_gtk_theme}" "GTK_APPLICATION_PREFER_DARK_THEME=1" "QT_QPA_PLATFORMTHEME=${_qt_platform}" "SAL_USE_VCLPLUGIN=gtk3"; do
 			_name="${_var%%=*}"
 			if grep -q "^[[:space:]]*export ${_name}=" "${_zshenv}" 2> "/dev/null"; then
-				sed "s/^[[:space:]]*export ${_name}=.*/export ${_var}/" "${_zshenv}" > "${_zshenv}.tmp.$$" 2> "/dev/null" && mv -f "${_zshenv}.tmp.$$" "${_zshenv}" 2> "/dev/null" || true
+				sed "s/^[[:space:]]*export ${_name}=.*/export ${_var}/" "${_zshenv}" >| "${_zshenv}.tmp.$$" 2> "/dev/null" && mv -f "${_zshenv}.tmp.$$" "${_zshenv}" 2> "/dev/null" || rm -f "${_zshenv}.tmp.$$" 2> "/dev/null" || true
 			elif ! grep -q "^[[:space:]]*${_name}=" "${_zshenv}" 2> "/dev/null"; then
 				printf 'export %s\n' "${_var}" >> "${_zshenv}" 2> "/dev/null" || true
 			fi
@@ -563,12 +555,12 @@ _propagate_session_theme_env() {
 	fi
 
 	local _bin_wrapper=""
-	if [ -n "${SHELL_REPO_DIR:-}" ] && [ -x "${SHELL_REPO_DIR}/bin/emacs-client" ]; then
-		_bin_wrapper="${SHELL_REPO_DIR}/bin/emacs-client"
-	elif [ -x "${HOME}/.local/share/shell/bin/emacs-client" ]; then
-		_bin_wrapper="${HOME}/.local/share/shell/bin/emacs-client"
-	elif [ -x "/usr/local/share/shell/bin/emacs-client" ]; then
-		_bin_wrapper="/usr/local/share/shell/bin/emacs-client"
+	if [ -n "${SHELL_REPO_DIR:-}" ] && [ -x "${SHELL_REPO_DIR}/.scripts/emacs-client" ]; then
+		_bin_wrapper="${SHELL_REPO_DIR}/.scripts/emacs-client"
+	elif [ -x "${HOME}/.local/share/shell/.scripts/emacs-client" ]; then
+		_bin_wrapper="${HOME}/.local/share/shell/.scripts/emacs-client"
+	elif [ -x "/usr/local/share/shell/.scripts/emacs-client" ]; then
+		_bin_wrapper="/usr/local/share/shell/.scripts/emacs-client"
 	fi
 	if [ -n "${_bin_wrapper}" ]; then
 		mkdir -p "${HOME}/.local/bin" 2> "/dev/null" || true
@@ -828,10 +820,6 @@ _session_cmd_file() {
 ### --------------------------------
 ### XORG DIAGNOSTICS
 ### --------------------------------
-_filter_xorg_noise() {
-	command grep -v -E '^> |XKEYBOARD keymap compiler|Errors from xkbcomp are not fatal|^scfb trace:|^[[:space:]]*$' 2> "/dev/null" || true
-}
-
 _x11_driver_preflight() {
 	[ "$(_detect_os)" = "freebsd" ] || return 0
 	[ -c "/dev/dri/card0" ] && return 0
@@ -907,8 +895,8 @@ _exec_wayland() {
 _resolve_vt_arg() {
 	local _cur_tty="${1:-$(tty 2> "/dev/null" || true)}" _hex _num
 	case "${_cur_tty}" in
-		/dev/ttyv[0-9a-fA-F]*|/dev/ttyC[0-9a-fA-F]*)
-			_hex="$(printf '%s\n' "${_cur_tty}" | sed -n 's#.*/tty[vC]\([0-9a-fA-F]\{1,2\}\)$#\1#p')"
+		/dev/ttyv[0-9a-fA-F]*|/dev/ttyC[0-9a-fA-F]*|/dev/ttyE[0-9a-fA-F]*)
+			_hex="$(printf '%s\n' "${_cur_tty}" | sed -n 's#.*/tty[vCE]\([0-9a-fA-F]\{1,2\}\)$#\1#p')"
 			[ -n "${_hex}" ] && echo "vt$(( 0x${_hex} + 1 ))"
 			;;
 		/dev/tty[0-9]*)
@@ -961,6 +949,18 @@ _exec_x11() {
 	local _theme_flavor="$(_detect_desktop_theme "${_X11_FLAVOR_OVERRIDE:-}")"
 	local _ui_font="$(_resolve_desktop_font "${_theme_flavor}")"
 	local _valid_theme="${XCURSOR_THEME:-Adwaita}"
+	local _gtk_theme="${GTK_THEME:-}"
+	if [ -z "${_gtk_theme}" ]; then
+		case "${_theme_flavor}" in
+			kde|plasma|lxqt) _gtk_theme="Breeze-Dark" ;;
+			*)
+				if command -v _detect_gtk_theme > "/dev/null" 2>&1; then
+					_gtk_theme="$(_detect_gtk_theme 2> "/dev/null" || true)"
+				fi
+				[ -z "${_gtk_theme}" ] && _gtk_theme="adw-gtk3-dark"
+				;;
+		esac
+	fi
 	local _icon_theme=""
 	case "${_theme_flavor}" in
 		kde|plasma|lxqt) _icon_theme="breeze-dark" ;;
@@ -980,7 +980,7 @@ export EMACS_OS_MODE="${EMACS_OS_MODE:-}"
 export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-GNOME}"
 export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
 export SAL_USE_VCLPLUGIN="gtk3"
-export GTK_THEME="${GTK_THEME:-adw-gtk3-dark}"
+export GTK_THEME="${_gtk_theme:-adw-gtk3-dark}"
 export GTK_APPLICATION_PREFER_DARK_THEME=1
 
 if [ -z "\${ENVIRONMENT_SESSION_WRAPPED:-}" ]; then
@@ -1006,7 +1006,7 @@ export CLUTTER_BACKEND="x11"
 export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-GNOME}"
 export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
 export SAL_USE_VCLPLUGIN="gtk3"
-export GTK_THEME="${GTK_THEME:-adw-gtk3-dark}"
+export GTK_THEME="${_gtk_theme:-adw-gtk3-dark}"
 export GTK_APPLICATION_PREFER_DARK_THEME=1
 export QT_QPA_PLATFORMTHEME="\${QT_QPA_PLATFORMTHEME:-qt6ct}"
 export XCURSOR_THEME="\${XCURSOR_THEME}"
@@ -1051,7 +1051,7 @@ fi
 if command -v xsettingsd > "/dev/null" 2>&1; then
 	_xsettings_cfg="\${XDG_RUNTIME_DIR:-/tmp}/xsettingsd-\$\$.conf"
 	cat << EOF_XSET >| "\${_xsettings_cfg}"
-Net/ThemeName "adw-gtk3-dark"
+Net/ThemeName "${_gtk_theme:-adw-gtk3-dark}"
 Net/IconThemeName "${_icon_theme}"
 Gtk/CursorThemeName "${_valid_theme}"
 Gtk/CursorThemeSize 24
@@ -1062,10 +1062,12 @@ fi
 
 if [ "\${X11_NO_COMPOSITOR:-0}" != "1" ]; then
 	if command -v picom > "/dev/null" 2>&1; then
-		killall -0 picom 2> "/dev/null" || picom --backend glx --vsync -b > "/dev/null" 2>&1 || \
-		killall -0 picom 2> "/dev/null" || picom --backend xrender --vsync -b > "/dev/null" 2>&1 || true
+		{ pgrep -x picom > "/dev/null" 2>&1 || pkill -0 -x picom > "/dev/null" 2>&1; } || \
+			picom --backend glx --vsync -b > "/dev/null" 2>&1 || \
+			picom --backend xrender --vsync -b > "/dev/null" 2>&1 || true
 	elif command -v xcompmgr > "/dev/null" 2>&1; then
-		killall -0 xcompmgr 2> "/dev/null" || xcompmgr -c -C -b > "/dev/null" 2>&1 || true
+		{ pgrep -x xcompmgr > "/dev/null" 2>&1 || pkill -0 -x xcompmgr > "/dev/null" 2>&1; } || \
+			xcompmgr -c -C -b > "/dev/null" 2>&1 || true
 	fi
 fi
 
@@ -1140,11 +1142,11 @@ _has_wayland() {
 
 _has_x11() {
 	[ -n "${DISPLAY:-}" ] && return 0
+	local _xbin _session_dir
 	for _xbin in Xorg X xinit startx; do
 		command -v "${_xbin}" > "/dev/null" 2>&1 && return 0
 	done
-	local _session_dir
-	for _session_dir in /usr/share/xsessions /usr/local/share/xsessions /usr/X11R6/share/xsessions "${XDG_DATA_HOME:-${HOME}/.local/share}/xsessions"; do
+	for _session_dir in /usr/share/xsessions /usr/local/share/xsessions /usr/X11R7/share/xsessions /usr/X11R6/share/xsessions "${XDG_DATA_HOME:-${HOME}/.local/share}/xsessions"; do
 		if [ -d "${_session_dir}" ] && [ -n "$(command ls -A "${_session_dir}" 2> "/dev/null")" ]; then
 			return 0
 		fi
@@ -1266,7 +1268,7 @@ _try_xorg() {
 }
 
 _start_wayland() {
-	case "${1}" in
+	case "${1:-}" in
 		kde|plasma)    _try_wayland startplasma-wayland plasma-wayland-session ;;
 		gnome)         _try_wayland gnome-session gnome-shell ;;
 		hyprland|hypr) _try_wayland Hyprland hyprland ;;
@@ -1290,7 +1292,7 @@ _start_wayland() {
 
 _start_xorg() {
 	command -v startx > "/dev/null" 2>&1 || command -v xinit > "/dev/null" 2>&1 || return 1
-	case "${1}" in
+	case "${1:-}" in
 		kde|plasma) _try_xorg startplasma-x11 startkde ;;
 		gnome)      _try_xorg gnome-session ;;
 		xfce|xfce4) _try_xorg startxfce4 ;;
@@ -1314,7 +1316,7 @@ _start_xorg() {
 
 start_session() {
 	_sanitize_graphical_env
-	[ -n "${DISPLAY}" ] || [ -n "${WAYLAND_DISPLAY}" ] && _ui_warn "Uma sessão gráfica já está ativa (${WAYLAND_DISPLAY:-${DISPLAY}})."
+	[ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] && _ui_warn "Uma sessão gráfica já está ativa (${WAYLAND_DISPLAY:-${DISPLAY:-}})."
 	local _type=""
 	local _env=""
 	while [ "$#" -gt 0 ]; do

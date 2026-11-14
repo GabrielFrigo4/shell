@@ -3,9 +3,10 @@
 # ----------------------------------------------------------------
 
 ### --------------------------------
-### Update Shell
+### UPDATE SHELL
 ### --------------------------------
 update-shell() {
+	local _arg _target _sh_mode _branch _status
 	for _arg in "$@"; do
 		case "${_arg}" in
 			--help|-h)
@@ -96,7 +97,86 @@ update-shell() {
 ### --------------------------------
 ### UPDATE EDITORS
 ### --------------------------------
+_resolve_windows_editor_roots() {
+	_win_home=""
+	_win_appdata=""
+	_win_localappdata=""
+
+	if [ -n "${USERPROFILE:-}" ]; then
+		if command -v cygpath > "/dev/null" 2>&1; then
+			_win_home="$(cygpath -u "${USERPROFILE}" 2> "/dev/null" || printf '%s\n' "${USERPROFILE}")"
+		else
+			_win_home="$(printf '%s\n' "${USERPROFILE}" | tr '\\' '/')"
+		fi
+	fi
+
+	if [ -n "${APPDATA:-}" ]; then
+		if command -v cygpath > "/dev/null" 2>&1; then
+			_win_appdata="$(cygpath -u "${APPDATA}" 2> "/dev/null" || printf '%s\n' "${APPDATA}")"
+		else
+			_win_appdata="$(printf '%s\n' "${APPDATA}" | tr '\\' '/')"
+		fi
+	elif [ -n "${_win_home}" ]; then
+		_win_appdata="${_win_home}/AppData/Roaming"
+	fi
+
+	if [ -n "${LOCALAPPDATA:-}" ]; then
+		if command -v cygpath > "/dev/null" 2>&1; then
+			_win_localappdata="$(cygpath -u "${LOCALAPPDATA}" 2> "/dev/null" || printf '%s\n' "${LOCALAPPDATA}")"
+		else
+			_win_localappdata="$(printf '%s\n' "${LOCALAPPDATA}" | tr '\\' '/')"
+		fi
+	elif [ -n "${_win_home}" ]; then
+		_win_localappdata="${_win_home}/AppData/Local"
+	fi
+}
+
+_update_editor_candidates() {
+	local _editor="$1" _editor_mode="$2"
+	shift 2
+	local _target _branch _status
+
+	for _target in "$@"; do
+		[ -z "${_target}" ] && continue
+		[ -d "${_target}/.git" ] || [ -f "${_target}/.git" ] || continue
+		case " ${_processed_targets} " in
+			*" ${_target} "*) continue ;;
+		esac
+		_processed_targets="${_processed_targets} ${_target} "
+		_found=1
+
+		if [ "${_editor_mode}" = "status" ]; then
+			_branch="$(git -C "${_target}" branch --show-current 2> "/dev/null" || true)"
+			[ -z "${_branch}" ] && _branch="detached"
+			_status="$(git -C "${_target}" status -s 2> "/dev/null" || true)"
+			if [ -n "${_status}" ]; then
+				_ui_warn "${_editor} em ${_target} [${_branch}]: alterações pendentes"
+			else
+				_ui_ok "${_editor} em ${_target} [${_branch}]: limpo"
+			fi
+		elif [ "${_editor_mode}" = "dry-run" ]; then
+			_ui_sub "[DRY-RUN PULL] ${_editor} -> ${_target}"
+		else
+			_ui_sub "Atualizando ${_editor} em ${_target}..."
+			if _git_pull_resilient "${_target}"; then
+				_ui_ok "${_editor} atualizado com sucesso!"
+			else
+				_ui_warn "${_editor}: sincronização falhou."
+			fi
+			if [ "${_editor}" = "Emacs" ] && [ -f "${_target}/.gitmodules" ]; then
+				_ui_sub "Sincronizando submódulos Elisp locais em ${_target}..."
+				if git -C "${_target}" submodule update --init --recursive --remote --merge > "/dev/null" 2>&1; then
+					_ui_ok "Submódulos Elisp atualizados com sucesso!"
+				else
+					_ui_warn "Falha na sincronização dos submódulos Elisp com upstream."
+				fi
+			fi
+		fi
+	done
+}
+
 update-editors() {
+	local _arg _found _editor_mode _with_extensions _win_home _win_appdata _win_localappdata _processed_targets
 	for _arg in "$@"; do
 		case "${_arg}" in
 			--help|-h)
@@ -135,99 +215,30 @@ update-editors() {
 		_ui_step "Atualizando a Suíte de Editores..."
 	fi
 
-	_win_home=""
-	if [ -n "${USERPROFILE:-}" ]; then
-		if command -v cygpath > "/dev/null" 2>&1; then
-			_win_home="$(cygpath -u "${USERPROFILE}" 2> "/dev/null" || echo "${USERPROFILE}")"
-		else
-			_win_home="$(echo "${USERPROFILE}" | tr '\\' '/')"
-		fi
-	fi
-
-	_win_appdata=""
-	if [ -n "${APPDATA:-}" ]; then
-		if command -v cygpath > "/dev/null" 2>&1; then
-			_win_appdata="$(cygpath -u "${APPDATA}" 2> "/dev/null" || echo "${APPDATA}")"
-		else
-			_win_appdata="$(echo "${APPDATA}" | tr '\\' '/')"
-		fi
-	elif [ -n "${_win_home}" ]; then
-		_win_appdata="${_win_home}/AppData/Roaming"
-	fi
-
-	_win_localappdata=""
-	if [ -n "${LOCALAPPDATA:-}" ]; then
-		if command -v cygpath > "/dev/null" 2>&1; then
-			_win_localappdata="$(cygpath -u "${LOCALAPPDATA}" 2> "/dev/null" || echo "${LOCALAPPDATA}")"
-		else
-			_win_localappdata="$(echo "${LOCALAPPDATA}" | tr '\\' '/')"
-		fi
-	elif [ -n "${_win_home}" ]; then
-		_win_localappdata="${_win_home}/AppData/Local"
-	fi
+	_resolve_windows_editor_roots
 
 	_processed_targets=""
-	for _editor in Emacs Helix NeoVim Vim; do
-		case "${_editor}" in
-			Emacs)
-				set -- "${HOME}/.emacs.d" "${XDG_CONFIG_HOME:-${HOME}/.config}/emacs"
-				[ -n "${_win_home}" ] && set -- "$@" "${_win_home}/.emacs.d"
-				[ -n "${_win_appdata}" ] && set -- "$@" "${_win_appdata}/.emacs.d"
-				;;
-			Helix)
-				set -- "${XDG_CONFIG_HOME:-${HOME}/.config}/helix"
-				[ -n "${_win_appdata}" ] && set -- "$@" "${_win_appdata}/helix"
-				[ -n "${_win_home}" ] && set -- "$@" "${_win_home}/AppData/Roaming/helix"
-				;;
-			NeoVim)
-				set -- "${XDG_CONFIG_HOME:-${HOME}/.config}/nvim"
-				[ -n "${_win_localappdata}" ] && set -- "$@" "${_win_localappdata}/nvim"
-				[ -n "${_win_home}" ] && set -- "$@" "${_win_home}/AppData/Local/nvim"
-				;;
-			Vim)
-				set -- "${HOME}/.vim" "${HOME}/vimfiles"
-				[ -n "${_win_home}" ] && set -- "$@" "${_win_home}/vimfiles" "${_win_home}/.vim"
-				;;
-		esac
+	_update_editor_candidates "Emacs" "${_editor_mode}" \
+		"${HOME}/.emacs.d" \
+		"${XDG_CONFIG_HOME:-${HOME}/.config}/emacs" \
+		"${_win_home:+${_win_home}/.emacs.d}" \
+		"${_win_appdata:+${_win_appdata}/.emacs.d}"
 
-		for _target in "$@"; do
-			[ -z "${_target}" ] && continue
-			[ -d "${_target}/.git" ] || [ -f "${_target}/.git" ] || continue
-			case " ${_processed_targets} " in
-				*" ${_target} "*) continue ;;
-			esac
-			_processed_targets="${_processed_targets} ${_target} "
-			_found=1
+	_update_editor_candidates "Helix" "${_editor_mode}" \
+		"${XDG_CONFIG_HOME:-${HOME}/.config}/helix" \
+		"${_win_appdata:+${_win_appdata}/helix}" \
+		"${_win_home:+${_win_home}/AppData/Roaming/helix}"
 
-			if [ "${_editor_mode}" = "status" ]; then
-				_branch="$(git -C "${_target}" branch --show-current 2> "/dev/null" || true)"
-				[ -z "${_branch}" ] && _branch="detached"
-				_status="$(git -C "${_target}" status -s 2> "/dev/null" || true)"
-				if [ -n "${_status}" ]; then
-					_ui_warn "${_editor} em ${_target} [${_branch}]: alterações pendentes"
-				else
-					_ui_ok "${_editor} em ${_target} [${_branch}]: limpo"
-				fi
-			elif [ "${_editor_mode}" = "dry-run" ]; then
-				_ui_sub "[DRY-RUN PULL] ${_editor} -> ${_target}"
-			else
-				_ui_sub "Atualizando ${_editor} em ${_target}..."
-				if _git_pull_resilient "${_target}"; then
-					_ui_ok "${_editor} atualizado com sucesso!"
-				else
-					_ui_warn "${_editor}: sincronização falhou."
-				fi
-				if [ "${_editor}" = "Emacs" ] && [ -f "${_target}/.gitmodules" ]; then
-					_ui_sub "Sincronizando submódulos Elisp locais em ${_target}..."
-					if git -C "${_target}" submodule update --init --recursive --remote --merge > "/dev/null" 2>&1; then
-						_ui_ok "Submódulos Elisp atualizados com sucesso!"
-					else
-						_ui_warn "Falha na sincronização dos submódulos Elisp com upstream."
-					fi
-				fi
-			fi
-		done
-	done
+	_update_editor_candidates "NeoVim" "${_editor_mode}" \
+		"${XDG_CONFIG_HOME:-${HOME}/.config}/nvim" \
+		"${_win_localappdata:+${_win_localappdata}/nvim}" \
+		"${_win_home:+${_win_home}/AppData/Local/nvim}"
+
+	_update_editor_candidates "Vim" "${_editor_mode}" \
+		"${HOME}/.vim" \
+		"${HOME}/vimfiles" \
+		"${_win_home:+${_win_home}/vimfiles}" \
+		"${_win_home:+${_win_home}/.vim}"
 
 	if [ "${_with_extensions}" -eq 1 ] && command -v sync-extensions > "/dev/null" 2>&1; then
 		echo ""
@@ -239,32 +250,14 @@ update-editors() {
 	else
 		_ui_ok "Suíte de Editores finalizada (${_editor_mode})!"
 	fi
-	unset _found _editor_mode _with_extensions _editor _target _branch _status _arg _win_home _win_appdata _win_localappdata _processed_targets
 }
 
 ### --------------------------------
 ### UPDATE EMACS MODES
 ### --------------------------------
 update-emacs-modes() {
-	_win_home=""
-	if [ -n "${USERPROFILE:-}" ]; then
-		if command -v cygpath > "/dev/null" 2>&1; then
-			_win_home="$(cygpath -u "${USERPROFILE}" 2> "/dev/null" || echo "${USERPROFILE}")"
-		else
-			_win_home="$(echo "${USERPROFILE}" | tr '\\' '/')"
-		fi
-	fi
-
-	_win_appdata=""
-	if [ -n "${APPDATA:-}" ]; then
-		if command -v cygpath > "/dev/null" 2>&1; then
-			_win_appdata="$(cygpath -u "${APPDATA}" 2> "/dev/null" || echo "${APPDATA}")"
-		else
-			_win_appdata="$(echo "${APPDATA}" | tr '\\' '/')"
-		fi
-	elif [ -n "${_win_home}" ]; then
-		_win_appdata="${_win_home}/AppData/Roaming"
-	fi
+	local _win_home _win_appdata _win_localappdata _target
+	_resolve_windows_editor_roots
 
 	_target=""
 	if [ -d "${HOME}/.emacs.d/.git" ]; then
@@ -289,13 +282,13 @@ update-emacs-modes() {
 		_ui_err "Falha na sincronização dos submódulos Elisp."
 		return 1
 	fi
-	unset _target _win_home _win_appdata
 }
 
 ### --------------------------------
 ### UPDATE PROFILE
 ### --------------------------------
 update-profile() {
+	local _arg _target _is_dry _is_status _exec_sh
 	for _arg in "$@"; do
 		case "${_arg}" in
 			--help|-h)
@@ -352,7 +345,8 @@ update-profile() {
 
 		if [ -f "${_target}/profile.sh" ]; then
 			_ui_sub "Executando sincronização via profile.sh..."
-			sh "${_target}/profile.sh" sync "$@" || true
+			local _exec_sh="$(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || command -v sh)"
+			"${_exec_sh}" "${_target}/profile.sh" sync "$@" || true
 		fi
 		_ui_ok "Universal Profile finalizado com sucesso!"
 	else
@@ -374,6 +368,7 @@ update-profile() {
 ### SYNCHRONIZE IDE EXTENSIONS
 ### --------------------------------
 sync-extensions() {
+	local _arg _target_editor _action _ext_flags _exec_sh _sync_script _cand
 	for _arg in "$@"; do
 		case "${_arg}" in
 			--help|-h)
@@ -413,9 +408,10 @@ sync-extensions() {
 		esac
 	done
 
-	_sync_script=""
+	local _exec_sh="$(command -v zsh 2> "/dev/null" || command -v bash 2> "/dev/null" || command -v sh)"
+	local _sync_script=""
 	if [ -n "${PROFILE_DIR:-}" ] && [ -f "${PROFILE_DIR}/profile.sh" ]; then
-		sh "${PROFILE_DIR}/profile.sh" extensions "${_action}" "${_target_editor}" ${_ext_flags}
+		"${_exec_sh}" "${PROFILE_DIR}/profile.sh" extensions "${_action}" "${_target_editor}" ${_ext_flags}
 		return $?
 	fi
 
@@ -431,11 +427,11 @@ sync-extensions() {
 	done
 
 	if [ -n "${_sync_script}" ]; then
-		sh "${_sync_script}" extensions "${_action}" "${_target_editor}" ${_ext_flags}
-	elif [ -f "${SHELL_REPO_DIR:-}/../Setup/common/editors/sync-extensions.sh" ]; then
-		sh "${SHELL_REPO_DIR}/../Setup/common/editors/sync-extensions.sh" "${_target_editor}" "${_action}"
+		"${_exec_sh}" "${_sync_script}" extensions "${_action}" "${_target_editor}" ${_ext_flags}
+	elif [ -n "${SHELL_REPO_DIR:-}" ] && [ -f "${SHELL_REPO_DIR}/../Setup/common/editors/sync-extensions.sh" ]; then
+		"${_exec_sh}" "${SHELL_REPO_DIR}/../Setup/common/editors/sync-extensions.sh" "${_target_editor}" "${_action}"
 	elif [ -f "${HOME}/.local/share/setup/common/editors/sync-extensions.sh" ]; then
-		sh "${HOME}/.local/share/setup/common/editors/sync-extensions.sh" "${_target_editor}" "${_action}"
+		"${_exec_sh}" "${HOME}/.local/share/setup/common/editors/sync-extensions.sh" "${_target_editor}" "${_action}"
 	else
 		_ui_warn "Mecanismo de sincronização de extensões não encontrado no Profile ou Setup."
 		return 1
@@ -449,7 +445,7 @@ alias upext="sync-extensions"
 ### REINSTALL & BENCHMARK SHELL
 ### --------------------------------
 reinstall-shell() {
-	if [ -z "${SHELL_REPO_DIR}" ] || [ ! -d "${SHELL_REPO_DIR}" ]; then
+	if [ -z "${SHELL_REPO_DIR:-}" ] || [ ! -d "${SHELL_REPO_DIR}" ]; then
 		_ui_err "SHELL_REPO_DIR is not set or invalid."
 		_ui_info "Please re-run the install.sh script from your shell repository."
 		return 1
@@ -464,9 +460,14 @@ reinstall-shell() {
 	_cache_clean
 
 	local _args="--context ${SHELL_CONTEXT:-desktop}"
-	if [ "${SHELL_FRAMEWORK:-0}" -eq 1 ]; then
-		_args="${_args} --framework"
-	fi
+	case "${SHELL_FRAMEWORK:-0}" in
+		*[!0-9]*|"") ;;
+		*)
+			if [ "${SHELL_FRAMEWORK:-0}" -eq 1 ]; then
+				_args="${_args} --framework"
+			fi
+			;;
+	esac
 
 	local _cur_bin="$(_detect_enabled_shell)"
 	local _cur_shell="$(_detect_enabled_shell --name)"
@@ -481,11 +482,11 @@ reinstall-shell() {
 }
 
 bench-shell() {
-	if [ -n "${SHELL_REPO_DIR}" ] && [ -f "${SHELL_REPO_DIR}/benchmark.sh" ]; then
+	if [ -n "${SHELL_REPO_DIR:-}" ] && [ -f "${SHELL_REPO_DIR}/benchmark.sh" ]; then
 		local _cur_bin="$(_detect_enabled_shell)"
 		"${_cur_bin}" "${SHELL_REPO_DIR}/benchmark.sh" "$@"
 	else
-		_ui_err "Script de benchmark não encontrado em ${SHELL_REPO_DIR}/benchmark.sh."
+		_ui_err "Script de benchmark não encontrado em ${SHELL_REPO_DIR:-}/benchmark.sh."
 		return 1
 	fi
 }
