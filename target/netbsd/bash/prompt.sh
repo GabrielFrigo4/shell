@@ -4,7 +4,7 @@
 
 PROMPT_OS_ICON=" "
 PROMPT_OS_COLOR="yellow"
-PROMPT_OS_NAME="$(command uname -r 2> "/dev/null" || echo "NetBSD")"
+PROMPT_OS_NAME="${_DETECTED_KERNEL_RELEASE:-$(command uname -r 2> "/dev/null" || echo "NetBSD")}"
 
 . "${SHELL_REPO_DIR}/theme/bash.sh"
 . "${SHELL_REPO_DIR}/target/netbsd/environment.sh"

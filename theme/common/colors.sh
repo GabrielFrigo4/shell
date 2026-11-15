@@ -2,8 +2,27 @@
 ### PROMPT COLOR PALETTE
 ### ================================
 
+_THEME_ESCAPE=$'\e'
+if [ "${#_THEME_ESCAPE}" -ne 1 ]; then
+	_THEME_ESCAPE="$(printf '\x1b')"
+fi
+
+_THEME_KSH_DELIM=""
+if [ -n "${KSH_VERSION:-}" ]; then
+	_THEME_KSH_DELIM=$'\x01'
+	if [ "${#_THEME_KSH_DELIM}" -ne 1 ]; then
+		_THEME_KSH_DELIM="$(printf '\x01')"
+	fi
+fi
+
 _setup_colors() {
-	local _escape=$'\e'
+	if [ -z "${_THEME_ESCAPE:-}" ] || [ "${#_THEME_ESCAPE}" -ne 1 ]; then
+		_THEME_ESCAPE=$'\e'
+		if [ "${#_THEME_ESCAPE}" -ne 1 ]; then
+			_THEME_ESCAPE="$(printf '\x1b')"
+		fi
+	fi
+	local _escape="${_THEME_ESCAPE}"
 
 	local _theme_color_open="\["
 	local _theme_color_close="\]"
@@ -11,21 +30,19 @@ _setup_colors() {
 		_theme_color_open="%{"
 		_theme_color_close="%}"
 	elif [ -n "${KSH_VERSION:-}" ]; then
-		_theme_color_open=$'\x01'
-		_theme_color_close=$'\x01'
+		if [ -z "${_THEME_KSH_DELIM:-}" ] || [ "${#_THEME_KSH_DELIM}" -ne 1 ]; then
+			_THEME_KSH_DELIM=$'\x01'
+			if [ "${#_THEME_KSH_DELIM}" -ne 1 ]; then
+				_THEME_KSH_DELIM="$(printf '\x01')"
+			fi
+		fi
+		_theme_color_open="${_THEME_KSH_DELIM}"
+		_theme_color_close="${_THEME_KSH_DELIM}"
 	fi
 
 	_theme_color_reset="${_theme_color_open}${_escape}[0m${_theme_color_close}"
 	_theme_color_bold="${_theme_color_open}${_escape}[1m${_theme_color_close}"
-
 	_theme_color_delimiter="${_theme_color_open}${_escape}[90m${_theme_color_close}"
-	_theme_color_red="${_theme_color_open}${_escape}[31m${_theme_color_close}"
-	_theme_color_green="${_theme_color_open}${_escape}[32m${_theme_color_close}"
-	_theme_color_yellow="${_theme_color_open}${_escape}[33m${_theme_color_close}"
-	_theme_color_blue="${_theme_color_open}${_escape}[34m${_theme_color_close}"
-	_theme_color_magenta="${_theme_color_open}${_escape}[35m${_theme_color_close}"
-	_theme_color_cyan="${_theme_color_open}${_escape}[36m${_theme_color_close}"
-	_theme_color_white="${_theme_color_open}${_escape}[37m${_theme_color_close}"
 
 	_theme_color_bright_gray="${_theme_color_open}${_escape}[90m${_theme_color_close}"
 	_theme_color_bright_red="${_theme_color_open}${_escape}[91m${_theme_color_close}"

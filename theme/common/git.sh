@@ -7,21 +7,27 @@ _git_branch() {
 	_is_dirty=""
 	local _dir="${PWD}"
 	local _git_root=""
+	local _got_root=""
 	local _prev_dir=""
+	local _gitdir=""
+	local _head=""
+
 	while [ -n "${_dir}" ]; do
 		if [ -d "${_dir}/.git" ]; then
 			_git_root="${_dir}/.git"
 			break
 		elif [ -f "${_dir}/.git" ]; then
-			local _gitdir=""
 			read -r _gitdir < "${_dir}/.git" 2> "/dev/null" || true
 			case "${_gitdir}" in
 				gitdir:\ *) _git_root="${_gitdir#gitdir: }" ;;
 			esac
 			case "${_git_root}" in
 				/*|[a-zA-Z]:*) ;;
-				*)  _git_root="${_dir}/${_git_root}" ;;
+				*)            _git_root="${_dir}/${_git_root}" ;;
 			esac
+			break
+		elif [ -d "${_dir}/.got" ]; then
+			_got_root="${_dir}/.got"
 			break
 		fi
 		case "${_dir}" in
@@ -37,7 +43,6 @@ _git_branch() {
 
 	if [ -n "${_git_root}" ]; then
 		if [ -f "${_git_root}/HEAD" ]; then
-			local _head=""
 			read -r _head < "${_git_root}/HEAD" 2> "/dev/null" || true
 			case "${_head}" in
 				"ref: refs/heads/"*) _branch="${_head#ref: refs/heads/}" ;;
@@ -55,7 +60,17 @@ _git_branch() {
 				_is_dirty="*"
 			fi
 		fi
-	elif [ -d ".got" ] && command -v got > "/dev/null" 2>&1; then
-		_branch="$(command got branch 2> "/dev/null" || command got info 2> "/dev/null" | command awk '/work tree branch:/ {print $NF}')"
+	elif [ -n "${_got_root}" ]; then
+		if [ -f "${_got_root}/head-ref" ]; then
+			read -r _head < "${_got_root}/head-ref" 2> "/dev/null" || true
+			case "${_head}" in
+				"refs/heads/"*)   _branch="${_head#refs/heads/}" ;;
+				"refs/remotes/"*) _branch="${_head#refs/remotes/}" ;;
+				*)                _branch="${_head}" ;;
+			esac
+		fi
+		if [ -z "${_branch}" ] && command -v got > "/dev/null" 2>&1; then
+			_branch="$(command got info 2> "/dev/null" | command awk '/work tree branch( reference)?:/ {sub(/^refs\/heads\//, "", $NF); print $NF; exit}')"
+		fi
 	fi
 }

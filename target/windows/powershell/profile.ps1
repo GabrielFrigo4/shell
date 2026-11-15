@@ -1,4 +1,4 @@
-﻿<#
+<#
 # ----------------------------------------------------------------
 # Module: PowerShell Interactive Environment Profile
 # ----------------------------------------------------------------
@@ -1219,7 +1219,7 @@ Set-Alias "sysclean" "Clean-System" -Force -Option AllScope
 Set-Alias "syscls" "Clean-System" -Force -Option AllScope
 Set-Alias "clear-system" "Clean-System" -Force -Option AllScope
 
-Remove-Item alias:gl,gp,gcm -Force -ErrorAction SilentlyContinue
+Remove-Item -Path @("alias:gl", "alias:gp", "alias:gcm") -Force -ErrorAction Ignore
 
 function Invoke-GitStatusSb { git status -sb @args }
 Set-Alias "gs" "Invoke-GitStatusSb" -Force -Option AllScope

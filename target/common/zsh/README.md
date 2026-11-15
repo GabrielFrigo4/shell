@@ -6,4 +6,4 @@
 
 ## 📁 Arquivos
 
-- **`zsh.sh`**: Histórico compartilhado (`SHARE_HISTORY`), navegação (`AUTO_CD`, `AUTO_PUSHD`), segurança (`NO_CLOBBER`) e autocompletamento compilado em cache (`.zcompdump.zwc`).
+- **`zsh.sh`** (`0644`, `sourced`): Histórico compartilhado (`SHARE_HISTORY`), navegação (`AUTO_CD`, `AUTO_PUSHD`), segurança (`NO_CLOBBER`) e autocompletamento compilado em cache (`.zcompdump.zwc`).

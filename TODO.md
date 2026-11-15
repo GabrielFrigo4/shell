@@ -9,11 +9,11 @@
 
 | Área                    |   Status    | Cobertura / Estado                                                                                           |
 | :---------------------- | :---------: | :----------------------------------------------------------------------------------------------------------- |
-| **Plataformas Base**    | 🟢 Estável  | Linux, FreeBSD, DragonFly BSD, OpenBSD, NetBSD, illumos, macOS, Windows (MSYS2)                              |
+| **Plataformas Base**    | 🟢 Estável  | Linux, FreeBSD, OpenBSD, NetBSD, illumos, macOS, Windows (MSYS2 / nativo)                                    |
 | **Shells Nativos**      | 🟢 Estável  | Zsh, Bash, POSIX sh (FreeBSD), KornShell (OpenBSD)                                                           |
-| **Shells Alternativos** | 🟢 Estável  | PowerShell 7+, NuShell, CMD (Clink), Fish Shell (`fish.fish`)                                                |
+| **Shells Alternativos** | 🟢 Estável  | PowerShell 7+, NuShell, CMD (Clink), Fish Shell (`target/common/fish/`)                                      |
 | **Latência & Boot**     | 🟢 Estável  | Latência rigorosamente < 16ms / 64ms em todas as plataformas                                                 |
-| **Módulos Comuns**      | 🟢 Estável  | Simetria plana em `target/common/` (`bash.sh`, `fish.fish`, `ksh.sh`, `sh.sh`, `zsh.sh`)                     |
+| **Módulos Comuns**      | 🟢 Estável  | Simetria modular em `target/common/` (`bash.sh`, `ksh.sh`, `sh.sh`, `zsh.sh`, `fish/*.fish`, `session.sh`)   |
 | **Resiliência TTY**     | 🟢 Estável  | Detecção de console puro, locale soberano UTF-8 e rendering adaptativo pill/micro                            |
 | **Paridade Windows**    | 🟢 Estável  | Executáveis defensivos (winget/scoop/choco), PowerShell 5.1/7 e NuShell                                      |
 | **UI & Semântica**      | 🟢 Estável  | Padrão `_ui_*` com ANSI POSIX puro via `printf`                                                              |

@@ -3,11 +3,11 @@
 ### ================================
 
 ### --------------------------------
-### Path
+### PATH
 ### --------------------------------
+path-front "/usr/X11R6/bin"
 path-front "/usr/local/bin"
 path-front "/usr/local/sbin"
-path-front "/usr/X11R6/bin"
 path-front "${HOME}/.local/bin"
 path-back "${HOME}/.cargo/bin"
 path-dedup
@@ -23,4 +23,6 @@ unset -v _sock
 ### --------------------------------
 ### OPENBSD VARIABLES
 ### --------------------------------
-export PKG_PATH="${PKG_PATH:-https://cdn.openbsd.org/pub/OpenBSD/$(uname -r 2> "/dev/null")/packages/$(uname -m 2> "/dev/null")/}"
+if [ ! -s "/etc/installurl" ] && [ -z "${PKG_PATH:-}" ]; then
+	export PKG_PATH="https://cdn.openbsd.org/pub/OpenBSD/$(uname -r 2> "/dev/null")/packages/$(uname -m 2> "/dev/null")/"
+fi

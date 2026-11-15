@@ -3,7 +3,7 @@
 ### ================================
 
 ### --------------------------------
-### Compatibility & Parsing
+### COMPATIBILITY AND PARSING
 ### --------------------------------
 setopt SH_WORD_SPLIT
 unset IFS
@@ -165,12 +165,14 @@ zmodload -i zsh/complist 2> "/dev/null" || true
 _lazy_compinit() {
 	bindkey '^I' expand-or-complete
 	autoload -Uz compinit
-	if [ -f "${HOME}/.zcompdump" ]; then
+	if [ -s "${HOME}/.zcompdump" ]; then
 		compinit -C -d "${HOME}/.zcompdump"
 	else
 		compinit -d "${HOME}/.zcompdump"
 	fi
-	[ -f "${HOME}/.zcompdump.zwc" ] || (zcompile "${HOME}/.zcompdump" 2> "/dev/null" &)
+	if [ -f "${HOME}/.zcompdump" ] && { [ ! -f "${HOME}/.zcompdump.zwc" ] || [ "${HOME}/.zcompdump" -nt "${HOME}/.zcompdump.zwc" ]; }; then
+		(zcompile "${HOME}/.zcompdump" 2> "/dev/null" &)
+	fi
 	zle expand-or-complete
 }
 zle -N _lazy_compinit
@@ -192,11 +194,11 @@ zstyle ':completion:*:*:-command-:*' group-order aliases functions builtins comm
 
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle -e ':completion:*:descriptions' format \
-  'local len=${#3}; (( len == 0 )) && len=15; reply=("%F{blue}── %F{cyan}%d %F{blue}${(r:$((COLUMNS - len - 7))::─:)%f}")'
+  'local _len=${#3} _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); (( _len == 0 )) && _len=15; local _w=$(( _cols - _len - 7 )); (( _w < 1 )) && _w=1; local _pad=""; reply=("%F{blue}── %F{cyan}%d %F{blue}${(r:${_w}::─:)_pad}%f")'
 zstyle -e ':completion:*:messages' format \
-  'local len=${#3}; (( len == 0 )) && len=15; reply=("%F{magenta}── %d %F{magenta}${(r:$((COLUMNS - len - 7))::─:)%f}")'
+  'local _len=${#3} _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); (( _len == 0 )) && _len=15; local _w=$(( _cols - _len - 7 )); (( _w < 1 )) && _w=1; local _pad=""; reply=("%F{magenta}── %d %F{magenta}${(r:${_w}::─:)_pad}%f")'
 zstyle -e ':completion:*:warnings' format \
-  'reply=("%F{red}── sem correspondências ${(r:$((COLUMNS - 25))::─:)%f}")'
+  'local _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); local _w=$(( _cols - 25 )); (( _w < 1 )) && _w=1; local _pad=""; reply=("%F{red}── sem correspondências ${(r:${_w}::─:)_pad}%f")'
 zstyle ':completion:*:corrections' format '%F{yellow}── %d (erros: %e) %f'
 
 zstyle ':completion:*' squeeze-slashes true

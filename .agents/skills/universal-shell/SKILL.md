@@ -39,21 +39,24 @@ Nem todo shell é suportado como alvo interativo em todos os sistemas operaciona
 | **NetBSD**          |              `zsh`, `bash`               | `sh` ash puro rejeita hífens (`goodname()`). Berço histórico da `libedit`.                            |
 | **Windows (MSYS2)** |              `zsh`, `bash`               | Camada de emulação POSIX sobre NT. Penalidade severa de `fork()` (20-60ms). Zero subshells no boot.   |
 
+Além da matriz POSIX/Bourne acima, o repositório provê runtime modular multiplataforma para **Fish** (`target/common/fish/`: `config.fish`, `ui.fish`, `prompt.fish`, `aliases.fish`) e perfis estendidos no Windows (`pwsh`, `nu`, `cmd`). Interpretadores como `dash` e NetBSD `sh` são explicitamente excluídos de alvos interativos.
+
 Em benchmarks, testes automatizados e documentações, a ordem de precedência ergonômica DEVE respeitar estritamente:
 
 1. **`zsh`:** Topo da ergonomia, auto-completar visual e renderização de prompts complexos.
 2. **`bash`:** Padrão corporativo universal e compatibilidade retroativa sólida.
 3. **`sh` / `ksh`:** Shells nativos do base system exclusivos de FreeBSD (`sh`) e OpenBSD (`ksh`).
+4. **`fish`:** Runtime interativo multiplataforma modular em `target/common/fish/`.
 
 ---
 
 ## 3. Invariantes Arquiteturais Inegociáveis
 
-1. **Linha de Base FreeBSD `sh` & Alvos Nativos de Sistema Exclusivos:**
+1. **Linha de Base FreeBSD `sh` & Política ANSI Sem Octais (`$'\e'` e `printf '\x1b'`):**
     - O `sh` do FreeBSD é a referência canônica para scripts compartilhados em `library/`, `core/` e `install.sh`.
-    - **Alvos Nativos de Sistema Exclusivos:** O alvo interativo `sh` existe unicamente no FreeBSD (`target/freebsd/sh`), e o alvo interativo `ksh` existe unicamente no OpenBSD (`target/openbsd/ksh`). Todos os demais SOs DEVEM utilizar exclusivamente `bash` e `zsh` como alvos interativos.
-    - O formato `echo -n $'\e...'` é universalmente suportado em todo o ecossistema (FreeBSD `sh`, Zsh, Bash e Dash moderno, além do padrão POSIX Issue 8). No OpenBSD `ksh`, sequências de controle adotam bytes octais `\033` (via `printf '\033'`).
-    - Use expressamente `echo -n $'\e...'` para sequências de controle de terminal (ex: `alias clear="echo -n $'\e[2J\e[3J\e[H'"`), priorizando a clareza e legibilidade do `$'\e'` sobre o octal arcaico.
+    - **Alvos Nativos de Sistema Exclusivos:** O alvo interativo `sh` existe unicamente no FreeBSD (`target/freebsd/sh`), e o alvo interativo `ksh` existe unicamente no OpenBSD (`target/openbsd/ksh`). Todos os demais SOs DEVEM utilizar exclusivamente `bash` e `zsh` (e opcionalmente `fish`) como alvos interativos.
+    - **Política Canônica de Escapes ANSI:** O formato `echo -n $'\e...'` é o padrão primário para Bash, Zsh e FreeBSD `sh`. Para OpenBSD `ksh` (`pdksh`) e `Makefile` (onde `$'\e'` não é garantido), adote `printf '\x1b...'` como fallback POSIX portátil em notação hexadecimal (`_esc=$'\e'; [ "${#_esc}" -ne 1 ] && _esc="$(printf '\x1b')"`).
+    - **Banimento Absoluto de Octais:** É estritamente proibido o uso de escapes octais em código, Makefiles ou documentações; utilize exclusivamente `$'\e'` ou notação hexadecimal `\x1b`.
 
 2. **Programação Defensiva em Duas Zonas (`command -v`):**
     - **Zone A (Boot-Time):** Use `command -v` no nível top-level APENAS para:
@@ -85,17 +88,17 @@ Em benchmarks, testes automatizados e documentações, a ordem de precedência e
     - Sem funções gêmeas: declare diretamente a função pública final.
     - **Nomenclatura Semântica Expressiva (Zero Abreviações Crípticas):** Proibição categórica de variáveis de uma única letra ou abreviações contraídas (`_c`, `_u`, `_ind`, `_sym`, `_del`, `_b`, `_f`, `_ed`, `_mod`). Use sempre nomes explícitos e semânticos (`_user_color`, `_prompt_symbol`, `_indicator`, `_delimiter`, `_module`, `_file`), exceto referências formais da computação (a linguagem `C` em buffers de parser `_calc_c_len` / `_c_bytes`, e acrônimos de sistema consagrados como `_os`, `_ip`, `_pid`).
 
-5. **Delimitadores de Largura Zero em Prompts (`\[...\]` e `\e`):**
-    - No FreeBSD `sh` (`libedit`) e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar estritamente contidos entre `\[` e `\]` (ex: `_color_red="\[\e[1;91m\]"`).
-    - Sem `\[...\]`, a `libedit` computa bytes ANSI como colunas físicas ocupadas, quebrando a contagem de quebra de linha e causando sobreposição de caracteres (`\r`) e cursor travado sobre o início do prompt.
+5. **Delimitadores de Largura Zero em Prompts (`\[...\]`, `%{...%}` e `\x01`):**
+    - No FreeBSD `sh` (`libedit`) e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar estritamente contidos entre `\[` e `\]` (ex: `_color_red="\[\e[1;91m\]"`). No Zsh, utilize `%{...%}`. No OpenBSD `ksh` (`pdksh`), delimite com `\x01` (`printf '\x01'`).
+    - Sem esses delimitadores, `libedit`/`readline`/editores de linha computam bytes ANSI como colunas físicas ocupadas, quebrando a contagem de quebra de linha e causando sobreposição de caracteres (`\r`) e cursor travado sobre o início do prompt.
 
 6. **Heredocs Indentados com `cat <<- 'EOF'`:**
     - Em geradores de templates e blocos multilinhas, use SEMPRE `cat <<- 'EOF'` (ou `cat <<- EOF`).
     - O hífen `<<-` descarta TABs iniciais (`\t`) do corpo e do delimitador `EOF`, mantendo a indentação visual perfeita com o bloco circundante sem forçar texto para a coluna zero.
 7. **Taxonomia de Emissão (`echo` vs `printf` vs `echo -n`):**
     - `echo`: Padrão para emissão de linhas simples de texto e escrita atômica em arquivos (`echo "${val}" >| "${file}"`).
-    - `echo -n $'\e...'`: Padrão canônico e preferido para sequências ANSI em terminais interativos (`[ -t 1 ]`).
-    - `printf`: Exclusivo para alinhamento de colunas e tabelas (`scripts/benchmark.sh`).
+    - `echo -n $'\e...'`: Padrão primário para sequências ANSI em terminais interativos (`[ -t 1 ]`) em Bash, Zsh e FreeBSD `sh`; utilize `printf '\x1b...'` como fallback POSIX portátil em OpenBSD `ksh` (`pdksh`) e `Makefile`.
+    - `printf`: Exclusivo para alinhamento de colunas e tabelas (`benchmark.sh`) e escapes hexadecimais portáteis (`\x1b`, `\x01`).
 8. **Guarda de Interatividade e Auto-Correção de `$SHELL`:**
     - Todo RC gerado DEVE iniciar com `case "$-" in *i*) ;; *) return ;; esac`.
     - Auto-correção de `$SHELL` DEVE usar casamento de padrão em memória (`case "${SHELL:-}" in *"/${_current_sh}") ;; ...`).
@@ -103,10 +106,13 @@ Em benchmarks, testes automatizados e documentações, a ordem de precedência e
     - Ao disparar sub-scripts a partir de funções do shell (`install.sh`, `benchmark.sh`), execute SEMPRE através da cascata canônica: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`.
     - NUNCA use `sh <script>` hardcoded: em Linux, `sh` pode ser `dash`, que rejeita a taxonomia canônica `kebab-case`. Em scripts utilitários, garanta guard de auto-elevação para `zsh`/`bash` no topo.
 
-10. **Engenharia de Performance e Boot Ultra-Rápido (< 20ms):**
+10. **Engenharia de Performance, Boot Ultra-Rápido (< 20ms) & Lazy Loading:**
     - **Zero Subshells no Boot-Time:** É expressamente VEDADO o uso de `find`, `sed`, `awk`, `grep`, `dd` e `ps` no carregamento interativo de qualquer shell. Cada fork de processo externo custa entre 2ms e 7ms.
-    - **Globbing Nativo:** Varreduras de arquivos de configuração, temas e chaves DEVEM usar exclusivamente loops com globbing nativo (`for _f in "${DIR}"/*/*.env; do [ -f "${_f}" ] && . "${_f}"; done`).
+    - **Globbing Nativo:** Varreduras de arquivos de configuração, temas e chaves DEVEM usar exclusivamente loops com globbing nativo (`for _file in "${DIR}"/*/*.env; do [ -f "${_file}" ] && . "${_file}"; done`).
     - **Expansão de Parâmetros com Fallback:** Utilize SEMPRE `${VAR:-$(fallback)}` para que a captura de saída por subshell ocorra apenas se a variável não tiver sido carregada do cache.
+    - **Carregamento Condicional & Lazy de `desktop-*.sh`:** Os módulos `library/desktop-device.sh`, `library/desktop-kiosk.sh` e `library/desktop-session.sh` são carregados condicionalmente somente quando `SHELL_CONTEXT="desktop"` (`shell.sh` e `install.sh` ignoram `desktop-*.sh` em contextos `server` e `container`). Adicionalmente, `desktop-kiosk.sh` carrega `desktop-session.sh` sob demanda via `_kiosk_ensure_session`.
+    - **`--userland=gnu` Antifrágil:** Nos modos `default` e `bsd` (`install.sh --userland [default|gnu|bsd]` e função `userland` em `core/environment.sh`), diretórios `gnubin` nunca poluem a frente do `$PATH` (`_userland_gnu_path_strip`, e no illumos `/usr/gnu/bin` permanece ao final via `path-back`). Somente ao ativar `--userland=gnu` (`userland gnu`), os caminhos GNU assumem precedência e o cache de aliases `g*` é construído sob demanda em `${XDG_CACHE_HOME:-${HOME}/.cache}/shell/gnu_aliases_<os>.sh`.
+    - **Permissões Regra `4a` & `.scripts/emacs-client`:** Apenas entrypoints executáveis com shebang (`shell.sh`, `init.sh`, `install.sh`, `benchmark.sh`, `.githooks/*` e scripts em `.scripts/*` com `#!`, como `.scripts/emacs-client` vinculado a `~/.local/bin/emacs-client`) recebem modo `0755` (`100755` no Git Index). Bibliotecas sourced (`core/`, `library/`, `context/`, `target/`, `theme/`) e configurações/documentações permanecem estritamente `0644` (`100644`).
 
 11. **Detecção Resiliente de Shell em Cascata (Multi-Shell):**
     - A detecção de shell ativo (`_detect_shell`) DEVE ser determinística, rápida (< 0.1ms) e tolerante a shells aninhados (`zsh` -> `bash` -> `zsh` -> `sh`).
@@ -197,22 +203,30 @@ Quando criar uma nova função de abertura de editor ou utilitário interativo:
 
 ## 5. Checklist de Qualidade e Gates de Validação
 
-Ao concluir qualquer alteração em arquivos `.sh` ou `.md`, execute obrigatoriamente:
+Ao concluir qualquer alteração em arquivos `.sh`, `.fish` ou `.md`, execute obrigatoriamente:
 
 ```sh
 git diff --check
 
+git ls-files --stage
+
 ./.githooks/pre-commit
 
-find . -name "*.sh" -not -path "./.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec bash -n {} +
+find . -name "*.sh" -not -path "./.git/*" -not -path "*/OSS/*" -not -path "*/zsh/*" -not -name "zsh.sh" -not -path "*/ksh/*" -not -name "ksh.sh" -exec bash -n {} +
 
-find . -name "*.sh" -not -path "./.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +
+find . -name "*.sh" -not -path "./.git/*" -not -path "*/OSS/*" -not -path "*/bash/*" -not -name "bash.sh" -not -path "*/ksh/*" -not -name "ksh.sh" -exec zsh -n {} +
+
+sh -n shell.sh init.sh install.sh benchmark.sh .scripts/emacs-client .githooks/pre-commit .githooks/commit-msg
 
 sh -n library/functions.sh && sh -n core/environment.sh && sh -n theme/sh.sh
 
-find . -type d -exec chmod 0755 {} +
-find . -type f -exec chmod 0644 {} +
-chmod 0755 install.sh
+for _fish_file in target/common/fish/*.fish; do
+	[ -f "${_fish_file}" ] && fish -n "${_fish_file}"
+done
+
+find . -path "./.git" -prune -o -type d -exec chmod 0755 {} +
+find . -path "./.git" -prune -o -type f -exec chmod 0644 {} +
+chmod 0755 shell.sh init.sh install.sh benchmark.sh .githooks/* .scripts/emacs-client
 ```
 
 ---

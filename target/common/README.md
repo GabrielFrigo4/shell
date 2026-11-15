@@ -6,10 +6,12 @@
 
 ## 📁 Catálogo de Shells Comuns
 
-| Diretório   | Shell                       | Domínio Principal                                                                         |
-| :---------- | :-------------------------- | :---------------------------------------------------------------------------------------- |
-| **`sh/`**   | POSIX `sh`                  | Configuração estrita POSIX, edição Emacs, histórico em `~/.sh_history`, `set -C`          |
-| **`bash/`** | GNU Bash (`bash`)           | Histórico compartilhado (`histappend`), `checkwinsize`, navegação (`autocd`), completions |
-| **`zsh/`**  | Z Shell (`zsh`)             | `SHARE_HISTORY`, navegação avançada (`AUTO_CD`), segurança e cache `.zcompdump.zwc`       |
-| **`fish/`** | Fish Shell (`fish`)         | Arquitetura modular (`config.fish`, `prompt.fish`, `ui.fish`, `aliases.fish`)             |
-| **`ksh/`**  | Korn Shell (`ksh` / `oksh`) | Histórico, edição de linha e compatibilidade BSD                                          |
+| Diretório   | Shell                       | Domínio Principal                                                                                     |
+| :---------- | :-------------------------- | :---------------------------------------------------------------------------------------------------- |
+| **`sh/`**   | POSIX `sh` (`0644`)         | Configuração estrita POSIX (FreeBSD `sh`), edição Emacs, histórico `~/.sh_history`, `set -C`          |
+| **`bash/`** | GNU Bash (`bash`, `0644`)   | Histórico compartilhado (`histappend`), `checkwinsize`, navegação (`autocd`), completions             |
+| **`zsh/`**  | Z Shell (`zsh`, `0644`)     | `SHARE_HISTORY`, navegação avançada (`AUTO_CD`), segurança e cache `.zcompdump.zwc`                   |
+| **`fish/`** | Fish Shell (`fish`, `0644`) | Arquitetura modular (`config.fish`, `prompt.fish`, `ui.fish`, `aliases.fish`) + `PYTHONPYCACHEPREFIX` |
+| **`ksh/`**  | Korn Shell (`ksh`, `0644`)  | Edição `set -o emacs`, histórico `~/.ksh_history`, `set -C` e integração OpenBSD `pdksh`/`oksh`       |
+
+Inclui também **`session.sh`** (`0644`), responsável pela propagação comum de tema gráfico (`GTK_THEME`, `QT_STYLE_OVERRIDE`, `QT_QPA_PLATFORMTHEME`, `SAL_USE_VCLPLUGIN`) e export de `PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"`.

@@ -1,6 +1,6 @@
 # 🏛️ O Quarteto de Produtividade (Universal Environment Architecture)
 
-> Manifesto unificado de arquitetura, governança e contratos de responsabilidade do ecossistema de produtividade pessoal de Gabriel Frigo.
+> Manifesto unificado de arquitetura, governança e contratos de responsabilidade do ecossistema soberano de produtividade multiplataforma.
 
 ---
 
@@ -214,7 +214,7 @@ Baseados nos 17 Princípios UNIX (_The Art of UNIX Programming_, Eric S. Raymond
     - **Subseções (32 `-`):**
         ```sh
         ### --------------------------------
-        ### Nome da Subsecao
+        ### NOME DA SUBSECAO
         ### --------------------------------
         ```
     - **Regra do Não-Vazamento:** O texto do título DEVE ter no máximo 32 caracteres (total de 36 colunas com `### `) e JAMAIS vazar além da régua divisora. Títulos concisos, sem parênteses e sem numerações redundantes.
@@ -249,8 +249,8 @@ Baseados nos 17 Princípios UNIX (_The Art of UNIX Programming_, Eric S. Raymond
 
 Em estações de trabalho FreeBSD, ferramentas e agentes de IA que demandam runtimes Go avançados com HTTP/2 ou loops `epoll`/`fsnotify` (como o **Google Antigravity CLI**) operam sob um subsistema dedicado e isolado de virtualização via Bhyve:
 
-- **Host Soberano (FreeBSD):** Workstation desktop (KDE/Wayland), terminais interativos, storage primário em ZFS (`zroot`), firewall PF com NAT e servidor NFSv3 exportando `/home/gabrielf` com `-mapall=gabrielf`.
-- **Guest Linux (Debian 13.7 em Bhyve):** Máquina virtual com kernel 6.12 nativo, UID/GID 1001 alinhado e ponto de montagem NFSv3 em `/home/gabrielf`.
+- **Host Soberano (FreeBSD):** Workstation desktop (KDE/Wayland), terminais interativos, storage primário em ZFS (`zroot`), firewall PF com NAT e servidor NFSv3 exportando `/home/<user>` com `-mapall=<user>`.
+- **Guest Linux (Debian 13.7 em Bhyve):** Máquina virtual com kernel 6.12 nativo, UID/GID 1001 alinhado e ponto de montagem NFSv3 em `/home/<user>`.
 - **Camada de Integração do Shell:** Biblioteca universal `library/hypervisor.sh` provendo orquestração multiplataforma de VMs e Containers (`fb`, `lx`, `ob`, `nt`), integrada no FreeBSD via `target/freebsd/bhyve.sh` e `compat.sh` com funções POSIX `linux-host` (aliases: `linux`, `lx`, `debian`, `deb`), `agy-lx` (alias: `agy`), `agy-compat` (alias: `agy-cp`) e rotina `update-linux` (`uplx`, `updeb`), garantindo navegação com paridade de diretórios e fallback silencioso para a home.
 - **Documentação Canônica:** Série modular de runbooks documentada no Environment em [`docs/virtualization/bhyve/`](https://github.com/GabrielFrigo4/environment/tree/main/docs/virtualization/bhyve).
 

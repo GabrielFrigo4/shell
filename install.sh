@@ -379,7 +379,13 @@ _install_shell_target() {
 			if ! grep -qF "export ENV=" "${_profile}" 2> "/dev/null"; then
 				echo "${_env_line}" >> "${_profile}"
 			fi
-			if ! grep -qF "export SHELL_USERLAND=" "${_profile}" 2> "/dev/null"; then
+			if grep -qF "export SHELL_USERLAND=" "${_profile}" 2> "/dev/null"; then
+				if sed "s|^export SHELL_USERLAND=.*|${_userland_env_line}|" "${_profile}" >| "${_profile}.tmp"; then
+					mv -f "${_profile}.tmp" "${_profile}"
+				else
+					rm -f "${_profile}.tmp"
+				fi
+			else
 				echo "${_userland_env_line}" >> "${_profile}"
 			fi
 		else
@@ -390,7 +396,13 @@ _install_shell_target() {
 				if ! _as_root grep -qF "export ENV=" "${_root_profile}" 2> "/dev/null"; then
 					echo "export ENV=\"/root/${_rc_name}\"" | _as_root tee -a "${_root_profile}" > "/dev/null" 2>&1 || true
 				fi
-				if ! _as_root grep -qF "export SHELL_USERLAND=" "${_root_profile}" 2> "/dev/null"; then
+				if _as_root grep -qF "export SHELL_USERLAND=" "${_root_profile}" 2> "/dev/null"; then
+					local _tmp_prof="${TMPDIR:-/tmp}/shell_profile.$$"
+					if _as_root cat "${_root_profile}" 2> "/dev/null" | sed "s|^export SHELL_USERLAND=.*|${_userland_env_line}|" >| "${_tmp_prof}"; then
+						_as_root tee "${_root_profile}" < "${_tmp_prof}" > "/dev/null" 2>&1 || true
+					fi
+					rm -f "${_tmp_prof}"
+				else
 					echo "${_userland_env_line}" | _as_root tee -a "${_root_profile}" > "/dev/null" 2>&1 || true
 				fi
 			else

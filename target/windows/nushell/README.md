@@ -10,16 +10,26 @@ Este diretório provê scripts de inicialização, atalhos, funções auxiliares
 
 ---
 
-## 📂 Catálogo de Arquivos
+## 📂 Catálogo de Arquivos & Arquitetura Nativa
 
-| Arquivo                  | Tipo                 | Descrição                                                       |
-| :----------------------- | :------------------- | :-------------------------------------------------------------- |
-| [`config.nu`](config.nu) | NuScript Declarativo | Configuração de atalhos, tabelas, carregamento do Vault e temas |
-| [`env.nu`](env.nu)       | NuScript Declarativo | Variáveis de ambiente e carregamento do ecossistema             |
+| Arquivo                  | Tipo                 | Descrição                                                                                                         |
+| :----------------------- | :------------------- | :---------------------------------------------------------------------------------------------------------------- |
+| [`env.nu`](env.nu)       | NuScript Declarativo | `$env.ENV_CONVERSIONS` dual (`PATH`/`Path`), `registry query --hklm`, `PYTHONPYCACHEPREFIX` e `EMACS_SOCKET_NAME` |
+| [`config.nu`](config.nu) | NuScript Declarativo | Prompt de 3 linhas, atalhos, carregamento do Vault (`PERSONAL_SERVER_*`/`VENTURE_SERVER_*`) e `up*`               |
+
+### ⚡ Otimizações & Paridade Win32
+
+- **Sincronização Dual de PATH (`$env.ENV_CONVERSIONS`):** Converte e sincroniza simultaneamente `$env.PATH` e `$env.Path`, evitando divergências entre executáveis nativos Win32, wrappers MSYS2 e pipelines do NuShell.
+- **Leitura Nativa de Registro (0ms):** Consulta metadados do Windows via builtin `registry query --hklm` (com fallback transparente para `reg.exe`), mantendo o boot instantâneo.
+- **Cache Python & Emacs:** Exporta `$env.PYTHONPYCACHEPREFIX` (`$env.XDG_CACHE_HOME/pycache` ou `~/.cache/pycache`) e `$env.EMACS_SOCKET_NAME`, além de sincronizar perfis cruzados (PowerShell, NuShell e Clink) via `upsh`.
 
 ---
 
 ## 🚀 Como Usar / Sincronizar
+
+```sh
+sh install.sh -s nu
+```
 
 ### Linux, FreeBSD & macOS:
 

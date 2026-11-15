@@ -19,7 +19,7 @@ export SHELL_INIT=1
 
 PROMPT_OS_ICON=" "
 PROMPT_OS_COLOR="yellow"
-PROMPT_OS_NAME="OpenBSD"
+PROMPT_OS_NAME="${_DETECTED_KERNEL_RELEASE:-$(command uname -r 2> "/dev/null" || echo "OpenBSD")}"
 
 . "${SHELL_REPO_DIR}/theme/ksh.sh"
 . "${SHELL_REPO_DIR}/target/openbsd/ksh/behavior.sh"
@@ -27,6 +27,6 @@ PROMPT_OS_NAME="OpenBSD"
 
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
 [ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh" ] && \
-    . "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh"
+	. "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh"
 [ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/openbsd.sh" ] && \
-    . "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/openbsd.sh"
+	. "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/openbsd.sh"

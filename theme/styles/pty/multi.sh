@@ -11,8 +11,8 @@ _theme_render() {
 		_git_info=" ${_delimiter}${_theme_color_red}󰊢 ${_theme_color_magenta}${_branch}${_indicator}${_delimiter}"
 	fi
 
-	local _time
-	local _date
+	local _time=""
+	local _date=""
 	if [ -n "${ZSH_VERSION:-}" ]; then
 		_time="%D{%H:%M:%S}"
 		_date="%D{%d/%m/%y}"
@@ -20,8 +20,9 @@ _theme_render() {
 		_time="\t"
 		_date="\D{%d/%m/%y}"
 	else
-		_time="$(command date +%H:%M:%S 2> "/dev/null" || true)"
-		_date="$(command date +%d/%m/%y 2> "/dev/null" || true)"
+		local _datetime="$(command date '+%H:%M:%S %d/%m/%y' 2> "/dev/null" || true)"
+		_time="${_datetime% *}"
+		_date="${_datetime#* }"
 	fi
 
 	local _newline="

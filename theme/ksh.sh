@@ -5,6 +5,18 @@
 _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
 [ -f "${_base_dir}/theme/common/colors.sh" ] && . "${_base_dir}/theme/common/colors.sh"
 [ -f "${_base_dir}/theme/common/git.sh" ] && . "${_base_dir}/theme/common/git.sh"
+unset _base_dir
+
+if [ -z "${_THEME_USER:-}" ]; then
+	_THEME_USER="${USER:-${USERNAME:-${LOGNAME:-$(command id -un 2> "/dev/null" || echo "user")}}}"
+fi
+if [ -z "${_THEME_UID:-}" ]; then
+	_THEME_UID="${EUID:-$(command id -u 2> "/dev/null" || echo 1000)}"
+fi
+if [ -z "${_THEME_HOST:-}" ]; then
+	_THEME_HOST="${HOSTNAME:-$(command uname -n 2> "/dev/null" || echo "host")}"
+	_THEME_HOST="${_THEME_HOST%%.*}"
+fi
 
 _ksh_prompt() {
 	_setup_colors
@@ -35,13 +47,13 @@ _ksh_prompt() {
 		*) _style="pill" ;;
 	esac
 
-	local _user="${USER:-${LOGNAME:-$(command id -un 2> "/dev/null" || echo "user")}}"
+	local _user="${USER:-${USERNAME:-${LOGNAME:-${_THEME_USER}}}}"
 	local _user_color="${_theme_color_green}"
 	local _user_icon_color="${_theme_color_blue}"
 	local _terminal_color="${_theme_color_blue}"
 	local _prompt_symbol="\$"
 	local _prompt_symbol_color="${_theme_color_cyan}"
-	if [ "${EUID:-$(id -u 2> "/dev/null")}" -eq 0 ]; then
+	if [ "${EUID:-${_THEME_UID}}" -eq 0 ]; then
 		_user="root"
 		_user_icon_color="${_theme_color_red}"
 		_terminal_color="${_theme_color_red}"
@@ -54,10 +66,10 @@ _ksh_prompt() {
 		_prompt_symbol_color="${_theme_color_red}"
 	fi
 
-	local _host="${HOSTNAME%%.*}"
-	[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
+	local _host="${HOSTNAME:-${_THEME_HOST}}"
+	_host="${_host%%.*}"
 
-	local _os_icon="${PROMPT_OS_ICON:- }"
+	local _os_icon="${PROMPT_OS_ICON:-${_DETECTED_DISTRO_ICON:- }}"
 	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_DISTRO_VERSION:-$(_detect_distro_version 2> "/dev/null" || _detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || uname -s 2> "/dev/null" || echo "UNIX")}}"
 	_os_name="${_os_name%%[-+~_]*}"
 	local _kernel_release="${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "")}"
@@ -66,10 +78,14 @@ _ksh_prompt() {
 
 	local _os_color="${_theme_color_blue}"
 	case "${PROMPT_OS_COLOR:-blue}" in
-		red)    _os_color="${_theme_color_red}" ;;
-		blue)   _os_color="${_theme_color_blue}" ;;
-		yellow) _os_color="${_theme_color_yellow}" ;;
-		*)      _os_color="${_theme_color_blue}" ;;
+		red)     _os_color="${_theme_color_red}" ;;
+		green)   _os_color="${_theme_color_green}" ;;
+		yellow)  _os_color="${_theme_color_yellow}" ;;
+		blue)    _os_color="${_theme_color_blue}" ;;
+		magenta) _os_color="${_theme_color_magenta}" ;;
+		cyan)    _os_color="${_theme_color_cyan}" ;;
+		white)   _os_color="${_theme_color_white}" ;;
+		*)       _os_color="${_theme_color_blue}" ;;
 	esac
 
 	local _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
@@ -83,14 +99,25 @@ _ksh_prompt() {
 	if command -v _theme_render > "/dev/null" 2>&1; then
 		_theme_render
 	fi
-	if [ -t 1 ]; then
+
+	if [ -t 2 ]; then
 		if [ "${_mode}" = "tty" ]; then
-			[ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c' >&2
+			[ "${TERM:-}" = "linux" ] && [ "${_os_type}" = "linux" ] && printf '\x1b%s\x1b[?16;238;0c' '%G' >&2
 		else
-			echo -n $'\e[1 q' >&2
+			printf '\x1b[1 q' >&2
 		fi
 	fi
-	printf "%s" "${PS1:-}"
+
+	if [ -n "${PS1:-}" ]; then
+		case "${KSH_VERSION:-}" in
+			*"PD KSH"*|*OKSH*|*MIRBSD*)
+				printf '%s\r%s' "${_THEME_KSH_DELIM}" "${PS1}"
+				;;
+			*)
+				printf '%s' "${PS1}"
+				;;
+		esac
+	fi
 }
 
 export PS1='$(_ksh_prompt)'

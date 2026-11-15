@@ -26,41 +26,115 @@ jobs:
             - name: Install Shell Interpreters
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y zsh
+                  sudo apt-get install -y zsh fish
 
             - name: Whitespace & Formatting Check (git diff --check)
               run: |
                   ### --------------------------------
-                  ### Whitespace & Formatting
+                  ### WHITESPACE & FORMATTING
                   ### --------------------------------
                   git diff --check HEAD~1..HEAD 2> "/dev/null" || git diff --check
+
+            - name: Git Index Permissions Audit (Regra 4a)
+              run: |
+                  ### --------------------------------
+                  ### INDEX PERMISSIONS AUDIT
+                  ### --------------------------------
+                  python3 -c '
+                  import os, subprocess, sys
+                  out = subprocess.check_output(["git", "ls-files", "--stage"]).decode("utf-8", "replace")
+                  errors = []
+                  for row in out.splitlines():
+                      if "\t" not in row:
+                          continue
+                      meta, path = row.split("\t", 1)
+                      mode = meta.split()[0]
+                      if mode == "120000":
+                          continue
+                      is_entry = False
+                      if path.startswith(".githooks/") and os.path.isfile(path):
+                          is_entry = True
+                      elif path in ("shell.sh", "init.sh", "install.sh", "benchmark.sh"):
+                          is_entry = True
+                      elif path.startswith(".scripts/") and os.path.isfile(path):
+                          with open(path, "rb") as fp:
+                              is_entry = fp.read(2) == b"#!"
+                      expected = "100755" if is_entry else "100644"
+                      if mode != expected:
+                          errors.append(f"{path}: {mode} != {expected}")
+                  if not os.path.isfile(".scripts/emacs-client"):
+                      errors.append(".scripts/emacs-client missing")
+                  if errors:
+                      print("❌ Regra 4a permission errors:", errors, file=sys.stderr)
+                      sys.exit(1)
+                  print("✅ Git Index permissions match Regra 4a.")
+                  '
 
             - name: Bash Syntax Check (bash -n)
               run: |
                   ### --------------------------------
-                  ### Bash & Shared Shell Syntax
+                  ### BASH & SHARED SHELL SYNTAX
                   ### --------------------------------
-                  find . -name "*.sh" -not -path "./.git/*" -not -path "*/zsh/*" -not -name "zsh.sh" -exec bash -n {} +
+                  find . -name "*.sh" -not -path "./.git/*" -not -path "*/OSS/*" -not -path "*/zsh/*" -not -name "zsh.sh" -not -path "*/ksh/*" -not -name "ksh.sh" -exec bash -n {} +
 
             - name: Zsh Syntax Check (zsh -n)
               run: |
                   ### --------------------------------
-                  ### Zsh Syntax
+                  ### ZSH SYNTAX
                   ### --------------------------------
-                  find . -name "*.sh" -not -path "./.git/*" -not -path "*/bash/*" -not -name "bash.sh" -exec zsh -n {} +
+                  find . -name "*.sh" -not -path "./.git/*" -not -path "*/OSS/*" -not -path "*/bash/*" -not -name "bash.sh" -not -path "*/ksh/*" -not -name "ksh.sh" -exec zsh -n {} +
 
-            - name: Quoted Redirects Rule (> "/dev/null")
+            - name: POSIX Entrypoints Syntax Check (sh -n)
               run: |
                   ### --------------------------------
-                  ### Quoting & Security Rules
+                  ### POSIX SH ENTRYPOINTS
                   ### --------------------------------
-                  UNQUOTED=$(grep -rn '> /dev/null' --include="*.sh" . | grep -v '> "/dev/null"' || true)
-                  if [ -n "${UNQUOTED}" ]; then
-                    echo "❌ Unquoted redirect '> /dev/null' found in:"
-                    echo "${UNQUOTED}"
-                    exit 1
-                  fi
-                  echo "✅ All redirects are properly quoted."
+                  sh -n shell.sh init.sh install.sh benchmark.sh .scripts/emacs-client .githooks/pre-commit .githooks/commit-msg
+
+            - name: Fish Syntax Check (fish -n)
+              run: |
+                  ### --------------------------------
+                  ### FISH SYNTAX
+                  ### --------------------------------
+                  for _fish_file in target/common/fish/*.fish; do
+                    [ -f "${_fish_file}" ] && fish -n "${_fish_file}" || exit 1
+                  done
+
+            - name: Quoting, Octals & Reference Audit
+              run: |
+                  ### --------------------------------
+                  ### QUOTING & SECURITY RULES
+                  ### --------------------------------
+                  python3 -c '
+                  import os, re, subprocess, sys
+                  files = subprocess.check_output(["git", "ls-files"]).decode("utf-8", "replace").splitlines()
+                  octal_needle = chr(92) + "033"
+                  redir_rx = re.compile(r">\s*/dev/null")
+                  bin_emacs_rx = re.compile(r"(?<!\.local/)bin/" + "emacs-client")
+                  legacy_bsd_rx = re.compile("dragon" + "fly", re.IGNORECASE)
+                  errors = []
+                  for path in files:
+                      if not os.path.isfile(path):
+                          continue
+                      if path.endswith(".sh") or path.startswith((".githooks/", ".scripts/")):
+                          with open(path, "r", encoding="utf-8", newline="\n", errors="replace") as fp:
+                              for line_no, line in enumerate(fp, 1):
+                                  if redir_rx.search(line):
+                                      errors.append(f"{path}:{line_no}: unquoted /dev/null redirect")
+                      if path.endswith((".sh", ".py", ".fish", ".nu", ".lua")) or path == "Makefile" or path.startswith((".githooks/", ".scripts/", ".github/", ".agents/")):
+                          with open(path, "r", encoding="utf-8", newline="\n", errors="replace") as fp:
+                              content = fp.read()
+                          if octal_needle in content:
+                              errors.append(f"{path}: octal escape detected")
+                          if bin_emacs_rx.search(content):
+                              errors.append(f"{path}: legacy wrapper path")
+                          if legacy_bsd_rx.search(content):
+                              errors.append(f"{path}: legacy BSD reference")
+                  if errors:
+                      print("❌ Audit failures:", "\n".join(errors), sep="\n", file=sys.stderr)
+                      sys.exit(1)
+                  print("✅ All quoting, ANSI, and reference checks passed.")
+                  '
 
     linux:
         name: 🐧 Linux (Ubuntu) Matrix
@@ -73,16 +147,16 @@ jobs:
             - name: Install Shell Interpreters
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y zsh
+                  sudo apt-get install -y zsh fish
 
             - name: Install Shell Environment (install.sh)
               run: |
                   ### --------------------------------
-                  ### Run Universal Shell Installer
+                  ### RUN UNIVERSAL SHELL INSTALLER
                   ### --------------------------------
                   ./install.sh --pure
 
-            - name: Test in Linux Shell (Zsh & Bash)
+            - name: Test in Linux Shell (Zsh, Bash & Fish)
               run: |
                   ### ================================
                   ### LINUX ENVIRONMENT
@@ -93,25 +167,34 @@ jobs:
                   [ "${OS}" = "linux" ] || { echo "Expected linux, got ${OS}"; exit 1; }
 
                   ### --------------------------------
-                  ### Linux Target Prompts
+                  ### LINUX TARGET PROMPTS
                   ### --------------------------------
                   zsh -n target/linux/zsh/prompt.sh
                   bash -n target/linux/bash/prompt.sh
+                  for _fish_file in target/common/fish/*.fish; do
+                    [ -f "${_fish_file}" ] && fish -n "${_fish_file}" || exit 1
+                  done
 
                   ### --------------------------------
-                  ### Linux Zsh Interactive Boot
+                  ### LINUX ZSH INTERACTIVE BOOT
                   ### --------------------------------
                   test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                   zsh -i -c 'echo "Linux Zsh boot with dotfiles OK: ${PROMPT}"'
 
                   ### --------------------------------
-                  ### Linux Bash Interactive Boot
+                  ### LINUX BASH INTERACTIVE BOOT
                   ### --------------------------------
                   test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                   bash -i -c 'echo "Linux Bash boot with dotfiles OK: ${PS1}"'
 
                   ### --------------------------------
-                  ### Startup Latency Benchmark (bsh)
+                  ### LINUX FISH INTERACTIVE BOOT
+                  ### --------------------------------
+                  test -f "${XDG_CONFIG_HOME:-${HOME}/.config}/fish/config.fish" || { echo "Missing config.fish"; exit 1; }
+                  fish -i -c 'echo "Linux Fish boot OK"'
+
+                  ### --------------------------------
+                  ### STARTUP LATENCY BENCHMARK
                   ### --------------------------------
                   ./benchmark.sh
 
@@ -140,17 +223,17 @@ jobs:
                       [ "${OS}" = "freebsd" ] || { echo "Expected freebsd, got ${OS}"; exit 1; }
 
                       ### --------------------------------
-                      ### Dependencies
+                      ### DEPENDENCIES
                       ### --------------------------------
                       pkg install -y zsh bash python3
 
                       ### --------------------------------
-                      ### Run Universal Shell Installer
+                      ### RUN UNIVERSAL SHELL INSTALLER
                       ### --------------------------------
                       ./install.sh --pure
 
                       ### --------------------------------
-                      ### FreeBSD Target Prompts
+                      ### FREEBSD TARGET PROMPTS
                       ### --------------------------------
                       zsh -n target/freebsd/zsh/prompt.sh
                       zsh -n theme/zsh.sh
@@ -164,25 +247,25 @@ jobs:
                       sh -n theme/sh.sh
 
                       ### --------------------------------
-                      ### FreeBSD Zsh Interactive
+                      ### FREEBSD ZSH INTERACTIVE
                       ### --------------------------------
                       test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                       zsh -i -c 'echo "FreeBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
-                      ### FreeBSD Bash Interactive PTY
+                      ### FREEBSD BASH INTERACTIVE PTY
                       ### --------------------------------
                       test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                       script -q /dev/null bash -i -c 'echo "FreeBSD Bash prompt: ${PS1}"'
 
                       ### --------------------------------
-                      ### FreeBSD sh Interactive PTY
+                      ### FREEBSD SH INTERACTIVE PTY
                       ### --------------------------------
                       test -f "${HOME}/.shrc" || { echo "Missing .shrc"; exit 1; }
                       ENV="${HOME}/.shrc" script -q /dev/null sh -i -c 'echo "FreeBSD sh prompt: ${PS1}"'
 
                       ### --------------------------------
-                      ### Startup Latency Benchmark (bsh)
+                      ### STARTUP LATENCY BENCHMARK
                       ### --------------------------------
                       ./benchmark.sh
 
@@ -213,30 +296,30 @@ jobs:
                   [ "${OS}" = "windows" ] || { echo "Expected windows, got ${OS}"; exit 1; }
 
                   ### --------------------------------
-                  ### Run Universal Shell Installer
+                  ### RUN UNIVERSAL SHELL INSTALLER
                   ### --------------------------------
                   ./install.sh --pure
 
                   ### --------------------------------
-                  ### Windows Target Prompts
+                  ### WINDOWS TARGET PROMPTS
                   ### --------------------------------
                   zsh -n target/windows/zsh/prompt.sh
                   bash -n target/windows/bash/prompt.sh
 
                   ### --------------------------------
-                  ### MSYS2 Zsh Interactive
+                  ### MSYS2 ZSH INTERACTIVE
                   ### --------------------------------
                   test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                   zsh -i -c 'echo "Windows MSYS2 Zsh OK: ${PROMPT}"'
 
                   ### --------------------------------
-                  ### MSYS2 Bash Interactive
+                  ### MSYS2 BASH INTERACTIVE
                   ### --------------------------------
                   test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                   bash -i -c 'echo "Windows MSYS2 Bash OK: ${PS1}"'
 
                   ### --------------------------------
-                  ### Startup Latency Benchmark (bsh)
+                  ### STARTUP LATENCY BENCHMARK
                   ### --------------------------------
                   ./benchmark.sh
 
@@ -263,30 +346,30 @@ jobs:
                   [ "${OS}" = "macos" ] || { echo "Expected macos, got ${OS}"; exit 1; }
 
                   ### --------------------------------
-                  ### Run Universal Shell Installer
+                  ### RUN UNIVERSAL SHELL INSTALLER
                   ### --------------------------------
                   ./install.sh --pure
 
                   ### --------------------------------
-                  ### macOS Target Prompts
+                  ### MACOS TARGET PROMPTS
                   ### --------------------------------
                   zsh -n target/macos/zsh/prompt.sh
                   bash -n target/macos/bash/prompt.sh
 
                   ### --------------------------------
-                  ### macOS Zsh Interactive
+                  ### MACOS ZSH INTERACTIVE
                   ### --------------------------------
                   test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                   zsh -i -c 'echo "macOS Zsh prompt OK: ${PROMPT}"'
 
                   ### --------------------------------
-                  ### macOS Bash Interactive
+                  ### MACOS BASH INTERACTIVE
                   ### --------------------------------
                   test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                   bash -i -c 'echo "macOS Bash prompt OK: ${PS1}"'
 
                   ### --------------------------------
-                  ### Startup Latency Benchmark (bsh)
+                  ### STARTUP LATENCY BENCHMARK
                   ### --------------------------------
                   ./benchmark.sh
 
@@ -314,17 +397,17 @@ jobs:
                       [ "${OS}" = "openbsd" ] || { echo "Expected openbsd, got ${OS}"; exit 1; }
 
                       ### --------------------------------
-                      ### Dependencies
+                      ### DEPENDENCIES
                       ### --------------------------------
                       pkg_add -I zsh bash python
 
                       ### --------------------------------
-                      ### Run Universal Shell Installer
+                      ### RUN UNIVERSAL SHELL INSTALLER
                       ### --------------------------------
                       ./install.sh --pure
 
                       ### --------------------------------
-                      ### OpenBSD Target Prompts
+                      ### OPENBSD TARGET PROMPTS
                       ### --------------------------------
                       zsh -n target/openbsd/zsh/prompt.sh
                       zsh -n theme/zsh.sh
@@ -335,25 +418,25 @@ jobs:
                       sh -n target/openbsd/environment.sh
 
                       ### --------------------------------
-                      ### OpenBSD Zsh Interactive
+                      ### OPENBSD ZSH INTERACTIVE
                       ### --------------------------------
                       test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                       zsh -i -c 'echo "OpenBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
-                      ### OpenBSD Bash Interactive
+                      ### OPENBSD BASH INTERACTIVE
                       ### --------------------------------
                       test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                       bash -i -c 'echo "OpenBSD Bash prompt: ${PS1}"'
 
                       ### --------------------------------
-                      ### OpenBSD Native Ksh Interactive
+                      ### OPENBSD NATIVE KSH INTERACTIVE
                       ### --------------------------------
                       test -f "${HOME}/.kshrc" || { echo "Missing .kshrc"; exit 1; }
                       ENV="${HOME}/.kshrc" ksh -i -c 'echo "OpenBSD ksh prompt: ${PS1}"'
 
                       ### --------------------------------
-                      ### Startup Latency Benchmark (bsh)
+                      ### STARTUP LATENCY BENCHMARK
                       ### --------------------------------
                       ./benchmark.sh -i 3
 
@@ -382,7 +465,7 @@ jobs:
                       [ "${OS}" = "netbsd" ] || { echo "Expected netbsd, got ${OS}"; exit 1; }
 
                       ### --------------------------------
-                      ### Dependencies
+                      ### DEPENDENCIES
                       ### --------------------------------
                       _pkgs=""
                       command -v zsh > "/dev/null" 2>&1 || _pkgs="${_pkgs} zsh"
@@ -404,12 +487,12 @@ jobs:
                       fi
 
                       ### --------------------------------
-                      ### Run Universal Shell Installer
+                      ### RUN UNIVERSAL SHELL INSTALLER
                       ### --------------------------------
                       ./install.sh --pure
 
                       ### --------------------------------
-                      ### NetBSD Target Prompts
+                      ### NETBSD TARGET PROMPTS
                       ### --------------------------------
                       zsh -n target/netbsd/zsh/prompt.sh
                       zsh -n theme/zsh.sh
@@ -417,19 +500,19 @@ jobs:
                       sh -n target/netbsd/environment.sh
 
                       ### --------------------------------
-                      ### NetBSD Zsh Interactive
+                      ### NETBSD ZSH INTERACTIVE
                       ### --------------------------------
                       test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
                       zsh -i -c 'echo "NetBSD Zsh prompt: ${PROMPT}"'
 
                       ### --------------------------------
-                      ### NetBSD Bash Interactive
+                      ### NETBSD BASH INTERACTIVE
                       ### --------------------------------
                       test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
                       bash -i -c 'echo "NetBSD Bash prompt: ${PS1}"'
 
                       ### --------------------------------
-                      ### Startup Latency Benchmark (bsh)
+                      ### STARTUP LATENCY BENCHMARK
                       ### --------------------------------
                       ./benchmark.sh -i 2
 
@@ -449,7 +532,7 @@ jobs:
             - name: Validate illumos Target Syntax
               run: |
                   ### --------------------------------
-                  ### illumos Target Prompts
+                  ### ILLUMOS TARGET PROMPTS
                   ### --------------------------------
                   zsh -n target/illumos/zsh/prompt.sh
                   zsh -n theme/zsh.sh
@@ -457,7 +540,7 @@ jobs:
                   bash -n target/illumos/environment.sh
 
                   ### --------------------------------
-                  ### illumos Mock Boot (Zsh)
+                  ### ILLUMOS MOCK BOOT ZSH
                   ### --------------------------------
                   zsh -c '
                     export SHELL_REPO_DIR="${PWD}"
@@ -472,7 +555,7 @@ jobs:
                   '
 
                   ### --------------------------------
-                  ### illumos Mock Boot (Bash)
+                  ### ILLUMOS MOCK BOOT BASH
                   ### --------------------------------
                   bash -c '
                     export SHELL_REPO_DIR="${PWD}"

@@ -5,13 +5,15 @@
 _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
 [ -f "${_base_dir}/theme/common/colors.sh" ] && . "${_base_dir}/theme/common/colors.sh"
 [ -f "${_base_dir}/theme/common/git.sh" ] && . "${_base_dir}/theme/common/git.sh"
+unset _base_dir
 
 _update_prompt() {
 	_setup_colors
 
-	local _user="${USER:-$(command id -un)}"
+	local _user="${USER:-${USERNAME:-${LOGNAME:-$(command id -un 2> "/dev/null" || echo "user")}}}"
 	local _host="${HOSTNAME%%.*}"
-	[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
+	[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" || echo "host")"
+	_host="${_host%%.*}"
 
 	local _pwd="${PWD:-$(command pwd)}"
 	if [ "${_pwd}" = "${HOME}" ]; then
@@ -24,12 +26,21 @@ _update_prompt() {
 	fi
 
 	local _shell_name="bash"
-	local _os_icon="${PROMPT_OS_ICON:- }"
-	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_DISTRO_VERSION:-$(_detect_distro_version 2> "/dev/null" || _detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || uname -s 2> "/dev/null" || echo "UNIX")}}"
+	local _os_icon="${PROMPT_OS_ICON:-${_DETECTED_DISTRO_ICON:- }}"
+	if [ -z "${PROMPT_OS_NAME:-}" ] && [ -z "${_DETECTED_DISTRO_VERSION:-}" ] && [ -z "${_THEME_FALLBACK_OS_NAME:-}" ]; then
+		_THEME_FALLBACK_OS_NAME="$(_detect_distro_version 2> "/dev/null" || _detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || uname -s 2> "/dev/null" || echo "UNIX")"
+	fi
+	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_DISTRO_VERSION:-${_THEME_FALLBACK_OS_NAME:-UNIX}}}"
 	_os_name="${_os_name%%[-+~_]*}"
-	local _kernel_release="${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "")}"
+	if [ -z "${_DETECTED_KERNEL_RELEASE:-}" ] && [ -z "${_THEME_FALLBACK_KERNEL+x}" ]; then
+		_THEME_FALLBACK_KERNEL="$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "")"
+	fi
+	local _kernel_release="${_DETECTED_KERNEL_RELEASE:-${_THEME_FALLBACK_KERNEL:-}}"
 	_kernel_release="${_kernel_release%%[-+~_]*}"
-	local _os_type="${PROMPT_OS_TYPE:-${_DETECTED_OS:-$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]' || echo "unix")}}"
+	if [ -z "${PROMPT_OS_TYPE:-}" ] && [ -z "${_DETECTED_OS:-}" ] && [ -z "${_THEME_FALLBACK_OS_TYPE:-}" ]; then
+		_THEME_FALLBACK_OS_TYPE="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]' || echo "unix")"
+	fi
+	local _os_type="${PROMPT_OS_TYPE:-${_DETECTED_OS:-${_THEME_FALLBACK_OS_TYPE:-unix}}}"
 
 	local _mode="pty"
 	if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
@@ -46,13 +57,18 @@ _update_prompt() {
 
 	local _os_color
 	case "${PROMPT_OS_COLOR:-blue}" in
-		red)  _os_color="${_theme_color_red}" ;;
-		blue) _os_color="${_theme_color_blue}" ;;
-		*)    _os_color="${_theme_color_blue}" ;;
+		red)     _os_color="${_theme_color_red}" ;;
+		green)   _os_color="${_theme_color_green}" ;;
+		yellow)  _os_color="${_theme_color_yellow}" ;;
+		blue)    _os_color="${_theme_color_blue}" ;;
+		magenta) _os_color="${_theme_color_magenta}" ;;
+		cyan)    _os_color="${_theme_color_cyan}" ;;
+		white)   _os_color="${_theme_color_white}" ;;
+		*)       _os_color="${_theme_color_blue}" ;;
 	esac
 
 	local _user_color="${_theme_color_green}" _user_icon_color="${_theme_color_blue}" _prompt_symbol="\$" _prompt_symbol_color="${_theme_color_cyan}" _terminal_color="${_theme_color_blue}"
-	if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+	if [ "${EUID:-$(command id -u 2> "/dev/null" || echo 1000)}" -eq 0 ]; then
 		_user="root"
 		_user_icon_color="${_theme_color_red}"
 		_terminal_color="${_theme_color_red}"
@@ -68,6 +84,39 @@ _update_prompt() {
 	local _branch _is_dirty
 	_git_branch
 
+	if shopt -q promptvars 2> "/dev/null"; then
+		_theme_ps1_pwd="${_pwd}"
+		_pwd='${_theme_ps1_pwd}'
+		if [ -n "${_branch}" ]; then
+			_theme_ps1_branch="${_branch}"
+			_branch='${_theme_ps1_branch}'
+		else
+			_theme_ps1_branch=""
+		fi
+		_theme_ps1_user="${_user}"
+		_user='${_theme_ps1_user}'
+		_theme_ps1_host="${_host}"
+		_host='${_theme_ps1_host}'
+		_theme_ps1_os_name="${_os_name}"
+		_os_name='${_theme_ps1_os_name}'
+		_theme_ps1_os_icon="${_os_icon}"
+		_os_icon='${_theme_ps1_os_icon}'
+		if [ -n "${_kernel_release}" ]; then
+			_theme_ps1_kernel="${_kernel_release}"
+			_kernel_release='${_theme_ps1_kernel}'
+		else
+			_theme_ps1_kernel=""
+		fi
+	else
+		_pwd="${_pwd//\\/\\\\}"
+		_branch="${_branch//\\/\\\\}"
+		_user="${_user//\\/\\\\}"
+		_host="${_host//\\/\\\\}"
+		_os_name="${_os_name//\\/\\\\}"
+		_os_icon="${_os_icon//\\/\\\\}"
+		_kernel_release="${_kernel_release//\\/\\\\}"
+	fi
+
 	local _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
 	if [ "${_mode}_${_style}" != "${_LOADED_PROMPT_STYLE_BASH:-}" ]; then
 		if [ -f "${_base_dir}/theme/styles/${_mode}/${_style}.sh" ]; then
@@ -80,10 +129,12 @@ _update_prompt() {
 		_theme_render
 	fi
 
-	if [ "${_mode}" = "tty" ]; then
-		[ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
-	else
-		echo -n $'\e[1 q'
+	if [ -t 1 ]; then
+		if [ "${_mode}" = "tty" ]; then
+			[ "${TERM:-}" = "linux" ] && [ "${_os_type}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
+		else
+			echo -n $'\e[1 q'
+		fi
 	fi
 }
 

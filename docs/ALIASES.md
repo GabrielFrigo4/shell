@@ -26,19 +26,21 @@ Para ferramentas e comandos com ciclo de vida gráfico, o ecossistema segue a si
 
 ## 1. ⚙️ Shell, Ambiente & Vault (Universais)
 
-| Comando / Alias                            | Descrição                                                                                                       | Compatibilidade |
-| :----------------------------------------- | :-------------------------------------------------------------------------------------------------------------- | :-------------- |
-| `update-shell` / `upsh`                    | Atualiza o repositório ativo do shell (`$SHELL_REPO_DIR` ou `/usr/local/share/shell`), limpa cache e recarrega. | Universal       |
-| `update-editors` / `uped`                  | Atualiza as configurações residentes ativas dos editores (`~/.emacs.d`, `~/.config/nvim`, etc.).                | Universal       |
-| `update-emacs-modes` / `upmodes`           | Sincroniza diretamente os submódulos Elisp locais (`~/.emacs.d/usr/local/*`) com o upstream remoto.             | Universal       |
-| `update-profile` / `uprc` / `sync-profile` | Atualiza o repositório do profile (`~/.config/profile`), reaplica dotfiles/skills e recarrega `~/.profile`.     | Universal       |
-| `sync-extensions` / `upext`                | Sincroniza em lote ou exporta extensões declaradas de IDE (VS Code, Antigravity, VSCodium).                     | Universal       |
-| `reinstall-shell` / `resh`                 | Reexecuta o instalador `install.sh` preservando o contexto ativo (`desktop`, `server`, etc.).                   | Universal       |
-| `update-vault` / `upvt`                    | Sincroniza o repositório do cofre (`~/.vault`) e recarrega chaves e variáveis.                                  | Universal       |
-| `bench-shell` / `bsh` / `shell-bench`      | Mede a latência de inicialização dos shells (`zsh`, `bash`, `sh`) e módulos isolados.                           | Universal       |
-| `path-front <dir>`                         | Insere um diretório no início do `$PATH` (prioridade máxima).                                                   | Universal       |
-| `path-back <dir>`                          | Insere um diretório no fim do `$PATH` (prioridade mínima).                                                      | Universal       |
-| `path-dedup`                               | Remove diretórios duplicados do `$PATH` preservando a ordem original.                                           | Universal       |
+| Comando / Alias                              | Descrição                                                                                                       | Compatibilidade |
+| :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------- | :-------------- |
+| `update-shell` / `upsh`                      | Atualiza o repositório ativo do shell (`$SHELL_REPO_DIR` ou `/usr/local/share/shell`), limpa cache e recarrega. | Universal       |
+| `update-editors` / `uped`                    | Atualiza as configurações residentes ativas dos editores (`~/.emacs.d`, `~/.config/nvim`, etc.).                | Universal       |
+| `update-emacs-modes` / `upmodes`             | Sincroniza diretamente os submódulos Elisp locais (`~/.emacs.d/usr/local/*`) com o upstream remoto.             | Universal       |
+| `update-profile` / `uprc` / `sync-profile`   | Atualiza o repositório do profile (`~/.config/profile`), reaplica dotfiles/skills e recarrega `~/.profile`.     | Universal       |
+| `sync-extensions` / `upext`                  | Sincroniza em lote ou exporta extensões declaradas de IDE (VS Code, Antigravity, VSCodium).                     | Universal       |
+| `reinstall-shell` / `resh`                   | Reexecuta o instalador `install.sh` preservando o contexto ativo (`desktop`, `server`, etc.).                   | Universal       |
+| `update-vault` / `upvt`                      | Sincroniza o repositório do cofre (`~/.vault`) e recarrega chaves e variáveis.                                  | Universal       |
+| `bench-shell` / `bsh` / `shell-bench`        | Mede a latência de inicialização dos shells (`zsh`, `bash`, `sh`, `ksh`, `fish`) e módulos isolados.            | Universal       |
+| `userland [gnu \| bsd \| default \| status]` | Alterna ou inspeciona a precedência GNU vs. BSD no `$PATH` (`gnu`, `bsd`, `default`).                           | Universal       |
+| `gnu` / `bsd` / `default`                    | Atalhos diretos para alternância rápida de userland na sessão ativa.                                            | Universal       |
+| `path-front <dir>`                           | Insere um diretório no início do `$PATH` (prioridade máxima).                                                   | Universal       |
+| `path-back <dir>`                            | Insere um diretório no fim do `$PATH` (prioridade mínima).                                                      | Universal       |
+| `path-dedup`                                 | Remove diretórios duplicados do `$PATH` preservando a ordem original.                                           | Universal       |
 
 ---
 
@@ -47,31 +49,31 @@ Para ferramentas e comandos com ciclo de vida gráfico, o ecossistema segue a si
 > [!NOTE]
 > Os editores TUI nativos (`nvim`, `vim`, `hx`, `micro`) são invocados diretamente sem wrappers obsoletos (`open-vim`/`ov`, `open-neovim`/`on`, `open-micro`/`om`). O alias `on` encontra-se 100% livre no namespace.
 
-| Comando Canônico / Alias                                     | Descrição                                                                                            | Editor Alvo                                                                                           |
-| :----------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------- |
-| `editor [alvo]` / `e [alvo]`                                 | Abre o editor padrão configurado (se sem argumentos, abre `.`).                                      | `$VISUAL` / `$EDITOR` (com cascata Neovim > Helix > Micro > Kakoune > Nano > EE > MG > Vim > MC > VI) |
-| `open-helix` / `open-hx` / `oh` / `h [alvo]`                 | Abre o Helix no diretório ou arquivo especificado (padrão: `.`), restaurando o cursor.               | `hx` (com wrapper defensivo de cursor)                                                                |
-| `open-code` / `oc [alvo]`                                    | Abre o VS Code no diretório ou arquivo especificado (padrão: `.`).                                   | `code` / `vscode`                                                                                     |
-| `open-codium` / `ocm [alvo]`                                 | Abre o VSCodium no diretório ou arquivo especificado (padrão: `.`).                                  | `codium`                                                                                              |
-| `open-antigravity` / `open-ant` / `oa [alvo]`                | Abre o Antigravity IDE (padrão: `.`).                                                                | `antigravity-ide`                                                                                     |
-| `agy-continue` / `agyc`                                      | Retoma a conversa mais recente na CLI do Antigravity (`agy -c`).                                     | `agy -c`                                                                                              |
-| `agy-auto` / `agy-danger` / `agya` / `agyd`                  | Executa o agy CLI aprovando ferramentas automaticamente.                                             | `agy --dangerously-skip-permissions`                                                                  |
-| `agy-continue-auto` / `agyca` / `agycd`                      | Retoma a conversa mais recente no agy CLI com auto-aprovação total de ferramentas.                   | `agy -c --dangerously-skip-permissions`                                                               |
-| `open-zed` / `oz [alvo]`                                     | Abre o Zed no diretório ou arquivo especificado (padrão: `.`).                                       | `zed`                                                                                                 |
-| `open-kate` / `ok [alvo]`                                    | Abre o Kate em segundo plano (padrão: `.`).                                                          | `kate`                                                                                                |
-| `open-geany` / `og [alvo]`                                   | Abre o Geany em segundo plano (padrão: `.`).                                                         | `geany`                                                                                               |
-| `emacs-start` / `es`                                         | Inicia o daemon do Emacs no socket canônico `EMACS_SOCKET_NAME`.                                     | `emacs --daemon="${EMACS_SOCKET_NAME}"` / `runemacs`                                                  |
-| `emacs [args]`                                               | Espelha o binário via daemon: `emacs-client`, `-nw`/`-t` → `emacs-nw`, `-*` → binário.               | `emacsclient` / `emacs`                                                                               |
-| `emacs-kill` / `ek`                                          | Encerra processos do Emacs em execução.                                                              | `pkill emacs`                                                                                         |
-| `emacs-restart` / `er`                                       | Reinicia o daemon do Emacs (`emacs-kill && emacs-start`).                                            | Emacs Daemon                                                                                          |
-| `emacs-client` / `ec [args]`                                 | Abre o cliente Emacs GUI (nova janela) sem alvo padrão.                                              | `emacsclient` / `emacsclientw`                                                                        |
-| `emacs-nw` / `en` / `enw [args]`                             | Abre o cliente Emacs no terminal (`emacsclient -t` no UNIX, `emacs -nw` no Windows) sem alvo padrão. | `emacsclient -t` / `emacs -nw`                                                                        |
-| `emacs-open` / `open-emacs` / `oe [alvo]`                    | Abre o Emacs GUI em segundo plano no alvo (padrão: `.`).                                             | `emacsclient` / `emacsclientw`                                                                        |
-| `emacs-open-nw` / `open-emacs-nw` / `oen` / `oenw [alvo]`    | Abre o Emacs no terminal (`emacsclient -t` no UNIX, `emacs -nw` no Windows) no alvo (padrão: `.`).   | `emacsclient -t` / `emacs -nw`                                                                        |
-| `emacs-eshell` / `open-eshell` / `oes` / `esh [dir]`         | Abre o Aweshell/Eshell no Emacs (GUI ou terminal).                                                   | `emacsclientw` / `runemacs`                                                                           |
-| `emacs-window-manager` / `ewm` / `ew`                        | Despacha o Emacs como Window Manager (prioriza Wayland, fallback para X11).                          | `_dispatch_display_server emacs-window-manager`                                                       |
-| `emacs-window-manager-wayland` / `wewm` / `wew`              | Inicia o Emacs como Window Manager puro em Wayland nativo (EAF / aweww).                             | `emacs-window-manager-wayland`                                                                        |
-| `emacs-window-manager-x11` / `xewm` / `xew` / `exwm` / `exw` | Inicia o Emacs como Window Manager Soberano X11 (EXWM via XELB / `xinit`).                           | `emacs-window-manager-x11`                                                                            |
+| Comando Canônico / Alias                                     | Descrição                                                                                                       | Editor Alvo                                                                                           |
+| :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------- |
+| `editor [alvo]` / `e [alvo]`                                 | Abre o editor padrão configurado (se sem argumentos, abre `.`).                                                 | `$VISUAL` / `$EDITOR` (com cascata Neovim > Helix > Micro > Kakoune > Nano > EE > MG > Vim > MC > VI) |
+| `open-helix` / `open-hx` / `oh` / `h [alvo]`                 | Abre o Helix no diretório ou arquivo especificado (padrão: `.`), restaurando o cursor.                          | `hx` (com wrapper defensivo de cursor)                                                                |
+| `open-code` / `oc [alvo]`                                    | Abre o VS Code no diretório ou arquivo especificado (padrão: `.`).                                              | `code` / `vscode`                                                                                     |
+| `open-codium` / `ocm [alvo]`                                 | Abre o VSCodium no diretório ou arquivo especificado (padrão: `.`).                                             | `codium`                                                                                              |
+| `open-antigravity` / `open-ant` / `oa [alvo]`                | Abre o Antigravity IDE (padrão: `.`).                                                                           | `antigravity-ide`                                                                                     |
+| `agy-continue` / `agyc`                                      | Retoma a conversa mais recente na CLI do Antigravity (`agy -c`).                                                | `agy -c`                                                                                              |
+| `agy-auto` / `agy-danger` / `agya` / `agyd`                  | Executa o agy CLI aprovando ferramentas automaticamente.                                                        | `agy --dangerously-skip-permissions`                                                                  |
+| `agy-continue-auto` / `agyca` / `agycd`                      | Retoma a conversa mais recente no agy CLI com auto-aprovação total de ferramentas.                              | `agy -c --dangerously-skip-permissions`                                                               |
+| `open-zed` / `oz [alvo]`                                     | Abre o Zed no diretório ou arquivo especificado (padrão: `.`).                                                  | `zed`                                                                                                 |
+| `open-kate` / `ok [alvo]`                                    | Abre o Kate em segundo plano (padrão: `.`).                                                                     | `kate`                                                                                                |
+| `open-geany` / `og [alvo]`                                   | Abre o Geany em segundo plano (padrão: `.`).                                                                    | `geany`                                                                                               |
+| `emacs-start` / `es`                                         | Inicia o daemon do Emacs no socket canônico `EMACS_SOCKET_NAME`.                                                | `emacs --daemon="${EMACS_SOCKET_NAME}"` / `runemacs`                                                  |
+| `emacs [args]`                                               | Espelha o binário via daemon: `emacs-client`, `-nw`/`-t` → `emacs-nw`, `-*` → binário.                          | `emacsclient` / `emacs`                                                                               |
+| `emacs-kill` / `ek`                                          | Encerra daemons/instâncias Emacs com segurança (`_emacs_stop_daemon "all"` antes de matar órfãos).              | Emacs Daemon                                                                                          |
+| `emacs-restart` / `er`                                       | Reinicia o daemon do Emacs (`emacs-kill && emacs-start`).                                                       | Emacs Daemon                                                                                          |
+| `emacs-client` / `ec [args]` / `.scripts/emacs-client`       | Abre cliente Emacs GUI com sondagem de saúde (`timeout 2`) e recuperação segura do socket/daemon sem alvo fixo. | `emacsclient` / `.scripts/emacs-client`                                                               |
+| `emacs-nw` / `en` / `enw [args]`                             | Abre o cliente Emacs no terminal (`emacsclient -t` no UNIX, `emacs -nw` no Windows) sem alvo padrão.            | `emacsclient -t` / `emacs -nw`                                                                        |
+| `emacs-open` / `open-emacs` / `oe [alvo]`                    | Abre o Emacs GUI em segundo plano no alvo (padrão: `.`).                                                        | `emacsclient` / `emacsclientw`                                                                        |
+| `emacs-open-nw` / `open-emacs-nw` / `oen` / `oenw [alvo]`    | Abre o Emacs no terminal (`emacsclient -t` no UNIX, `emacs -nw` no Windows) no alvo (padrão: `.`).              | `emacsclient -t` / `emacs -nw`                                                                        |
+| `emacs-eshell` / `open-eshell` / `oes` / `esh [dir]`         | Abre o Aweshell/Eshell no Emacs (GUI ou terminal).                                                              | `emacsclientw` / `runemacs`                                                                           |
+| `emacs-window-manager` / `ewm` / `ew`                        | Despacha o Emacs como Window Manager (prioriza Wayland, fallback para X11).                                     | `_dispatch_display_server emacs-window-manager`                                                       |
+| `emacs-window-manager-wayland` / `wewm` / `wew`              | Inicia o Emacs como Window Manager puro em Wayland nativo (EAF / aweww).                                        | `emacs-window-manager-wayland`                                                                        |
+| `emacs-window-manager-x11` / `xewm` / `xew` / `exwm` / `exw` | Inicia o Emacs como Window Manager Soberano X11 (EXWM via XELB / `xinit`).                                      | `emacs-window-manager-x11`                                                                            |
 
 ---
 
@@ -119,7 +121,7 @@ flowchart TD
     UPSYS --> TDNF["update-tdnf<br/><i>(Azure Linux / Photon)</i>"]
     UPSYS --> APT["update-apt<br/><i>(Debian / Ubuntu)</i>"]
     UPSYS --> MAN["update-pacman<br/><i>(Arch / MSYS2)</i>"]
-    UPSYS --> PKG["update-pkg<br/><i>(FreeBSD / DragonFly)</i>"]
+    UPSYS --> PKG["update-pkg<br/><i>(FreeBSD)</i>"]
     UPSYS --> ADD["update-pkg-add<br/><i>(OpenBSD)</i>"]
     UPSYS --> IN["update-pkgin<br/><i>(NetBSD / SmartOS)</i>"]
     UPSYS --> IPS["update-ips<br/><i>(illumos IPS)</i>"]
@@ -135,33 +137,33 @@ flowchart TD
     UPSYS --> SLK["update-slackpkg<br/><i>(Slackware)</i>"]
 ```
 
-| Comando Canônico / Alias                                                          | Descrição                                                                      | Escopo / Gerenciador                   |
-| :-------------------------------------------------------------------------------- | :----------------------------------------------------------------------------- | :------------------------------------- |
-| `update-all` / `upall` / `u`                                                      | **Orquestrador Global:** Atualiza o sistema base + AUR + Flatpak + Snap + MAS. | Universal                              |
-| `update-system` / `upsys`                                                         | Atualiza os pacotes do sistema base detectando a distribuição nativa.          | Universal                              |
-| `clean-system` / `cleansys` / `clearsys` / `sysclean` / `syscls` / `clear-system` | Limpeza de pacotes órfãos (autoremove), dependências obsoletas e caches.       | Universal                              |
-| `update-aur` / `upaur` / `upyay` / `upparu`                                       | Atualiza pacotes do Arch User Repository (prioriza `paru > yay`).              | Arch Linux                             |
-| `update-pacman` / `upman`                                                         | Atualiza pacotes via Pacman.                                                   | Arch Linux / Windows (MSYS2)           |
-| `update-apt` / `upapt`                                                            | Atualiza repositórios e pacotes via APT.                                       | Debian, Ubuntu, Mint, Pop!_OS          |
-| `update-dnf` / `updnf`                                                            | Atualiza pacotes via DNF.                                                      | Fedora, RHEL, Rocky, Alma              |
-| `update-tdnf` / `uptdnf`                                                          | Atualiza pacotes via Tiny DNF (`tdnf upgrade --refresh -y`).                   | Azure Linux / Photon OS                |
-| `update-zypper` / `upzyp`                                                         | Atualiza pacotes via Zypper.                                                   | openSUSE, SLES                         |
-| `update-xbps` / `upxbps`                                                          | Atualiza pacotes via XBPS.                                                     | Void Linux                             |
-| `update-apk` / `upapk`                                                            | Atualiza pacotes via APK.                                                      | Alpine Linux                           |
-| `update-emerge` / `upemerge`                                                      | Atualiza árvore Portage e pacotes (`emerge -uDN @world`).                      | Gentoo / Funtoo Linux                  |
-| `update-nix` / `upnix`                                                            | Atualiza sistema e pacotes (`nixos-rebuild switch --upgrade`).                 | NixOS / Nix                            |
-| `update-eopkg` / `upeopkg`                                                        | Atualiza pacotes via eopkg.                                                    | Solus Linux                            |
-| `update-slackpkg` / `upslack`                                                     | Atualiza pacotes via slackpkg (`update && upgrade-all`).                       | Slackware Linux                        |
-| `update-guix` / `upguix`                                                          | Atualiza canais e pacotes via GNU Guix (`guix pull && package -u`).            | GNU Guix System                        |
-| `update-opkg` / `upopkg`                                                          | Atualiza listas e pacotes via opkg.                                            | OpenWrt / Entware                      |
-| `update-pkg` / `uppkg`                                                            | Atualiza pacotes via PKG (`pkg update && pkg upgrade`).                        | FreeBSD, DragonFly, GhostBSD, NomadBSD |
-| `update-pkg-add` / `upadd` / `uppkgadd`                                           | Aplica errata do kernel (`syspatch`) e atualiza pacotes (`pkg_add -u`).        | OpenBSD                                |
-| `update-pkgin` / `upin` / `uppkgin`                                               | Atualiza repositórios e pacotes via pkgin (`pkgin update && pkgin upgrade`).   | NetBSD / illumos (SmartOS)             |
-| `update-ips` / `upips`                                                            | Atualiza imagem e catálogo do sistema IPS (`pkg refresh && pkg update`).       | illumos (OmniOS, OpenIndiana)          |
-| `update-brew` / `upbrew`                                                          | Atualiza fórmulas e Casks via Homebrew (`brew update && brew upgrade`).        | macOS / Linux (Linuxbrew)              |
-| `update-mas` / `upmas`                                                            | Atualiza aplicativos instalados via Mac App Store (`mas upgrade`).             | macOS                                  |
-| `update-flatpak` / `upflat`                                                       | Atualiza todos os Flatpaks instalados.                                         | Linux                                  |
-| `update-snap` / `upsnap`                                                          | Atualiza todos os Snaps instalados.                                            | Linux                                  |
+| Comando Canônico / Alias                                                          | Descrição                                                                      | Escopo / Gerenciador           |
+| :-------------------------------------------------------------------------------- | :----------------------------------------------------------------------------- | :----------------------------- |
+| `update-all` / `upall` / `u`                                                      | **Orquestrador Global:** Atualiza o sistema base + AUR + Flatpak + Snap + MAS. | Universal                      |
+| `update-system` / `upsys`                                                         | Atualiza os pacotes do sistema base detectando a distribuição nativa.          | Universal                      |
+| `clean-system` / `cleansys` / `clearsys` / `sysclean` / `syscls` / `clear-system` | Limpeza de pacotes órfãos (autoremove), dependências obsoletas e caches.       | Universal                      |
+| `update-aur` / `upaur` / `upyay` / `upparu`                                       | Atualiza pacotes do Arch User Repository (prioriza `paru > yay`).              | Arch Linux                     |
+| `update-pacman` / `upman`                                                         | Atualiza pacotes via Pacman.                                                   | Arch Linux / Windows (MSYS2)   |
+| `update-apt` / `upapt`                                                            | Atualiza repositórios e pacotes via APT.                                       | Debian, Ubuntu, Mint, Pop!\_OS |
+| `update-dnf` / `updnf`                                                            | Atualiza pacotes via DNF.                                                      | Fedora, RHEL, Rocky, Alma      |
+| `update-tdnf` / `uptdnf`                                                          | Atualiza pacotes via Tiny DNF (`tdnf upgrade --refresh -y`).                   | Azure Linux / Photon OS        |
+| `update-zypper` / `upzyp`                                                         | Atualiza pacotes via Zypper.                                                   | openSUSE, SLES                 |
+| `update-xbps` / `upxbps`                                                          | Atualiza pacotes via XBPS.                                                     | Void Linux                     |
+| `update-apk` / `upapk`                                                            | Atualiza pacotes via APK.                                                      | Alpine Linux                   |
+| `update-emerge` / `upemerge`                                                      | Atualiza árvore Portage e pacotes (`emerge -uDN @world`).                      | Gentoo / Funtoo Linux          |
+| `update-nix` / `upnix`                                                            | Atualiza sistema e pacotes (`nixos-rebuild switch --upgrade`).                 | NixOS / Nix                    |
+| `update-eopkg` / `upeopkg`                                                        | Atualiza pacotes via eopkg.                                                    | Solus Linux                    |
+| `update-slackpkg` / `upslack`                                                     | Atualiza pacotes via slackpkg (`update && upgrade-all`).                       | Slackware Linux                |
+| `update-guix` / `upguix`                                                          | Atualiza canais e pacotes via GNU Guix (`guix pull && package -u`).            | GNU Guix System                |
+| `update-opkg` / `upopkg`                                                          | Atualiza listas e pacotes via opkg.                                            | OpenWrt / Entware              |
+| `update-pkg` / `uppkg`                                                            | Atualiza pacotes via PKG (`pkg update && pkg upgrade`).                        | FreeBSD, GhostBSD, NomadBSD    |
+| `update-pkg-add` / `upadd` / `uppkgadd`                                           | Aplica errata do kernel (`syspatch`) e atualiza pacotes (`pkg_add -u`).        | OpenBSD                        |
+| `update-pkgin` / `upin` / `uppkgin`                                               | Atualiza repositórios e pacotes via pkgin (`pkgin update && pkgin upgrade`).   | NetBSD / illumos (SmartOS)     |
+| `update-ips` / `upips`                                                            | Atualiza imagem e catálogo do sistema IPS (`pkg refresh && pkg update`).       | illumos (OmniOS, OpenIndiana)  |
+| `update-brew` / `upbrew`                                                          | Atualiza fórmulas e Casks via Homebrew (`brew update && brew upgrade`).        | macOS / Linux (Linuxbrew)      |
+| `update-mas` / `upmas`                                                            | Atualiza aplicativos instalados via Mac App Store (`mas upgrade`).             | macOS                          |
+| `update-flatpak` / `upflat`                                                       | Atualiza todos os Flatpaks instalados.                                         | Linux                          |
+| `update-snap` / `upsnap`                                                          | Atualiza todos os Snaps instalados.                                            | Linux                          |
 
 ---
 
@@ -289,25 +291,28 @@ flowchart TD
 
 ## 11. 🌐 Variáveis de Ambiente & Configurações Globais
 
-| Variável                                 | Descrição / Propósito                                                        | Origem / Padrão                                                             |
-| :--------------------------------------- | :--------------------------------------------------------------------------- | :-------------------------------------------------------------------------- |
-| `SHELL_REPO_DIR`                         | Caminho raiz do repositório clonado do Universal Shell.                      | `/usr/local/share/shell` (Linux/BSD) ou `~/.shell` (Windows)                |
-| `SHELL_CONTEXT`                          | Contexto ativo carregado na sessão interativa.                               | `desktop` (padrão), `server`, `container` (com auto-detecção WSL)           |
-| `SHELL`                                  | Caminho do executável do shell ativo.                                        | Auto-detectado dinamicamente (`zsh`, `bash`, `sh`)                          |
-| `EDITOR` / `VISUAL`                      | Editor de texto padrão do sistema.                                           | Preserva o do usuário ou define via cascata (`nvim > hx > micro > ...`)     |
-| `FILEMANAGER`                            | Gerenciador de arquivos preferido para abrir pastas no desktop.              | Lido pelo `mount-device` (fallback para `dolphin`, `nautilus`, etc.)        |
-| `COLORTERM`                              | Sinaliza suporte universal a 24-bit TrueColor RGB no terminal.               | Exportado globalmente como `truecolor`                                      |
-| `MICRO_TRUECOLOR`                        | Ativa suporte a TrueColor no editor Micro.                                   | Exportado globalmente como `1`                                              |
-| `GTK_THEME`                              | Tema visual aplicado a ferramentas GTK3/GTK4.                                | Auto-detectado (`Breeze-Dark`, `Adwaita:dark`, etc.) via XDG Portal / D-Bus |
-| `QT_QPA_PLATFORMTHEME`                   | Módulo de plataforma e diálogo de arquivos para aplicativos Qt.              | Auto-detectado (`xdgdesktopportal`, `gtk3`, `qt6ct`, `qt5ct`)               |
-| `QT_STYLE_OVERRIDE`                      | Motor de renderização de estilo para Qt.                                     | Auto-detectado (`Breeze-Dark`, `Breeze`)                                    |
-| `ELECTRON_OZONE_PLATFORM_HINT`           | Ativa renderização nativa em Wayland para apps Electron.                     | Exportado globalmente como `auto`                                           |
-| `_JAVA_AWT_WM_NONREPARENTING`            | Corrige janelas cinzas em apps Java/Swing em WMs tiling e Wayland.           | Exportado globalmente como `1`                                              |
-| `EMACS_SOCKET_NAME`                      | Caminho do socket de autenticação do daemon Emacs (Contexto Desktop).        | `${HOME}/.emacs.d/var/server/auth/server`                                   |
-| `HISTSIZE` / `HISTFILE`                  | Limite e arquivo de histórico persistente no POSIX `sh`.                     | `50000` comandos em `${HOME}/.sh_history`                                   |
-| `WIFI_SSID_*` / `WIFI_PASS_*`            | Credenciais Wi-Fi lidas e sincronizadas pelo `update-wifi`/`update-network`. | Injetadas pelo `Vault` ou variáveis de ambiente                             |
-| `PERSONAL_SERVER_*` / `VENTURE_SERVER_*` | Chaves SSH e endereços IP de servidores remotos (Personal e Venture).        | Injetados pelo `Vault`                                                      |
-| `FREEBSD_HOST_IP` / `FREEBSD_VM_NAME`    | IP e nome da VM (KVM) ou Jail (Bastille) para o orquestrador `fb`.           | Injetados pelo `Vault` / Auto-detectados (`192.168.8.3`)                    |
-| `LINUX_HOST_IP` / `LINUX_CONTAINER_NAME` | IP e nome do container Incus ou VM Bhyve para o orquestrador `lx`.           | Injetados pelo `Vault` / Auto-detectados (`192.168.8.2`)                    |
-| `OPENBSD_HOST_IP` / `OPENBSD_VM_NAME`    | IP e nome da VM OpenBSD para o orquestrador `ob`.                            | Injetados pelo `Vault` (`192.168.8.4`)                                      |
-| `NETBSD_HOST_IP` / `NETBSD_VM_NAME`      | IP e nome da VM NetBSD para o orquestrador `nb`.                             | Injetados pelo `Vault` (`192.168.8.5`)                                      |
+| Variável                                                                         | Descrição / Propósito                                                              | Origem / Padrão                                                                        |
+| :------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------- |
+| `SHELL_REPO_DIR`                                                                 | Caminho raiz do repositório clonado do Universal Shell.                            | `~/.local/share/shell`, `/usr/local/share/shell`, `~/.config/shell` ou `~/.shell`      |
+| `SHELL_CONTEXT`                                                                  | Contexto ativo carregado na sessão interativa.                                     | `desktop` (padrão), `server`, `container` (com auto-detecção WSL)                      |
+| `SHELL_USERLAND`                                                                 | Modo de precedência entre ferramentas BSD nativas e GNU (`default`, `bsd`, `gnu`). | `default` (padrão; `bsd` preserva nativos, `gnu` ativa prefixos e aliases `g*`)        |
+| `SHELL`                                                                          | Caminho do executável do shell ativo.                                              | Auto-detectado dinamicamente (`zsh`, `bash`, `sh`, `ksh`, `fish`)                      |
+| `PYTHONPYCACHEPREFIX`                                                            | Diretório centralizado e isolado de bytecode Python (`0700`).                      | `${XDG_CACHE_HOME:-${HOME}/.cache}/pycache`                                            |
+| `EDITOR` / `VISUAL`                                                              | Editor de texto padrão do sistema.                                                 | Preserva o do usuário ou define via cascata (`nvim > hx > micro > ...`)                |
+| `FILEMANAGER`                                                                    | Gerenciador de arquivos preferido para abrir pastas no desktop.                    | Lido pelo `mount-device` (fallback para `dolphin`, `nautilus`, etc.)                   |
+| `COLORTERM`                                                                      | Sinaliza suporte universal a 24-bit TrueColor RGB no terminal.                     | Exportado globalmente como `truecolor`                                                 |
+| `MICRO_TRUECOLOR`                                                                | Ativa suporte a TrueColor no editor Micro.                                         | Exportado globalmente como `1`                                                         |
+| `GTK_THEME`                                                                      | Tema visual aplicado a ferramentas GTK3/GTK4.                                      | Auto-detectado (`Breeze-Dark`, `adw-gtk3-dark`, etc.) via XDG Portal / D-Bus           |
+| `QT_QPA_PLATFORMTHEME`                                                           | Módulo de plataforma e diálogo de arquivos para aplicativos Qt.                    | Auto-detectado (`xdgdesktopportal`, `gtk3`, `qt6ct`, `qt5ct`)                          |
+| `QT_STYLE_OVERRIDE`                                                              | Motor de renderização de estilo para Qt.                                           | Auto-detectado (`Breeze-Dark`, `Breeze`)                                               |
+| `ELECTRON_OZONE_PLATFORM_HINT`                                                   | Ativa renderização nativa em Wayland para apps Electron.                           | Exportado globalmente como `auto`                                                      |
+| `_JAVA_AWT_WM_NONREPARENTING`                                                    | Corrige janelas cinzas em apps Java/Swing em WMs tiling e Wayland.                 | Exportado globalmente como `1`                                                         |
+| `EMACS_SOCKET_NAME`                                                              | Caminho do socket de autenticação do daemon Emacs (Contexto Desktop).              | `${HOME}/.emacs.d/var/server/auth/server`                                              |
+| `HISTSIZE` / `HISTFILE`                                                          | Limite e arquivo de histórico persistente no POSIX `sh`.                           | `50000` comandos em `${HOME}/.sh_history`                                              |
+| `WIFI_SSID_*` / `WIFI_PASS_*`                                                    | Credenciais Wi-Fi lidas e sincronizadas pelo `update-wifi`/`update-network`.       | Injetadas pelo `Vault` ou variáveis de ambiente                                        |
+| `PERSONAL_SERVER_*` / `VENTURE_SERVER_*`                                         | IPs (`*_IP`), usuários (`*_USER`) e chaves SSH (`*_KEY`) de servidores remotos.    | Injetados pelo `Vault` ou variáveis de ambiente (ex.: `<IP>`, `<USER>`)                |
+| `FREEBSD_HOST_IP` / `FREEBSD_VM_NAME`                                            | IP e nome da VM (KVM) ou Jail (Bastille) para o orquestrador `fb`.                 | Injetados pelo `Vault` ou variáveis de ambiente (ex. RFC 5737: `192.0.2.10`)           |
+| `LINUX_HOST_IP` / `LINUX_CONTAINER_NAME`                                         | IP e nome do container Incus ou VM Linux para o orquestrador `lx`.                 | Injetados pelo `Vault` ou variáveis de ambiente (ex. RFC 5737: `192.0.2.20`)           |
+| `BHYVE_LINUX_IP` / `BHYVE_LINUX_USER` / `BHYVE_LINUX_VM` / `BHYVE_LINUX_WORKDIR` | Endereço, usuário, VM Bhyve e diretório sincronizado no `target/freebsd/bhyve.sh`. | Fallback para `LINUX_HOST_IP` / `LINUX_HOST_USER` / `LINUX_VM_NAME` (default `debian`) |
+| `OPENBSD_HOST_IP` / `OPENBSD_VM_NAME`                                            | IP e nome da VM OpenBSD para o orquestrador `ob`.                                  | Injetados pelo `Vault` ou variáveis de ambiente (ex. RFC 5737: `192.0.2.30`)           |
+| `NETBSD_HOST_IP` / `NETBSD_VM_NAME`                                              | IP e nome da VM NetBSD para o orquestrador `nb`.                                   | Injetados pelo `Vault` ou variáveis de ambiente (ex. RFC 5737: `192.0.2.40`)           |

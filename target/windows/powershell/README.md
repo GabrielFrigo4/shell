@@ -10,18 +10,29 @@ Este diretório provê scripts de inicialização, atalhos, funções auxiliares
 
 ---
 
-## 📂 Catálogo de Arquivos
+## 📂 Catálogo de Arquivos & Arquitetura Zero-Fork
 
-| Arquivo                                                                | Tipo              | Descrição                                                    |
-| :--------------------------------------------------------------------- | :---------------- | :----------------------------------------------------------- |
-| [`profile.ps1`](profile.ps1)                                           | PowerShell Script | Perfil completo com atalhos, carregamento do Vault e funções |
-| [`Microsoft.PowerShell_profile.ps1`](Microsoft.PowerShell_profile.ps1) | PowerShell Script | Wrapper de redirecionamento canônico                         |
+| Arquivo                                                                | Tipo              | Descrição                                                                                  |
+| :--------------------------------------------------------------------- | :---------------- | :----------------------------------------------------------------------------------------- |
+| [`Microsoft.PowerShell_profile.ps1`](Microsoft.PowerShell_profile.ps1) | PowerShell Script | Entrypoint veloz: `.NET` Registry, `_Test-ModuleInPath`, prompt e lazy Chocolatey          |
+| [`profile.ps1`](profile.ps1)                                           | PowerShell Script | Runtime completo (`PYTHONPYCACHEPREFIX`, `_Find-PathCommands`, Vault, `Set-Alias` e `up*`) |
+
+### ⚡ Otimizações de Boot & Segurança
+
+- **Metadados do SO via .NET (Zero Fork):** Consulta versão/build do Windows diretamente via `[Microsoft.Win32.Registry]::GetValue(...)` em memória, eliminando spawns de `reg.exe` ou `wmic`.
+- **Sondagem Rápida de Módulos (`_Test-ModuleInPath`):** Verifica `Terminal-Icons` e `PSReadLine` diretamente nos diretórios de `$env:PSModulePath`, evitando a varredura lenta de `Get-Module -ListAvailable`.
+- **Lazy Loading de Chocolatey:** O wrapper `Update-SessionEnvironment` / `refreshenv` importa `chocolateyProfile.psm1` apenas na primeira invocação, mantendo o boot instantâneo.
+- **Aliasing Antifrágil & Cache Python:** Utiliza `Set-Alias -Force -Option AllScope` (evitando recursão circular case-insensitive como `Clean-System`), descobre ferramentas Rust via `_Find-PathCommands`, define `$env:PYTHONPYCACHEPREFIX` (`${XDG_CACHE_HOME:-${HOME}/.cache}/pycache`) e parametriza servidores remotos via `$env:PERSONAL_SERVER_*` / `$env:VENTURE_SERVER_*`.
 
 ---
 
 ## 🚀 Como Usar / Sincronizar
 
-### Windows:
+```sh
+sh install.sh -s pwsh
+```
+
+### Windows (PowerShell):
 
 ```powershell
 New-Item -ItemType Directory -Force -Path (Split-Path $PROFILE)

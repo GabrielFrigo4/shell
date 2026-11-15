@@ -32,6 +32,10 @@ if set -q XDG_CACHE_HOME
 else
     set -gx PYTHONPYCACHEPREFIX "$HOME/.cache/pycache"
 end
+if not test -d "$PYTHONPYCACHEPREFIX"
+    mkdir -p "$PYTHONPYCACHEPREFIX" 2>/dev/null
+    and chmod 0700 "$PYTHONPYCACHEPREFIX" 2>/dev/null
+end
 
 # ----------------------------------------------------------------
 # Modular Subsystems

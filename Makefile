@@ -14,6 +14,7 @@ MAKEFLAGS += --no-print-directory -s
 ### ================================
 help:
 	_e=$$'\e'; \
+	[ "$${#_e}" -eq 1 ] || _e=$$(printf '\x1b'); \
 	cmd() { printf "    $${_e}[36mmake %-22s$${_e}[0m %s\n" "$$1" "$$2"; }; \
 	sec() { printf "\n  $${_e}[1;33m%s$${_e}[0m\n" "$$1"; }; \
 	sub() { printf "  $${_e}[1;34m  ── %s ──$${_e}[0m\n" "$$1"; }; \

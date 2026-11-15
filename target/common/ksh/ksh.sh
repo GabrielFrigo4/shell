@@ -3,7 +3,7 @@
 ### ================================
 
 ### --------------------------------
-### Compatibility & Parsing
+### COMPATIBILITY AND PARSING
 ### --------------------------------
 unset IFS
 
@@ -14,7 +14,7 @@ set -o emacs 2> "/dev/null" || true
 
 export HISTFILE="${HOME}/.ksh_history"
 export HISTSIZE=50000
-[ -f "${HISTFILE}" ] || { : > "${HISTFILE}" && chmod 0600 "${HISTFILE}"; } 2> "/dev/null"
+[ -f "${HISTFILE}" ] || { : > "${HISTFILE}" && chmod 0600 "${HISTFILE}"; } 2> "/dev/null" || true
 
 ### --------------------------------
 ### INTERACTION & SAFETY

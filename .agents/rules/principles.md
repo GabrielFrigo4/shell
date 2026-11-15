@@ -17,10 +17,13 @@ Toda alteração de código, adição de alias, refatoração ou otimização no
 ## 1. Linha de Base de Portabilidade & Alvos Exclusivos (`sh` e `ksh`)
 
 - O shell nativo do FreeBSD (`sh`) é a régua máxima e baseline de portabilidade para scripts compartilhados em `library/`, `core/` e `install.sh`.
-- **Exclusividade e Não-Coexistência:** Nos targets interativos (`target/`), o alvo `sh` existe exclusivamente para o FreeBSD e o alvo `ksh` exclusivamente para o OpenBSD (`ksh` e `sh` nunca coexistem no mesmo SO). Todos os demais sistemas suportam estritamente `zsh` e `bash`.
-- **Adoção Universal de `$'\e...'` e `echo -n`:** O formato `echo -n $'\e...'` é suportado em todos os shells do ecossistema (FreeBSD `sh`, Zsh, Bash, OpenBSD ksh moderno e Dash moderno, além de formalizado no POSIX Issue 8). É o padrão canônico preferido para sequências de controle de terminal (`alias clear="echo -n $'\e[2J\e[3J\e[H'"`), eliminando a necessidade de notação críptica em octal (`\033`) do `printf`.
-- **Delimitadores de Largura Zero em Prompts (`\[...\]`):** No FreeBSD `sh` (`libedit`), OpenBSD `ksh` e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar entre `\[` e `\]` (ex: `_color_red="\[\e[1;91m\]"`). Sem isso, o editor conta bytes ANSI como colunas visíveis, quebrando o cálculo de linhas e o cursor.
-- Recursos do Zsh e Bash permanecem estritamente em `zsh/` e `bash/`.
+- **Exclusividade e Não-Coexistência:** Nos targets interativos (`target/`), o alvo `sh` existe exclusivamente para o FreeBSD e o alvo `ksh` exclusivamente para o OpenBSD (`ksh` e `sh` nunca coexistem no mesmo SO). Todos os demais sistemas suportam estritamente `zsh` e `bash` como alvos POSIX/Bourne interativos, além do **Fish** (`target/common/fish/`) como runtime modular multiplataforma e dos shells estendidos do Windows (`pwsh`, `nu`, `cmd`). Interpretadores incompatíveis como `dash` e NetBSD `sh` são excluídos de alvos interativos.
+- **Política Canônica de Escapes ANSI (`$'\e'` e Fallback `printf '\x1b'`):**
+    - O formato `$'\e...'` (`echo -n $'\e...'`) é o padrão primário adotado em Bash, Zsh e FreeBSD `sh`.
+    - Para OpenBSD `ksh` (`pdksh`) e `Makefile` (onde `$'\e'` não é garantido), adote `printf '\x1b...'` como fallback POSIX portátil em notação hexadecimal (`_esc=$'\e'; [ "${#_esc}" -ne 1 ] && _esc="$(printf '\x1b')"`).
+    - **Proibição Absoluta de Octais:** É estritamente vedado o uso de escapes octais em código, scripts, Makefiles ou documentações; utilize exclusivamente `$'\e'` ou notação hexadecimal `\x1b`.
+- **Delimitadores de Largura Zero em Prompts:** No FreeBSD `sh` (`libedit`) e no Bash (`readline`), códigos ANSI dentro de `PS1` DEVEM estar entre `\[` e `\]` (ex: `_color_red="\[\e[1;91m\]"`). No Zsh, utilize `%{...%}`. No OpenBSD `ksh` (`pdksh`), delimite bytes invisíveis com `\x01` (`printf '\x01'`). Sem esses delimitadores, o editor de linha conta bytes ANSI como colunas visíveis, quebrando o cálculo de linhas e o cursor.
+- Recursos específicos do Zsh, Bash e Fish permanecem estritamente isolados em `zsh/`, `bash/` e `target/common/fish/`.
 
 ## 2. Programação Defensiva Obrigatória
 
@@ -56,11 +59,11 @@ Toda alteração de código, adição de alias, refatoração ou otimização no
     - **Subseções Internas (32 `-`):**
         ```sh
         ### --------------------------------
-        ### Nome da Secao
+        ### NOME DA SECAO
         ### --------------------------------
         ```
-- **Regra Estrita do Não-Vazamento:** A régua divisora tem exatamente 32 caracteres separadores (total de 36 colunas com `### `). O texto do título DEVE ser conciso e **JAMAIS vazar além da régua** (máximo de 32 caracteres).
-- **Sem Parênteses ou Anotações Redundantes:** O título deve ser limpo e sem anotações secundárias entre parênteses (ex: prefira `### Default Editor` a `### Default Editor (Cascade)` e `### Update Vault` a `### Update Vault (update-vault)`).
+- **Regra Estrita do Não-Vazamento:** A régua divisora tem exatamente 32 caracteres separadores (total de 36 colunas com `### `). O texto do título DEVE ser escrito em **MAIÚSCULAS**, ser conciso e **JAMAIS vazar além da régua** (máximo de 32 caracteres após `### `).
+- **Sem Parênteses ou Anotações Redundantes:** O título deve ser limpo e sem anotações secundárias entre parênteses (ex: prefira `### DEFAULT EDITOR` a `### DEFAULT EDITOR (CASCADE)` e `### UPDATE VAULT` a `### UPDATE VAULT (UPDATE-VAULT)`).
 - **Não-Enumeração de Títulos:** Evite numerar títulos de seções. Use títulos puramente semânticos.
 - **Sem Comentários Ad-Hoc no CI/CD:** Scripts de CI/CD devem usar esses mesmos blocos, sendo vedado o uso de `echo "=== ... ==="` ou separadores improvisados.
 
@@ -69,20 +72,25 @@ Toda alteração de código, adição de alias, refatoração ou otimização no
 - **README Raiz:** Portal institucional com título e emoji, blockquote de missão, badges do Quarteto de Produtividade, sistemas suportados, catálogo de primeiro nível e instruções de auditoria/CI.
 - **README de Subpastas:** Catálogo tabular obrigatório (`| Arquivo / Receita | Descrição | Plataforma |`) e bloco de execução limpo sem comentários inline.
 
-## 6. Qualidade de Código & Quoting
+## 6. Qualidade de Código, Quoting & Regra `4a` de Permissões
 
 - Redirecionamentos para `/dev/null` sempre devem ser protegidos por aspas: `> "/dev/null"` e `2> "/dev/null"`.
 - Variáveis sempre entre aspas duplas: `"${VAR}"`.
 - Scripts executáveis devem usar shebang `#!/usr/bin/env sh`.
-- Comandos `chmod` usam 4 dígitos octais: `chmod 0755` e `chmod 0644`.
+- **Regra `4a` (Permissões Octais Canônicas no Git Index e Filesystem):**
+    - **`0755` (`--chmod=+x`) SOMENTE para entrypoints executáveis com shebang:** `.githooks/*`, `shell.sh`, `init.sh`, `install.sh`, `benchmark.sh` e utilitários em `.scripts/*` que iniciem com `#!` (como `.scripts/emacs-client`).
+    - **`0644` (`--chmod=-x`) para todas as bibliotecas sourced e arquivos de configuração/documentação:** `core/`, `library/`, `context/`, `target/`, `theme/`, além de `.md`, `.fish`, `.nu`, `.ps1`, `.cmd`, `.reg`, `.lua`, `.yml`, `.json`, `.toml` e arquivos de governança.
+- **Carregamento Lazy de `desktop-*.sh` & `--userland=gnu` Antifrágil:**
+    - Os módulos `library/desktop-*.sh` (`desktop-device.sh`, `desktop-kiosk.sh`, `desktop-session.sh`) são carregados condicionalmente apenas quando `SHELL_CONTEXT="desktop"` (zero overhead em `server` e `container`), e `desktop-kiosk.sh` carrega `desktop-session.sh` sob demanda via `_kiosk_ensure_session`.
+    - O modo `--userland=gnu` (`install.sh --userland [default|gnu|bsd]` e função `userland` em `core/environment.sh`) é estritamente opt-in e antifrágil: nos modos `default` e `bsd`, diretórios `gnubin` nunca poluem a frente do `$PATH` (no illumos, `/usr/gnu/bin` permanece ao final via `path-back`), sendo promovidos e cacheados em `${XDG_CACHE_HOME:-${HOME}/.cache}/shell/gnu_aliases_<os>.sh` somente quando `gnu` é explicitamente ativado.
 
 ## 7. Heredocs Indentados, Emissão e Guards Interativos
 
 - **Heredocs Indentados (`cat <<- 'EOF'`):** Em blocos multilinhas e geradores de templates, use SEMPRE `cat <<- 'EOF'`. O hífen `<<-` descarta TABs iniciais (`\t`) das linhas de texto e do próprio delimitador `EOF`, permitindo que o heredoc permaneça perfeitamente alinhado com a indentação da função/condicional circundante sem vazar para a coluna zero. Se não houver interpolação intencional de variáveis, envolva o delimitador entre aspas simples (`'EOF'`).
 - **Taxonomia de Emissão:**
     - `echo`: Para linhas simples de texto e escrita atômica em arquivos (`echo "${val}" >| "${file}"`).
-    - `echo -n $'\e...'`: Padrão canônico e preferido para sequências ANSI em terminais interativos (`[ -t 1 ]`).
-    - `printf`: Exclusivo para relatórios com tabelas e colunas alinhadas com padding (`%-12s %-24s`).
+    - `echo -n $'\e...'`: Padrão primário em Bash, Zsh e FreeBSD `sh` para sequências ANSI em terminais interativos (`[ -t 1 ]`), usando `printf '\x1b...'` como fallback POSIX portátil para OpenBSD `ksh` (`pdksh`) e `Makefile`.
+    - `printf`: Exclusivo para relatórios com tabelas, alinhamento com padding (`%-12s %-24s`) e escapes hexadecimais portáteis (`\x1b`, `\x01`).
 - **Guarda de Interatividade (`INTERACTIVE GUARD`):** Todo arquivo gerado (`.bashrc`, `.zshrc`, `.shrc`) DEVE iniciar com:
     ```sh
     ### ================================
@@ -112,14 +120,17 @@ Em qualquer enumeração, pipeline de CI/CD, script de benchmark, Makefile ou do
 1. **`zsh`** (topo da cadeia de ergonomia, autocompletion por menu e produtividade interativa)
 2. **`bash`** (padrão corporativo universal e compatibilidade retroativa)
 3. **`sh`** (FreeBSD `sh` como base system exclusivo) ou **`ksh`** (OpenBSD `/bin/ksh` como base system exclusivo)
+4. **`fish`** (`target/common/fish/`, runtime modular multiplataforma via `config.fish`, `ui.fish`, `prompt.fish`, `aliases.fish`)
 
 ## 9. Checklist de Validação
 
 Antes de finalizar qualquer alteração:
 
 1. `git diff --check` (deve retornar 0 erros).
-2. `./.githooks/pre-commit` (deve passar 100%).
-3. Matriz Multi-Shell (sempre na ordem `zsh` -> `bash` -> `sh`/`ksh`):
-    - Linux, NetBSD, macOS, Windows (MSYS2), illumos: `zsh -n` e `bash -n`.
+2. `git ls-files --stage` (Regra `4a`: `100755` apenas para entrypoints com `#!`; `100644` para libs sourced e configs).
+3. `./.githooks/pre-commit` (deve passar 100%).
+4. Matriz Multi-Shell (sempre na ordem `zsh` -> `bash` -> `sh`/`ksh` -> `fish`):
+    - Linux, NetBSD, macOS, Windows (MSYS2), illumos: `zsh -n` e `bash -n` (mais `fish -n target/common/fish/*.fish` quando disponível).
     - FreeBSD: `zsh -n`, `bash -n` e `sh -n`.
     - OpenBSD: `zsh -n`, `bash -n` e `ksh -n`.
+    - Entrypoints POSIX (`sh -n`): `shell.sh`, `init.sh`, `install.sh`, `benchmark.sh`, `.scripts/emacs-client`, `.githooks/pre-commit`, `.githooks/commit-msg`.

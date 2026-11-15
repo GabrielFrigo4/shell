@@ -10,23 +10,33 @@ Este diretório provê scripts de inicialização, atalhos do teclado e autocomp
 
 ---
 
-## 📂 Catálogo de Arquivos
+## 📂 Catálogo de Arquivos & Arquitetura Zero-Fork
 
-| Arquivo                                  | Tipo             | Descrição                                               |
-| :--------------------------------------- | :--------------- | :------------------------------------------------------ |
-| [`profile.cmd`](profile.cmd)             | Script Batch     | Script executado ao abrir uma nova sessão do CMD        |
-| [`autorun.cmd`](autorun.cmd)             | Script Batch     | Inicializador e bootstrap para parâmetro AutoRun do CMD |
-| [`profile.lua`](profile.lua)             | Script Lua Clink | Integração do Clink com histórico avançado e Git prompt |
-| [`setup-profile.reg`](setup-profile.reg) | Registro Windows | Injeção do `profile.cmd` no parâmetro `AutoRun` do CMD  |
+| Arquivo                                  | Tipo             | Descrição                                                                                                  |
+| :--------------------------------------- | :--------------- | :--------------------------------------------------------------------------------------------------------- |
+| [`setup-profile.reg`](setup-profile.reg) | Registro Windows | Registra `"AutoRun"="\"%USERPROFILE%\\autorun.cmd\""` no Registro do Windows                               |
+| [`autorun.cmd`](autorun.cmd)             | Script Batch     | Ignora subchamadas `/c`, injeta Clink (`--autorun --quiet` sem `--profile ~\clink`) e chama `profile.cmd`  |
+| [`profile.cmd`](profile.cmd)             | Script Batch     | Inicializa ambiente interativo CMD e exporta `PYTHONPYCACHEPREFIX` para cache XDG isolado                  |
+| [`profile.lua`](profile.lua)             | Script Lua Clink | Prompt Git assíncrono, bootstrap zero-`io.popen` (`os.getfileversion` + `os.globfiles`), histórico e `up*` |
+
+### ⚡ Otimizações de Boot do Clink (`profile.lua`)
+
+- **Zero `io.popen` na Inicialização:** Evita spawns síncronos bloqueantes durante o startup do prompt; resolve metadados Win32 via `os.getfileversion` e atualiza o cache `clink_winver.cache` assincronamente via `clink.promptcoroutine`.
+- **Indexação Rápida de Comandos (`os.globfiles`):** Substitui chamadas externas lentas por varredura nativa em memória para descoberta de ferramentas no `PATH`.
+- **AutoRun Isolado & `%LOCALAPPDATA%\clink`:** `autorun.cmd` preserva subshells não-interativos (`/c`), carrega scripts Lua diretamente de `%LOCALAPPDATA%\clink` sem passar `--profile ~\clink`, parametriza servidores via `PERSONAL_SERVER_*` / `VENTURE_SERVER_*` e redireciona Python bytecode via `PYTHONPYCACHEPREFIX`.
 
 ---
 
 ## 🚀 Como Usar no Windows
 
-Execute no CMD ou PowerShell:
+Execute no CMD ou via instalador MSYS2:
 
 ```cmd
 reg import setup-profile.reg
+```
+
+```sh
+sh install.sh -s cmd
 ```
 
 ---

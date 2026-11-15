@@ -33,9 +33,9 @@ hx() {
 	command -v hx > "/dev/null" 2>&1 || { _ui_err "hx not found."; return 127; }
 	local _status=0
 	if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
-		local _tty_cfg="${XDG_CONFIG_HOME:-${HOME}/.config}/helix/config-tty.toml"
-		if [ -f "${_tty_cfg}" ]; then
-			command hx -c "${_tty_cfg}" "$@"
+		local _tty_config="${XDG_CONFIG_HOME:-${HOME}/.config}/helix/config-tty.toml"
+		if [ -f "${_tty_config}" ]; then
+			command hx -c "${_tty_config}" "$@"
 			_status=$?
 		else
 			command hx "$@"
@@ -201,9 +201,9 @@ open-browser() {
 		_browser="firefox"
 	elif [ "$(uname -s 2> "/dev/null")" = "Darwin" ]; then
 		if [ "$#" -eq 0 ]; then
-			open -a Safari
+			command open -a Safari
 		else
-			open -a Safari "$@"
+			command open -a Safari "$@"
 		fi
 		return $?
 	fi
@@ -239,9 +239,10 @@ alias ol="open-libreoffice"
 
 open-terminal() {
 	local _term=""
-	for _t in konsole kgx gnome-terminal xfce4-terminal foot alacritty kitty wezterm xterm; do
-		if command -v "${_t}" > "/dev/null" 2>&1; then
-			_term="${_t}"
+	local _candidate=""
+	for _candidate in konsole kgx gnome-terminal xfce4-terminal foot alacritty kitty wezterm xterm; do
+		if command -v "${_candidate}" > "/dev/null" 2>&1; then
+			_term="${_candidate}"
 			break
 		fi
 	done
@@ -266,15 +267,17 @@ unalias open o > "/dev/null" 2>&1 || true
 open-smart() {
 	if [ "$#" -eq 0 ]; then
 		if command -v _ui_warn > "/dev/null" 2>&1; then
-			_ui_warn "Uso: o <arquivo|diretorio|url>"
+			_ui_warn "Usage: o <file|dir|url>"
 		else
-			echo "Uso: o <arquivo|diretorio|url>" >&2
+			echo "Usage: o <file|dir|url>" >&2
 		fi
 		return 1
 	fi
 
+	local _target=""
+	local _extension_match=0
 	for _target in "$@"; do
-		local _ext_match=0
+		_extension_match=0
 		case "${_target}" in
 			*.pdf|*.PDF|*.epub|*.EPUB|*.djvu|*.DJVU|\
 			*.sqlite|*.sqlite3|*.db|\
@@ -283,18 +286,18 @@ open-smart() {
 			*.json|*.yaml|*.yml|*.toml|*.xml|*.csv|*.log|\
 			*.diff|*.patch|\
 			*.zip|*.tar|*.gz|*.xz|*.zst|*.7z)
-				_ext_match=1
+				_extension_match=1
 				;;
 		esac
 
-		if { [ -n "${INSIDE_EMACS:-}" ] || [ "${_ext_match}" -eq 1 ]; } && \
+		if { [ -n "${INSIDE_EMACS:-}" ] || [ "${_extension_match}" -eq 1 ]; } && \
 		   command -v emacsclient > "/dev/null" 2>&1 && \
-		   emacsclient -e t > "/dev/null" 2>&1; then
-			emacsclient -n "${_target}"
+		   _emacs_timeout_eval 2 "t" > "/dev/null" 2>&1; then
+			command emacsclient -n "${_target}"
 			continue
 		fi
 
-		if [ "${_ext_match}" -eq 1 ] && { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && command -v emacs > "/dev/null" 2>&1; then
+		if [ "${_extension_match}" -eq 1 ] && { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && command -v emacs > "/dev/null" 2>&1; then
 			(command nohup emacs "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
 			continue
 		fi
@@ -343,11 +346,174 @@ fi
 ### --------------------------------
 ### EMACS DAEMON & CLIENT
 ### --------------------------------
-export EMACS_SOCKET_NAME="${HOME}/.emacs.d/var/server/auth/server"
+export EMACS_SOCKET_NAME="${EMACS_SOCKET_NAME:-${HOME}/.emacs.d/var/server/auth/server}"
+
+_emacs_current_user() {
+	case "$(uname -s 2> "/dev/null")" in
+		MINGW*|MSYS*|CYGWIN*) id -un 2> "/dev/null" || printf '%s\n' "${USER:-}" ;;
+		*) id -u 2> "/dev/null" || id -un 2> "/dev/null" || printf '%s\n' "${USER:-}" ;;
+	esac
+}
+
+_emacs_socket_path() {
+	local _socket_name="${EMACS_SOCKET_NAME:-${HOME}/.emacs.d/var/server/auth/server}"
+	case "${_socket_name}" in
+		*/*) printf '%s\n' "${_socket_name}" ;;
+		*) printf '%s\n' "${XDG_RUNTIME_DIR:-/tmp}/emacs$(id -u 2> "/dev/null" || printf '0')/${_socket_name}" ;;
+	esac
+}
+
+_emacs_pgrep() {
+	command -v pgrep > "/dev/null" 2>&1 || return 1
+	local _target_user=""
+	_target_user="$(_emacs_current_user)"
+	if [ -n "${_target_user}" ]; then
+		command pgrep -u "${_target_user}" "$@"
+	else
+		command pgrep "$@"
+	fi
+}
+
+_emacs_list_pids() {
+	local _mode="${1:-all}"
+	local _exact_pids=""
+	local _daemon_pids=""
+	if [ "${_mode}" = "all" ]; then
+		_exact_pids="$(_emacs_pgrep -x emacs 2> "/dev/null" || true)"
+	fi
+	_daemon_pids="$(_emacs_pgrep -f '(^|/)emacs[^/[:space:]]*[[:space:]].*--(fg-|bg-)?daemon' 2> "/dev/null" || true)"
+	printf '%s\n%s\n' "${_exact_pids}" "${_daemon_pids}" | \
+		command awk -v self_pid="$$" 'NF && $1 ~ /^[0-9]+$/ && $1 != self_pid && !seen[$1]++ { print $1 }'
+}
+
+_emacs_wait_exit() {
+	local _checks="${1:-10}"
+	local _mode="${2:-daemon}"
+	local _attempt=0
+	while [ "${_attempt}" -lt "${_checks}" ]; do
+		[ -z "$(_emacs_list_pids "${_mode}")" ] && return 0
+		if sleep 0.2 2> "/dev/null"; then
+			_attempt=$((_attempt + 1))
+		else
+			sleep 1 2> "/dev/null" || break
+			_attempt=$((_attempt + 5))
+		fi
+	done
+	[ -z "$(_emacs_list_pids "${_mode}")" ]
+}
+
+_emacs_send_signal() {
+	local _signal="${1:-TERM}"
+	local _mode="${2:-all}"
+	local _target_user=""
+	local _pids=""
+	local _pid=""
+	_target_user="$(_emacs_current_user)"
+	if [ "${_mode}" = "all" ] && command -v pkill > "/dev/null" 2>&1 && [ -n "${_target_user}" ]; then
+		command pkill "-${_signal}" -u "${_target_user}" -x emacs > "/dev/null" 2>&1 || true
+	fi
+	_pids="$(_emacs_list_pids "${_mode}")"
+	if [ -n "${_pids}" ]; then
+		printf '%s\n' "${_pids}" | while IFS= read -r _pid; do
+			[ -n "${_pid}" ] || continue
+			kill -0 "${_pid}" 2> "/dev/null" && kill "-${_signal}" "${_pid}" 2> "/dev/null" || true
+		done
+	fi
+}
+
+_emacs_timeout_eval() {
+	local _timeout_seconds="${1:-2}"
+	local _lisp_expr="${2:-t}"
+	local _socket_path=""
+	_socket_path="$(_emacs_socket_path)"
+	command -v emacsclient > "/dev/null" 2>&1 || return 127
+	if command -v timeout > "/dev/null" 2>&1; then
+		command timeout "${_timeout_seconds}" emacsclient -s "${_socket_path}" -e "${_lisp_expr}" > "/dev/null" 2>&1
+		return "$?"
+	fi
+	(
+		command emacsclient -s "${_socket_path}" -e "${_lisp_expr}" > "/dev/null" 2>&1 &
+		_probe_pid=$!
+		(
+			sleep "${_timeout_seconds}" 2> "/dev/null" || true
+			if kill -0 "${_probe_pid}" 2> "/dev/null"; then
+				kill -TERM "${_probe_pid}" 2> "/dev/null" || true
+				sleep 1 2> "/dev/null" || true
+				kill -0 "${_probe_pid}" 2> "/dev/null" && kill -KILL "${_probe_pid}" 2> "/dev/null" || true
+			fi
+		) &
+		_watchdog_pid=$!
+		wait "${_probe_pid}" 2> "/dev/null"
+		_probe_status=$?
+		kill -TERM "${_watchdog_pid}" 2> "/dev/null" || true
+		wait "${_watchdog_pid}" 2> "/dev/null" || true
+		exit "${_probe_status}"
+	)
+}
+
+_emacs_cleanup_socket() {
+	local _socket_path=""
+	_socket_path="$(_emacs_socket_path)"
+	[ -n "${_socket_path}" ] || return 0
+	if [ -e "${_socket_path}" ] || [ -S "${_socket_path}" ]; then
+		if [ -O "${_socket_path}" ] 2> "/dev/null"; then
+			command rm -f "${_socket_path}" 2> "/dev/null" || true
+		else
+			_ui_warn "Refusing to remove Emacs socket not owned by current user: ${_socket_path}"
+			return 1
+		fi
+	fi
+	return 0
+}
+
+_emacs_stop_daemon() {
+	local _mode="${1:-all}"
+	local _socket_path=""
+	local _pids=""
+	_socket_path="$(_emacs_socket_path)"
+	_pids="$(_emacs_list_pids "${_mode}")"
+
+	if { [ -e "${_socket_path}" ] || [ -S "${_socket_path}" ] || [ -n "${_pids}" ]; } && command -v emacsclient > "/dev/null" 2>&1; then
+		if _emacs_timeout_eval 2 "(kill-emacs)"; then
+			_emacs_wait_exit 10 "${_mode}" && { _emacs_cleanup_socket; return 0; }
+		fi
+	fi
+
+	_pids="$(_emacs_list_pids "${_mode}")"
+	if [ -n "${_pids}" ]; then
+		_emacs_send_signal TERM "${_mode}"
+		_emacs_wait_exit 10 "${_mode}"
+	fi
+
+	_pids="$(_emacs_list_pids "${_mode}")"
+	if [ -n "${_pids}" ]; then
+		_ui_warn "Emacs daemon unresponsive after SIGTERM. Sending SIGKILL..."
+		_emacs_send_signal KILL "${_mode}"
+		_emacs_wait_exit 5 "${_mode}"
+	fi
+
+	if [ -n "$(_emacs_list_pids "${_mode}")" ]; then
+		_ui_err "Failed to terminate unresponsive Emacs process."
+		return 1
+	fi
+
+	_emacs_cleanup_socket
+}
+
+_emacs_ensure_healthy_daemon() {
+	local _socket_path=""
+	_socket_path="$(_emacs_socket_path)"
+	if [ -e "${_socket_path}" ] || [ -S "${_socket_path}" ] || [ -n "$(_emacs_list_pids "daemon")" ]; then
+		if ! _emacs_timeout_eval 2 "(+ 1 1)"; then
+			_ui_warn "Emacs daemon unresponsive (deadlock or stale socket detected). Recovering..."
+			_emacs_stop_daemon "daemon"
+		fi
+	fi
+}
 
 emacs-kill() {
 	command -v emacs > "/dev/null" 2>&1 || command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacs not found."; return 127; }
-	command pkill emacs
+	_emacs_stop_daemon "all"
 	local _status=$?
 	_restore_tty_cursor
 	return ${_status}
@@ -368,35 +534,7 @@ emacs-restart() {
 
 emacs-client() {
 	command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacsclient not found."; return 127; }
-
-	if command -v pgrep > "/dev/null" 2>&1 && pgrep -x emacs > "/dev/null" 2>&1; then
-		_probe_ok=0
-		if command -v timeout > "/dev/null" 2>&1; then
-			timeout 2 emacsclient -e '(+ 1 1)' > "/dev/null" 2>&1 && _probe_ok=1 || _probe_ok=0
-		else
-			(
-				command emacsclient -e '(+ 1 1)' > "/dev/null" 2>&1 &
-				_probe_pid=$!
-				(
-					sleep 2 2> "/dev/null" || true
-					kill -0 "${_probe_pid}" 2> "/dev/null" && kill -9 "${_probe_pid}" 2> "/dev/null" || true
-				) &
-				_wd_pid=$!
-				wait "${_probe_pid}" 2> "/dev/null"
-				_probe_ret=$?
-				kill -9 "${_wd_pid}" 2> "/dev/null" || true
-				wait "${_wd_pid}" 2> "/dev/null" || true
-				exit "${_probe_ret}"
-			) && _probe_ok=1 || _probe_ok=0
-		fi
-		if [ "${_probe_ok}" -eq 0 ]; then
-			_ui_warn "Emacs daemon unresponsive (deadlock detected). Terminating hung process..."
-			command pkill -9 -x emacs > "/dev/null" 2>&1 || true
-			sleep 0.5 2> "/dev/null" || sleep 1 2> "/dev/null" || true
-			[ -n "${EMACS_SOCKET_NAME:-}" ] && rm -f "${EMACS_SOCKET_NAME}" 2> "/dev/null" || true
-		fi
-		unset _probe_ok
-	fi
+	_emacs_ensure_healthy_daemon
 
 	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
@@ -470,6 +608,7 @@ emacs-open() {
 	command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacsclient not found."; return 127; }
 	local _status=0
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+		_emacs_ensure_healthy_daemon
 		if [ "$#" -eq 0 ]; then
 			(GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command nohup emacsclient --create-frame --alternate-editor "" . < "/dev/null" > "/dev/null" 2>&1 &)
 			_status=$?
@@ -498,7 +637,7 @@ emacs-open-nw() {
 }
 emacs-eshell() {
 	command -v emacsclient > "/dev/null" 2>&1 || command -v emacs > "/dev/null" 2>&1 || {
-		_ui_err "emacs não encontrado no PATH."
+		_ui_err "emacs not found."
 		return 127
 	}
 
@@ -556,7 +695,7 @@ if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 	if [ -z "${GTK_THEME:-}" ]; then
 		if [ -n "${_DETECTED_GTK_THEME:-}" ]; then
 			export GTK_THEME="${_DETECTED_GTK_THEME}"
-		elif [ -z "${_DETECTED_GTK_THEME+x}" ]; then
+		elif [ -z "${_DETECTED_GTK_THEME+x}" ] && command -v _detect_gtk_theme > "/dev/null" 2>&1; then
 			_gtk_theme="$(_detect_gtk_theme)"
 			[ -n "${_gtk_theme}" ] && export GTK_THEME="${_gtk_theme}"
 			unset _gtk_theme
@@ -603,53 +742,59 @@ if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		_cursor_theme=""
 		_cursor_size="${XCURSOR_SIZE:-24}"
 
-		_uid="$(id -u 2> "/dev/null" || echo 1000)"
-		if pgrep -u "${_uid}" -x plasmashell > "/dev/null" 2>&1 || pgrep -u "${_uid}" -x kwin_wayland > "/dev/null" 2>&1 || pgrep -u "${_uid}" -x kwin_x11 > "/dev/null" 2>&1; then
+		_user_id=""
+		if command -v pgrep > "/dev/null" 2>&1; then
+			case "$(uname -s 2> "/dev/null")" in
+				MINGW*|MSYS*|CYGWIN*) _user_id="$(id -un 2> "/dev/null" || printf '%s' "${USER:-}")" ;;
+				*) _user_id="$(id -u 2> "/dev/null" || printf '1000')" ;;
+			esac
+		fi
+		if [ -n "${_user_id}" ] && { pgrep -u "${_user_id}" -x plasmashell > "/dev/null" 2>&1 || pgrep -u "${_user_id}" -x kwin_wayland > "/dev/null" 2>&1 || pgrep -u "${_user_id}" -x kwin_x11 > "/dev/null" 2>&1; }; then
 			if [ -f "${HOME}/.config/kcminputrc" ]; then
 				_cursor_theme="$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
 				_cursor_size="$(awk -F= '/^[[:space:]]*cursorSize[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="breeze_cursors"
-		elif pgrep -u "${_uid}" -x gnome-shell > "/dev/null" 2>&1; then
+		elif [ -n "${_user_id}" ] && pgrep -u "${_user_id}" -x gnome-shell > "/dev/null" 2>&1; then
 			if command -v gsettings > "/dev/null" 2>&1; then
 				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
 				_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
-		elif pgrep -u "${_uid}" -x mate-session > "/dev/null" 2>&1; then
+		elif [ -n "${_user_id}" ] && pgrep -u "${_user_id}" -x mate-session > "/dev/null" 2>&1; then
 			if command -v gsettings > "/dev/null" 2>&1; then
 				_cursor_theme="$(gsettings get org.mate.peripherals-mouse cursor-theme 2> "/dev/null" | tr -d "'\"")"
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
-		elif pgrep -u "${_uid}" -x cinnamon > "/dev/null" 2>&1; then
+		elif [ -n "${_user_id}" ] && pgrep -u "${_user_id}" -x cinnamon > "/dev/null" 2>&1; then
 			if command -v gsettings > "/dev/null" 2>&1; then
 				_cursor_theme="$(gsettings get org.cinnamon.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
-		elif pgrep -u "${_uid}" -x xfce4-session > "/dev/null" 2>&1; then
+		elif [ -n "${_user_id}" ] && pgrep -u "${_user_id}" -x xfce4-session > "/dev/null" 2>&1; then
 			_cursor_theme="Adwaita"
-		elif pgrep -u "${_uid}" -x lxqt-session > "/dev/null" 2>&1; then
+		elif [ -n "${_user_id}" ] && pgrep -u "${_user_id}" -x lxqt-session > "/dev/null" 2>&1; then
 			_cursor_theme="breeze_cursors"
-		elif pgrep -u "${_uid}" -x lxsession > "/dev/null" 2>&1; then
+		elif [ -n "${_user_id}" ] && pgrep -u "${_user_id}" -x lxsession > "/dev/null" 2>&1; then
 			_cursor_theme="Adwaita"
-		elif pgrep -u "${_uid}" -x budgie-wm > "/dev/null" 2>&1 || pgrep -u "${_uid}" -x budgie-panel > "/dev/null" 2>&1; then
+		elif [ -n "${_user_id}" ] && { pgrep -u "${_user_id}" -x budgie-wm > "/dev/null" 2>&1 || pgrep -u "${_user_id}" -x budgie-panel > "/dev/null" 2>&1; }; then
 			if command -v gsettings > "/dev/null" 2>&1; then
 				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
 				_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
-		elif pgrep -u "${_uid}" -x gala > "/dev/null" 2>&1 || pgrep -u "${_uid}" -x wingpanel > "/dev/null" 2>&1; then
+		elif [ -n "${_user_id}" ] && { pgrep -u "${_user_id}" -x gala > "/dev/null" 2>&1 || pgrep -u "${_user_id}" -x wingpanel > "/dev/null" 2>&1; }; then
 			if command -v gsettings > "/dev/null" 2>&1; then
 				_cursor_theme="$(gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'\"")"
 				_cursor_size="$(gsettings get org.gnome.desktop.interface cursor-size 2> "/dev/null" | tr -d "'\"")"
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
-		elif pgrep -u "${_uid}" -x dde-desktop > "/dev/null" 2>&1 || pgrep -u "${_uid}" -x deepin-wm > "/dev/null" 2>&1; then
+		elif [ -n "${_user_id}" ] && { pgrep -u "${_user_id}" -x dde-desktop > "/dev/null" 2>&1 || pgrep -u "${_user_id}" -x deepin-wm > "/dev/null" 2>&1; }; then
 			_cursor_theme="Adwaita"
-		elif pgrep -u "${_uid}" -x cosmic-comp > "/dev/null" 2>&1 || pgrep -u "${_uid}" -x cosmic-session > "/dev/null" 2>&1; then
+		elif [ -n "${_user_id}" ] && { pgrep -u "${_user_id}" -x cosmic-comp > "/dev/null" 2>&1 || pgrep -u "${_user_id}" -x cosmic-session > "/dev/null" 2>&1; }; then
 			_cursor_theme="Adwaita"
 		elif [ -n "${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION:-}}" ]; then
-			case "$(printf '%s\n' "${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION}}" | tr '[:upper:]' '[:lower:]')" in
+			case "$(printf '%s\n' "${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION:-}}" | tr '[:upper:]' '[:lower:]')" in
 				*kde*|*plasma*)
 					if [ -f "${HOME}/.config/kcminputrc" ]; then
 						_cursor_theme="$(awk -F= '/^[[:space:]]*cursorTheme[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2}' "${HOME}/.config/kcminputrc" 2> "/dev/null")"
@@ -711,10 +856,10 @@ if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		fi
 
 		if [ -z "${_cursor_theme}" ]; then
-			for _cand in Adwaita breeze_cursors Bibata-Modern-Classic DMZ-White default; do
-				for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
-					if [ -d "${_p}/${_cand}/cursors" ]; then
-						_cursor_theme="${_cand}"
+			for _cursor_candidate in Adwaita breeze_cursors Bibata-Modern-Classic DMZ-White default; do
+				for _icon_dir in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
+					if [ -d "${_icon_dir}/${_cursor_candidate}/cursors" ]; then
+						_cursor_theme="${_cursor_candidate}"
 						break 2
 					fi
 				done
@@ -725,7 +870,7 @@ if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		[ -z "${_cursor_size}" ] && _cursor_size="24"
 		[ -z "${XCURSOR_THEME:-}" ] && export XCURSOR_THEME="${_cursor_theme}"
 		[ -z "${XCURSOR_SIZE:-}" ] && export XCURSOR_SIZE="${_cursor_size}"
-		unset _cursor_theme _cursor_size _cand _p _uid
+		unset _cursor_theme _cursor_size _cursor_candidate _icon_dir _user_id
 	fi
 fi
 

@@ -2,22 +2,25 @@
 ### SHELL APPEARANCE
 ### ================================
 
-PROMPT_OS_ICON="${PROMPT_OS_ICON:-$(_detect_distro_icon)}"
+unset PROMPT_OS_ICON PROMPT_OS_COLOR PROMPT_OS_NAME
+PROMPT_OS_ICON="${_DETECTED_DISTRO_ICON:-$(command -v _detect_distro_icon > "/dev/null" 2>&1 && _detect_distro_icon)}"
 PROMPT_OS_COLOR="blue"
-[ -z "${PROMPT_OS_NAME:-}" ] && export PROMPT_OS_NAME="${_DETECTED_DISTRO_VERSION-$(_detect_distro_version)}"
+PROMPT_OS_NAME="${_DETECTED_DISTRO_VERSION:-$(command -v _detect_distro_version > "/dev/null" 2>&1 && _detect_distro_version)}"
 
-. "${SHELL_REPO_DIR}/theme/bash.sh"
-. "${SHELL_REPO_DIR}/target/linux/environment.sh"
+[ -f "${SHELL_REPO_DIR:-}/theme/bash.sh" ] && \
+	. "${SHELL_REPO_DIR:-}/theme/bash.sh"
+[ -f "${SHELL_REPO_DIR:-}/target/linux/environment.sh" ] && \
+	. "${SHELL_REPO_DIR:-}/target/linux/environment.sh"
 
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
-[ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh" ] && \
-    . "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh"
-[ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/linux.sh" ] && \
-    . "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/linux.sh"
+[ -f "${SHELL_REPO_DIR:-}/context/${SHELL_CONTEXT}/common.sh" ] && \
+	. "${SHELL_REPO_DIR:-}/context/${SHELL_CONTEXT}/common.sh"
+[ -f "${SHELL_REPO_DIR:-}/context/${SHELL_CONTEXT}/linux.sh" ] && \
+	. "${SHELL_REPO_DIR:-}/context/${SHELL_CONTEXT}/linux.sh"
 
 ### ================================
 ### SHELL CONFIGURATION
 ### ================================
 
-[ -f "${SHELL_REPO_DIR}/target/common/bash/bash.sh" ] && \
-	. "${SHELL_REPO_DIR}/target/common/bash/bash.sh"
+[ -f "${SHELL_REPO_DIR:-}/target/common/bash/bash.sh" ] && \
+	. "${SHELL_REPO_DIR:-}/target/common/bash/bash.sh"

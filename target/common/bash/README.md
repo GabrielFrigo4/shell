@@ -6,4 +6,4 @@
 
 ## 📁 Arquivos
 
-- **`bash.sh`**: Histórico compartilhado (`histappend`), navegação (`autocd`, `cdspell`), integridade de terminal (`checkwinsize`) e integração com `bash_completion`.
+- **`bash.sh`** (`0644`, `sourced`): Histórico compartilhado (`histappend`), navegação (`autocd`, `cdspell`), integridade de terminal (`checkwinsize`) e integração com `bash_completion`.

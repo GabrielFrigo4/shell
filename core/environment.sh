@@ -645,85 +645,84 @@ _userland_gnu_path_strip() {
 }
 
 _userland_build_gnu_cache() {
-	_u_os="${1}"
-	_gnu_cache="${2}"
+	_ubc_cache="${1}"
 	[ -n "${ZSH_VERSION:-}" ] && setopt LOCAL_OPTIONS NULL_GLOB 2> "/dev/null" || true
-	_gnu_cache_dir="${_gnu_cache%/*}"
-	mkdir -p "${_gnu_cache_dir}" 2> "/dev/null" || return 1
-	_gnu_tmp="${_gnu_cache}.tmp.$$"
-	: >| "${_gnu_tmp}" 2> "/dev/null" || return 1
+	_ubc_dir="${_ubc_cache%/*}"
+	mkdir -p "${_ubc_dir}" 2> "/dev/null" || return 1
+	_ubc_tmp="${_ubc_cache}.tmp.$$"
+	: >| "${_ubc_tmp}" 2> "/dev/null" || return 1
 
 	set --
-	for _pkg_dir in "/usr/local/bin" "/usr/pkg/bin" "/opt/local/bin" "/opt/homebrew/bin"; do
-		[ -d "${_pkg_dir}" ] && set -- "$@" "${_pkg_dir}"
+	for _ubc_pkg in "/usr/local/bin" "/usr/pkg/bin" "/opt/local/bin" "/opt/homebrew/bin"; do
+		[ -d "${_ubc_pkg}" ] && set -- "$@" "${_ubc_pkg}"
 	done
-	for _opt_root in "/opt/homebrew/opt" "/usr/local/opt"; do
-		if [ -d "${_opt_root}" ]; then
-			for _pkg_dir in "${_opt_root}/"*/bin; do
-				[ -d "${_pkg_dir}" ] && set -- "$@" "${_pkg_dir}"
+	for _ubc_opt in "/opt/homebrew/opt" "/usr/local/opt"; do
+		if [ -d "${_ubc_opt}" ]; then
+			for _ubc_pkg in "${_ubc_opt}/"*/bin; do
+				[ -d "${_ubc_pkg}" ] && set -- "$@" "${_ubc_pkg}"
 			done
 		fi
 	done
 
-	_seen=" "
-	_alias_names=""
-	_gnu_ls_bin=""
-	for _pkg_dir in "$@"; do
-		for _gbin in "${_pkg_dir}/g"*; do
-			[ -f "${_gbin}" ] && [ -x "${_gbin}" ] || continue
-			_gname="${_gbin##*/}"
-			_base="${_gname#g}"
-			case "${_base}" in
+	_ubc_seen=" "
+	_ubc_names=""
+	_ubc_ls=""
+	for _ubc_pkg in "$@"; do
+		for _ubc_gbin in "${_ubc_pkg}/g"*; do
+			[ -f "${_ubc_gbin}" ] && [ -x "${_ubc_gbin}" ] || continue
+			_ubc_gname="${_ubc_gbin##*/}"
+			_ubc_base="${_ubc_gname#g}"
+			case "${_ubc_base}" in
 				""|*[!a-zA-Z0-9_-]*) continue ;;
 			esac
-			case "${_gname}" in
+			case "${_ubc_gname}" in
 				gcc|git|gdb|gpg|gpg2|gpgv|gpg-agent|gzip|gunzip|go|gofmt|gs|gperf|gprof|gcov|gcov-tool|gawkbug|grun) continue ;;
 			esac
-			case "${_base}" in
+			case "${_ubc_base}" in
 				cc|c++|it|db|pg|zip|unzip|o|s|perf|prof|cov|echo|printf|pwd|test|true|false|kill|sh|bash|zsh|ksh|csh|tcsh|su|login|vi|ex) continue ;;
 			esac
-			case "${_seen}" in
-				*" ${_base} "*) continue ;;
+			case "${_ubc_seen}" in
+				*" ${_ubc_base} "*) continue ;;
 			esac
-			_is_candidate=0
-			if [ -x "/bin/${_base}" ] || [ -x "/usr/bin/${_base}" ]; then
-				_is_candidate=1
+			_ubc_cand=0
+			if [ -x "/bin/${_ubc_base}" ] || [ -x "/usr/bin/${_ubc_base}" ]; then
+				_ubc_cand=1
 			else
-				case "${_base}" in
+				case "${_ubc_base}" in
 					stat|date|nproc|realpath|readlink|seq|shuf|timeout|truncate|tac|numfmt|base64|base32|basenc|sha1sum|sha224sum|sha256sum|sha384sum|sha512sum|md5sum|b2sum|cksum|sum|dircolors|vdir|dir|watch|pinky|ptx|stdbuf|factor|tsort|unexpand|expand|fmt|fold|nl|pr|shred|split|csplit|comm|join|paste|sort|uniq|cut|tr|head|tail|wc|tee|cat|cp|mv|rm|ln|ls|mkdir|rmdir|mktemp|touch|chmod|chown|chgrp|df|du|dd|env|id|who|whoami|users|groups|uname|tty|arch|hostid|uptime|basename|dirname|link|unlink|mkfifo|mknod|pathchk|printenv|sleep|stty|sync|yes|expr|install|awk|sed|grep|egrep|fgrep|tar|find|xargs|diff|cmp|sdiff|diff3|make|patch|m4|indent)
-						_is_candidate=1
+						_ubc_cand=1
 						;;
 				esac
 			fi
-			[ "${_is_candidate}" -eq 1 ] || continue
-			_gver="$("${_gbin}" --version < "/dev/null" 2> "/dev/null" | head -n 5)"
-			case "${_gver}" in
+			[ "${_ubc_cand}" -eq 1 ] || continue
+			_ubc_gver="$(DISPLAY="" WAYLAND_DISPLAY="" "${_ubc_gbin}" --version < "/dev/null" 2> "/dev/null" | head -n 5)"
+			case "${_ubc_gver}" in
 				*GNU*|*"Free Software Foundation"*) ;;
 				*) continue ;;
 			esac
-			_seen="${_seen}${_base} "
-			_alias_names="${_alias_names:+${_alias_names} }${_base}"
-			case "${_base}" in
+			_ubc_seen="${_ubc_seen}${_ubc_base} "
+			_ubc_names="${_ubc_names:+${_ubc_names} }${_ubc_base}"
+			case "${_ubc_base}" in
 				ls)
-					_gnu_ls_bin="${_gname}"
-					printf 'alias ls="%s --color=auto"\n' "${_gname}" >> "${_gnu_tmp}"
+					_ubc_ls="${_ubc_gname}"
+					printf 'alias ls="%s --color=auto"\n' "${_ubc_gname}" >> "${_ubc_tmp}"
 					;;
 				grep|egrep|fgrep)
-					printf 'alias %s="%s --color=auto"\n' "${_base}" "${_gname}" >> "${_gnu_tmp}"
+					printf 'alias %s="%s --color=auto"\n' "${_ubc_base}" "${_ubc_gname}" >> "${_ubc_tmp}"
 					;;
 				*)
-					printf 'alias %s="%s"\n' "${_base}" "${_gname}" >> "${_gnu_tmp}"
+					printf 'alias %s="%s"\n' "${_ubc_base}" "${_ubc_gname}" >> "${_ubc_tmp}"
 					;;
 			esac
 		done
 	done
 
-	printf '_SHELL_GNU_ALIASES="%s"\n' "${_alias_names}" >> "${_gnu_tmp}"
-	if [ -n "${_gnu_ls_bin}" ]; then
-		printf '_SHELL_GNU_LS_BIN="%s"\n' "${_gnu_ls_bin}" >> "${_gnu_tmp}"
+	printf '_SHELL_GNU_ALIASES="%s"\n' "${_ubc_names}" >> "${_ubc_tmp}"
+	if [ -n "${_ubc_ls}" ]; then
+		printf '_SHELL_GNU_LS_BIN="%s"\n' "${_ubc_ls}" >> "${_ubc_tmp}"
 	fi
-	mv -f "${_gnu_tmp}" "${_gnu_cache}"
-	unset _u_os _gnu_cache _gnu_cache_dir _gnu_tmp _pkg_dir _opt_root _seen _alias_names _gnu_ls_bin _gbin _gname _base _is_candidate _gver
+	mv -f "${_ubc_tmp}" "${_ubc_cache}"
+	unset _ubc_cache _ubc_dir _ubc_tmp _ubc_pkg _ubc_opt _ubc_seen _ubc_names _ubc_ls _ubc_gbin _ubc_gname _ubc_base _ubc_cand _ubc_gver
 }
 
 _userland_set_gnu() {
@@ -747,6 +746,7 @@ _userland_set_gnu() {
 			done
 			if [ "$#" -gt 0 ]; then
 				path-front "$@"
+				[ -d "${HOME}/.local/bin" ] && path-front "${HOME}/.local/bin"
 			fi
 
 			_gnu_cache="${XDG_CACHE_HOME:-${HOME}/.cache}/shell/gnu_aliases_${_u_os}.sh"
@@ -774,7 +774,7 @@ _userland_set_gnu() {
 				fi
 			fi
 			if [ "${_cache_stale}" -eq 1 ]; then
-				_userland_build_gnu_cache "${_u_os}" "${_gnu_cache}" || true
+				_userland_build_gnu_cache "${_gnu_cache}" || true
 			fi
 			[ -s "${_gnu_cache}" ] && . "${_gnu_cache}"
 

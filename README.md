@@ -26,32 +26,34 @@
 
 **Plataformas Homologadas:**<br>
 ![FreeBSD](https://img.shields.io/badge/FreeBSD-Supported-red?logo=freebsd&logoColor=white)
-![DragonFly BSD](https://img.shields.io/badge/DragonFly_BSD-Supported-red?logo=freebsd&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-Supported-blue?logo=linux&logoColor=white)
 ![macOS](https://img.shields.io/badge/macOS-Supported-black?logo=apple&logoColor=white)
-![Windows](<https://img.shields.io/badge/Windows_(MSYS2)-Supported-purple?logo=gitforwindows&logoColor=white>)
+![Windows](https://img.shields.io/badge/Windows_%28MSYS2_%2B_Nativo%29-Supported-blue?logo=gitforwindows&logoColor=white)
 ![OpenBSD](https://img.shields.io/badge/OpenBSD-Supported-yellow?logo=openbsd&logoColor=white)
 ![NetBSD](https://img.shields.io/badge/NetBSD-Supported-orange?logo=netbsd&logoColor=white)
 ![illumos](https://img.shields.io/badge/illumos-Supported-orange?logo=openzfs&logoColor=white)
 
-**Shells Suportados (`zsh` ≫ `bash` ≫ `sh` / `ksh`):**<br>
+**Shells Interativos Suportados (`zsh` ≫ `bash` ≫ `fish` / `sh` / `ksh` & Nativos Windows):**<br>
 ![Zsh](https://img.shields.io/badge/zsh-100%25-blue?logo=zsh&logoColor=white)
 ![Bash](https://img.shields.io/badge/bash-100%25-green?logo=gnubash&logoColor=white)
+![Fish](https://img.shields.io/badge/fish-100%25-cyan?logo=fishshell&logoColor=white)
 ![Sh](https://img.shields.io/badge/sh-FreeBSD_Exclusivo-red?logo=freebsd&logoColor=white)
 ![Ksh](https://img.shields.io/badge/ksh-OpenBSD_Exclusivo-yellow?logo=openbsd&logoColor=white)
+![PowerShell](https://img.shields.io/badge/pwsh-Windows_Nativo-blue?logo=powershell&logoColor=white)
+![NuShell](https://img.shields.io/badge/nushell-Windows_Nativo-teal)
+![Clink](https://img.shields.io/badge/cmd_%28Clink%29-Windows_Nativo-darkgrey?logo=windowsterminal&logoColor=white)
 
-**Shells Incompatíveis (Descartados):**<br>
-![Dash](https://img.shields.io/badge/dash-Incompat%C3%ADvel_POSIX-lightgrey?logo=dash&logoColor=white)
-![Fish](https://img.shields.io/badge/fish-Incompat%C3%ADvel_POSIX-lightgrey?logo=fishshell&logoColor=white)
+**Shells Não Suportados para Uso Interativo (Roteamento Automático):**<br>
+![Dash](https://img.shields.io/badge/dash-Roteado_para_zsh%2Fbash-lightgrey?logo=dash&logoColor=white)
+![NetBSD ash](https://img.shields.io/badge/NetBSD_%2Fbin%2Fsh_%28ash%29-Roteado_para_zsh%2Fbash-lightgrey?logo=netbsd&logoColor=white)
 
 ```mermaid
 flowchart TD
-    subgraph OS ["🖥️ Plataformas"]
+    subgraph OS ["🖥️ Plataformas Homologadas (7 Sistemas)"]
         BSD["😈 FreeBSD"]
-        DFLY[" DragonFly BSD"]
         LNX["🐧 Linux"]
         MAC["🍎 macOS"]
-        WIN["🪟 Windows (MSYS2)"]
+        WIN["🪟 Windows (MSYS2 + Nativo)"]
         OBSD["🐡 OpenBSD"]
         NBSD["🚩 NetBSD"]
         ILM["☀️ illumos"]
@@ -63,11 +65,13 @@ flowchart TD
         CNT["📦 Container (Kernel Compartilhado)"]
     end
 
-    subgraph SHELLS ["🐚 Shells Interativos (zsh ≫ bash ≫ sh / ksh)"]
+    subgraph SHELLS ["🐚 Shells Interativos Ativos"]
         ZSH["⚡ Zsh (Todos os SOs)"]
         BASH["📜 Bash (Todos os SOs)"]
+        FISH["🐟 Fish (Modular target/common/fish/)"]
         SH_BSD["😈 Sh (Exclusivo FreeBSD)"]
         KSH_OBSD["🐡 Ksh (Exclusivo OpenBSD)"]
+        WIN_SH["🪟 PowerShell / NuShell / CMD Clink"]
     end
 
     OS --> CTX
@@ -76,14 +80,16 @@ flowchart TD
 
 #### 🐚 Matriz de Suporte a Shells
 
-| Shell             |    Status     | Detalhes & Decisão de Arquitetura                                                                                                                                        |
-| :---------------- | :-----------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Zsh (`zsh`)**   |    🟢 100%    | Shell primário interativo moderno. Autocompletion interativo com Tab e setas (`menu select`), case-insensitive e histórico estendido. Suportado em todas as plataformas. |
-| **Bash (`bash`)** |    🟢 100%    | Suporte universal nativo em Linux, macOS, BSDs, illumos e Windows. Readline completion interativo, histórico atômico sincronizado e busca por prefixo.                   |
-| **Sh (`sh`)**     |    🟢 100%    | Shell POSIX fundamental (**exclusivo do FreeBSD `sh`**). Mini prompt gráfico calibrado (128B/192B), histórico `libedit` completo e fallback TTY puro.                    |
-| **Ksh (`ksh`)**   |    🟢 100%    | Shell nativo clássico (**exclusivo do OpenBSD `/bin/ksh`**). Prompt adaptativo dinâmico, histórico in-memory, bindings Emacs e zero overhead.                            |
-| **Dash (`dash`)** | ❌ Descartado | **Incompatibilidade POSIX:** BNF estrita proíbe nomes `kebab-case` (`-`) em funções (`update-all`, etc.). Auto-elevação para `zsh`/`bash` no instalador.                 |
-| **Fish (`fish`)** | ❌ Descartado | **Incompatibilidade POSIX:** Sintaxe própria incompatível com `source` em arquivos `.sh` e `export`.                                                                     |
+| Shell                          |      Status       | Detalhes & Decisão de Arquitetura                                                                                                                                          |
+| :----------------------------- | :---------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Zsh (`zsh`)**                |      🟢 100%      | Shell primário interativo moderno. Autocompletion com Tab e setas (`menu select`), `_theme_ps1_*` + escape `%` anti-injeção e histórico estendido em todas as plataformas. |
+| **Bash (`bash`)**              |      🟢 100%      | Suporte universal em Linux, macOS, FreeBSD, OpenBSD, NetBSD, illumos e Windows MSYS2. Readline interativo e guarda `promptvars`.                                           |
+| **Fish (`fish`)**              |      🟢 100%      | Suporte modular completo em `target/common/fish/` (`config.fish`, `prompt.fish`, `ui.fish`, `aliases.fish`), instalado via `install.sh -s fish` com `PYTHONPYCACHEPREFIX`. |
+| **FreeBSD `sh`**               |      🟢 100%      | Shell POSIX fundamental (**exclusivo do FreeBSD `/bin/sh`**). Mini prompt calibrado (128B/192B), `libedit` e fallback TTY puro.                                            |
+| **OpenBSD `ksh`**              |      🟢 100%      | Shell nativo auditado (**exclusivo do OpenBSD `/bin/ksh`** `pdksh`). Delimitadores `\x01\r`, escapes hex `\x1b` e bindings Emacs canônicos.                                |
+| **PowerShell / NuShell / CMD** |      🟢 100%      | Targets nativos Windows (`target/windows/`): `.NET` lazy Chocolatey no `pwsh`, `ENV_CONVERSIONS` dual no `nu`, `autorun.cmd` + Clink zero-`io.popen` no `cmd`.             |
+| **Dash (`dash`)**              | ⛔ Não Interativo | BNF estrita proíbe funções `kebab-case` (`-`) e sintaxe `$'\e'`. `_detect_enabled_shell` ignora `dash` e `install.sh` promove/roteia para `zsh`/`bash`.                    |
+| **NetBSD `/bin/sh` (`ash`)**   | ⛔ Não Interativo | Shell mínimo de base sem suporte ao conjunto interativo completo. Guardas de compatibilidade e `install.sh` promovem/roteiam sessões interativas para `zsh`/`bash`.        |
 
 > 💡 **O Caso do FreeBSD `sh` & Engenharia Cirúrgica de Prompt:**
 > O `sh` do FreeBSD opera sobre a biblioteca `libedit` e possui um buffer estático em C (`#define PROMPTLEN 192` em FreeBSD 14+ e `128` em <= 13 em `bin/sh/parser.c`), sem `malloc` dinâmico para garantir estabilidade no modo monousuário. O parser em C converte `\[` e `\]` para `\x01` (1B) e `\e` para `0x1b` (1B), tornando a ocupação real em C menor do que a contagem bruta de caracteres da string. O motor dinâmico em `theme/sh.sh` calibra com precisão cirúrgica de bytes dois layouts: **`pill`** (192B) e **`micro`** (128B com fallback automático), aproveitando até 98% do buffer físico com texto útil (pastas e branches completas) sem estouro de memória. Detalhes completos em [docs/THEMES.md](docs/THEMES.md).
@@ -94,13 +100,13 @@ flowchart TD
 
 O instalador é **multi-shell automático**: ao ser executado, ele detecta os shells suportados instalados na máquina e configura todos eles em lote:
 
-- **FreeBSD:** configura automaticamente `zsh`, `bash` e `sh` (caso instalados).
-- **OpenBSD:** configura automaticamente `zsh`, `bash` e `ksh` (caso instalados).
-- **Linux:** configura automaticamente `zsh` e `bash` (caso instalados).
-- **macOS:** configura automaticamente `zsh` e `bash` (caso instalados).
-- **Windows (MSYS2):** configura `zsh` e `bash` (caso instalados).
-- **NetBSD:** configura automaticamente `zsh` e `bash` (caso instalados).
-- **illumos:** configura automaticamente `zsh` e `bash` (caso instalados).
+- **FreeBSD:** configura `zsh`, `bash`, `sh` e `fish` (caso instalados).
+- **OpenBSD:** configura `zsh`, `bash`, `ksh` e `fish` (caso instalados).
+- **Linux:** configura `zsh`, `bash` e `fish` (caso instalados).
+- **macOS:** configura `zsh`, `bash` e `fish` (caso instalados).
+- **Windows (MSYS2 + Nativo):** configura `zsh`, `bash` e `fish` no MSYS2, além dos perfis nativos `pwsh`, `nu` e `cmd` (Clink).
+- **NetBSD:** configura `zsh`, `bash` e `fish` (caso instalados; sessões em `/bin/sh`/`ash` são promovidas/roteadas para `zsh`/`bash`).
+- **illumos:** configura `zsh`, `bash` e `fish` (caso instalados).
 
 > 💡 **Novo shell instalado depois?** Se você instalar um novo shell posteriormente (ex: `sudo pacman -S zsh` ou `pkg install zsh`), basta executar `reinstall-shell` (ou reexecutar o `install.sh`) e ele configurará o novo shell automaticamente!
 
@@ -153,51 +159,56 @@ sh "/usr/local/share/shell/install.sh" --context desktop
 
 ### ⚙️ Opções do Instalador
 
-| Opção         |      Atalho      | Valores                           |   Padrão   | Descrição                                                                    |
-| :------------ | :--------------: | :-------------------------------- | :--------: | :--------------------------------------------------------------------------- |
-| `--context`   |       `-c`       | `desktop`, `server`, `container`  | `desktop`  | Perfil de contexto do ambiente.                                              |
-| `--shell`     |       `-s`       | `all`, `zsh`, `bash`, `sh`, `ksh` |   `all`    | Instala em todos os shells instalados ou em um alvo específico.              |
-| `--framework` | `--oh-my-shell`  | Flag booleana                     | Desativado | Habilita frameworks externos de terceiros (Oh-My-Zsh / Oh-My-Bash).          |
-| `--pure`      | `--no-framework` | Flag booleana                     |  Ativado   | Modo padrão: templates standalone nativos, zero overhead e boot instantâneo. |
+| Opção         |      Atalho      | Valores                                                        |   Padrão   | Descrição                                                                                           |
+| :------------ | :--------------: | :------------------------------------------------------------- | :--------: | :-------------------------------------------------------------------------------------------------- |
+| `--context`   |       `-c`       | `desktop`, `server`, `container`                               | `desktop`  | Perfil de contexto do ambiente (`desktop-*` carrega apenas quando `desktop`).                       |
+| `--shell`     |       `-s`       | `all`, `zsh`, `bash`, `sh`, `ksh`, `fish`, `pwsh`, `nu`, `cmd` |   `all`    | Instala em todos os shells detectados ou em um alvo específico.                                     |
+| `--userland`  |       `-u`       | `default`, `gnu`, `bsd`                                        | `default`  | Governa a precedência GNU vs. BSD no `$PATH`, grava `SHELL_USERLAND` em `~/.profile`/`config.fish`. |
+| `--framework` | `--oh-my-shell`  | Flag booleana                                                  | Desativado | Habilita frameworks externos de terceiros (Oh-My-Zsh / Oh-My-Bash).                                 |
+| `--pure`      | `--no-framework` | Flag booleana                                                  |  Ativado   | Modo padrão: templates standalone nativos, zero overhead e boot instantâneo.                        |
+
+> 💡 **Segregação Userland (`--userland=default|bsd|gnu`) & Permissões Canônicas:**
+> Em modo `default` ou `bsd`, diretórios GNU (`gnubin` / `/usr/gnu/bin`) nunca precedem as ferramentas nativas do sistema no `$PATH` (evitando sequestro acidental de `ls`, `stat` e utilitários BSD/illumos). Em modo `gnu`, diretórios GNU reais são inseridos antes das ferramentas de sistema (preservando `~/.local/bin` na frente) acompanhados de cache de aliases `g*` validados por `--version` e suporte a `gls` via `_shell_ls`. O `install.sh` também garante `0755` apenas nos entrypoints com `#!` (`shell.sh`, `init.sh`, `install.sh`, `benchmark.sh`, `.githooks/*` e scripts em `.scripts/`) e `0644` em todas as bibliotecas `sourced` e documentações.
 
 ---
 
 ## ⚡ Comandos Mais Usados
 
-| Comando / Alias                                                                   | Ação                                                                                                                                                | Destino               |
-| :-------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------- |
-| `update-all` / `upall` / `u`                                                      | **Orquestrador Global:** Atualiza SO + AUR + Flatpak + Snap + MAS.                                                                                  | Universal             |
-| `update-system` / `upsys`                                                         | Atualiza pacotes do sistema operacional nativo.                                                                                                     | Universal             |
-| `update-shell` / `upsh`                                                           | Atualiza o repositório ativo do shell (`/usr/local/share/shell`, `~/.local/share/shell`, `~/.config/shell` ou `~/.shell`), limpa cache e recarrega. | Universal             |
-| `update-editors` / `uped`                                                         | Atualiza as configurações residentes ativas dos editores (`~/.emacs.d`, `~/.config/nvim`, etc.).                                                    | Universal             |
-| `update-emacs-modes` / `upmodes`                                                  | Sincroniza diretamente os submódulos Elisp locais (`~/.emacs.d/usr/local/*`) com o upstream remoto.                                                 | Universal             |
-| `update-profile` / `uprc` / `sync-profile`                                        | Atualiza o repositório do profile (`~/.local/share/profile` ou `~/.config/profile`), reaplica dotfiles/skills e recarrega `~/.profile`.             | Universal             |
-| `reinstall-shell` / `resh`                                                        | Reexecuta o instalador em todos os shells instalados no SO.                                                                                         | Universal             |
-| `clean-cache` / `ccache`                                                          | Limpa o cache em memória e tmpfs de todos os detectores do ambiente.                                                                                | Universal             |
-| `clean-system` / `cleansys` / `clearsys` / `sysclean` / `syscls` / `clear-system` | Limpa pacotes órfãos (autoremove), dependências obsoletas e caches de pacotes.                                                                      | Universal             |
-| `update-vault` / `upvt`                                                           | Sincroniza segredos (`~/.vault`) e recarrega chaves SSH.                                                                                            | Universal             |
-| `bench-shell` / `bsh` / `shell-bench`                                             | Mede a latência de inicialização dos shells e módulos isolados.                                                                                     | Universal             |
-| `update-wifi` / `upwf`                                                            | Sincroniza credenciais Wi-Fi configuradas com o SO.                                                                                                 | Linux, BSD, Windows   |
-| `update-network` / `upnet`                                                        | Valida conectividade e sincroniza credenciais de rede.                                                                                              | Universal             |
-| `editor [alvo]` / `e`                                                             | Abre o editor padrão configurado na cascata de prioridade.                                                                                          | `$VISUAL` / `$EDITOR` |
-| `open-neovim` / `on`                                                              | Abre o Neovim no alvo especificado (padrão: `.`).                                                                                                   | `nvim`                |
-| `open-helix` / `oh` / `h`                                                         | Abre o Helix no alvo especificado (padrão: `.`).                                                                                                    | `hx`                  |
-| `emacs-open` / `oe`                                                               | Abre o Emacs GUI no alvo especificado (padrão: `.`).                                                                                                | `emacsclient`         |
-| `emacs-nw` / `en` / `enw`                                                         | Abre o Emacs no terminal (`emacsclient -t`) sem alvo padrão (espelho de `emacs-client` / `ec`).                                                     | `emacsclient -t`      |
-| `emacs-open-nw` / `oen` / `oenw`                                                  | Abre o Emacs no terminal no alvo especificado (padrão: `.`) (espelho de `emacs-open` / `oe`).                                                       | `emacsclient -t`      |
-| `open-code` / `oc`                                                                | Abre o VS Code no alvo especificado (padrão: `.`).                                                                                                  | `code` / `vscode`     |
-| `mount-device` / `mntdev` / `mdev`                                                | Monta celular em `~/Device` via GVfs/KIO-FUSE/GSConnect/ADB.                                                                                        | Desktop               |
-| `umount-device` / `umdev` / `udev`                                                | Desmonta e desconecta `~/Device` com segurança.                                                                                                     | Desktop               |
-| `ports` / `p`                                                                     | Inspeciona portas de rede em escuta (`ss` > `netstat` > `sockstat`)                                                                                 | Servidor / Desktop    |
-| `services` / `svc`                                                                | Inspeciona status dos serviços (`systemctl` > `service` > `rc-status`)                                                                              | Servidor / Desktop    |
-| `l`, `ll`, `la`, `lt`                                                             | Listagem moderna com ícones e status git (`eza`/`exa`/`ls`).                                                                                        | Universal             |
-| `g <termo>`                                                                       | Busca inteligente de texto em arquivos (`rg` > `grep`).                                                                                             | Universal             |
-| `c <arquivo>` / `b`                                                               | Visualizador formatado com syntax highlighting (`bat` > `cat`).                                                                                     | Universal             |
-| `f <alvo>` / `ff`                                                                 | Localizador ultrarrápido de arquivos (`fd` > `find`).                                                                                               | Universal             |
-| `freebsd` / `fb [start                                                            | stop                                                                                                                                                | status                | console | ssh]` | Orquestrador FreeBSD: VM KVM (Linux Host) ou Jail nativa Bastille (FreeBSD Host).       | Linux, FreeBSD |
-| `linux` / `lx [start                                                              | stop                                                                                                                                                | status                | console | ssh]` | Orquestrador Linux: Container Incus LXC (Linux Host) ou VM Bhyve Debian (FreeBSD Host). | Linux, FreeBSD |
-| `openbsd` / `ob [start                                                            | stop                                                                                                                                                | status                | console | ssh]` | Orquestrador OpenBSD: VM OpenBSD no KVM (Linux Host) ou Bhyve (FreeBSD Host).           | Linux, FreeBSD |
-| `netbsd` / `nt [start                                                             | stop                                                                                                                                                | status                | console | ssh]` | Orquestrador NetBSD: VM NetBSD no KVM (Linux Host) ou Bhyve (FreeBSD Host).             | Linux, FreeBSD |
+| Comando / Alias                                                                   | Ação                                                                                                                                                | Destino                    |
+| :-------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------- |
+| `update-all` / `upall` / `u`                                                      | **Orquestrador Global:** Atualiza SO + AUR + Flatpak + Snap + MAS.                                                                                  | Universal                  |
+| `update-system` / `upsys`                                                         | Atualiza pacotes do sistema operacional nativo.                                                                                                     | Universal                  |
+| `update-shell` / `upsh`                                                           | Atualiza o repositório ativo do shell (`/usr/local/share/shell`, `~/.local/share/shell`, `~/.config/shell` ou `~/.shell`), limpa cache e recarrega. | Universal                  |
+| `update-editors` / `uped`                                                         | Atualiza as configurações residentes ativas dos editores (`~/.emacs.d`, `~/.config/nvim`, etc.).                                                    | Universal                  |
+| `update-emacs-modes` / `upmodes`                                                  | Sincroniza diretamente os submódulos Elisp locais (`~/.emacs.d/usr/local/*`) com o upstream remoto.                                                 | Universal                  |
+| `update-profile` / `uprc` / `sync-profile`                                        | Atualiza o repositório do profile (`~/.local/share/profile` ou `~/.config/profile`), reaplica dotfiles/skills e recarrega `~/.profile`.             | Universal                  |
+| `reinstall-shell` / `resh`                                                        | Reexecuta o instalador em todos os shells instalados no SO.                                                                                         | Universal                  |
+| `clean-cache` / `ccache`                                                          | Limpa o cache em memória e tmpfs de todos os detectores do ambiente.                                                                                | Universal                  |
+| `clean-system` / `cleansys` / `clearsys` / `sysclean` / `syscls` / `clear-system` | Limpa pacotes órfãos (autoremove), dependências obsoletas e caches de pacotes.                                                                      | Universal                  |
+| `update-vault` / `upvt`                                                           | Sincroniza segredos (`~/.vault`) e recarrega chaves SSH.                                                                                            | Universal                  |
+| `bench-shell` / `bsh` / `shell-bench`                                             | Mede a latência de inicialização dos shells e módulos isolados.                                                                                     | Universal                  |
+| `update-wifi` / `upwf`                                                            | Sincroniza credenciais Wi-Fi configuradas com o SO.                                                                                                 | Linux, BSD, Windows        |
+| `update-network` / `upnet`                                                        | Valida conectividade e sincroniza credenciais de rede.                                                                                              | Universal                  |
+| `editor [alvo]` / `e`                                                             | Abre o editor padrão configurado na cascata de prioridade.                                                                                          | `$VISUAL` / `$EDITOR`      |
+| `open-neovim` / `on`                                                              | Abre o Neovim no alvo especificado (padrão: `.`).                                                                                                   | `nvim`                     |
+| `open-helix` / `oh` / `h`                                                         | Abre o Helix no alvo especificado (padrão: `.`).                                                                                                    | `hx`                       |
+| `emacs-client` / `ec` / `.scripts/emacs-client`                                   | Abre o Emacs GUI com sondagem de saúde (`timeout 2`) e recuperação segura do socket/daemon.                                                         | `emacsclient` / `.scripts` |
+| `emacs-open` / `oe`                                                               | Abre o Emacs GUI no alvo especificado (padrão: `.`).                                                                                                | `emacsclient`              |
+| `emacs-nw` / `en` / `enw`                                                         | Abre o Emacs no terminal (`emacsclient -t`) sem alvo padrão (espelho de `emacs-client` / `ec`).                                                     | `emacsclient -t`           |
+| `emacs-open-nw` / `oen` / `oenw`                                                  | Abre o Emacs no terminal no alvo especificado (padrão: `.`) (espelho de `emacs-open` / `oe`).                                                       | `emacsclient -t`           |
+| `open-code` / `oc`                                                                | Abre o VS Code no alvo especificado (padrão: `.`).                                                                                                  | `code` / `vscode`          |
+| `mount-device` / `mntdev` / `mdev`                                                | Monta celular em `~/Device` via GVfs/KIO-FUSE/GSConnect/ADB.                                                                                        | Desktop                    |
+| `umount-device` / `umdev` / `udev`                                                | Desmonta e desconecta `~/Device` com segurança.                                                                                                     | Desktop                    |
+| `ports` / `p`                                                                     | Inspeciona portas de rede em escuta (`ss` > `netstat` > `sockstat`)                                                                                 | Servidor / Desktop         |
+| `services` / `svc`                                                                | Inspeciona status dos serviços (`systemctl` > `service` > `rc-status`)                                                                              | Servidor / Desktop         |
+| `l`, `ll`, `la`, `lt`                                                             | Listagem moderna com ícones e status git (`eza`/`exa`/`ls`) em TTY; saída pura em pipe.                                                             | Universal                  |
+| `g <termo>`                                                                       | Busca inteligente de texto em arquivos (`rg` > `grep`).                                                                                             | Universal                  |
+| `c <arquivo>` / `b`                                                               | Visualizador formatado com syntax highlighting (`bat` > `cat`).                                                                                     | Universal                  |
+| `f <alvo>` / `ff`                                                                 | Localizador ultrarrápido de arquivos (`fd` > `find`).                                                                                               | Universal                  |
+| `freebsd` / `fb [start \| stop \| status \| console \| ssh]`                      | Orquestrador FreeBSD: VM KVM (Linux Host) ou Jail nativa Bastille (FreeBSD Host).                                                                   | Linux, FreeBSD             |
+| `linux` / `lx [start \| stop \| status \| console \| ssh]`                        | Orquestrador Linux: Container Incus LXC (Linux Host) ou VM Bhyve Debian (FreeBSD Host).                                                             | Linux, FreeBSD             |
+| `openbsd` / `ob [start \| stop \| status \| console \| ssh]`                      | Orquestrador OpenBSD: VM OpenBSD no KVM (Linux Host) ou Bhyve (FreeBSD Host).                                                                       | Linux, FreeBSD             |
+| `netbsd` / `nb [start \| stop \| status \| console \| ssh]`                       | Orquestrador NetBSD: VM NetBSD no KVM (Linux Host) ou Bhyve (FreeBSD Host).                                                                         | Linux, FreeBSD             |
 
 > 📖 **Consulte o catálogo completo de atalhos e variáveis em [docs/ALIASES.md](docs/ALIASES.md).**
 
@@ -220,7 +231,7 @@ Para aprofundar na arquitetura, comportamentos por contexto e motores de detecç
 - 🏛️ **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Ciclo de vida da sessão interativa, cascata de sourcing e orçamento de latência (&lt; 64ms).
 - 🎯 **[docs/CONTEXTS.md](docs/CONTEXTS.md)**: Especificação dos perfis `desktop`, `server` e `container` (com auto-detecção WSL).
 - 🧠 **[docs/DETECTION.md](docs/DETECTION.md)**: Reconhecimento de SOs, famílias de distros Linux, dark mode (D-Bus/XDG Portal) e integração GTK/Qt/Electron.
-- 🖌️ **[docs/THEMES.md](docs/THEMES.md)**: Contratos visuais dos prompts (Zsh, Bash, Sh), paleta ANSI e fallback para TTYs puros.
+- 🖌️ **[docs/THEMES.md](docs/THEMES.md)**: Contratos visuais dos prompts (Zsh, Bash, Sh, Ksh, Fish), paleta ANSI e fallback para TTYs puros.
 - 🗺️ **[docs/ALIASES.md](docs/ALIASES.md)**: Dicionário exaustivo de comandos públicos, atalhos e variáveis de ambiente.
 
 ---
@@ -229,37 +240,34 @@ Para aprofundar na arquitetura, comportamentos por contexto e motores de detecç
 
 ```mermaid
 flowchart TD
-    RC["🐚 Arquivo RC (~/.zshrc / ~/.bashrc / ~/.shrc / ~/.kshrc)"] --> LIB["📚 1. library/*.sh"]
-    LIB --> CORE["⚙️ 2. core/*.sh"]
-    CORE --> TGT["🎨 3. target/{OS}/{SHELL}/prompt.sh"]
-
-    subgraph PROMPT_FLOW ["⚡ Orquestração por Sessão"]
-        TGT --> THM["🖌️ theme/{SHELL}.sh"]
-        TGT --> ENV["⚙️ target/{OS}/environment.sh"]
-        TGT --> CTX_COM["🧩 context/{CONTEXT}/common.sh"]
-        TGT --> CTX_OS["🎯 context/{CONTEXT}/{OS}.sh"]
-    end
+    RC["🐚 Arquivo RC / Entrypoint (~/.zshrc, ~/.bashrc, ~/.shrc, ~/.kshrc, config.fish)"] --> LIB["📚 1. library/*.sh (desktop-* lazy apenas em desktop)"]
+    LIB --> TENV["⚙️ 2. target/{OS}/environment.sh (--userland)"]
+    TENV --> CORE["⚙️ 3. core/*.sh (PYTHONPYCACHEPREFIX & vault)"]
+    CORE --> CTX["🎯 4. context/{CONTEXT}/{common,OS}.sh"]
+    CTX --> TGT["🎨 5. target/{OS}/{SHELL}/prompt.sh"]
+    TGT --> THM["🖌️ 6. theme/{SHELL}.sh"]
 ```
 
-- 🐚 **`shell.sh`**: Interface unificada de componente e entrypoint de runtime (CLI & source reentrante).
-- 📚 **[library/](library/README.md)**: Biblioteca padrão com utilitários POSIX (`functions.sh`), sistema de emissão semântica (`ui.sh`) e módulos analíticos (`detect.sh`).
-- ⚙️ **[core/](core/README.md)**: Fundações do ambiente (`environment.sh`) e integração com segredos (`vault.sh`).
+- 🐚 **`shell.sh` / `init.sh`**: Interface unificada de componente e entrypoint executável (`0755`) com carregamento _lazy_ de `library/desktop-*.sh` restrito a `SHELL_CONTEXT=desktop`.
+- 🔧 **`.scripts/`**: Wrappers executáveis (`0755`) como `.scripts/emacs-client` (com probe de saúde `timeout 2` e recuperação automática de socket/daemon).
+- 📚 **[library/](library/README.md)**: Biblioteca padrão (`0644`) com utilitários POSIX (`functions.sh`), emissão semântica (`ui.sh`), detectores (`detect.sh`, `detect-desktop.sh`), hipervisores (`hypervisor.sh`) e módulos gráficos sob demanda (`desktop-*.sh`).
+- ⚙️ **[core/](core/README.md)**: Fundações do ambiente (`environment.sh` com `PYTHONPYCACHEPREFIX` universal em `${XDG_CACHE_HOME:-${HOME}/.cache}/pycache` e `--userland`) e integração com segredos (`vault.sh`).
 - 🎯 **[context/](context/README.md)**: Orquestrador de perfis operacionais (`desktop`, `server`, `container`).
-- 🖌️ **[theme/](theme/README.md)**: Motores de renderização de prompts (Zsh, Bash, Sh, Ksh).
-- 🎨 **`target/`**: Configurações específicas por sistema operacional (`Linux`, `FreeBSD`, `OpenBSD`, `NetBSD`, `illumos`, `macOS`, `Windows`).
+- 🖌️ **[theme/](theme/README.md)**: Motores de renderização de prompts (`zsh.sh`, `bash.sh`, `sh.sh`, `ksh.sh`) e paleta `common/`.
+- 🎨 **[target/](target/README.md)**: Configurações por sistema operacional (`linux`, `freebsd`, `openbsd`, `netbsd`, `illumos`, `macos`, `windows`) e runtimes comuns em [target/common/](target/common/README.md) (incluindo `fish/` e perfis nativos Windows `powershell`, `nushell`, `cmd`).
 
 ---
 
 ## 🚀 Setup do Projeto & Ganchos Git
 
-Para configurar o ambiente de desenvolvimento local, ativar os quality gates automáticos e validar a integridade do repositório:
+Para configurar o ambiente de desenvolvimento local, ativar os quality gates automáticos e validar a integridade do repositório (`make hooks`, `make test`, `make bench`, `make format` / `make prettier`, `make ci`):
 
 ```sh
-make hooks   # Configura .githooks e permissões canônicas
-make test    # Valida sintaxe de todos os scripts (POSIX, Bash, Zsh)
-make audit   # Executa auditoria estática e conformidade arquitetural
-make bench   # Mede latência de inicialização dos prompts (< 64ms)
-make ci      # Bateria completa de validação local
+make hooks
+make test
+make format
+make bench
+make ci
 ```
 
 > 🤝 **Instruções Detalhadas:** Consulte o [CONTRIBUTING.md](CONTRIBUTING.md) para convenções de commits, orçamentos de latência, regras de compatibilidade multi-shell e diretrizes de desenvolvimento.

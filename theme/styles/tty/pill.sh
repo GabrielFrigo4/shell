@@ -8,7 +8,7 @@ _theme_layout() {
 	_trim_string "${_host}" 12 "~"
 	_host="${_trimmed}"
 
-	_git_frame_string=""
+	local _git_frame_string=""
 	local _indicator=""
 	if [ -n "${_branch}" ]; then
 		[ -n "${_is_dirty}" ] && _indicator="${_theme_color_yellow}*"

@@ -9,46 +9,63 @@ _repo_root="$(git rev-parse --show-toplevel 2> "/dev/null" || pwd)"
 cd "${_repo_root}"
 _repo_name="$(basename "${_repo_root}")"
 
+_is_entrypoint_file() {
+	_candidate_path="${1}"
+	case "${_candidate_path}" in
+		.githooks/*)
+			[ -f "${_candidate_path}" ] && return 0
+			return 1
+			;;
+		shell.sh|init.sh|install.sh|benchmark.sh)
+			return 0
+			;;
+		.scripts/*)
+			if [ -f "${_candidate_path}" ]; then
+				read -r _head_line < "${_candidate_path}" 2> "/dev/null" || _head_line=""
+				case "${_head_line}" in
+					"#!"*) return 0 ;;
+				esac
+			fi
+			return 1
+			;;
+		core/*|library/*|context/*|target/*|theme/*|docs/*|.github/*|.agents/*)
+			return 1
+			;;
+		*)
+			if [ -f "${_candidate_path}" ]; then
+				read -r _head_line < "${_candidate_path}" 2> "/dev/null" || _head_line=""
+				case "${_head_line}" in
+					"#!"*) return 0 ;;
+				esac
+			fi
+			return 1
+			;;
+	esac
+}
+
 ### --------------------------------
 ### AUTO-CURA DE MODOS OCTAIS
 ### --------------------------------
-_staged_d=$(git diff --cached --name-only --diff-filter=d 2> "/dev/null" || true)
-if [ -n "${_staged_d}" ]; then
-	for _f in ${_staged_d}; do
-		[ ! -f "${_f}" ] && continue
-		if [ "${_repo_name}" = "Vault" ]; then
-			case "${_f}" in
-				*.sh|.githooks/*|*.ps1|*.cmd|*.nu|*.fish)
-					chmod 0700 "${_f}" 2> "/dev/null" || true
-					git update-index --chmod=+x "${_f}" 2> "/dev/null" || true
-					;;
-				*)
-					chmod 0600 "${_f}" 2> "/dev/null" || true
-					git update-index --chmod=-x "${_f}" 2> "/dev/null" || true
-					;;
-			esac
-		else
-			_is_exec=0
-			case "${_f}" in
-				*.sh|.githooks/*|*.ps1|*.cmd|*.nu|*.fish) _is_exec=1 ;;
-			esac
-			if [ "${_is_exec}" -eq 0 ]; then
-				read -r _first_line < "${_f}" 2> "/dev/null" || _first_line=""
-				case "${_first_line}" in
-					"#!"*) _is_exec=1 ;;
-				esac
-			fi
-
-			if [ "${_is_exec}" -eq 1 ]; then
-				chmod 0755 "${_f}" 2> "/dev/null" || true
-				git update-index --chmod=+x "${_f}" 2> "/dev/null" || true
+_staged_files_existing=$(git diff --cached --name-only --diff-filter=d 2> "/dev/null" || true)
+if [ -n "${_staged_files_existing}" ]; then
+	printf '%s\n' "${_staged_files_existing}" | while IFS= read -r _staged_file; do
+		[ -z "${_staged_file}" ] && continue
+		[ ! -f "${_staged_file}" ] && continue
+		if [ "${_repo_name}" = "Vault" ] || [ "${_repo_name}" = "vault" ]; then
+			if _is_entrypoint_file "${_staged_file}"; then
+				chmod 0700 "${_staged_file}" 2> "/dev/null" || true
+				git update-index --chmod=+x "${_staged_file}" 2> "/dev/null" || true
 			else
-				case "${_f}" in
-					*.md|*.txt|*.json|*.yml|*.yaml|*.toml|*.ini|*.css|*.el|*.lua|*.vim|*.conf|*.c|*.h|*.cpp|*.hpp|*.rs|*.go|*.py|*.ts|*.js|*.svelte|*.html|*.svg|.gitignore|.gitmodules|.gitattributes|Makefile|LICENSE)
-						chmod 0644 "${_f}" 2> "/dev/null" || true
-						git update-index --chmod=-x "${_f}" 2> "/dev/null" || true
-						;;
-				esac
+				chmod 0600 "${_staged_file}" 2> "/dev/null" || true
+				git update-index --chmod=-x "${_staged_file}" 2> "/dev/null" || true
+			fi
+		else
+			if _is_entrypoint_file "${_staged_file}"; then
+				chmod 0755 "${_staged_file}" 2> "/dev/null" || true
+				git update-index --chmod=+x "${_staged_file}" 2> "/dev/null" || true
+			else
+				chmod 0644 "${_staged_file}" 2> "/dev/null" || true
+				git update-index --chmod=-x "${_staged_file}" 2> "/dev/null" || true
 			fi
 		fi
 	done
@@ -60,22 +77,47 @@ fi
 _staged_acm=$(git diff --cached --name-only --diff-filter=ACM 2> "/dev/null" || true)
 if [ -n "${_staged_acm}" ]; then
 	if command -v python3 > "/dev/null" 2>&1; then
-		python3 -c '
-import sys, os
+		printf '%s\n' "${_staged_acm}" | python3 -c '
+import sys, os, subprocess
 
+crlf_exts = {".bat", ".cmd", ".ps1", ".reg", ".sln", ".vcxproj"}
 text_exts = {
-    ".sh", ".py", ".md", ".txt", ".json", ".yml", ".yaml", ".toml", ".ini",
-    ".css", ".el", ".lua", ".vim", ".conf", ".c", ".h", ".cpp", ".hpp",
-    ".rs", ".go", ".ts", ".js", ".svelte", ".html", ".svg", ".tex", ".env"
+    ".sh", ".bash", ".zsh", ".ksh", ".fish", ".nu", ".py", ".md", ".txt",
+    ".json", ".yml", ".yaml", ".toml", ".ini", ".css", ".el", ".lua", ".vim",
+    ".conf", ".c", ".h", ".cpp", ".hpp", ".rs", ".go", ".ts", ".js", ".svelte",
+    ".html", ".svg", ".tex", ".env", ".desktop", ".profile", ".terminfo", ".pub"
 }
-special_names = {".gitignore", ".gitmodules", ".gitattributes", "Makefile", "LICENSE"}
+special_names = {
+    ".gitignore", ".gitmodules", ".gitattributes", ".editorconfig", ".prettierrc",
+    ".clang-format", ".stylua.toml", "Makefile", "LICENSE", "editrc", "Xresources", "authinfo"
+}
 
-for arg in sys.argv[1:]:
-    if not os.path.isfile(arg):
-        continue
+paths = [line.strip() for line in sys.stdin if line.strip() and os.path.isfile(line.strip())]
+if not paths:
+    sys.exit(0)
+
+eol_map = {}
+proc = subprocess.Popen(
+    ["git", "check-attr", "--stdin", "eol"],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+)
+out, _ = proc.communicate(("\n".join(paths) + "\n").encode("utf-8"))
+for row in out.decode("utf-8", "replace").splitlines():
+    if ": eol: " in row:
+        fpath, val = row.rsplit(": eol: ", 1)
+        eol_map[fpath] = val
+
+for arg in paths:
     _, ext = os.path.splitext(arg)
     basename = os.path.basename(arg)
-    if ext.lower() not in text_exts and basename not in special_names and not arg.startswith(".githooks/"):
+    is_text = (
+        ext.lower() in text_exts
+        or basename in special_names
+        or arg.startswith((".githooks/", ".scripts/", "tools/."))
+        or eol_map.get(arg) in ("lf", "crlf")
+    )
+    if not is_text:
         continue
     try:
         with open(arg, "rb") as fp:
@@ -83,46 +125,48 @@ for arg in sys.argv[1:]:
         text = raw.decode("utf-8")
     except Exception:
         continue
+    force_lf = (eol_map.get(arg) == "lf") or (ext.lower() not in crlf_exts and eol_map.get(arg) != "crlf")
     lines = text.splitlines(keepends=True)
     new_lines = []
     changed = False
     for line in lines:
         stripped = line.rstrip("\r\n").rstrip(" \t")
-        nl = "\r\n" if line.endswith("\r\n") else ("\n" if line.endswith("\n") else "")
+        if force_lf:
+            nl = "\n" if line.endswith(("\n", "\r")) else ""
+        else:
+            nl = "\r\n" if line.endswith("\r\n") else ("\n" if line.endswith("\n") else "")
         cleaned = stripped + nl
         if cleaned != line:
             changed = True
         new_lines.append(cleaned)
     if changed:
-        with open(arg, "w", encoding="utf-8") as fp:
+        with open(arg, "w", encoding="utf-8", newline="") as fp:
             fp.writelines(new_lines)
-' ${_staged_acm}
+'
 	fi
 
-	if command -v prettier > "/dev/null" 2>&1; then
-		_docs=$(echo "${_staged_acm}" | tr ' ' '\n' | grep -E '\.(md|json|yml|yaml)$' || true)
-		if [ -n "${_docs}" ]; then
-			prettier --write ${_docs} > "/dev/null" 2>&1 || true
-		fi
-	elif command -v npx > "/dev/null" 2>&1; then
-		_docs=$(echo "${_staged_acm}" | tr ' ' '\n' | grep -E '\.(md|json|yml|yaml)$' || true)
-		if [ -n "${_docs}" ]; then
-			npx prettier --write ${_docs} > "/dev/null" 2>&1 || true
+	_docs_to_format=$(printf '%s\n' "${_staged_acm}" | grep -E '\.(md|json|yml|yaml)$' || true)
+	if [ -n "${_docs_to_format}" ]; then
+		if command -v prettier > "/dev/null" 2>&1; then
+			printf '%s\n' "${_docs_to_format}" | xargs prettier --write > "/dev/null" 2>&1 || true
+		elif command -v npx > "/dev/null" 2>&1; then
+			printf '%s\n' "${_docs_to_format}" | xargs npx prettier --write > "/dev/null" 2>&1 || true
 		fi
 	fi
 
 	if [ -f ".scripts/audit/banners.py" ] && command -v python3 > "/dev/null" 2>&1; then
-		_sh_files=$(echo "${_staged_acm}" | tr ' ' '\n' | grep -E '\.sh$' || true)
+		_sh_files=$(printf '%s\n' "${_staged_acm}" | grep -E '\.sh$' || true)
 		if [ -n "${_sh_files}" ]; then
-			python3 .scripts/audit/banners.py --fix ${_sh_files} > "/dev/null" 2>&1 || true
+			printf '%s\n' "${_sh_files}" | xargs python3 .scripts/audit/banners.py --fix > "/dev/null" 2>&1 || true
 		fi
 	fi
 
-	for _f in ${_staged_acm}; do
-		if [ -f "${_f}" ]; then
-			_diff_status=$(git diff --name-only -- "${_f}" 2> "/dev/null" || true)
+	printf '%s\n' "${_staged_acm}" | while IFS= read -r _staged_file; do
+		[ -z "${_staged_file}" ] && continue
+		if [ -f "${_staged_file}" ]; then
+			_diff_status=$(git diff --name-only -- "${_staged_file}" 2> "/dev/null" || true)
 			if [ -n "${_diff_status}" ]; then
-				git add "${_f}" 2> "/dev/null" || true
+				git add -- "${_staged_file}" 2> "/dev/null" || true
 			fi
 		fi
 	done
@@ -137,58 +181,309 @@ if ! git diff --check --cached; then
 fi
 
 ### --------------------------------
+### VALIDACAO DE INDICE REGRA 4A
+### --------------------------------
+if command -v python3 > "/dev/null" 2>&1; then
+	python3 -c '
+import os, subprocess, sys
+
+repo_name = os.path.basename(os.getcwd())
+is_vault = repo_name.lower() == "vault"
+if is_vault:
+    sys.exit(0)
+
+out = subprocess.check_output(["git", "ls-files", "--stage"]).decode("utf-8", "replace")
+errors = []
+
+def is_entrypoint(path):
+    if path.startswith(".githooks/"):
+        return os.path.isfile(path)
+    if path in ("shell.sh", "init.sh", "install.sh", "benchmark.sh"):
+        return True
+    if path.startswith(".scripts/") and os.path.isfile(path):
+        with open(path, "rb") as fp:
+            return fp.read(2) == b"#!"
+    return False
+
+for row in out.splitlines():
+    if "\t" not in row:
+        continue
+    meta, path = row.split("\t", 1)
+    mode = meta.split()[0]
+    if mode == "120000":
+        continue
+    expected = "100755" if is_entrypoint(path) else "100644"
+    if mode != expected:
+        errors.append(f"{path}: mode {mode}, expected {expected}")
+
+if errors:
+    sys.stderr.write("❌ [pre-commit] Regra 4a index permissions mismatch:\n")
+    for err in errors[:30]:
+        sys.stderr.write(f"   - {err}\n")
+    sys.exit(1)
+'
+fi
+
+### --------------------------------
+### VALIDACAO DE EOL LF
+### --------------------------------
+if command -v python3 > "/dev/null" 2>&1; then
+	python3 -c '
+import os, subprocess, sys
+
+files = subprocess.check_output(["git", "ls-files"]).decode("utf-8", "replace").splitlines()
+if not files:
+    sys.exit(0)
+
+proc = subprocess.Popen(
+    ["git", "check-attr", "--stdin", "eol"],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+)
+out, _ = proc.communicate(("\n".join(files) + "\n").encode("utf-8"))
+lf_files = []
+for row in out.decode("utf-8", "replace").splitlines():
+    if row.endswith(": eol: lf"):
+        lf_files.append(row[:-len(": eol: lf")])
+
+crlf_errors = []
+for path in lf_files:
+    if not os.path.isfile(path):
+        continue
+    try:
+        with open(path, "r", encoding="utf-8", newline="\n") as fp:
+            content = fp.read()
+        if "\r\n" in content:
+            crlf_errors.append(path)
+    except UnicodeDecodeError:
+        with open(path, "rb") as fp:
+            if b"\r\n" in fp.read():
+                crlf_errors.append(path)
+
+if crlf_errors:
+    sys.stderr.write("❌ [pre-commit] CRLF line endings detected in eol=lf files:\n")
+    for err in crlf_errors[:30]:
+        sys.stderr.write(f"   - {err}\n")
+    sys.exit(1)
+'
+fi
+
+### --------------------------------
 ### CHECAGEM DE SHEBANG PORTAVEL
 ### --------------------------------
-if [ -n "${_staged_acm}" ]; then
-	for _f in ${_staged_acm}; do
-		[ ! -f "${_f}" ] && continue
-		read -r _first_line < "${_f}" 2> "/dev/null" || _first_line=""
-		case "${_first_line}" in
-			"#!"*)
-				case "${_first_line}" in
-					"#!/usr/bin/env"*) ;;
-					*)
-						echo "❌ [pre-commit] Shebang não-portável em ${_f}: '${_first_line}' (esperado: '#!/usr/bin/env ...')" >&2
-						exit 1
-						;;
-				esac
-				;;
-		esac
-	done
-fi
+_shebang_targets="$(printf '%s\n%s\n' "${_staged_acm}" ".githooks/pre-commit .githooks/commit-msg shell.sh init.sh install.sh benchmark.sh" | tr ' ' '\n')"
+for _script_file in .scripts/*; do
+	[ -f "${_script_file}" ] && _shebang_targets="${_shebang_targets}
+${_script_file}"
+done
+printf '%s\n' "${_shebang_targets}" | while IFS= read -r _target_file; do
+	[ -z "${_target_file}" ] && continue
+	[ ! -f "${_target_file}" ] && continue
+	read -r _first_line < "${_target_file}" 2> "/dev/null" || _first_line=""
+	case "${_first_line}" in
+		"#!"*)
+			case "${_target_file}" in
+				core/*|library/*|context/*|target/*|theme/*)
+					echo "❌ [pre-commit] Shebang proibido em biblioteca sourced ${_target_file}" >&2
+					exit 1
+					;;
+			esac
+			case "${_first_line}" in
+				"#!/usr/bin/env"*) ;;
+				*)
+					echo "❌ [pre-commit] Shebang nao-portavel em ${_target_file}: '${_first_line}'" >&2
+					exit 1
+					;;
+			esac
+			;;
+	esac
+done
 
 ### --------------------------------
 ### PROIBICAO DE ESCAPES OCTAIS
 ### --------------------------------
-_bad_octal=$(git diff --cached -S'\033' --name-only 2> "/dev/null" | grep -E '(\.sh$|Makefile$|\.py$)' || true)
-if [ -n "${_bad_octal}" ]; then
-	_actual_bad=""
-	for _f in ${_bad_octal}; do
-		if git show ":${_f}" 2> "/dev/null" | grep -F -q '\033'; then
-			_actual_bad="${_actual_bad} ${_f}"
-		fi
-	done
-	if [ -n "${_actual_bad}" ]; then
-		printf '%s\n' "❌ [pre-commit] Escape octal (\\033) detectado em:${_actual_bad}. Use \$'\\e' ou \\x1b." >&2
-		exit 1
-	fi
+if command -v python3 > "/dev/null" 2>&1; then
+	python3 -c '
+import os, subprocess, sys
+
+needle = chr(92) + "033"
+files = subprocess.check_output(["git", "ls-files"]).decode("utf-8", "replace").splitlines()
+bad_files = []
+for path in files:
+    if not (path.endswith((".sh", ".py", ".fish", ".nu", ".lua")) or path == "Makefile" or path.startswith((".githooks/", ".scripts/", ".github/", ".agents/"))):
+        continue
+    if not os.path.isfile(path):
+        continue
+    with open(path, "r", encoding="utf-8", newline="\n", errors="replace") as fp:
+        if needle in fp.read():
+            bad_files.append(path)
+
+if bad_files:
+    sys.stderr.write("❌ [pre-commit] Escape octal detectado em: " + ", ".join(bad_files) + "\n")
+    sys.exit(1)
+'
 fi
 
 ### --------------------------------
 ### QUOTED REDIRECTS CHECK
 ### --------------------------------
-_unquoted_null=$(git diff --cached -S "> /dev/null" --name-only 2> "/dev/null" | grep -E '\.sh$' || true)
-if [ -n "${_unquoted_null}" ]; then
-	echo "❌ [pre-commit] Unquoted redirect '> /dev/null' detected in: ${_unquoted_null}" >&2
-	echo "   Use '> \"/dev/null\"' with quotes as required by PRINCIPLES.md." >&2
-	exit 1
+if command -v python3 > "/dev/null" 2>&1; then
+	python3 -c '
+import os, re, subprocess, sys
+
+pattern = re.compile(r">\s*/dev/null")
+files = subprocess.check_output(["git", "ls-files"]).decode("utf-8", "replace").splitlines()
+bad_hits = []
+for path in files:
+    if not (path.endswith(".sh") or path.startswith((".githooks/", ".scripts/"))):
+        continue
+    if not os.path.isfile(path):
+        continue
+    with open(path, "r", encoding="utf-8", newline="\n", errors="replace") as fp:
+        for line_no, line in enumerate(fp, 1):
+            if pattern.search(line):
+                bad_hits.append(f"{path}:{line_no}")
+
+if bad_hits:
+    sys.stderr.write("❌ [pre-commit] Redirecionamento /dev/null sem aspas em: " + ", ".join(bad_hits) + "\n")
+    sys.exit(1)
+'
+fi
+
+### --------------------------------
+### TAXONOMIA & DECISAO 7A
+### --------------------------------
+if command -v python3 > "/dev/null" 2>&1; then
+	printf '%s\n' "${_staged_acm}" | python3 -c '
+import os, re, subprocess, sys
+
+staged = {line.strip() for line in sys.stdin if line.strip()}
+tracked = subprocess.check_output(["git", "ls-files"]).decode("utf-8", "replace").splitlines()
+
+header_targets = set(staged)
+for path in tracked:
+    if path.startswith((".githooks/", ".github/")):
+        header_targets.add(path)
+
+header_errors = []
+for path in sorted(header_targets):
+    if not os.path.isfile(path):
+        continue
+    if not (path.endswith((".sh", ".fish", ".nu", ".ps1", ".cmd", ".lua", ".yml", ".yaml")) or path.startswith((".githooks/", ".scripts/"))):
+        continue
+    with open(path, "r", encoding="utf-8", newline="\n", errors="replace") as fp:
+        lines = fp.read().splitlines()
+    for idx, line in enumerate(lines):
+        stripped = line.lstrip()
+        if stripped in ("### --------------------------------", "### ================================"):
+            if idx + 1 < len(lines) and lines[idx + 1].lstrip().startswith("### "):
+                title = lines[idx + 1].lstrip()[4:]
+                if len(title) > 32 or title != title.upper() or "(" in title or ")" in title:
+                    header_errors.append(f"{path}:{idx + 2}: {title!r}")
+
+user_prefix = "gab" + "riel"
+ip_a = "144." + "22.210.65"
+ip_b = "137." + "131.238.161"
+ip_net = r"192\.168\.8\.\d+"
+id_rx = re.compile(rf"({user_prefix}f|(?<!github\.com/){user_prefix}|\b{re.escape(ip_a)}\b|\b{re.escape(ip_b)}\b|\b{ip_net})", re.IGNORECASE)
+bin_emacs_rx = re.compile(r"(?<!\.local/)bin/" + "emacs-client")
+legacy_bsd_rx = re.compile("dragon" + "fly", re.IGNORECASE)
+
+decisao_errors = []
+scan_paths = set(staged)
+for path in tracked:
+    if path.endswith((".sh", ".fish", ".nu", ".ps1", ".cmd", ".reg", ".lua", ".py", ".yml", ".yaml")) or path.startswith((".githooks/", ".scripts/", ".github/", ".agents/")) or path == "Makefile":
+        scan_paths.add(path)
+
+for path in sorted(scan_paths):
+    if not os.path.isfile(path):
+        continue
+    with open(path, "r", encoding="utf-8", newline="\n", errors="replace") as fp:
+        for line_no, line in enumerate(fp, 1):
+            scrubbed = re.sub(r"github\.com/" + user_prefix + "frigo4", "", line, flags=re.IGNORECASE)
+            if id_rx.search(scrubbed):
+                decisao_errors.append(f"{path}:{line_no}: hardcoded identity/IP")
+            if bin_emacs_rx.search(line):
+                decisao_errors.append(f"{path}:{line_no}: legacy wrapper path")
+            if legacy_bsd_rx.search(line):
+                decisao_errors.append(f"{path}:{line_no}: legacy BSD reference")
+
+if header_errors or decisao_errors:
+    if header_errors:
+        sys.stderr.write("❌ [pre-commit] Cabecalhos fora da taxonomia (MAIUSCULO, <=32 cols, sem parenteses):\n")
+        for err in header_errors[:20]:
+            sys.stderr.write(f"   - {err}\n")
+    if decisao_errors:
+        sys.stderr.write("❌ [pre-commit] Violacao Decisao 7a:\n")
+        for err in decisao_errors[:20]:
+            sys.stderr.write(f"   - {err}\n")
+    sys.exit(1)
+'
 fi
 
 ### --------------------------------
 ### SHELL SYNTAX CHECK
 ### --------------------------------
-_sh_bin="$(command -v bash 2> "/dev/null" || command -v zsh 2> "/dev/null" || echo sh)"
-find . -name "*.sh" -not -path "./.git/*" -not -path "*/node_modules/*" -not -path "*/.venv/*" -not -path "*/OSS/*" -exec "${_sh_bin}" -n {} +
+_resolve_working_shell() {
+	_shell_name="${1}"
+	if command -v "${_shell_name}" > "/dev/null" 2>&1; then
+		_candidate="$(command -v "${_shell_name}")"
+		if "${_candidate}" -n -c ':' > "/dev/null" 2>&1; then
+			printf '%s\n' "${_candidate}"
+			return 0
+		fi
+	fi
+	if [ -x "/usr/bin/${_shell_name}" ] && "/usr/bin/${_shell_name}" -n -c ':' > "/dev/null" 2>&1; then
+		printf '%s\n' "/usr/bin/${_shell_name}"
+		return 0
+	fi
+	return 1
+}
+
+_zsh_bin="$(_resolve_working_shell zsh || true)"
+if [ -n "${_zsh_bin}" ]; then
+	find . -name "*.sh" -not -path "./.git/*" -not -path "*/node_modules/*" -not -path "*/.venv/*" -not -path "*/OSS/*" -not -path "*/bash/*" -not -name "bash.sh" -not -path "*/ksh/*" -not -name "ksh.sh" -exec "${_zsh_bin}" -n {} +
+fi
+
+_bash_bin="$(_resolve_working_shell bash || true)"
+if [ -n "${_bash_bin}" ]; then
+	find . -name "*.sh" -not -path "./.git/*" -not -path "*/node_modules/*" -not -path "*/.venv/*" -not -path "*/OSS/*" -not -path "*/zsh/*" -not -name "zsh.sh" -not -path "*/ksh/*" -not -name "ksh.sh" -exec "${_bash_bin}" -n {} +
+fi
+
+for _posix_entry in shell.sh init.sh install.sh benchmark.sh .githooks/pre-commit .githooks/commit-msg; do
+	[ -f "${_posix_entry}" ] && sh -n "${_posix_entry}"
+done
+for _script_file in .scripts/*; do
+	if [ -f "${_script_file}" ]; then
+		read -r _first_line < "${_script_file}" 2> "/dev/null" || _first_line=""
+		case "${_first_line}" in
+			"#!/"*sh) sh -n "${_script_file}" ;;
+		esac
+	fi
+done
+
+if sh -c 'f-f() { :; }' 2> "/dev/null"; then
+	for _posix_dir in core library context target/common/sh target/freebsd/sh theme/common theme/styles; do
+		if [ -d "${_posix_dir}" ]; then
+			find "${_posix_dir}" -name "*.sh" -exec sh -n {} +
+		fi
+	done
+	for _posix_file in target/freebsd/environment.sh target/freebsd/bhyve.sh target/freebsd/compat.sh theme/sh.sh; do
+		[ -f "${_posix_file}" ] && sh -n "${_posix_file}"
+	done
+fi
+
+if command -v ksh > "/dev/null" 2>&1; then
+	find core library target/openbsd/ksh target/common/ksh theme/ksh.sh -name "*.sh" -exec ksh -n {} +
+elif command -v oksh > "/dev/null" 2>&1; then
+	find core library target/openbsd/ksh target/common/ksh theme/ksh.sh -name "*.sh" -exec oksh -n {} +
+fi
+
+if command -v fish > "/dev/null" 2>&1; then
+	for _fish_file in target/common/fish/*.fish; do
+		[ -f "${_fish_file}" ] && fish -n "${_fish_file}"
+	done
+fi
 
 ### --------------------------------
 ### TEMPORARY FILES CHECK

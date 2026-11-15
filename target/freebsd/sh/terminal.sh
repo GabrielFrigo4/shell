@@ -19,20 +19,11 @@ if [ -z "${USER:-}" ] || [ "${USER}" != "$(command id -un 2> "/dev/null")" ]; th
 	export USER="$(command id -un 2> "/dev/null")"
 fi
 
-if (bind -e) > "/dev/null" 2>&1; then
-	bind "\e[1;5C" em-next-word 2> "/dev/null" || true
-	bind "\e[1;5D" ed-prev-word 2> "/dev/null" || true
-	bind "\e[5C" em-next-word 2> "/dev/null" || true
-	bind "\e[5D" ed-prev-word 2> "/dev/null" || true
-	bind "\eOc" em-next-word 2> "/dev/null" || true
-	bind "\eOd" ed-prev-word 2> "/dev/null" || true
-fi
-
 if [ -z "${SHELL_INIT:-}" ]; then
 	if [ -z "${SHELL_TARGET:-}" ]; then
-		if _is_raw_tty; then
+		if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 			SHELL_TARGET="$(command -v sh 2> "/dev/null")"
-		else
+		elif command -v _detect_enabled_shell > "/dev/null" 2>&1; then
 			SHELL_TARGET="$(_detect_enabled_shell)"
 		fi
 		[ -x "${SHELL_TARGET}" ] || SHELL_TARGET="$(command -v sh 2> "/dev/null")"
@@ -47,4 +38,19 @@ if [ -z "${SHELL_INIT:-}" ]; then
 	else
 		unset SHELL_TARGET
 	fi
+fi
+
+if [ -t 0 ] && [ -t 1 ]; then
+	case "$-" in
+		*i*)
+			if command -v bind > "/dev/null" 2>&1 && (bind -e) > "/dev/null" 2>&1; then
+				bind "\e[1;5C" em-next-word 2> "/dev/null" || true
+				bind "\e[1;5D" ed-prev-word 2> "/dev/null" || true
+				bind "\e[5C" em-next-word 2> "/dev/null" || true
+				bind "\e[5D" ed-prev-word 2> "/dev/null" || true
+				bind "\eOc" em-next-word 2> "/dev/null" || true
+				bind "\eOd" ed-prev-word 2> "/dev/null" || true
+			fi
+			;;
+	esac
 fi

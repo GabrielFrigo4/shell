@@ -1,74 +1,92 @@
 # 🖌️ Design do Prompt & Sistema Visual (`theme/`)
 
-O subsistema de temas do **Universal Shell Environment** entrega um prompt informativo, compacto e de carregamento instantâneo, unificando a identidade visual entre Zsh, Bash, POSIX Sh e KornShell (ksh).
+O subsistema de temas do **Universal Shell Environment** entrega um prompt informativo, compacto e de carregamento instantâneo, unificando a identidade visual entre Zsh, Bash, POSIX Sh, KornShell (`ksh`) e Fish (`target/common/fish/prompt.fish`).
 
 ---
 
 ## 🎨 Estrutura Visual do Prompt
 
-O prompt é desenhado em linha única ou duas linhas dependendo do shell, otimizado para não roubar espaço horizontal útil da tela:
+O prompt é desenhado em uma ou três linhas dependendo do shell e de `$PROMPT_STYLE`, otimizado para preservar o espaço horizontal útil da tela:
 
 ```text
-user@hostname:~/projects/myapp (main ✗) $
+user@hostname:~/projects/myapp (main*) $
 ```
 
 ### Componentes Visuais:
 
 1. **Identificador de Usuário e Host:**
-    - Usuário comum: Exibido em tom suave (verde nos temas gráficos / ciano no TTY).
-    - Usuário `root`: Destacado em vermelho no console puro TTY (`root@host #`) e no tema multilinha PTY `multi` (` root`), servindo como alerta evidente de privilégios; nos temas compactos PTY de 1 linha (`pill` e `micro`), o nome preserva o tom verde harmônico da pílula enquanto o chevron final (``) assume o tom vermelho de alerta.
+    - Usuário comum: Exibido em verde brilhante nos temas PTY gráficos (e ciano nos temas TTY).
+    - Usuário `root`:
+        - No console puro TTY: `root@host` (`_user_color`) e `#` (`_prompt_symbol_color`) destacados em vermelho.
+        - Nos temas PTY (`pill`, `micro`, `multi`): ícone ` ` (`_user_icon_color`) e chevron `` (`_terminal_color`) destacados em vermelho de alerta, enquanto o nome `root` (`_user_color`) assume tom magenta (`_theme_color_magenta`).
 2. **Diretório Atual (`PWD`):**
     - Diretórios abreviados com base no `$HOME` (`~`).
     - Cores de contraste para rápida localização do caminho.
 3. **Status de Controle de Versão (Git / Got):**
-    - **Nome da Branch:** Exibido entre parênteses quando o diretório for um repositório versionado.
-    - **Símbolo de Estado Limpo (`✓`):** Verde quando não há arquivos modificados ou untracked.
-    - **Símbolo de Estado Modificado (`✗` / `*`):** Amarelo/Vermelho quando há alterações pendentes.
-4. **Símbolo de Prompt Terminal:**
-    - `$` para usuários comuns.
-    - `#` para sessões com privilégios de `root`.
+    - **Zero Forks em Git/Got (`theme/common/git.sh`):** Lê diretamente `.git/HEAD` e `.got/head-ref` em memória com POSIX `read` (fallback para `got info` apenas quando `.got/head-ref` não resolver), mantendo o boot instantâneo mesmo em repositórios grandes.
+    - **Símbolo de Estado Limpo / Modificado (`*`):** O sufixo `*` em amarelo indica alterações não comitadas no worktree (`git` / `got`).
+4. **Símbolo de Prompt Terminal & Proteção de Cursor:**
+    - `$` para usuários comuns e `#` para `root` no TTY; chevron `` no PTY.
+    - Em emuladores PTY, o prompt reemite `\e[1 q` (`printf '\x1b[1 q' >&2` no `ksh`); em console bruto Linux VT (`_is_raw_tty`), reemite `\e%G\e[?16;238;0c`.
+
+### Paleta `PROMPT_OS_COLOR` & Padrões por SO
+
+A variável `PROMPT_OS_COLOR` aceita exatamente **7 cores ANSI** (`red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`; padrão: `blue`), configuradas automaticamente pelos arquivos `target/<os>/<shell>/prompt.sh` e `target/common/fish/prompt.fish`:
+
+| Sistema Operacional     | `PROMPT_OS_COLOR` Padrão | Ícone Padrão                            |
+| :---------------------- | :----------------------- | :-------------------------------------- |
+| **Windows (MSYS2/Win)** | `blue`                   | ` `                                    |
+| **macOS**               | `cyan`                   | ` `                                    |
+| **Linux**               | `blue`                   | `_detect_distro_icon` (ex.: ` `, ` `) |
+| **FreeBSD**             | `red`                    | ` `                                    |
+| **OpenBSD**             | `yellow`                 | ` `                                    |
+| **NetBSD**              | `yellow`                 | ` `                                    |
+| **illumos**             | `yellow`                 | `󰖨 `                                    |
 
 ---
 
-## ⚡ Implementação por Shell
+## ⚡ Implementação por Shell & Segurança contra Injeção em `PS1`
 
 ### 1. Zsh (`theme/zsh.sh`)
 
 - Arquitetura modular com suporte a `$PROMPT_STYLE` (`multi`, `pill`, `micro`).
+- **Prevenção contra Injeção em `PS1` (`_theme_ps1_*` & Escape `%`):** Em vez de interpolar valores dinâmicos diretamente em `PS1` reavaliado por `PROMPT_SUBST` ou usar `psvar` (cujo `nicechar()` do Zsh escapa glifos Nerd Font como `\ue62a`), `theme/zsh.sh` escapa `%` ➔ `%%` e vincula `_pwd`, `_branch`, `_user`, `_host`, `_os_name`, `_os_icon` e `_kernel_release` via variáveis globais `_theme_ps1_*` expandidas em um único nível (`[[ -o promptsubst ]]`), neutralizando `$(...)`/`%F{...}` sem corromper ícones PUA.
 - No PTY:
-    - **`multi` (padrão):** Prompt informativo de 3 linhas com relógio, calendário, pasta, usuário e branch Git.
-    - **`pill`:** Prompt de 1 linha com cápsula gráfica (`...`), pasta, usuário e Git.
+    - **`multi` (padrão):** Prompt informativo de 3 linhas com relógio, calendário, pasta, usuário e branch Git/Got.
+    - **`pill`:** Prompt de 1 linha com cápsula gráfica (`...`), pasta, usuário e Git/Got.
     - **`micro`:** Prompt minimalista de 1 linha _streamlined_ sem cápsula.
 - No TTY: Comutação automática para `pill` ou `micro` em ASCII puro.
-- Renderização de cores através do sistema de expansão nativo `%F{color}...%f` e escapes isolados em `%{...%}`.
+- Renderização de cores através de `%F{color}...%f` e escapes isolados em `%{...%}`, vinculados ao ciclo `add-zsh-hook precmd _update_prompt`.
 
 ### 2. Bash (`theme/bash.sh`)
 
 - Arquitetura modular com suporte a `$PROMPT_STYLE` (`multi`, `pill`, `micro`).
-- No PTY:
-    - **`multi` (padrão):** Prompt de 3 linhas estruturado com árvore ANSI.
-    - **`pill`:** Prompt compacto de 1 linha com pílula de sistema e ícones Nerd Fonts.
-    - **`micro`:** Prompt minimalista de 1 linha ultra-denso.
-- No TTY: Comutação automática para `pill` ou `micro` em ASCII puro.
-- Sequências de escape ANSI estritamente delimitadas em `\[...\]` para cálculo perfeito de quebra de linha no Readline.
+- **Prevenção contra Injeção em `PS1` (`_theme_ps1_*` & `promptvars`):** Quando `shopt -q promptvars` está ativo, valores dinâmicos (`pwd`, `branch`, `user`, `host`, `os_name`, `os_icon`, `kernel`) são vinculados via variáveis protegidas `_theme_ps1_*` (`\${_theme_ps1_*}`), ou sanitizados com escape quando `promptvars` estiver desativado, impedindo execução acidental de backticks/`$()` em nomes de pasta ou branch.
+- Atualização controlada via `PROMPT_COMMAND="_update_prompt..."` e escapes delimitados em `\[...\]` para cálculo exato de quebra de linha no Readline.
 
-### 3. KornShell (`theme/ksh.sh`)
+### 3. KornShell (`theme/ksh.sh` & `target/openbsd/ksh/`)
 
-- Prompt dinâmico via `PS1='$(_ksh_prompt)'` para OpenBSD pdksh/oksh.
-- Suporte a `$PROMPT_STYLE` nos estilos `pill`, `micro` e `multi` em PTY, e `pill` e `micro` em TTY.
+- Prompt dinâmico via `PS1='$(_ksh_prompt)'` calibrado para OpenBSD `/bin/ksh` (`pdksh`/`oksh`).
+- **Escapes Hexadecimais & Delimitadores (`_THEME_ESCAPE` / `_THEME_KSH_DELIM`):** Gera o caractere ESC estritamente via `printf '\x1b'` (zero notação octal) e utiliza o delimitador `printf '\x01'` (`\x01\r`) na ancoragem do `PS1` para `PD KSH`/`OKSH`/`MIRBSD` sem corromper contagem de colunas do cursor.
+- **Bindings Emacs Canônicos (`ksh(1)`):** `target/openbsd/ksh/behavior.sh` aplica os comandos reais do `pdksh` (`kill-line`, `kill-to-eol`, `clear-screen`, `delete-word-backward`, `search-history`) com histórico persistente `0600`.
+- Suporte completo a `$PROMPT_STYLE` nos estilos `pill`, `micro` e `multi` em PTY, e `pill` e `micro` em TTY.
 
-### 4. POSIX Sh (`theme/sh.sh`)
+### 4. Fish (`target/common/fish/prompt.fish`)
+
+- Implementa visual equivalente de 3 linhas (`...`, `┌──...`, `└─`) com `PROMPT_OS_COLOR`, `fish_is_root_user` (usuário magenta + ícone/chevron vermelhos) e detecção direta de OS/distro em `fish_prompt`.
+
+### 5. POSIX Sh (`theme/sh.sh`)
 
 - **Linha de Base FreeBSD 14+/15+ (`sh`):** Suporta expansão de parâmetros no `$PS1`/`$PS2` (`$VAR`, `${VAR}`, `$?`, `$$`) e sequências ANSI canônicas.
 - **Teto Físico de Memória (`PROMPTLEN = 192`):** O parser em C do FreeBSD (`bin/sh/parser.c`) aloca um buffer estático de 192 bytes sem alocação dinâmica no heap (`malloc`). Qualquer prompt acima de 191 bytes é truncado pelo sistema.
 - **Peculiaridades da `libedit`:** Utiliza delimitador único hexadecimal (`\x01` / `0x01`), descarta literais consecutivos sem caractere imprimível e desincroniza o cursor vertical em multilinhas (`\n`). Por isso, o tema adota rigorosamente **1 linha**.
 - **Decisão Arquitetural Upstream:** Os mantenedores do FreeBSD rejeitam intencionalmente parsers reentrantes e hooks arbitrários (`PROMPT_COMMAND`) para preservar a segurança contra injeção de comandos e manter a estabilidade no _single-user mode_.
 - **Mini Prompt Gráfico (`! _is_raw_tty`):** Em emuladores modernos, suporta dois layouts de alta densidade via `$PROMPT_STYLE`:
-    - **Pílula (`pill` — padrão em FreeBSD 14+):** Exibe pílula inicial unificada de sistema (` 15.1  sh`), pasta (` shell`), usuário (` gabrielf`) e Git (`󰊢 main*` com `*` em amarelo), eliminando delimitadores `` para calibragem estrita entre 170 e 185 bytes no buffer de 192 bytes.
-    - **Micro (`micro` — auto-fallback em FreeBSD <= 13 ou `$PROMPT_BUFFER_LIMIT < 192`):** Layout _streamlined_ ultra-leve com ícones diretos sem delimitadores e sem identificador de shell (` 13.2  shell  gabrielf 󰊢 main* `), com o indicador `*` herdando a cor da branch, calibrado entre 96 e 126 bytes no buffer estático de 128 bytes.
-- **Motor de Orçamento Dinâmico de Buffer (Proteção 360°):** Em vez de limites fixos, calcula em tempo real via aritmética nativa POSIX o espaço exato disponível no buffer `ps[PROMPTLEN]`. Aplica travas defensivas de entrada no usuário (`${#_user} <= 12`), hostname (`<= 12`) e versão do SO (`<= 6`), deduzindo seus custos exatos e alocando a sobra inteligentemente entre pasta e branch. Permite nomes de pastas longos (até 40+ caracteres) quando fora do Git ou com branch curta, e contrai sob nomes extensos para travar inegociavelmente no teto físico (mesmo que o usuário ou branch tenham centenas de caracteres).
+    - **Pílula (`pill` — padrão em FreeBSD 14+):** Exibe pílula inicial unificada de sistema (` 15.1  sh`), pasta (` shell`), usuário (` operator`) e Git/Got (`󰊢 main*` com `*` em amarelo), eliminando delimitadores extras para calibragem estrita entre 170 e 190 bytes no buffer de 192 bytes.
+    - **Micro (`micro` — auto-fallback em FreeBSD <= 13 ou `$PROMPT_BUFFER_LIMIT < 192`):** Layout _streamlined_ ultra-leve com ícones diretos sem delimitadores e sem identificador de shell (` 13.2  shell  operator 󰊢 main* `), com o indicador `*` herdando a cor amarela de alteração, calibrado entre 96 e 126 bytes no buffer estático de 128 bytes.
+- **Motor de Orçamento Dinâmico de Buffer (Proteção 360°):** Em vez de limites fixos, calcula em tempo real via aritmética nativa POSIX o espaço exato disponível no buffer `ps[PROMPTLEN]`. Aplica travas defensivas de entrada no usuário (`${#_user} <= 10` em `pill` / `<= 8` em `micro`), hostname (`<= 12`) e versão do SO (`<= 5`), deduzindo seus custos exatos e alocando a sobra inteligentemente entre pasta e branch. Permite nomes de pastas longos (até 40+ caracteres) quando fora do Git ou com branch curta, e contrai sob nomes extensos para travar inegociavelmente no teto físico (mesmo que o usuário ou branch tenham centenas de caracteres).
 - **Fallback TTY 100% Bold (`_is_raw_tty`):** No console puro `vt`/`syscons`, comuta para prompt ASCII atômico de linha única 100% negrito via persistência ANSI ECMA-48, com orçamento dinâmico operando entre 107 e 190 bytes com salvaguarda absoluta contra overflow e zero forks no PTY.
-- **Triggers de Precisão:** Atualização do Git através de wrappers de alto desempenho (`cd`, `git`, `got`, `:`) sem overhead de subshells a cada enter vazio.
+- **Triggers de Precisão (`_create_trigger cd git got`):** Atualização do status Git/Got e integração com `zoxide` através de wrappers (`cd`, `git`, `got`, `:`) que preservam estritamente o exit code (`$_exit_code`) do comando executado e evitam disparo duplo do hook de `zoxide` (`__zoxide_hook` / `_zoxide_sh_oldpwd`).
 
 #### 🧠 Algoritmo de Partilha Dinâmica (Pasta vs Branch)
 
@@ -89,7 +107,7 @@ Para garantir que o prompt utilize 100% do espaço útil do buffer físico sem r
 
 Medição auditada no buffer estático `char ps[PROMPTLEN]` do FreeBSD `sh` (`bin/sh/parser.c`) após processamento de `getprompt()` (`\[`/`\]` convertidos para `\x01` / `0x01`, `\e` para `0x1b` e glifos UTF-8 com seus 3–4 bytes físicos).
 
-> **Perfil de Referência:** Usuário `gabrielf` (8B) | Host `freebsd` (7B) | SO `15.1` (4B) / `13.2` (4B).
+> **Perfil de Referência:** Usuário `operator` (8B) | Host `freebsd` (7B) | SO `15.1` (4B) / `13.2` (4B).
 
 ##### 1. Modo PTY (Terminal Gráfico com Nerd Fonts)
 

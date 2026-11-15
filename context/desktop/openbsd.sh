@@ -3,10 +3,17 @@
 ### ================================
 
 ### --------------------------------
-### Window Management & Display
+### WINDOW MANAGEMENT & DISPLAY
 ### --------------------------------
 cwm-reload() {
-	command pkill -HUP cwm 2> "/dev/null" || echo "❌ cwm is not running." >&2
+	if ! command pkill -HUP cwm 2> "/dev/null"; then
+		if command -v _ui_err > "/dev/null" 2>&1; then
+			_ui_err "cwm is not running."
+		else
+			echo "❌ cwm is not running." >&2
+		fi
+		return 1
+	fi
 }
 
 ### --------------------------------
@@ -18,7 +25,11 @@ code() {
 	elif command -v vscode > "/dev/null" 2>&1; then
 		command vscode "$@"
 	else
-		echo "❌ Neither 'code' nor 'vscode' found." >&2
+		if command -v _ui_err > "/dev/null" 2>&1; then
+			_ui_err "Neither 'code' nor 'vscode' found."
+		else
+			echo "❌ Neither 'code' nor 'vscode' found." >&2
+		fi
 		return 127
 	fi
 }

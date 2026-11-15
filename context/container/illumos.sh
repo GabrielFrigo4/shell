@@ -3,14 +3,14 @@
 ### ================================
 
 ### --------------------------------
-### Zone Detection
+### ZONE DETECTION
 ### --------------------------------
 if command -v zonename > "/dev/null" 2>&1; then
 	_zone_name="$(command zonename 2> "/dev/null")"
 	if [ -n "${_zone_name}" ] && [ "${_zone_name}" != "global" ]; then
 		export CONTAINER_RUNTIME="zone"
 	fi
-	unset _zone_name
+	unset -v _zone_name
 fi
 
 ### --------------------------------

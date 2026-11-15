@@ -8,15 +8,15 @@ O módulo `library/detect.sh` é o cérebro investigativo do **Universal Shell E
 
 ### 1. Sistema Operacional & Shell Ativo
 
-- **`_detect_os`**: Identifica o sistema via `uname -s` e normaliza para: `freebsd`, `dragonfly`, `linux`, `macos`, `windows`, `openbsd`, `netbsd` ou `illumos`.
-- **`_detect_shell`**: Identifica se a sessão interativa atual é executada por `zsh`, `bash`, `ksh` ou `sh` (POSIX).
-- **`_detect_enabled_shell`**: Retorna o binário de shell canônico respeitando a ordem de precedência: Shell do `chsh`/passwd (se válido e suportado) ➔ `zsh` ➔ `bash` ➔ `ksh` (OpenBSD) ➔ `sh` (FreeBSD) (suporta flag `--name`).
+- **`_detect_os`**: Identifica o sistema via `uname -s` e normaliza para: `freebsd`, `linux`, `macos`, `windows`, `openbsd`, `netbsd` ou `illumos`.
+- **`_detect_shell`**: Identifica se a sessão interativa atual é executada por `zsh`, `bash`, `ksh`, `fish`, `sh`, `dash`, `ash`, etc.
+- **`_detect_enabled_shell`**: Retorna o binário de shell POSIX-compatível canônico respeitando a ordem de precedência: Shell do `chsh`/passwd (se válido e suportado) ➔ `zsh` ➔ `bash` ➔ `ksh` (OpenBSD) ➔ `sh` (exclusivo FreeBSD; `dash` e NetBSD `/bin/sh` (`ash`) são rejeitados e roteados para `zsh`/`bash`). Suporta flag `--name`. Note que o `fish` possui módulo dedicado em `target/common/fish/` via `install.sh -s fish`.
 
 ### 2. Distribuições, Derivados & Família de Gerenciadores
 
 - **`_detect_distro`**: Mapeia distribuições e derivados nativos sem acoplamento a um único SO:
     - **Linux:** `fedora`, `arch`, `debian`, `ubuntu` (com detecção de sabores `kubuntu`, `xubuntu`, `lubuntu`), `devuan`, `opensuse`, `void`, `alpine`, `gentoo`, `nixos`, `solus`, `slackware`, `guix`, `openwrt`, `ol` (Oracle), `azurelinux`, `qubes`, etc.
-    - **BSD:** `freebsd`, `dragonfly`, `ghostbsd`, `nomadbsd`, `openbsd`, `netbsd`.
+    - **BSD:** `freebsd`, `ghostbsd`, `nomadbsd`, `openbsd`, `netbsd`.
     - **illumos:** `omnios`, `smartos`, `openindiana`, `illumos`.
 - **`_detect_distro_family`**: Agrupa os sistemas por sua raiz arquitetural de pacotes e ferramentas de base:
     - `arch` ➔ Gerenciador `pacman` (com detecção de helpers AUR `paru`/`yay`)
@@ -31,11 +31,11 @@ O módulo `library/detect.sh` é o cérebro investigativo do **Universal Shell E
     - `slackware` ➔ Gerenciador `slackpkg`
     - `guix` ➔ Gerenciador `guix`
     - `embedded` ➔ Gerenciador `opkg` (OpenWrt / Entware)
-    - `bsd` ➔ Gerenciadores `pkg` (FreeBSD, DragonFly, GhostBSD, NomadBSD), `pkg_add` (OpenBSD) ou `pkgin` (NetBSD)
+    - `bsd` ➔ Gerenciadores `pkg` (FreeBSD, GhostBSD, NomadBSD), `pkg_add` (OpenBSD) ou `pkgin` (NetBSD)
     - `illumos` ➔ Gerenciadores `pkg` (IPS em OmniOS/OpenIndiana) ou `pkgin` (SmartOS)
     - `darwin` ➔ Gerenciador `brew` (Homebrew)
 - **`_detect_distro_icon`**: Retorna o glifo vetorial oficial Nerd Fonts proporcional em altura (conjunto Font Logos `U+F300`):
-    - ` ` (Linux Tux full-scale), ` ` (FreeBSD / GhostBSD / NomadBSD), ` ` (DragonFly BSD), ` ` (OpenBSD), ` ` (NetBSD), ` ` (illumos), `󰖨 ` (Solaris/SunOS), ` ` (macOS Apple), ` ` (Windows).
+    - ` ` (Linux Tux full-scale), ` ` (FreeBSD / GhostBSD / NomadBSD), ` ` (OpenBSD), ` ` (NetBSD), ` ` (illumos), `󰖨 ` (Solaris/SunOS), ` ` (macOS Apple), ` ` (Windows).
       Esta inteligência alimenta dinamicamente comandos universais como `update-system`, `clean-system` e `update-all`.
 
 ### 3. Ambiente Gráfico, Desktop Environments & Sessão de Janelas
@@ -66,9 +66,9 @@ O módulo `library/detect.sh` é o cérebro investigativo do **Universal Shell E
 | **LXQt**              | Full DE            | `lxqt-session`                            | `lxqt-session`, `/usr/share/lxqt`, `/usr/local/share/lxqt`                                    | `Breeze-Dark`, `Arc-Dark`                 | `lxqt`                                 | `breeze_cursors`             | `Noto Sans` / `Sans Serif`   |
 | **LXDE**              | Full DE            | `lxsession`                               | `lxsession`, `startlxde`, `/usr/share/lxde`, `/usr/local/share/lxde`                          | `Clearlooks-Phenix`, `Arc-Dark`           | `gtk3`                                 | `Adwaita`                    | `DejaVu Sans` / `Sans`       |
 | **Budgie**            | Full DE            | `budgie-wm`, `budgie-panel`               | `budgie-desktop`, `budgie-wm`, `/usr/share/budgie-desktop`, `/usr/local/share/budgie-desktop` | `Materia-dark`, `Arc-Dark`                | `qt6ct` / `qt5ct` / `xdgdesktopportal` | `Adwaita`                    | `Adwaita Sans` / `Ubuntu`    |
-| **Pantheon**          | Full DE            | `gala`, `wingpanel`                       | `gala`, `wingpanel`, `/usr/share/pantheon`, `/usr/local/share/pantheon`                       | `io.elementary.stylesheet.blueberry-dark` | `qt6ct` / `qt5ct` / `xdgdesktopportal` | `Adwaita`                    | `Inter` / `Open Sans`        |
-| **Deepin**            | Full DE            | `dde-desktop`, `deepin-wm`                | `dde-desktop`, `dde-session`, `/usr/share/dde`, `/usr/local/share/dde`                        | `deepin-dark`                             | `deepin`                               | `Adwaita`                    | `Noto Sans`                  |
-| **COSMIC**            | Full DE            | `cosmic-comp`, `cosmic-session`           | `cosmic-session`, `cosmic-comp`, `/usr/share/cosmic`, `/usr/local/share/cosmic`               | `cosmic-dark`                             | `qt6ct` / `qt5ct` / `xdgdesktopportal` | `Adwaita`                    | `Fira Sans` / `Cantarell`    |
+| **Pantheon**          | Full DE            | `gala`, `wingpanel`                       | `gala`, `wingpanel`, `/usr/share/pantheon`, `/usr/local/share/pantheon`                       | `io.elementary.stylesheet.blueberry-dark` | `qt6ct` / `qt5ct` / `xdgdesktopportal` | `elementary` / `Adwaita`     | `Inter` / `Open Sans`        |
+| **Deepin**            | Full DE            | `dde-desktop`, `deepin-wm`                | `dde-desktop`, `dde-session`, `/usr/share/dde`, `/usr/local/share/dde`                        | `deepin-dark`                             | `deepin`                               | `bloom` / `Adwaita`          | `Noto Sans`                  |
+| **COSMIC**            | Full DE            | `cosmic-comp`, `cosmic-session`           | `cosmic-session`, `cosmic-comp`, `/usr/share/cosmic`, `/usr/local/share/cosmic`               | `cosmic-dark`                             | `qt6ct` / `qt5ct` / `xdgdesktopportal` | `cosmic` / `Adwaita`         | `Fira Sans` / `Cantarell`    |
 | **Sway**              | Wayland Compositor | `sway`                                    | `sway`, `swaymsg`                                                                             | `adw-gtk3-dark`                           | `qt6ct` / `qt5ct` / `xdgdesktopportal` | `Adwaita` / `breeze_cursors` | `JetBrainsMono Nerd Font`    |
 | **Hyprland**          | Wayland Compositor | `hyprland`, `Hyprland`                    | `Hyprland`, `hyprctl`                                                                         | `adw-gtk3-dark`                           | `qt6ct` / `qt5ct` / `xdgdesktopportal` | `Adwaita` / `breeze_cursors` | `JetBrainsMono Nerd Font`    |
 | **River**             | Wayland Compositor | `river`                                   | `river`, `riverctl`                                                                           | `adw-gtk3-dark`                           | `qt6ct` / `qt5ct` / `xdgdesktopportal` | `Adwaita` / `breeze_cursors` | `JetBrainsMono Nerd Font`    |
@@ -147,4 +147,4 @@ A função `_is_raw_tty()` em `library/detect.sh` avalia a cascata:
 ### 3. Comutação Dinâmica de Prompt
 
 - **Emulador Gráfico / PTY (`! _is_raw_tty`):** Prompt gráfico multi-linha de alta fidelidade com glifos Nerd Fonts e dados contextuais (git branch, relógio, data).
-- **Console Puro / TTY (`_is_raw_tty`):** Comuta automaticamente para o tema `pill` (ASCII limpo de linha única `gabriel@host (sh):[dir] $ `), operando em 100% negrito via ECMA-48 sem forks e sem dependência de glifos UTF-8 complexos.
+- **Console Puro / TTY (`_is_raw_tty`):** Comuta automaticamente para o tema `pill` (ASCII limpo de linha única `<USER>@host (sh):[dir] $ `), operando em 100% negrito via ECMA-48 sem forks e sem dependência de glifos UTF-8 complexos.

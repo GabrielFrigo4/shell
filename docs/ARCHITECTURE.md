@@ -1,37 +1,33 @@
 # 🏛️ Arquitetura & Ciclo de Vida do Universal Shell
 
-O **Universal Shell Environment** é o motor de execução interativo do [Quarteto de Produtividade](https://github.com/GabrielFrigo4/setup). Ele foi concebido para entregar uma experiência de terminal idêntica e de alta velocidade em qualquer sistema operacional (**Linux**, **FreeBSD**, **macOS**, **Windows**).
+O **Universal Shell Environment** é o motor de execução interativo do [Quarteto de Produtividade](https://github.com/GabrielFrigo4/setup). Ele foi concebido para entregar uma experiência de terminal idêntica e de alta velocidade em todas as 7 plataformas homologadas (**Linux**, **FreeBSD**, **OpenBSD**, **NetBSD**, **illumos**, **macOS** e **Windows**).
 
 ---
 
 ## ⚡ Cascata de Inicialização (Boot Pipeline)
 
-Ao abrir qualquer novo emulador de terminal, painel de multiplexador (`tmux`) ou conexão SSH, o arquivo de inicialização do shell (`.zshrc`, `.bashrc` ou `.shrc`) invoca o entrypoint modular do ecossistema:
+Ao abrir qualquer novo emulador de terminal, painel de multiplexador (`tmux`) ou conexão SSH, o entrypoint do ecossistema (`shell.sh` / `init.sh` ou o bloco gerado em `~/.zshrc`, `~/.bashrc`, `~/.shrc`, `~/.kshrc`) executa uma cascata determinística de carregamento:
 
 ```mermaid
 flowchart TD
-    RC["🐚 Arquivo RC (~/.zshrc / ~/.bashrc / ~/.shrc)"] --> L_DETECT["📚 1. library/detect.sh<br/>(OS, Shell, Distro, DE, Cores)"]
-    L_DETECT --> L_FUNC["📚 2. library/functions.sh<br/>(path-front, _as_root, _is_command)"]
-    L_FUNC --> C_ENV["⚙️ 3. core/environment.sh<br/>(PATH, COLORTERM, HISTSIZE, EDITOR)"]
-    C_ENV --> C_VAULT["🔐 4. core/vault.sh<br/>(Detecção silenciosa de ~/.vault)"]
-    C_VAULT --> T_TARGET["🎨 5. target/{OS}/{SHELL}/prompt.sh<br/>(Caminhos específicos do SO)"]
-
-    subgraph SESS_SETUP ["Orquestração de Contexto e Tema"]
-        T_TARGET --> THM["🖌️ theme/{SHELL}.sh (Prompt & Git)"]
-        T_TARGET --> T_ENV["⚙️ target/{OS}/environment.sh"]
-        T_TARGET --> CTX_COM["🧩 context/{CONTEXT}/common.sh"]
-        T_TARGET --> CTX_OS["🎯 context/{CONTEXT}/{OS}.sh"]
-    end
+    RC["🐚 Entrypoint (shell.sh / RC)"] --> LIB_BASE["📚 1. library/{detect,detect-desktop,ui,functions}.sh"]
+    LIB_BASE --> LIB_EXTRA["📚 2. library/*.sh (desktop-* lazy apenas em desktop)"]
+    LIB_EXTRA --> T_ENV["⚙️ 3. target/{OS}/environment.sh (--userland)"]
+    T_ENV --> C_ENV["⚙️ 4. core/environment.sh (PYTHONPYCACHEPREFIX, _shell_ls, PATH)"]
+    C_ENV --> C_VAULT["🔐 5. core/vault.sh (~/.vault)"]
+    C_VAULT --> CTX["🎯 6. context/{CONTEXT}/{common,OS}.sh"]
+    CTX --> T_TARGET["🎨 7. target/{OS}/{SHELL}/prompt.sh ➔ theme/{SHELL}.sh"]
 ```
 
-### Ordem Estrita de Sourcing:
+### Ordem Estrita de Sourcing & Auto-Cura:
 
-1. **`library/detect.sh`**: Executa sondagens em baixo nível para identificar o sistema hospedeiro sem gerar subprocessos desnecessários.
-2. **`library/functions.sh`**: Exporta helpers universais (`path-front`, `path-back`, `_as_root`, `_is_command`) requeridos por todos os módulos subsequentes.
-3. **`core/environment.sh`**: Define variáveis canônicas, sanitiza o `$PATH`, ativa suporte a TrueColor (24-bit RGB) e configura históricos persistentes.
-4. **`core/vault.sh`**: Se o diretório `~/.vault` existir, injeta silenciosamente variáveis de ambiente privadas e chaves SSH.
-5. **`target/{OS}/{SHELL}/prompt.sh`**: Carrega as customizações específicas da plataforma e compõe o tema visual.
-6. **`context/{CONTEXT}/`**: Aplica atalhos e comportamentos específicos da carga de trabalho (`desktop`, `server`, `container` — com extensões WSL automáticas).
+1. **Auto-Cura de Permissões (`0755` vs `0644`):** Antes do bootstrap, `_self_heal_perms` (e o `install.sh`) assegura `0755` apenas nos entrypoints com `#!` (`shell.sh`, `init.sh`, `install.sh`, `benchmark.sh`, `.githooks/*` e scripts em `.scripts/` como `.scripts/emacs-client`), mantendo `0644` em todas as bibliotecas carregadas via `source` (`.`) e documentações.
+2. **`library/` Base & Lazy Desktop:** Carrega primeiro `detect.sh`, `detect-desktop.sh`, `ui.sh` e `functions.sh`, depois os demais módulos POSIX (`hypervisor.sh`, `ecosystem.sh`, `network-ports.sh`, `system-update.sh`), carregando `library/desktop-*.sh` (`desktop-device.sh`, `desktop-kiosk.sh`, `desktop-session.sh`) **exclusivamente** quando `SHELL_CONTEXT=desktop`.
+3. **`target/{OS}/environment.sh`:** Aplica caminhos e tunings nativos do SO (incluindo segregação `--userland` como `/usr/gnu/bin` e `MANPATH` no illumos).
+4. **`core/environment.sh`:** Exporta `PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"` em todos os contextos, aplica a política `--userland=default|bsd|gnu`, configura `_shell_ls` (com detecção de TTY vs pipe) e define `COLORTERM`, `EDITOR`/`VISUAL` e históricos.
+5. **`core/vault.sh`:** Se `~/.vault` existir, injeta silenciosamente variáveis de ambiente privadas e chaves SSH.
+6. **`context/{CONTEXT}/{common,OS}.sh`:** Aplica recursos específicos do perfil ativo (`desktop`, `server`, `container` — com extensão `wsl.sh` quando aplicável).
+7. **`target/{OS}/{SHELL}/prompt.sh` & `theme/{SHELL}.sh`:** Carrega o motor visual do shell e as regras de `target/common/{SHELL}/`. No Fish, o fluxo espelhado parte de `target/common/fish/config.fish` (`ui.fish`, `prompt.fish`, `aliases.fish`).
 
 ---
 
@@ -59,11 +55,13 @@ Em conformidade com a filosofia UNIX:
 ## 🛡️ Portabilidade POSIX vs. Shells Modernos
 
 - **Camadas Base (`library/`, `core/`):** Escritas em estrita conformidade com o padrão **POSIX sh**. Devem rodar no `sh` nativo do FreeBSD sem nenhuma dependência de extensões do GNU Bash.
-- **Prompts Especializados (`theme/`):**
-    - **Zsh (`theme/zsh.sh`):** Utiliza o subsistema `zstyle`, `vcs_info` e autocompletion com menu interativo.
-    - **Bash (`theme/bash.sh`):** Utiliza escape sequences nativas do Bash com suporte a cores 256/TrueColor e status Git.
-    - **POSIX Sh (`theme/sh.sh`):** Prompt atômico, leve e sem dependências, exclusivo para o FreeBSD `sh`.
-    - **KornShell (`theme/ksh.sh`):** Prompt ultra-leve calibrado para `/bin/ksh` no OpenBSD com controle defensivo `\x01` (0x01) e ANSI nativo.
+- **Segregação Userland (`--userland=default|bsd|gnu`):** Em modo `default` ou `bsd`, diretórios GNU (`gnubin` / `/usr/gnu/bin`) não são inseridos à frente do `$PATH`, preservando ferramentas nativas de BSD/illumos (`ls`, `stat`, `sed`). Em modo `gnu`, diretórios GNU reais assumem prioridade (mantendo `~/.local/bin` na liderança), acompanhados de cache dinâmico de aliases `g*` validados por `--version` e `_shell_ls` via `gls`. O `install.sh` persiste `export SHELL_USERLAND` in-place em `~/.profile`, `/root/.profile` e `~/.config/fish/config.fish`.
+- **Prompts Especializados (`theme/` & `target/common/fish/`):**
+    - **Zsh (`theme/zsh.sh`):** Utiliza `PROMPT_SUBST` com variáveis globais protegidas `_theme_ps1_*` e escape `%` ➔ `%%` para prevenir injeção de comandos/formatos sem perder glifos Nerd Font (`U+E000..U+F8FF`), além de autocompletion com menu interativo e hooks `precmd`.
+    - **Bash (`theme/bash.sh`):** Protege expansões dinâmicas verificando `shopt -q promptvars` via variáveis `_theme_ps1_*` e delimitação `\[...\]` para cálculo exato no Readline.
+    - **POSIX Sh (`theme/sh.sh`):** Prompt atômico, leve e sem dependências, exclusivo para o FreeBSD `sh`, com triggers protegendo exit code e evitando disparo duplo do `zoxide`.
+    - **KornShell (`theme/ksh.sh`):** Prompt calibrado para OpenBSD `/bin/ksh` (`pdksh`/`oksh`) usando escape hexadecimal (`printf '\x1b'`) e delimitador `\x01\r` (zero notação octal).
+    - **Fish (`target/common/fish/`):** Runtime modular (`config.fish`, `prompt.fish`, `ui.fish`, `aliases.fish`) configurado via `install.sh -s fish`.
 
 ---
 
@@ -73,15 +71,19 @@ Cada sistema operacional no ecossistema possui uma política canônica para seu 
 
 ```mermaid
 flowchart TD
-    subgraph UNIX_STANDARDS ["🧭 Matriz Soberana de Shells Padrão"]
-        LINUX["🐧 Linux: Zsh<br/>• Login via chsh -s $(which zsh)<br/>• Suporte nativo PAM e /etc/shells"]
-        MACOS["🍎 macOS: Zsh<br/>• Padrão nativo Apple desde Catalina<br/>• /bin/zsh de fábrica"]
-        FREEBSD["😈 FreeBSD: sh<br/>• Padrão soberano da base<br/>• NÃO usar chsh para /usr/local/bin/zsh<br/>• Previne lock out em single-user mode"]
-        OPENBSD["🐡 OpenBSD: /bin/ksh<br/>• PD-KSH auditado da base<br/>• Segurança radical (pledge/unveil)"]
-        ILLUMOS["☀️ illumos: /bin/ksh<br/>• Ksh93 padrão System V Solaris<br/>• Integração nativa pfexec"]
-        MSYS2["🪟 Windows MSYS2: Zsh<br/>• chsh NÃO funciona (sem PAM/libc UNIX)<br/>• Configuração via .ini (SHELL=/usr/bin/zsh)"]
+    subgraph UNIX_STANDARDS ["🧭 Matriz Soberana de Shells Padrão (7 Sistemas)"]
+        LINUX["🐧 Linux: Zsh / Bash / Fish<br/>• Login via chsh -s $(command -v zsh)<br/>• dash ignorado/roteado para zsh/bash"]
+        MACOS["🍎 macOS: Zsh / Bash / Fish<br/>• Padrão nativo Apple desde Catalina<br/>• /bin/zsh de fábrica"]
+        FREEBSD["😈 FreeBSD: sh (Login) + Zsh / Bash / Fish<br/>• Padrão soberano da base<br/>• NÃO usar chsh para /usr/local/bin/zsh"]
+        OPENBSD["🐡 OpenBSD: /bin/ksh + Zsh / Bash / Fish<br/>• PD-KSH auditado da base<br/>• Segurança radical (pledge/unveil)"]
+        NETBSD["🚩 NetBSD: Zsh / Bash / Fish<br/>• /bin/sh (ash) não interativo roteado<br/>• Pacotes via pkgsrc / pkgin"]
+        ILLUMOS["☀️ illumos: Zsh / Bash / Ksh93<br/>• Dualidade /usr/gnu/bin vs /usr/bin<br/>• Controle via --userland"]
+        MSYS2["🪟 Windows: MSYS2 (Zsh/Bash/Fish) + Nativo<br/>• MSYS2 sem chsh (config via .ini)<br/>• PowerShell / NuShell / CMD Clink"]
     end
 ```
+
+> [!NOTE]
+> **`dash` e NetBSD `/bin/sh` (`ash`) não são shells interativos suportados:** Tanto o `_detect_enabled_shell` quanto o `install.sh` e os guardas de compatibilidade dos arquivos RC promovem/roteiam automaticamente sessões interativas para `zsh` ou `bash`. O suporte ao `sh` interativo é exclusivo do FreeBSD `/bin/sh`.
 
 ### 1. 🐧 Linux (Desktop / Servidor)
 
@@ -109,12 +111,17 @@ flowchart TD
 - **Shell Padrão:** `/bin/ksh` (Public Domain Korn Shell).
 - **Justificativa:** Segue a mesma filosofia de robustez do FreeBSD: o `/bin/ksh` faz parte da base auditada e imutável sob `pledge(2)` e `unveil(2)`. Pacotes em `/usr/local/bin` não devem ser requisitos para entrar no sistema em caso de falha de disco.
 
-### 5. ☀️ illumos (OpenIndiana / SmartOS / OmniOS)
+### 5. 🚩 NetBSD (Portabilidade & `pkgsrc`)
 
-- **Shell Padrão:** `/bin/ksh` (Ksh93).
-- **Justificativa:** Herança direta do Unix System V e Solaris. O ecossistema administrativo, scripts de inicialização SMF e wrappers de privilégios (`pfexec`) operam nativamente ao redor do Ksh.
+- **Shells Interativos:** `zsh`, `bash`, `fish` (via `pkgsrc`/`pkgin`).
+- **Política para `/bin/sh` (`ash`):** O `/bin/sh` nativo do NetBSD (`NETBSD_SHELL`) não é um shell interativo suportado pela suíte. Guardas em `~/.shrc`, `~/.kshrc`, `install.sh` e `target/freebsd/sh/terminal.sh` roteiam/promovem sessões interativas automaticamente para `zsh` ou `bash`.
 
-### 6. 🪟 Windows MSYS2 (UCRT64)
+### 6. ☀️ illumos (OpenIndiana / SmartOS / OmniOS)
+
+- **Shells Interativos & Sistema:** `zsh`, `bash`, `fish`, além do `/bin/ksh` (`ksh93`) padrão System V / SMF com `pfexec`.
+- **Dualidade Userland:** `target/illumos/environment.sh` move `/usr/gnu/bin` para o final do `$PATH` (e reordena `MANPATH`) nos modos `default`/`bsd`, ativando precedência GNU apenas sob `--userland=gnu`.
+
+### 7. 🪟 Windows (MSYS2 UCRT64 + Shells Nativos)
 
 - **Shell Padrão:** `zsh` (ou `bash`).
 - **Por que o `chsh` NÃO funciona?**
@@ -166,8 +173,9 @@ O repositório **Setup** opera com privilégios de superusuário (`sudo`/`doas`)
 O repositório **Universal Shell** opera no espaço de usuário desprivilegiado e governa a integridade da sessão interativa:
 
 - **Resiliência contra Mutações de TUI:** Editores modais (Helix, Vim, Neovim) e aplicações TUI frequentemente alteram o cursor via sequências de controle DECSCUSR (`\e[?1 q` para bloco piscante, `\e[?5 q` para barra). Ao encerrar ou receber sinais (`SIGINT`), essas aplicações podem deixar o console em estado degradado.
-- **Auto-Cura no Retorno de Ferramentas:** Wrappers de editores (como `hx()` em `context/desktop/common.sh`) capturam o código de retorno e reemitem a sequência de cura (`\e%G\e[?16;238;0c` em consoles puros `_is_raw_tty` ou `\e[0 q` em PTYs gráficos).
-- **Auto-Cura no Ciclo de Prompt:** Na inicialização da sessão (`core/environment.sh`) e na renderização dos prompts (`theme/bash.sh`, `theme/zsh.sh`), o Shell assegura que o interpretador UTF-8 permaneça sincronizado (`\e%G`) e que o cursor mantenha-se em bloco estático e imune ao bug de deslocamento de cor das fontes de 512 glifos.
+- **Auto-Cura no Retorno de Ferramentas:** Wrappers de editores (como `hx()` e `_restore_tty_cursor` em `context/desktop/common.sh`) capturam o código de retorno e reemitem a sequência de cura (`\e%G\e[?16;238;0c` em consoles puros `_is_raw_tty` Linux ou `\e[1 q\e]112\a\e]112\e\\` em PTYs gráficos).
+- **Recuperação Segura do Daemon Emacs (`.scripts/emacs-client`):** Em vez de encerrar processos indiscriminadamente com `pkill -9 -x emacs`, o entrypoint `.scripts/emacs-client` (e `_emacs_ensure_healthy_daemon` em `context/desktop/common.sh`) executa um probe não-bloqueante (`timeout 2 emacsclient -e '(+ 1 1)'`) sobre o socket `EMACS_SOCKET_NAME`, limpando processos/sockets órfãos somente quando o daemon não responde.
+- **Auto-Cura no Ciclo de Prompt:** Na inicialização da sessão (`core/environment.sh`) e na renderização dos prompts (`theme/{bash,zsh,sh,ksh}.sh`), o Shell assegura que o interpretador UTF-8 permaneça sincronizado (`\e%G` em Linux VT ou `\e[1 q` em PTY) e que o cursor mantenha-se em bloco estático imune ao bug de deslocamento cromático das fontes de 512 glifos.
 
 ---
 

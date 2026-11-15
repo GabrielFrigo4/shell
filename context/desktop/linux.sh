@@ -6,7 +6,7 @@
 ### CLIPBOARD INTEGRATION
 ### --------------------------------
 clip() {
-	if [ -n "${WAYLAND_DISPLAY}" ] && command -v wl-copy > "/dev/null" 2>&1; then
+	if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy > "/dev/null" 2>&1; then
 		command wl-copy "$@"
 	elif command -v xclip > "/dev/null" 2>&1; then
 		command xclip -selection clipboard "$@"
@@ -19,7 +19,7 @@ clip() {
 }
 
 paste() {
-	if [ -n "${WAYLAND_DISPLAY}" ] && command -v wl-paste > "/dev/null" 2>&1; then
+	if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-paste > "/dev/null" 2>&1; then
 		command wl-paste "$@"
 	elif command -v xclip > "/dev/null" 2>&1; then
 		command xclip -selection clipboard -o "$@"
@@ -34,7 +34,7 @@ paste() {
 ### --------------------------------
 ### WSL SUBSYSTEM EXTENSIONS
 ### --------------------------------
-if _is_wsl; then
-	[ -f "${SHELL_REPO_DIR}/context/desktop/wsl.sh" ] && \
-		. "${SHELL_REPO_DIR}/context/desktop/wsl.sh"
+if command -v _is_wsl > "/dev/null" 2>&1 && _is_wsl; then
+	[ -f "${SHELL_REPO_DIR:-}/context/desktop/wsl.sh" ] && \
+		. "${SHELL_REPO_DIR:-}/context/desktop/wsl.sh"
 fi

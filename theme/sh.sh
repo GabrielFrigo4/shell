@@ -5,6 +5,7 @@
 _base_dir="${SHELL_REPO_DIR:-/usr/local/share/shell}"
 [ -f "${_base_dir}/theme/common/colors.sh" ] && . "${_base_dir}/theme/common/colors.sh"
 [ -f "${_base_dir}/theme/common/git.sh" ] && . "${_base_dir}/theme/common/git.sh"
+unset _base_dir
 
 _trim_string() {
 	_trimmed="$1"
@@ -49,6 +50,7 @@ _calc_c_len() {
 	done
 
 	local _utf8_extra=0
+	local _glyph
 	for _glyph in "" "" "" "" "" "" "" "" "󰊢" "" "" "🐡" "" "" "" "" "" "" "󰖨" "" "" "󰣆"; do
 		local _scan="${_string}"
 		local _weight=2
@@ -73,7 +75,18 @@ _calc_c_len() {
 _update_prompt() {
 	_setup_colors
 
-	local _user="${USER:-$(command id -un)}"
+	if [ -z "${_THEME_USER:-}" ]; then
+		_THEME_USER="${USER:-${USERNAME:-${LOGNAME:-$(command id -un 2> "/dev/null" || echo "user")}}}"
+	fi
+	if [ -z "${_THEME_UID:-}" ]; then
+		_THEME_UID="${EUID:-$(command id -u 2> "/dev/null" || echo 1000)}"
+	fi
+	if [ -z "${_THEME_HOST:-}" ]; then
+		_THEME_HOST="${HOSTNAME:-$(command uname -n 2> "/dev/null" || echo "host")}"
+		_THEME_HOST="${_THEME_HOST%%.*}"
+	fi
+
+	local _user="${USER:-${_THEME_USER}}"
 	local _shell_name="sh"
 
 	local _pwd="${PWD:-$(command pwd)}"
@@ -90,6 +103,7 @@ _update_prompt() {
 	_git_branch
 
 	local _budget _max_pwd _max_branch
+	local _trimmed="" _c_bytes=0 _git_frame_string=""
 	local _pwd_len="${#_pwd}"
 	local _branch_len="${#_branch}"
 
@@ -115,7 +129,7 @@ _update_prompt() {
 	fi
 
 	local _user_color="${_theme_color_green}" _user_icon_color="${_theme_color_blue}" _terminal_color="${_theme_color_blue}" _prompt_symbol="\$" _prompt_symbol_color="${_theme_color_cyan}"
-	if [ "${EUID:-$(command id -u)}" -eq 0 ]; then
+	if [ "${EUID:-${_THEME_UID}}" -eq 0 ]; then
 		_user="root"
 		_user_icon_color="${_theme_color_red}"
 		_terminal_color="${_theme_color_red}"
@@ -128,24 +142,37 @@ _update_prompt() {
 		_prompt_symbol_color="${_theme_color_red}"
 	fi
 
-	local _host="${HOSTNAME%%.*}"
-	[ -z "${_host}" ] && _host="$(command uname -n 2> "/dev/null" | command cut -d. -f1)"
+	local _host="${HOSTNAME:-${_THEME_HOST}}"
+	_host="${_host%%.*}"
 
-	local _os_icon="${PROMPT_OS_ICON:- }"
+	local _os_icon="${PROMPT_OS_ICON:-${_DETECTED_DISTRO_ICON:- }}"
 	_trim_string "${_os_icon}" 4 ""
 	_os_icon="${_trimmed}"
-	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_DISTRO_VERSION:-$(_detect_distro_version 2> "/dev/null" || _detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || uname -s 2> "/dev/null" || echo "UNIX")}}"
+	if [ -z "${PROMPT_OS_NAME:-}" ] && [ -z "${_DETECTED_DISTRO_VERSION:-}" ] && [ -z "${_THEME_FALLBACK_OS_NAME:-}" ]; then
+		_THEME_FALLBACK_OS_NAME="$(_detect_distro_version 2> "/dev/null" || _detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || uname -s 2> "/dev/null" || echo "UNIX")"
+	fi
+	local _os_name="${PROMPT_OS_NAME:-${_DETECTED_DISTRO_VERSION:-${_THEME_FALLBACK_OS_NAME:-UNIX}}}"
 	_os_name="${_os_name%%[-+~_]*}"
-	local _kernel_release="${_DETECTED_KERNEL_RELEASE:-$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "")}"
+	if [ -z "${_DETECTED_KERNEL_RELEASE:-}" ] && [ -z "${_THEME_FALLBACK_KERNEL+x}" ]; then
+		_THEME_FALLBACK_KERNEL="$(_detect_kernel_release 2> "/dev/null" || uname -r 2> "/dev/null" || echo "")"
+	fi
+	local _kernel_release="${_DETECTED_KERNEL_RELEASE:-${_THEME_FALLBACK_KERNEL:-}}"
 	_kernel_release="${_kernel_release%%[-+~_]*}"
-	local _os_type="${PROMPT_OS_TYPE:-${_DETECTED_OS:-$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]' || echo "unix")}}"
+	if [ -z "${PROMPT_OS_TYPE:-}" ] && [ -z "${_DETECTED_OS:-}" ] && [ -z "${_THEME_FALLBACK_OS_TYPE:-}" ]; then
+		_THEME_FALLBACK_OS_TYPE="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]' || echo "unix")"
+	fi
+	local _os_type="${PROMPT_OS_TYPE:-${_DETECTED_OS:-${_THEME_FALLBACK_OS_TYPE:-unix}}}"
 	local _os_color
 
 	case "${PROMPT_OS_COLOR:-blue}" in
-		red)    _os_color="${_theme_color_bright_red}" ;;
-		blue)   _os_color="${_theme_color_bright_blue}" ;;
-		yellow) _os_color="${_theme_color_bright_yellow}" ;;
-		*)      _os_color="${_theme_color_bright_blue}" ;;
+		red)     _os_color="${_theme_color_red}" ;;
+		green)   _os_color="${_theme_color_green}" ;;
+		yellow)  _os_color="${_theme_color_yellow}" ;;
+		blue)    _os_color="${_theme_color_blue}" ;;
+		magenta) _os_color="${_theme_color_magenta}" ;;
+		cyan)    _os_color="${_theme_color_cyan}" ;;
+		white)   _os_color="${_theme_color_white}" ;;
+		*)       _os_color="${_theme_color_blue}" ;;
 	esac
 
 	local _fixed_string=""
@@ -189,7 +216,7 @@ _update_prompt() {
 
 	if [ -t 1 ]; then
 		if [ "${_mode}" = "tty" ]; then
-			[ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
+			[ "${TERM:-}" = "linux" ] && [ "${_os_type}" = "linux" ] && echo -n $'\e%G\e[?16;238;0c'
 		else
 			echo -n $'\e[1 q'
 		fi
@@ -199,19 +226,35 @@ _update_prompt() {
 ### --------------------------------
 ### PRECISION TRIGGERS
 ### --------------------------------
+[ -z "${_zoxide_sh_oldpwd+x}" ] && _zoxide_sh_oldpwd="${PWD:-}"
+
 _create_trigger() {
+	local _command
+	local _zoxide_block
+	if [ -z "${_DETECTED_ZOXIDE+x}" ] && command -v _detect_zoxide > "/dev/null" 2>&1; then
+		_detect_zoxide > "/dev/null" 2>&1 || true
+	fi
 	for _command in "$@"; do
+		_zoxide_block=""
+		if [ "${_command}" = "cd" ]; then
+			_zoxide_block='
+			if [ "${_exit_code}" -eq 0 ]; then
+				if command -v __zoxide_hook > "/dev/null" 2>&1; then
+					__zoxide_hook
+				elif [ -n "${_DETECTED_ZOXIDE:-}" ]; then
+					local _pwd_now="${PWD:-}"
+					if [ "${_zoxide_sh_oldpwd:-}" != "${_pwd_now}" ]; then
+						_zoxide_sh_oldpwd="${_pwd_now}"
+						command zoxide add -- "${_zoxide_sh_oldpwd}" 2> "/dev/null" || true
+					fi
+				fi
+			fi'
+		fi
 		eval "
 		${_command}() {
-			command ${_command} \"\$@\"
-			local _exit_code=\$?
-			if [ \"\${_command}\" = \"cd\" ] && [ \"\${_exit_code}\" -eq 0 ] && [ -n \"\${_DETECTED_ZOXIDE:-$(_detect_zoxide)}\" ]; then
-				local _pwd_now=\"\${PWD:-}\"
-				if [ \"\${_zoxide_sh_oldpwd:-}\" != \"\${_pwd_now}\" ]; then
-					_zoxide_sh_oldpwd=\"\${_pwd_now}\"
-					command zoxide add -- \"\${_zoxide_sh_oldpwd}\" 2> \"/dev/null\" || true
-				fi
-			fi
+			local _exit_code=0
+			command ${_command} \"\$@\" || _exit_code=\$?
+			${_zoxide_block}
 			_update_prompt
 			return \${_exit_code}
 		}

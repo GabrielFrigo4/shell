@@ -49,7 +49,8 @@ Projetado para estações de trabalho de desenvolvimento:
 - **Quiosques Gráficos (`wgui` / `xgui`) & Paridade Visual 100%:** Lançadores efêmeros imersivos. Em janela única (`_count < 2`), operam em tela limpa sem bordas (`border none`). Sob múltiplas janelas ($\ge 2$), o `wgui` ativa abas no Sway e o `xgui` inicializa a barra superior `xgui-tabbar` (Python 3 + GTK3 + X11 dock com altura exata de 26px e reserva estrita de espaço `_NET_WM_STRUT_PARTIAL` sem sobreposição de janelas maximizadas), atingindo 100% de paridade estética, dimensional (26px) e tipográfica com o `wgui` (Sway `titlebar_padding 10 4` em `10pt Bold`): aba ativa elevada em `#2b2b30` com borda azul `#3584e4`, aba inativa em `#1e1e22` com borda `#38383d` e texto `#9a9996` responsivo a `:hover`.
 - **Isolamento Multi-TTY de D-Bus:** Servidores gráficos e quiosques (`wwm`, `xwm`, `wgui`, `xgui`, `ewm`, `exwm`) operam em barramentos D-Bus privados (`dbus-run-session`), prevenindo vazamento de janelas para sessões ativas em outros TTYs.
 - **Extensão WSL (`wsl.sh`):** Se executado sob WSL (`_is_wsl`), incorpora automaticamente atalhos do Windows (`explorer`, `pwsh`, `powershell`, `cmd`), sincronização de clipboard (`clip`, `paste`), navegação rápida (`cd-win`), tradução de caminhos (`win-path`, `wsl-path`) e inicialização de arquivos (`open-win`).
-- **Política Python Zero-Cruft:** Exporta `PYTHONDONTWRITEBYTECODE=1` para manter o código dos projetos, árvores Git e a home 100% limpos de pastas `__pycache__` durante desenvolvimento.
+- **Política Python Efêmera (XDG Cache):** Herda `PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"` de `core/environment.sh` e `context/desktop/common.sh` (com suporte nativo equivalente em Fish, PowerShell, NuShell e CMD), mantendo repositórios de trabalho 100% livres de pastas `__pycache__` enquanto centraliza bytecode otimizado fora do projeto.
+- **Carregamento sob Demanda (`library/desktop-*.sh`):** Os módulos `desktop-device.sh`, `desktop-kiosk.sh` e `desktop-session.sh` são carregados exclusivamente quando `SHELL_CONTEXT=desktop`, mantendo contextos `server` e `container` leves e instantâneos.
 
 ---
 
@@ -62,7 +63,7 @@ Projetado para máquinas de produção e servidores residenciais:
 - Desativação de verificações de ambiente gráfico e temas de GUI.
 - **Sessões Remotas SSH (`_is_ssh`):** Detecção transparente de conexões remotas via `SSH_CLIENT` / `SSH_TTY`, ativando exportação de `REMOTE_SESSION=1`, atalho de inspeção de IP de conexão (`who-remote` / `myip`) e preservação estrita de largura de banda.
 - **Extensão WSL (`wsl.sh`):** Se executado sob WSL (`_is_wsl`), incorpora resolução de rede do host Windows (`WSL_HOST_IP`), liberação de memória RAM da VM para o host (`wsl-drop-caches`) e consulta de IP (`wsl-ip`).
-- **Cache Centralizado Python:** Define `PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-$HOME/.cache}/cpython"` para que daemons e serviços de produção (Django, FastAPI, workers Gunicorn/Celery) tenham boot instantâneo com zero sobrecarga de CPU, mantendo os diretórios das aplicações 100% livres de `__pycache__`.
+- **Cache Centralizado Python:** Define `PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"` para que daemons e serviços de produção (Django, FastAPI, workers Gunicorn/Celery) tenham boot instantâneo com zero sobrecarga de CPU, mantendo os diretórios das aplicações 100% livres de `__pycache__`.
 
 ---
 
@@ -73,4 +74,4 @@ Projetado para instâncias efêmeras e contêineres de compilação:
 - Elimina qualquer dependência de utilitários ausentes em imagens mínimas (como `sudo`, `ip`, `systemd`).
 - Shell imediato com suporte a `l`, `ll` e detecção de pacotes base (`apk`, `apt`, `dnf`, `pkg`).
 - Isolamento estrito e portabilidade absoluta: agnóstico ao sistema hospedeiro (não acoplado ao Windows, macOS ou nuvem).
-- **Política Python Efêmera:** Exporta `PYTHONDONTWRITEBYTECODE=1` para prevenir escrita de bytecode na camada mutável (_overlayfs_) do contêiner.
+- **Política Python Efêmera Isolada:** Define `PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"` redirecionando eventual compilação de bytecode para o cache XDG do usuário sem sujar árvores de código ou volumes montados.

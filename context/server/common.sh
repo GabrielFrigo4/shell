@@ -3,7 +3,7 @@
 ### ================================
 
 ### --------------------------------
-### Open Ports
+### OPEN PORTS
 ### --------------------------------
 ports() {
 	if command -v ss > "/dev/null" 2>&1; then
@@ -13,7 +13,7 @@ ports() {
 	elif command -v sockstat > "/dev/null" 2>&1; then
 		command sockstat -l "$@"
 	else
-		echo "❌ No port inspection tool found (ss/netstat/sockstat)." >&2
+		_ui_err "No port inspection tool found (ss/netstat/sockstat)."
 		return 1
 	fi
 }
@@ -29,7 +29,7 @@ conns() {
 	elif command -v sockstat > "/dev/null" 2>&1; then
 		command sockstat "$@"
 	else
-		echo "❌ No connection inspection tool found (ss/netstat/sockstat)." >&2
+		_ui_err "No connection inspection tool found (ss/netstat/sockstat)."
 		return 1
 	fi
 }
@@ -40,14 +40,14 @@ conns() {
 logs() {
 	if command -v journalctl > "/dev/null" 2>&1; then
 		command journalctl -f --no-hostname -n 50 "$@"
-	elif [ -f /var/adm/messages ]; then
-		_as_root tail -f -n 50 /var/adm/messages
-	elif [ -f /var/log/messages ]; then
-		_as_root tail -f -n 50 /var/log/messages
-	elif [ -f /var/log/syslog ]; then
-		_as_root tail -f -n 50 /var/log/syslog
+	elif [ -f "/var/adm/messages" ]; then
+		_as_root tail -f -n 50 "/var/adm/messages"
+	elif [ -f "/var/log/messages" ]; then
+		_as_root tail -f -n 50 "/var/log/messages"
+	elif [ -f "/var/log/syslog" ]; then
+		_as_root tail -f -n 50 "/var/log/syslog"
 	else
-		echo "❌ No log source found (journalctl/messages/syslog)." >&2
+		_ui_err "No log source found (journalctl/messages/syslog)."
 		return 1
 	fi
 }
@@ -61,13 +61,13 @@ services() {
 	elif command -v svcs > "/dev/null" 2>&1; then
 		command svcs "$@"
 	elif command -v rcctl > "/dev/null" 2>&1; then
-		command rcctl ls on 2> "/dev/null" || command rcctl ls started 2> "/dev/null" || echo "Use: rcctl check <service>"
+		command rcctl ls on 2> "/dev/null" || command rcctl ls started 2> "/dev/null" || _ui_info "Use: rcctl check <service>"
 	elif command -v service > "/dev/null" 2>&1; then
-		command service -e 2> "/dev/null" || command service -l 2> "/dev/null" || echo "Use: service <name> status"
+		command service -e 2> "/dev/null" || command service -l 2> "/dev/null" || _ui_info "Use: service <name> status"
 	elif command -v rc-status > "/dev/null" 2>&1; then
 		command rc-status "$@"
 	else
-		echo "❌ No service manager found (systemctl/svcs/rcctl/service/rc-status)." >&2
+		_ui_err "No service manager found (systemctl/svcs/rcctl/service/rc-status)."
 		return 1
 	fi
 }
@@ -81,12 +81,14 @@ alias svc="services"
 ### --------------------------------
 ### SSH & REMOTE SESSION
 ### --------------------------------
-if _is_ssh; then
+if command -v _is_ssh > "/dev/null" 2>&1 && _is_ssh; then
 	export REMOTE_SESSION=1
 	who-remote() {
-		local _ip="${SSH_CLIENT%% *}"
-		[ -z "${_ip}" ] && _ip="${SSH_CONNECTION%% *}"
-		printf "🌐 Connected via SSH from: %s\n" "${_ip:-unknown}"
+		local _ssh_client="${SSH_CLIENT:-}"
+		local _ssh_connection="${SSH_CONNECTION:-}"
+		local _ip_address="${_ssh_client%% *}"
+		[ -z "${_ip_address}" ] && _ip_address="${_ssh_connection%% *}"
+		printf "🌐 Connected via SSH from: %s\n" "${_ip_address:-unknown}"
 	}
 	alias myip="who-remote"
 fi
