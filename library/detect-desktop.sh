@@ -435,13 +435,11 @@ _resolve_gtk_theme() {
 		esac
 	fi
 
-	local _cand
-	for _cand in ${_candidates}; do
-		if _theme_dir_exists "${_cand}"; then
-			echo "${_cand}"
-			return 0
-		fi
-	done
+	local _found=""
+	if _found="$(_detect_first_match "_theme_dir_exists" "${_candidates}")"; then
+		echo "${_found}"
+		return 0
+	fi
 
 	if [ "${_scheme}" = "light" ]; then
 		if _theme_dir_exists "adw-gtk3"; then
@@ -515,13 +513,11 @@ _resolve_icon_theme() {
 			;;
 	esac
 
-	local _cand
-	for _cand in ${_candidates}; do
-		if _icon_dir_exists "${_cand}"; then
-			echo "${_cand}"
-			return 0
-		fi
-	done
+	local _found=""
+	if _found="$(_detect_first_match "_icon_dir_exists" "${_candidates}")"; then
+		echo "${_found}"
+		return 0
+	fi
 
 	case "${_flavor}" in
 		kde|lxqt)
@@ -790,63 +786,79 @@ _get_wayland_wm_pipeline() {
 	printf '%s\n' "sway labwc river hyprland niri wayfire dwl hikari weston cage"
 }
 
+_detect_first_match() {
+	local _check_fn="${1}" _list_rest="${2:-}" _item=""
+	while [ -n "${_list_rest}" ]; do
+		case "${_list_rest}" in
+			*" "*) _item="${_list_rest%% *}" ; _list_rest="${_list_rest#* }" ;;
+			*)     _item="${_list_rest}" ; _list_rest="" ;;
+		esac
+		[ -n "${_item}" ] || continue
+		if "${_check_fn}" "${_item}"; then
+			echo "${_item}"
+			return 0
+		fi
+	done
+	return 1
+}
+
+_show_wm_pipeline_section() {
+	local _banner="${1}" _step="${2}" _empty_msg="${3}" _raw_list="${4:-}"
+	_ui_banner "${_banner}"
+	local _clean_list="$(printf '%s' "${_raw_list}" | tr '\n\t' '  ')"
+	local _primary="" _rest="${_clean_list}" _wm="" _bin=""
+	while [ -n "${_rest}" ]; do
+		case "${_rest}" in
+			*" "*) _wm="${_rest%% *}" ; _rest="${_rest#* }" ;;
+			*)     _wm="${_rest}" ; _rest="" ;;
+		esac
+		[ -n "${_wm}" ] || continue
+		if command -v "${_wm}" > "/dev/null" 2>&1; then
+			_primary="${_wm}"
+			break
+		fi
+	done
+	_ui_step "${_step}"
+	_rest="${_clean_list}"
+	while [ -n "${_rest}" ]; do
+		case "${_rest}" in
+			*" "*) _wm="${_rest%% *}" ; _rest="${_rest#* }" ;;
+			*)     _wm="${_rest}" ; _rest="" ;;
+		esac
+		[ -n "${_wm}" ] || continue
+		if command -v "${_wm}" > "/dev/null" 2>&1; then
+			_bin="$(command -v "${_wm}")"
+			if [ "${_wm}" = "${_primary}" ]; then
+				_ui_ok "${_wm} -> ${_bin} [SELECIONADO]"
+			else
+				_ui_ok "${_wm} -> ${_bin}"
+			fi
+		else
+			_ui_warn "${_wm} (ausente)"
+		fi
+	done
+	if [ -z "${_primary}" ]; then
+		_ui_warn "${_empty_msg}"
+	fi
+}
+
 _show_wm_pipeline() {
 	local _target="${1:-all}"
 	local _os="${_DETECTED_OS-$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')}"
 
 	if [ "${_target}" = "wayland" ] || [ "${_target}" = "all" ]; then
-		_ui_banner "PIPELINE WAYLAND (${_os})"
-		local _w_pipeline="$(_get_wayland_wm_pipeline)"
-		local _primary_w="" _w_wm _w_bin
-		for _w_wm in ${_w_pipeline}; do
-			if command -v "${_w_wm}" > "/dev/null" 2>&1; then
-				_primary_w="${_w_wm}"
-				break
-			fi
-		done
-		_ui_step "Ordem de compositores Wayland:"
-		for _w_wm in ${_w_pipeline}; do
-			if command -v "${_w_wm}" > "/dev/null" 2>&1; then
-				_w_bin="$(command -v "${_w_wm}")"
-				if [ "${_w_wm}" = "${_primary_w}" ]; then
-					_ui_ok "${_w_wm} -> ${_w_bin} [SELECIONADO]"
-				else
-					_ui_ok "${_w_wm} -> ${_w_bin}"
-				fi
-			else
-				_ui_warn "${_w_wm} (ausente)"
-			fi
-		done
-		if [ -z "${_primary_w}" ]; then
-			_ui_warn "Nenhum compositor Wayland disponível no sistema."
-		fi
+		_show_wm_pipeline_section \
+			"PIPELINE WAYLAND (${_os})" \
+			"Ordem de compositores Wayland:" \
+			"Nenhum compositor Wayland disponível no sistema." \
+			"$(_get_wayland_wm_pipeline)"
 	fi
 
 	if [ "${_target}" = "x11" ] || [ "${_target}" = "all" ]; then
-		_ui_banner "PIPELINE X11 (${_os})"
-		local _x_pipeline="$(_get_x11_wm_pipeline "${_os}")"
-		local _primary_x="" _x_wm _x_bin
-		for _x_wm in ${_x_pipeline}; do
-			if command -v "${_x_wm}" > "/dev/null" 2>&1; then
-				_primary_x="${_x_wm}"
-				break
-			fi
-		done
-		_ui_step "Ordem de gerenciadores X11:"
-		for _x_wm in ${_x_pipeline}; do
-			if command -v "${_x_wm}" > "/dev/null" 2>&1; then
-				_x_bin="$(command -v "${_x_wm}")"
-				if [ "${_x_wm}" = "${_primary_x}" ]; then
-					_ui_ok "${_x_wm} -> ${_x_bin} [SELECIONADO]"
-				else
-					_ui_ok "${_x_wm} -> ${_x_bin}"
-				fi
-			else
-				_ui_warn "${_x_wm} (ausente)"
-			fi
-		done
-		if [ -z "${_primary_x}" ]; then
-			_ui_warn "Nenhum gerenciador X11 disponível no sistema."
-		fi
+		_show_wm_pipeline_section \
+			"PIPELINE X11 (${_os})" \
+			"Ordem de gerenciadores X11:" \
+			"Nenhum gerenciador X11 disponível no sistema." \
+			"$(_get_x11_wm_pipeline "${_os}")"
 	fi
 }

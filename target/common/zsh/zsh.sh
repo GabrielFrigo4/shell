@@ -6,7 +6,7 @@
 ### COMPATIBILITY AND PARSING
 ### --------------------------------
 setopt SH_WORD_SPLIT
-unset IFS
+IFS=$' \t\n'
 
 ### --------------------------------
 ### HISTORY
@@ -48,6 +48,7 @@ r() {
 ### KEYBINDINGS & LINE EDITING
 ### --------------------------------
 bindkey -e
+zmodload -i zsh/terminfo 2> "/dev/null" || true
 
 if (( ${+terminfo[smkx]} )) && (( ${+terminfo[rmkx]} )); then
 	_zle_line_init() { echoti smkx 2> "/dev/null" || true }
@@ -162,8 +163,99 @@ setopt EXTENDED_GLOB GLOB_DOTS NULL_GLOB KSH_GLOB
 ### --------------------------------
 zmodload -i zsh/complist 2> "/dev/null" || true
 
+_zsh_strip_ansi() {
+	setopt LOCAL_OPTIONS EXTENDED_GLOB MULTIBYTE
+	local _stripped="${1:-}"
+	_stripped="${_stripped//$'\x1b'\[[0-9:;?]#[a-zA-Z@~]/}"
+	_stripped="${_stripped//$'\x1b'\][^$'\x07\x1b']#($'\x07'|$'\x1b'\\)/}"
+	_stripped="${_stripped//$'\x1b'%[G@]/}"
+	_stripped="${_stripped//$'\x1b'[()][AB012]/}"
+	_stripped="${_stripped//$'\x1b'[=>]/}"
+	_stripped="${_stripped//[$'\x01\x0e\x0f']/}"
+	REPLY="${_stripped}"
+}
+
+_zsh_comp_format() {
+	setopt LOCAL_OPTIONS EXTENDED_GLOB MULTIBYTE
+	local _kind="${1:-description}"
+	local _raw_text="${2:-}"
+	local _err_spec="${3:-}"
+	local _cols=$(( COLUMNS > 0 ? COLUMNS : 80 ))
+	local _pad_fill=""
+	local _pad_width=0
+	local _text_width=0
+	local _clean_text=""
+
+	if [[ -n "${_raw_text}" ]]; then
+		_zsh_strip_ansi "${_raw_text}"
+		_clean_text="${REPLY}"
+		_clean_text="${_clean_text//\%[FK]\{[^\}]#\}/}"
+		_clean_text="${_clean_text//\%[fkBbSsUu]/}"
+		_clean_text="${_clean_text//\%\%/%}"
+		if [[ "${_clean_text}" == *[[:cntrl:]]* ]]; then
+			_text_width=-1
+		else
+			_text_width=${(m)#_clean_text}
+		fi
+	fi
+
+	case "${_kind}" in
+		description)
+			if (( _text_width > 0 && _text_width < _cols - 8 )); then
+				_pad_width=$(( _cols - _text_width - 6 ))
+				reply=("%F{blue}── %F{cyan}%d %F{blue}${(r:${_pad_width}::─:)_pad_fill}%f")
+			elif (( _text_width > 0 && _cols >= 12 )); then
+				reply=("%F{blue}── %F{cyan}%$(( _cols - 6 ))>..>%d%<<%f")
+			else
+				reply=("%F{blue}── %F{cyan}%d%f")
+			fi
+			;;
+		message)
+			if (( _text_width > 0 && _text_width < _cols - 8 )); then
+				_pad_width=$(( _cols - _text_width - 6 ))
+				reply=("%F{magenta}── %d %F{magenta}${(r:${_pad_width}::─:)_pad_fill}%f")
+			elif (( _text_width > 0 && _cols >= 12 )); then
+				reply=("%F{magenta}── %$(( _cols - 6 ))>..>%d%<<%f")
+			else
+				reply=("%F{magenta}── %d%f")
+			fi
+			;;
+		warning)
+			if (( _cols > 28 )); then
+				_pad_width=$(( _cols - 26 ))
+				reply=("%F{red}── sem correspondências ${(r:${_pad_width}::─:)_pad_fill}%f")
+			elif (( _cols >= 25 )); then
+				reply=("%F{red}── sem correspondências%f")
+			else
+				reply=("%F{red}── nenhum%f")
+			fi
+			;;
+		correction)
+			local _err_width=${(m)#_err_spec}
+			(( _err_width < 1 )) && _err_width=1
+			if (( _text_width > 0 && _text_width + _err_width < _cols - 18 )); then
+				_pad_width=$(( _cols - _text_width - _err_width - 16 ))
+				reply=("%F{yellow}── %d (erros: %e) ${(r:${_pad_width}::─:)_pad_fill}%f")
+			elif (( _text_width >= 0 && 14 + _text_width + _err_width <= _cols - 2 )); then
+				reply=("%F{yellow}── %d (erros: %e)%f")
+			elif (( _text_width >= 0 && 3 + _text_width <= _cols - 2 )); then
+				reply=("%F{yellow}── %d%f")
+			else
+				reply=("%F{yellow}──%f")
+			fi
+			;;
+	esac
+}
+
+_zsh_expand_or_complete() {
+	POSTDISPLAY=""
+	(( ${#region_highlight} )) && region_highlight=(${region_highlight:#*memo=zsh-suggest})
+	zle expand-or-complete
+}
+zle -N _zsh_expand_or_complete
+
 _lazy_compinit() {
-	bindkey '^I' expand-or-complete
+	bindkey '^I' _zsh_expand_or_complete
 	autoload -Uz compinit
 	if [ -s "${HOME}/.zcompdump" ]; then
 		compinit -C -d "${HOME}/.zcompdump"
@@ -173,7 +265,7 @@ _lazy_compinit() {
 	if [ -f "${HOME}/.zcompdump" ] && { [ ! -f "${HOME}/.zcompdump.zwc" ] || [ "${HOME}/.zcompdump" -nt "${HOME}/.zcompdump.zwc" ]; }; then
 		(zcompile "${HOME}/.zcompdump" 2> "/dev/null" &)
 	fi
-	zle expand-or-complete
+	zle _zsh_expand_or_complete
 }
 zle -N _lazy_compinit
 bindkey '^I' _lazy_compinit
@@ -183,7 +275,8 @@ zstyle -e ':completion:*:approximate:*' max-errors 'reply=($((($#PREFIX+$#SUFFIX
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
 
 zstyle ':completion:*' menu select=1
-zstyle ':completion:*' select-prompt '%S[ %p | %l ]%s'
+zstyle -e ':completion:*' select-prompt \
+	'local _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); if (( _cols >= 28 )); then reply=("%S[ %p | %l ]%s"); elif (( _cols >= 12 )); then reply=("%S[ %p ]%s"); else reply=(""); fi'
 zstyle ':completion:*' group-name ''
 zstyle ':completion:*' verbose yes
 zstyle ':completion:*' list-dirs-first true
@@ -193,13 +286,10 @@ zstyle ':completion:*' list-separator ' ── '
 zstyle ':completion:*:*:-command-:*' group-order aliases functions builtins commands
 
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
-zstyle -e ':completion:*:descriptions' format \
-  'local _len=${#3} _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); if (( _len > 0 && _cols - _len > 8 )); then local _w=$(( _cols - _len - 6 )) _pad=""; reply=("%F{blue}── %F{cyan}%d %F{blue}${(r:${_w}::─:)_pad}%f"); else reply=("%F{blue}── %F{cyan}%d%f"); fi'
-zstyle -e ':completion:*:messages' format \
-  'local _len=${#3} _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); if (( _len > 0 && _cols - _len > 8 )); then local _w=$(( _cols - _len - 6 )) _pad=""; reply=("%F{magenta}── %d %F{magenta}${(r:${_w}::─:)_pad}%f"); else reply=("%F{magenta}── %d%f"); fi'
-zstyle -e ':completion:*:warnings' format \
-  'local _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); if (( _cols > 28 )); then local _w=$(( _cols - 26 )) _pad=""; reply=("%F{red}── sem correspondências ${(r:${_w}::─:)_pad}%f"); else reply=("%F{red}── sem correspondências%f"); fi'
-zstyle ':completion:*:corrections' format '%F{yellow}── %d (erros: %e) %f'
+zstyle -e ':completion:*:descriptions' format '_zsh_comp_format description "${3:-}"'
+zstyle -e ':completion:*:messages' format '_zsh_comp_format message "${1:-}"'
+zstyle -e ':completion:*:warnings' format '_zsh_comp_format warning'
+zstyle -e ':completion:*:corrections' format '_zsh_comp_format correction "${3:-}" "${_comp_correct:-${4#e:}}"'
 
 zstyle ':completion:*' squeeze-slashes true
 zstyle ':completion:*' ignore-parents parent pwd
@@ -219,31 +309,44 @@ bindkey -M menuselect '^?' undo 2> "/dev/null" || true
 if [ -t 0 ] && [ -t 1 ]; then
 	_zsh_suggest_fetch() {
 		POSTDISPLAY=""
-		[ -z "${BUFFER}" ] && return 0
+		(( ${#region_highlight} )) && region_highlight=(${region_highlight:#*memo=zsh-suggest})
+		[[ -z "${BUFFER}" ]] && return 0
+		[[ -n "${PREBUFFER:-}" ]] && return 0
+		[[ "${BUFFER}" == *$'\n'* ]] && return 0
+		[[ "${CONTEXT:-}" == cont ]] && return 0
+		local _cols=$(( COLUMNS > 0 ? COLUMNS : 80 ))
+		(( _cols < 24 )) && return 0
 		local -a _hits
 		_hits=(${(k)history[(R)${(b)BUFFER}*]})
-		if [ "${#_hits}" -gt 0 ]; then
-			setopt LOCAL_OPTIONS EXTENDED_GLOB
+		if (( ${#_hits} > 0 )); then
+			setopt LOCAL_OPTIONS EXTENDED_GLOB MULTIBYTE
 			local _last_id="${_hits[1]}"
 			local _candidate="${history[${_last_id}]}"
 			_candidate="${_candidate%%$'\n'*}"
 			[[ "${_candidate}" == *[[:cntrl:]]* ]] && return 0
-			local _cols=$(( COLUMNS > 0 ? COLUMNS : 80 ))
-			local _p_last="${${PROMPT:-${PS1:-}}##*$'\n'}"
-			if [[ -o promptsubst ]] && [[ "${_p_last}" != *'$('* && "${_p_last}" != *'`'* ]]; then
-				_p_last="${(e)_p_last}"
+			[[ "${_candidate}" == "${BUFFER}"* ]] || return 0
+			(( ${#_candidate} <= ${#BUFFER} )) && return 0
+			local _prompt_raw="${PROMPT:-${PS1:-}}"
+			local _prompt_last="${_prompt_raw##*$'\n'}"
+			if [[ -o promptsubst ]]; then
+				if [[ "${_prompt_last}" == *'$('* || "${_prompt_last}" == *'`'* ]]; then
+					return 0
+				fi
+				_prompt_last="${(e)_prompt_last}"
 			fi
-			_p_last="${(%)_p_last}"
-			local _p_vis="${_p_last//$'\x1b'\[[0-9;?]#[a-zA-Z]/}"
-			local _p_len=$(( ${#_p_vis} % _cols ))
-			local _max_len=$(( _cols - _p_len - 1 ))
-			(( _max_len > 80 )) && _max_len=80
-			(( _max_len < 1 )) && return 0
-			[ "${#_candidate}" -gt "${_max_len}" ] && return 0
-			if [ "${#_candidate}" -gt "${#BUFFER}" ]; then
-				POSTDISPLAY="${_candidate[${#BUFFER}+1,-1]}"
-				region_highlight=("${#BUFFER} $((${#BUFFER} + ${#POSTDISPLAY})) fg=8")
-			fi
+			_prompt_last="${(%)_prompt_last}"
+			_zsh_strip_ansi "${_prompt_last}"
+			local _prompt_visible="${REPLY}"
+			[[ "${_prompt_visible}" == *[[:cntrl:]]* ]] && return 0
+			local _prompt_width=${(m)#_prompt_visible}
+			local _prompt_col=$(( _prompt_width % _cols ))
+			local _cand_width=${(m)#_candidate}
+			(( _prompt_col + _cand_width >= _cols - 1 )) && return 0
+			(( _cand_width > 80 )) && return 0
+			local _suggest_highlight="fg=blue"
+			(( ${terminfo[colors]:-8} >= 16 )) && _suggest_highlight="fg=8"
+			POSTDISPLAY="${_candidate[${#BUFFER}+1,-1]}"
+			region_highlight=("${#BUFFER} $((${#BUFFER} + ${#POSTDISPLAY})) ${_suggest_highlight} memo=zsh-suggest")
 		fi
 		return 0
 	}
@@ -253,6 +356,7 @@ if [ -t 0 ] && [ -t 1 ]; then
 			BUFFER="${BUFFER}${POSTDISPLAY}"
 			CURSOR="${#BUFFER}"
 			POSTDISPLAY=""
+			(( ${#region_highlight} )) && region_highlight=(${region_highlight:#*memo=zsh-suggest})
 		else
 			zle .forward-char
 		fi
@@ -263,6 +367,7 @@ if [ -t 0 ] && [ -t 1 ]; then
 			BUFFER="${BUFFER}${POSTDISPLAY}"
 			CURSOR="${#BUFFER}"
 			POSTDISPLAY=""
+			(( ${#region_highlight} )) && region_highlight=(${region_highlight:#*memo=zsh-suggest})
 		else
 			zle .end-of-line
 		fi

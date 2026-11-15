@@ -21,8 +21,117 @@ _kiosk_ensure_session() {
 	_SHELL_DESKTOP_SESSION_LOADED=1
 }
 
+_kiosk_restore_ifs() {
+	if [ "${1:-0}" -eq 1 ]; then
+		IFS="${2:-}"
+	else
+		unset IFS
+	fi
+}
+
+_kiosk_resolve_exec_bin() {
+	local _keb_target="${1:-}"
+	[ -z "${_keb_target}" ] && return 1
+	case "${_keb_target}" in
+		*/*)
+			if [ -f "${_keb_target}" ] && [ -x "${_keb_target}" ]; then
+				printf '%s\n' "${_keb_target}"
+				return 0
+			fi
+			return 1
+			;;
+	esac
+	[ -z "${PATH:-}" ] && return 1
+	local _keb_rem="${PATH}:" _keb_dir=""
+	while [ -n "${_keb_rem}" ]; do
+		_keb_dir="${_keb_rem%%:*}"
+		_keb_rem="${_keb_rem#*:}"
+		[ -z "${_keb_dir}" ] && _keb_dir="."
+		if [ -f "${_keb_dir}/${_keb_target}" ] && [ -x "${_keb_dir}/${_keb_target}" ]; then
+			printf '%s\n' "${_keb_dir}/${_keb_target}"
+			return 0
+		fi
+	done
+	return 1
+}
+
+_kiosk_has_exec_bin() {
+	_kiosk_resolve_exec_bin "${1:-}" > "/dev/null" 2>&1
+}
+
+_kiosk_has_forced_backend() {
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			-w|--wm)
+				[ "$#" -ge 2 ] || break
+				case "$2" in
+					sway|labwc|river|cage|hyprland|Hyprland|niri|wayfire|dwl|hikari|weston|ewm|openbox|cwm|dwm|fvwm3|fvwm|fluxbox|icewm|jwm|pekwm|twm|matchbox|matchbox-window-manager)
+						return 0
+						;;
+				esac
+				shift 2
+				;;
+			--wm=*)
+				case "${1#--wm=}" in
+					sway|labwc|river|cage|hyprland|Hyprland|niri|wayfire|dwl|hikari|weston|ewm|openbox|cwm|dwm|fvwm3|fvwm|fluxbox|icewm|jwm|pekwm|twm|matchbox|matchbox-window-manager)
+						return 0
+						;;
+				esac
+				shift
+				;;
+			--sway|--labwc|--river|--cage|--hyprland|--niri|--wayfire|--dwl|--hikari|--weston|--ewm|--openbox|--cwm|--dwm|--fvwm3|--fvwm|--fluxbox|--icewm|--jwm|--pekwm|--twm|--matchbox|--matchbox-window-manager)
+				return 0
+				;;
+			--)
+				break
+				;;
+			*)
+				shift
+				;;
+		esac
+	done
+	return 1
+}
+
+_kiosk_exec_wayland_logged() {
+	local _log_target="${1:-}"
+	[ "$#" -ge 1 ] && shift
+	[ -z "${_log_target}" ] && return 1
+	local _exec_ret=0
+	local _os_name="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+	if [ "${_os_name}" = "freebsd" ] && _kiosk_has_exec_bin "ck-launch-session"; then
+		local _ck_cmd="$(_session_cmd_file "$@")"
+		if _kiosk_has_exec_bin "dbus-run-session"; then
+			command dbus-run-session -- ck-launch-session "${_ck_cmd}" >> "${_log_target}" 2>&1
+			_exec_ret=$?
+		elif _kiosk_has_exec_bin "dbus-launch"; then
+			command dbus-launch --exit-with-session ck-launch-session "${_ck_cmd}" >> "${_log_target}" 2>&1
+			_exec_ret=$?
+		else
+			command ck-launch-session "${_ck_cmd}" >> "${_log_target}" 2>&1
+			_exec_ret=$?
+		fi
+		rm -f "${_ck_cmd}" 2> "/dev/null" || true
+	elif _kiosk_has_exec_bin "dbus-run-session"; then
+		command dbus-run-session -- "$@" >> "${_log_target}" 2>&1
+		_exec_ret=$?
+	elif _kiosk_has_exec_bin "dbus-launch"; then
+		command dbus-launch --exit-with-session "$@" >> "${_log_target}" 2>&1
+		_exec_ret=$?
+	else
+		"$@" >> "${_log_target}" 2>&1
+		_exec_ret=$?
+	fi
+	return "${_exec_ret}"
+}
+
 graphical_launcher_wayland() {
 	_kiosk_ensure_session || return 1
+	local _ifs_was_set=0 _saved_ifs=""
+	if [ "${IFS+set}" = "set" ]; then
+		_ifs_was_set=1
+		_saved_ifs="${IFS}"
+	fi
 	unset EMACS_OS_MODE
 	_sanitize_graphical_env
 
@@ -33,6 +142,7 @@ graphical_launcher_wayland() {
 		case "$1" in
 			-l|--list|--pipeline)
 				_show_wm_pipeline "wayland"
+				_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 				return 0
 				;;
 			-w|--wm)
@@ -75,7 +185,7 @@ graphical_launcher_wayland() {
 	_is_terminal_app "${_app}" && _is_terminal=1
 
 	local _has_xwayland=0
-	_has_exec_bin "Xwayland" && _has_xwayland=1
+	_kiosk_has_exec_bin "Xwayland" && _has_xwayland=1
 
 	local _require_xwayland=0
 	if [ "${_is_terminal}" -eq 0 ] && [ "${_has_xwayland}" -eq 0 ] && [ -z "${DISPLAY:-}" ]; then
@@ -83,8 +193,8 @@ graphical_launcher_wayland() {
 			xterm|urxvt|rxvt) _require_xwayland=1 ;;
 			*)
 				local _app_path=""
-				_app_path="$(command -v "${_app}" 2> "/dev/null" || true)"
-				if [ -n "${_app_path}" ] && [ -f "${_app_path}" ] && command -v readelf > "/dev/null" 2>&1; then
+				_app_path="$(_kiosk_resolve_exec_bin "${_app}" || true)"
+				if [ -n "${_app_path}" ] && [ -f "${_app_path}" ] && _kiosk_has_exec_bin "readelf"; then
 					local _app_libs=""
 					_app_libs="$(command readelf -d "${_app_path}" 2> "/dev/null" | command grep "(NEEDED)" || true)"
 					if printf '%s\n' "${_app_libs}" | command grep -qi "libX11" > "/dev/null" 2>&1 && \
@@ -119,12 +229,24 @@ graphical_launcher_wayland() {
 			else
 				unset _WAYLAND_REQUIRE_XWAYLAND
 			fi
+			_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 			return 127
 		fi
 	else
-		local _w_cand
-		for _w_cand in $(_get_wayland_wm_pipeline); do
-			if _preflight_wayland "${_w_cand}"; then
+		local _w_pipeline="$(_get_wayland_wm_pipeline) " _w_cand=""
+		while [ -n "${_w_pipeline}" ]; do
+			_w_cand="${_w_pipeline%% *}"
+			_w_pipeline="${_w_pipeline#* }"
+			[ -z "${_w_cand}" ] && continue
+			if [ "${_w_cand}" = "hyprland" ]; then
+				if _preflight_wayland "Hyprland"; then
+					_target_wm="Hyprland"
+					break
+				elif _preflight_wayland "hyprland"; then
+					_target_wm="hyprland"
+					break
+				fi
+			elif _preflight_wayland "${_w_cand}"; then
 				_target_wm="${_w_cand}"
 				break
 			fi
@@ -138,6 +260,7 @@ graphical_launcher_wayland() {
 			else
 				unset _WAYLAND_REQUIRE_XWAYLAND
 			fi
+			_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 			return 127
 		fi
 	fi
@@ -164,6 +287,7 @@ graphical_launcher_wayland() {
 	local _p_fg="#${_hex_fg}" _p_muted="#${_hex_muted}" _p_accent="#${_hex_accent}" _p_urgent="#${_hex_urgent}"
 
 	local _run_dir="${XDG_RUNTIME_DIR:-/tmp}"
+	[ -d "${_run_dir}" ] && [ -w "${_run_dir}" ] || _run_dir="/tmp"
 	local _wayland_runner="${_run_dir}/wayland-runner-$$.sh"
 	local _wayland_entry="${_run_dir}/wayland-entry-$$.sh"
 	local _sh="$(_detect_enabled_shell)"
@@ -189,7 +313,7 @@ elif [ "\${_app_target}" = "code" ] || [ "\${_app_target}" = "code-oss" ] || [ "
 	"\${_app_target}" --ozone-platform-hint=auto "\$@"
 elif [ "\${_app_target}" = "emacs" ]; then
 	_emacs_wayland_bin="\$(command -v emacs-pgtk 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
-	"\${_emacs_wayland_bin}" -mm "\$@"
+	[ -n "\${_emacs_wayland_bin}" ] && "\${_emacs_wayland_bin}" -mm "\$@"
 else
 	"\${_app_target}" "\$@"
 fi
@@ -212,7 +336,7 @@ if command -v niri > "/dev/null" 2>&1 && [ -n "\${NIRI_SOCKET:-}" ]; then
 fi
 exit "\${_ret}"
 EOF
-	chmod 0755 "${_wayland_runner}"
+	chmod 0755 "${_wayland_runner}" 2> "/dev/null" || true
 
 	local _quoted_entry=""
 	_quoted_entry="$(_session_quote_args "${_wayland_runner}" "${_app}" "$@")"
@@ -220,7 +344,7 @@ EOF
 #!/usr/bin/env sh
 exec ${_quoted_entry}
 EOF
-	chmod 0755 "${_wayland_entry}"
+	chmod 0755 "${_wayland_entry}" 2> "/dev/null" || true
 
 	if [ "${_app}" = "foot" ] || [ "${_is_terminal}" -eq 1 ]; then
 		local _foot_target="${HOME}/.config/foot/foot.ini"
@@ -231,7 +355,7 @@ EOF
 			_foot_src="${PROFILE_REPO_DIR}/terminals/foot/foot.ini"
 		fi
 		if [ -n "${_foot_src}" ]; then
-			mkdir -p "${HOME}/.config/foot"
+			mkdir -p "${HOME}/.config/foot" 2> "/dev/null" || true
 			if [ ! -f "${_foot_target}" ] || ! cmp -s "${_foot_src}" "${_foot_target}"; then
 				cp -f "${_foot_src}" "${_foot_target}" 2> "/dev/null" || true
 			fi
@@ -257,18 +381,12 @@ EOF
 	fi
 
 	mkdir -p "${_log_dir}" 2> "/dev/null" || true
-	: > "${_log_file}" 2> "/dev/null" || true
+	: >| "${_log_file}" 2> "/dev/null" || true
 
 	unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 	export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
 
-	local _resolved_wm="$(command -v "${_target_wm}" 2> "/dev/null" || printf '%s' "${_target_wm}")"
-	local _dbus_run=""
-	if command -v dbus-run-session > "/dev/null" 2>&1; then
-		_dbus_run="dbus-run-session --"
-	elif command -v dbus-launch > "/dev/null" 2>&1; then
-		_dbus_run="dbus-launch --exit-with-session"
-	fi
+	local _resolved_wm="$(_kiosk_resolve_exec_bin "${_target_wm}" || printf '%s' "${_target_wm}")"
 
 	case "${_target_wm}" in
 		sway)
@@ -286,7 +404,7 @@ while :; do
 	sleep 1
 done
 EOF
-			chmod 0755 "${_tabwatch}"
+			chmod 0755 "${_tabwatch}" 2> "/dev/null" || true
 
 			cat << EOF >| "${_sway_cfg}"
 font pango:${_ui_font} Bold 10
@@ -345,13 +463,13 @@ input type:keyboard {
 exec "${_tabwatch}"
 exec "${_wayland_entry}"
 EOF
-			${_dbus_run} "${_resolved_wm}" -c "${_sway_cfg}" >> "${_log_file}" 2>&1
+			_kiosk_exec_wayland_logged "${_log_file}" "${_resolved_wm}" -c "${_sway_cfg}"
 			_ret=$?
 			rm -f "${_sway_cfg}" "${_tabwatch}" 2> "/dev/null" || true
 			;;
 		labwc)
 			local _labwc_dir="${_run_dir}/labwc-gui-$$"
-			mkdir -p "${_labwc_dir}"
+			mkdir -p "${_labwc_dir}" 2> "/dev/null" || true
 			cat << EOF >| "${_labwc_dir}/themerc"
 window.active.title.bg.color: ${_p_panel}
 window.active.label.text.color: ${_p_fg}
@@ -451,7 +569,7 @@ EOF
   </windowRules>
 </labwc_config>
 EOF
-			${_dbus_run} "${_resolved_wm}" -C "${_labwc_dir}" -s "${_wayland_entry}" >> "${_log_file}" 2>&1
+			_kiosk_exec_wayland_logged "${_log_file}" "${_resolved_wm}" -C "${_labwc_dir}" -s "${_wayland_entry}"
 			_ret=$?
 			rm -rf "${_labwc_dir}" 2> "/dev/null" || true
 			;;
@@ -479,8 +597,8 @@ riverctl map normal Super F toggle-fullscreen
 riverctl map normal Super Q spawn "riverctl exit"
 "${_wayland_entry}" &
 EOF
-			chmod 0755 "${_river_init}"
-			${_dbus_run} "${_resolved_wm}" -c "${_river_init}" >> "${_log_file}" 2>&1
+			chmod 0755 "${_river_init}" 2> "/dev/null" || true
+			_kiosk_exec_wayland_logged "${_log_file}" "${_resolved_wm}" -c "${_river_init}"
 			_ret=$?
 			rm -f "${_river_init}" 2> "/dev/null" || true
 			;;
@@ -519,7 +637,7 @@ bind = SUPER, Q, killactive
 bind = SUPER SHIFT, Q, exit
 exec-once = "${_wayland_entry}"
 EOF
-			${_dbus_run} "${_resolved_wm}" --config "${_hypr_cfg}" >> "${_log_file}" 2>&1
+			_kiosk_exec_wayland_logged "${_log_file}" "${_resolved_wm}" --config "${_hypr_cfg}"
 			_ret=$?
 			rm -f "${_hypr_cfg}" 2> "/dev/null" || true
 			;;
@@ -542,7 +660,7 @@ binds {
 }
 spawn-at-startup "${_wayland_entry}"
 EOF
-			${_dbus_run} "${_resolved_wm}" --config "${_niri_cfg}" >> "${_log_file}" 2>&1
+			_kiosk_exec_wayland_logged "${_log_file}" "${_resolved_wm}" --config "${_niri_cfg}"
 			_ret=$?
 			rm -f "${_niri_cfg}" 2> "/dev/null" || true
 			;;
@@ -555,7 +673,7 @@ xwayland = ${_xwayland_ini}
 [autostart]
 app = ${_wayland_entry}
 EOF
-			${_dbus_run} "${_resolved_wm}" -c "${_wf_cfg}" >> "${_log_file}" 2>&1
+			_kiosk_exec_wayland_logged "${_log_file}" "${_resolved_wm}" -c "${_wf_cfg}"
 			_ret=$?
 			rm -f "${_wf_cfg}" 2> "/dev/null" || true
 			;;
@@ -565,8 +683,8 @@ EOF
 #!/usr/bin/env sh
 exec "${_wayland_entry}"
 EOF
-			chmod 0755 "${_dwl_startup}"
-			${_dbus_run} "${_resolved_wm}" -s "${_dwl_startup}" >> "${_log_file}" 2>&1
+			chmod 0755 "${_dwl_startup}" 2> "/dev/null" || true
+			_kiosk_exec_wayland_logged "${_log_file}" "${_resolved_wm}" -s "${_dwl_startup}"
 			_ret=$?
 			rm -f "${_dwl_startup}" 2> "/dev/null" || true
 			;;
@@ -589,7 +707,7 @@ bindings {
   }
 }
 EOF
-			${_dbus_run} "${_resolved_wm}" -c "${_hikari_cfg}" -a "${_wayland_entry}" >> "${_log_file}" 2>&1
+			_kiosk_exec_wayland_logged "${_log_file}" "${_resolved_wm}" -c "${_hikari_cfg}" -a "${_wayland_entry}"
 			_ret=$?
 			rm -f "${_hikari_cfg}" 2> "/dev/null" || true
 			;;
@@ -609,12 +727,12 @@ repeat-rate=50
 [autostart]
 path=${_wayland_entry}
 EOF
-			${_dbus_run} "${_resolved_wm}" --config="${_weston_cfg}" >> "${_log_file}" 2>&1
+			_kiosk_exec_wayland_logged "${_log_file}" "${_resolved_wm}" --config="${_weston_cfg}"
 			_ret=$?
 			rm -f "${_weston_cfg}" 2> "/dev/null" || true
 			;;
 		cage)
-			${_dbus_run} "${_resolved_wm}" -s -- "${_wayland_entry}" >> "${_log_file}" 2>&1
+			_kiosk_exec_wayland_logged "${_log_file}" "${_resolved_wm}" -s -- "${_wayland_entry}"
 			_ret=$?
 			;;
 	esac
@@ -623,6 +741,7 @@ EOF
 	rm -f "${_wayland_runner}" "${_wayland_entry}" 2> "/dev/null" || true
 	[ "${_had_wayland}" -eq 0 ] && unset WAYLAND_DISPLAY
 	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
+	_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 
 	if [ "${_ret}" -ne 0 ]; then
 		_ui_err "Lançador Wayland encerrou com erro (código ${_ret}). Log: ${_log_file}"
@@ -634,6 +753,11 @@ alias graphical-launcher-wayland="graphical_launcher_wayland" wgui="graphical_la
 
 graphical_launcher_x11() {
 	_kiosk_ensure_session || return 1
+	local _ifs_was_set=0 _saved_ifs=""
+	if [ "${IFS+set}" = "set" ]; then
+		_ifs_was_set=1
+		_saved_ifs="${IFS}"
+	fi
 	unset EMACS_OS_MODE
 	_sanitize_graphical_env
 
@@ -645,6 +769,7 @@ graphical_launcher_x11() {
 		case "$1" in
 			-l|--list|--pipeline)
 				_show_wm_pipeline "x11"
+				_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 				return 0
 				;;
 			-w|--wm)
@@ -683,42 +808,54 @@ graphical_launcher_x11() {
 		esac
 	done
 
-	{ _has_exec_bin "xinit" || _has_exec_bin "startx"; } || {
+	{ _kiosk_has_exec_bin "xinit" || _kiosk_has_exec_bin "startx"; } || {
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "xinit ou startx não encontrado para lançador Xorg."
 		fi
+		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 		return 127
 	}
-	{ _has_exec_bin "Xorg" || _has_exec_bin "X"; } || {
+	{ _kiosk_has_exec_bin "Xorg" || _kiosk_has_exec_bin "X"; } || {
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "Servidor Xorg não encontrado."
 		fi
+		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 		return 127
 	}
 
 	local _target_wm=""
 	if [ -n "${_selected_wm}" ]; then
 		if [ "${_selected_wm}" = "fvwm" ] || [ "${_selected_wm}" = "fvwm3" ]; then
-			if _has_exec_bin "${_selected_wm}"; then
+			if _kiosk_has_exec_bin "${_selected_wm}"; then
 				_target_wm="${_selected_wm}"
-			elif _has_exec_bin "fvwm3"; then
+			elif _kiosk_has_exec_bin "fvwm3"; then
 				_target_wm="fvwm3"
-			elif _has_exec_bin "fvwm"; then
+			elif _kiosk_has_exec_bin "fvwm"; then
 				_target_wm="fvwm"
 			fi
-		elif _has_exec_bin "${_selected_wm}"; then
+		elif [ "${_selected_wm}" = "matchbox" ] || [ "${_selected_wm}" = "matchbox-window-manager" ]; then
+			if _kiosk_has_exec_bin "matchbox-window-manager"; then
+				_target_wm="matchbox-window-manager"
+			elif _kiosk_has_exec_bin "matchbox"; then
+				_target_wm="matchbox"
+			fi
+		elif _kiosk_has_exec_bin "${_selected_wm}"; then
 			_target_wm="${_selected_wm}"
 		fi
 		if [ -z "${_target_wm}" ]; then
 			if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 				_ui_err "Gerenciador X11 '${_selected_wm}' não está instalado."
 			fi
+			_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 			return 127
 		fi
 	else
-		local _x_cand
-		for _x_cand in $(_get_x11_wm_pipeline); do
-			if _has_exec_bin "${_x_cand}"; then
+		local _x_pipeline="$(_get_x11_wm_pipeline) " _x_cand=""
+		while [ -n "${_x_pipeline}" ]; do
+			_x_cand="${_x_pipeline%% *}"
+			_x_pipeline="${_x_pipeline#* }"
+			[ -z "${_x_cand}" ] && continue
+			if _kiosk_has_exec_bin "${_x_cand}"; then
 				_target_wm="${_x_cand}"
 				break
 			fi
@@ -732,7 +869,7 @@ graphical_launcher_x11() {
 	local _log_dir="$(_get_shell_log_dir)"
 	local _persistent_kiosk_log="${_log_dir}/xorg-kiosk.log"
 	mkdir -p "${_log_dir}" 2> "/dev/null" || true
-	: > "${_persistent_kiosk_log}" 2> "/dev/null" || true
+	: >| "${_persistent_kiosk_log}" 2> "/dev/null" || true
 
 	unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 	export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
@@ -851,6 +988,7 @@ OTM
 	_is_terminal_app "${_app}" && _is_terminal=1
 
 	local _run_dir="${XDG_RUNTIME_DIR:-/tmp}"
+	[ -d "${_run_dir}" ] && [ -w "${_run_dir}" ] || _run_dir="/tmp"
 	local _tabbar_script=""
 	if command -v python3 > "/dev/null" 2>&1 && python3 -c 'import gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk' > "/dev/null" 2>&1; then
 		_tabbar_script="${_run_dir}/xgui-tabbar-$$.py"
@@ -1372,13 +1510,21 @@ export ADW_DEBUG_COLOR_SCHEME="${ADW_DEBUG_COLOR_SCHEME:-prefer-dark}"
 
 if [ -z "\${ENVIRONMENT_SESSION_WRAPPED:-}" ]; then
 	export ENVIRONMENT_SESSION_WRAPPED=1
-	_ck=""
-	[ "\$(uname -s)" = "FreeBSD" ] && command -v ck-launch-session > "/dev/null" 2>&1 && _ck="ck-launch-session"
+	_ck=0
+	[ "\$(uname -s)" = "FreeBSD" ] && command -v ck-launch-session > "/dev/null" 2>&1 && _ck=1
 	if command -v dbus-run-session > "/dev/null" 2>&1; then
-		exec dbus-run-session -- \${_ck} "\$0" "\$@"
+		if [ "\${_ck}" -eq 1 ]; then
+			exec dbus-run-session -- ck-launch-session "\$0" "\$@"
+		else
+			exec dbus-run-session -- "\$0" "\$@"
+		fi
 	elif command -v dbus-launch > "/dev/null" 2>&1; then
-		exec dbus-launch --exit-with-session \${_ck} "\$0" "\$@"
-	elif [ -n "\${_ck}" ]; then
+		if [ "\${_ck}" -eq 1 ]; then
+			exec dbus-launch --exit-with-session ck-launch-session "\$0" "\$@"
+		else
+			exec dbus-launch --exit-with-session "\$0" "\$@"
+		fi
+	elif [ "\${_ck}" -eq 1 ]; then
 		exec ck-launch-session "\$0" "\$@"
 	fi
 fi
@@ -1434,13 +1580,13 @@ if command -v gnome-keyring-daemon > "/dev/null" 2>&1; then
 fi
 
 if command -v xrandr > "/dev/null" 2>&1; then
-	for _out in \$(xrandr 2> "/dev/null" | grep " connected" | cut -d ' ' -f1); do
-		xrandr --output "\${_out}" --set "TearFree" "on" > "/dev/null" 2>&1 || true
+	xrandr 2> "/dev/null" | grep " connected" | cut -d ' ' -f1 | while IFS= read -r _out; do
+		[ -n "\${_out}" ] && xrandr --output "\${_out}" --set "TearFree" "on" > "/dev/null" 2>&1 || true
 	done
 fi
 
 if command -v xsettingsd > "/dev/null" 2>&1; then
-	_xsettings_cfg="${_run_dir}/xsettingsd-gui-\$\$.conf"
+	_xsettings_cfg="${_run_dir}/xsettingsd-gui-$$.conf"
 	cat << EOF_XSET >| "\${_xsettings_cfg}"
 Net/ThemeName "${_gtk_theme}"
 Net/IconThemeName "${_icon_theme}"
@@ -1454,12 +1600,13 @@ fi
 
 if [ "\${X11_NO_COMPOSITOR:-0}" != "1" ]; then
 	if command -v picom > "/dev/null" 2>&1; then
+		: >| "${_log_dir}/picom-kiosk.log" 2> "/dev/null" || true
 		{ pgrep -x picom > "/dev/null" 2>&1 || pkill -0 -x picom > "/dev/null" 2>&1; } || \
 			picom --backend glx --vsync --no-use-damage -b --log-file "${_log_dir}/picom-kiosk.log" > "/dev/null" 2>&1 || \
 			picom --backend xrender --vsync --no-use-damage -b --log-file "${_log_dir}/picom-kiosk.log" > "/dev/null" 2>&1 || true
 	elif command -v xcompmgr > "/dev/null" 2>&1; then
 		{ pgrep -x xcompmgr > "/dev/null" 2>&1 || pkill -0 -x xcompmgr > "/dev/null" 2>&1; } || \
-			xcompmgr -c -C -b > "/dev/null" 2>&1 || true
+			xcompmgr -c -C -b >| "${_log_dir}/xcompmgr-kiosk.log" 2>&1 || true
 	fi
 fi
 
@@ -1468,10 +1615,10 @@ if [ -n "${_tabbar_script}" ] && [ -f "${_tabbar_script}" ]; then
 fi
 
 _wm_log="${_log_dir}/xorg-wm-kiosk.log"
-: > "\${_wm_log}" 2> "/dev/null" || true
+: >| "\${_wm_log}" 2> "/dev/null" || true
 case "${_target_wm}" in
 	openbox)
-		_ob_cfg="${_run_dir}/openbox-gui-\$\$.xml"
+		_ob_cfg="${_run_dir}/openbox-gui-$$.xml"
 		cat << XOB >| "\${_ob_cfg}"
 <?xml version="1.0"?>
 <openbox_config xmlns="http://openbox.org/3.4/rc">
@@ -1549,7 +1696,7 @@ XOB
 		openbox --config-file "\${_ob_cfg}" >> "\${_wm_log}" 2>&1 &
 		;;
 	cwm)
-		_cwm_cfg="${_run_dir}/cwm-gui-\$\$.conf"
+		_cwm_cfg="${_run_dir}/cwm-gui-$$.conf"
 		cat << CWM_EOF >| "\${_cwm_cfg}"
 borderwidth 2
 fontname "${_ui_font}:pixelsize=12:bold"
@@ -1579,7 +1726,7 @@ CWM_EOF
 		dwm >> "\${_wm_log}" 2>&1 &
 		;;
 	fvwm3|fvwm)
-		_fvwm_cfg="${_run_dir}/fvwm-gui-\$\$.cfg"
+		_fvwm_cfg="${_run_dir}/fvwm-gui-$$.cfg"
 		cat << FVWM_EOF >| "\${_fvwm_cfg}"
 EdgeThickness 0
 Colorset 1 bg ${_p_bg}, fg ${_p_fg}
@@ -1594,8 +1741,8 @@ FVWM_EOF
 		${_target_wm} -f "\${_fvwm_cfg}" >> "\${_wm_log}" 2>&1 &
 		;;
 	fluxbox)
-		_fb_dir="${_run_dir}/fluxbox-gui-\$\$"
-		mkdir -p "\${_fb_dir}"
+		_fb_dir="${_run_dir}/fluxbox-gui-$$"
+		mkdir -p "\${_fb_dir}" 2> "/dev/null" || true
 		cat << FB_KEYS >| "\${_fb_dir}/keys"
 Mod1 Tab :NextWindow
 Mod4 Tab :NextWindow
@@ -1612,8 +1759,8 @@ FB_INIT
 		fluxbox -rc "\${_fb_dir}/init" >> "\${_wm_log}" 2>&1 &
 		;;
 	icewm)
-		_ice_dir="${_run_dir}/icewm-gui-\$\$"
-		mkdir -p "\${_ice_dir}"
+		_ice_dir="${_run_dir}/icewm-gui-$$"
+		mkdir -p "\${_ice_dir}" 2> "/dev/null" || true
 		cat << ICE_PREF >| "\${_ice_dir}/preferences"
 ShowTaskBar=0
 TaskBarShowWindows=0
@@ -1628,7 +1775,7 @@ ICE_PREF
 		ICEWM_PRIVCFG="\${_ice_dir}" icewm >> "\${_wm_log}" 2>&1 &
 		;;
 	jwm)
-		_jwm_cfg="${_run_dir}/jwm-gui-\$\$.rc"
+		_jwm_cfg="${_run_dir}/jwm-gui-$$.rc"
 		cat << JWM_RC >| "\${_jwm_cfg}"
 <JWM>
   <Desktops width="1" height="1"/>
@@ -1648,7 +1795,7 @@ JWM_RC
 		jwm -f "\${_jwm_cfg}" >> "\${_wm_log}" 2>&1 &
 		;;
 	pekwm)
-		_pek_cfg="${_run_dir}/pekwm-gui-\$\$.cfg"
+		_pek_cfg="${_run_dir}/pekwm-gui-$$.cfg"
 		cat << PEK_CFG >| "\${_pek_cfg}"
 Files {
     Keys = "~/.pekwm/keys"
@@ -1695,52 +1842,71 @@ elif [ "${_is_terminal}" -eq 1 ]; then
 	fi
 elif [ "\${_target_bin}" = "emacs" ]; then
 	_emacs_kiosk_bin="\$(command -v emacs-gtk+x11 2> "/dev/null" || command -v emacs-x11 2> "/dev/null" || command -v emacs-lucid 2> "/dev/null" || command -v emacs-gtk 2> "/dev/null" || command -v emacs-nw 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
+	[ -n "\${_emacs_kiosk_bin}" ] || exit 127
 	exec "\${_emacs_kiosk_bin}" -mm "\$@"
 else
 	exec "\${_target_bin}" "\$@"
 fi
 EOF
-	chmod 0755 "${_xinit_script}"
+	chmod 0755 "${_xinit_script}" 2> "/dev/null" || true
 
 	local _server_auth="${_run_dir}/.serverauth-gui-$$"
 	local _xinit_ret=0
-	local _auth_args=""
+	local _use_auth=0
 
-	if command -v xauth > "/dev/null" 2>&1; then
-		( umask 0077; : >> "${_server_auth}"; [ -f "${HOME}/.Xauthority" ] || : >> "${HOME}/.Xauthority" ) 2> "/dev/null" || true
+	if _kiosk_has_exec_bin "xauth"; then
+		( umask 0077; rm -f "${_server_auth}"; : >| "${_server_auth}"; [ -f "${HOME}/.Xauthority" ] || : >| "${HOME}/.Xauthority" ) 2> "/dev/null" || true
 		local _cookie=""
-		if command -v mcookie > "/dev/null" 2>&1; then
+		if _kiosk_has_exec_bin "mcookie"; then
 			_cookie="$(command mcookie 2> "/dev/null" || true)"
-		elif [ -r "/dev/urandom" ]; then
+		elif [ -r "/dev/urandom" ] && _kiosk_has_exec_bin "hexdump"; then
 			_cookie="$(command dd if=/dev/urandom bs=16 count=1 2> "/dev/null" | command hexdump -e '16/1 "%02x"' 2> "/dev/null" || true)"
+		elif [ -r "/dev/urandom" ] && _kiosk_has_exec_bin "od"; then
+			_cookie="$(command dd if=/dev/urandom bs=16 count=1 2> "/dev/null" | command od -An -tx1 2> "/dev/null" | tr -d ' \n' || true)"
 		fi
 		if [ -n "${_cookie}" ]; then
-			command xauth -q -f "${_server_auth}" add "${_display}" . "${_cookie}" 2> "/dev/null" || true
-			command xauth -q add "${_display}" . "${_cookie}" 2> "/dev/null" || true
-			_auth_args="-auth ${_server_auth}"
+			if command xauth -q -f "${_server_auth}" add "${_display}" . "${_cookie}" > "/dev/null" 2>&1; then
+				command xauth -q add "${_display}" . "${_cookie}" > "/dev/null" 2>&1 || true
+				_use_auth=1
+			fi
 		fi
 	fi
 
-	if command -v xinit > "/dev/null" 2>&1 && [ -n "${_auth_args}" ]; then
-		command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} ${_auth_args} >> "${_persistent_kiosk_log}" 2>&1
+	if _kiosk_has_exec_bin "xinit" && [ "${_use_auth}" -eq 1 ]; then
+		if [ -n "${_vt_arg}" ]; then
+			command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" "${_vt_arg}" "-auth" "${_server_auth}" >> "${_persistent_kiosk_log}" 2>&1
+		else
+			command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" "-auth" "${_server_auth}" >> "${_persistent_kiosk_log}" 2>&1
+		fi
 		_xinit_ret=$?
-	elif command -v startx > "/dev/null" 2>&1; then
-		command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} >> "${_persistent_kiosk_log}" 2>&1
+	elif _kiosk_has_exec_bin "startx"; then
+		if [ -n "${_vt_arg}" ]; then
+			command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" "${_vt_arg}" >> "${_persistent_kiosk_log}" 2>&1
+		else
+			command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" >> "${_persistent_kiosk_log}" 2>&1
+		fi
+		_xinit_ret=$?
+	elif _kiosk_has_exec_bin "xinit"; then
+		if [ -n "${_vt_arg}" ]; then
+			command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" "${_vt_arg}" >> "${_persistent_kiosk_log}" 2>&1
+		else
+			command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" >> "${_persistent_kiosk_log}" 2>&1
+		fi
 		_xinit_ret=$?
 	else
-		command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" ${_vt_arg} >> "${_persistent_kiosk_log}" 2>&1
-		_xinit_ret=$?
+		_xinit_ret=1
 	fi
 	[ "${_xinit_ret}" -eq 127 ] && _xinit_ret=1
 
 	rm -f "${_server_auth}" "${_xinit_script}" "${_tabbar_script}" \
-		"${_run_dir}/openbox-gui-"*".xml" "${_run_dir}/cwm-gui-"*".conf" \
-		"${_run_dir}/fvwm-gui-"*".cfg" "${_run_dir}/jwm-gui-"*".rc" \
-		"${_run_dir}/pekwm-gui-"*".cfg" "${_run_dir}/xsettingsd-gui-"*".conf" 2> "/dev/null" || true
-	rm -rf "${_run_dir}/fluxbox-gui-"* "${_run_dir}/icewm-gui-"* 2> "/dev/null" || true
-	command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" 2> "/dev/null" || true
+		"${_run_dir}/openbox-gui-$$.xml" "${_run_dir}/cwm-gui-$$.conf" \
+		"${_run_dir}/fvwm-gui-$$.cfg" "${_run_dir}/jwm-gui-$$.rc" \
+		"${_run_dir}/pekwm-gui-$$.cfg" "${_run_dir}/xsettingsd-gui-$$.conf" 2> "/dev/null" || true
+	rm -rf "${_run_dir}/fluxbox-gui-$$" "${_run_dir}/icewm-gui-$$" 2> "/dev/null" || true
+	_kiosk_has_exec_bin "xauth" && command xauth -q remove "${_display}" > "/dev/null" 2>&1 || true
 	[ "${_had_display}" -eq 0 ] && unset DISPLAY
 	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
+	_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 
 	if [ "${_xinit_ret}" -ne 0 ] && [ "${_xinit_ret}" -ne 127 ]; then
 		_ui_err "Lançador Xorg encerrou com erro (código ${_xinit_ret}). Log: ${_persistent_kiosk_log}"
@@ -1751,8 +1917,15 @@ alias graphical-launcher-x11="graphical_launcher_x11" xgui="graphical_launcher_x
 
 graphical_launcher() {
 	_kiosk_ensure_session || return 1
+	local _ifs_was_set=0 _saved_ifs=""
+	if [ "${IFS+set}" = "set" ]; then
+		_ifs_was_set=1
+		_saved_ifs="${IFS}"
+	fi
 	local _prev_probe="${_SHELL_DISPATCH_PROBE:-}"
-	export _SHELL_DISPATCH_PROBE=1
+	if ! _kiosk_has_forced_backend "$@"; then
+		export _SHELL_DISPATCH_PROBE=1
+	fi
 	_dispatch_display_server "graphical-launcher" "$@"
 	local _ret=$?
 	if [ -n "${_prev_probe}" ]; then
@@ -1760,6 +1933,7 @@ graphical_launcher() {
 	else
 		unset _SHELL_DISPATCH_PROBE
 	fi
+	_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 	return "${_ret}"
 }
 alias graphical-launcher="graphical_launcher" gui="graphical_launcher"
@@ -1769,6 +1943,11 @@ alias graphical-launcher="graphical_launcher" gui="graphical_launcher"
 ### --------------------------------
 emacs_window_manager_wayland() {
 	_kiosk_ensure_session || return 1
+	local _ifs_was_set=0 _saved_ifs=""
+	if [ "${IFS+set}" = "set" ]; then
+		_ifs_was_set=1
+		_saved_ifs="${IFS}"
+	fi
 	_sanitize_graphical_env
 
 	local _flavor=""
@@ -1793,12 +1972,13 @@ emacs_window_manager_wayland() {
 	_wayland_session_env "${_flavor}"
 	export EMACS_OS_MODE="wayland"
 
-	local _ewm_emacs_bin="$(command -v emacs-pgtk 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
+	local _ewm_emacs_bin="$(_kiosk_resolve_exec_bin "emacs-pgtk" || _kiosk_resolve_exec_bin "emacs" || true)"
 	if [ -z "${_ewm_emacs_bin}" ]; then
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "emacs não encontrado."
 		fi
 		unset EMACS_OS_MODE
+		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 		return 127
 	fi
 
@@ -1812,17 +1992,15 @@ emacs_window_manager_wayland() {
 	local _emacs_ret=0
 	if [ -n "${_ewm_so}" ]; then
 		if ! _preflight_wayland "${_ewm_emacs_bin}"; then
+			if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+				_ui_err "Pré-requisitos Wayland (/dev/dri/card* ou compositor) indisponíveis para EWM."
+			fi
 			unset EMACS_OS_MODE
+			_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 			return 127
 		fi
 		unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 		export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
-		local _bus_wrapper=""
-		if command -v dbus-run-session > "/dev/null" 2>&1; then
-			_bus_wrapper="dbus-run-session --"
-		elif command -v dbus-launch > "/dev/null" 2>&1; then
-			_bus_wrapper="dbus-launch --exit-with-session"
-		fi
 		export EWM_MODULE_PATH="${_ewm_so}"
 		export EMACSLOADPATH="${HOME}/.local/share/emacs/site-lisp/ewm:${EMACSLOADPATH:-}:"
 		export RUST_LOG="${RUST_LOG:-ewm=info,ewm_core::dbus_login1=error,ewm_core::xwayland::satellite=error,smithay=warn}"
@@ -1831,8 +2009,9 @@ emacs_window_manager_wayland() {
 		local _log_dir="$(_get_shell_log_dir)"
 		local _ewm_log="${_log_dir}/ewm-wayland.log"
 		mkdir -p "${_log_dir}" 2> "/dev/null" || true
+		: >| "${_ewm_log}" 2> "/dev/null" || true
 		unset WAYLAND_DISPLAY DISPLAY
-		${_bus_wrapper:-command} "${_ewm_emacs_bin}" --fg-daemon=ewm -L "${HOME}/.local/share/emacs/site-lisp/ewm" -l ewm -f ewm-start-module "$@" >| "${_ewm_log}" 2>&1
+		_kiosk_exec_wayland_logged "${_ewm_log}" "${_ewm_emacs_bin}" --fg-daemon=ewm -L "${HOME}/.local/share/emacs/site-lisp/ewm" -l ewm -f ewm-start-module "$@"
 		_emacs_ret=$?
 		[ "${_emacs_ret}" -eq 127 ] && _emacs_ret=1
 
@@ -1851,12 +2030,18 @@ emacs_window_manager_wayland() {
 	unset EMACS_OS_MODE
 	_restore_tty_cursor > "/dev/null" 2>&1 || true
 	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
+	_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 	return "${_emacs_ret}"
 }
 alias emacs-window-manager-wayland="emacs_window_manager_wayland" wewm="emacs_window_manager_wayland" wew="emacs_window_manager_wayland"
 
 emacs_window_manager_x11() {
 	_kiosk_ensure_session || return 1
+	local _ifs_was_set=0 _saved_ifs=""
+	if [ "${IFS+set}" = "set" ]; then
+		_ifs_was_set=1
+		_saved_ifs="${IFS}"
+	fi
 	_sanitize_graphical_env
 
 	local _flavor=""
@@ -1878,13 +2063,27 @@ emacs_window_manager_x11() {
 		esac
 	done
 
-	{ _has_exec_bin "xinit" || _has_exec_bin "startx"; } && { _has_exec_bin "Xorg" || _has_exec_bin "X"; } || return 127
+	{ _kiosk_has_exec_bin "xinit" || _kiosk_has_exec_bin "startx"; } || {
+		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+			_ui_err "xinit ou startx não encontrado para EWM Xorg."
+		fi
+		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
+		return 127
+	}
+	{ _kiosk_has_exec_bin "Xorg" || _kiosk_has_exec_bin "X"; } || {
+		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+			_ui_err "Servidor Xorg não encontrado para EWM."
+		fi
+		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
+		return 127
+	}
 
-	local _emacs_bin="$(command -v emacs-gtk+x11 2> "/dev/null" || command -v emacs-x11 2> "/dev/null" || command -v emacs-lucid 2> "/dev/null" || command -v emacs-gtk 2> "/dev/null" || command -v emacs-nw 2> "/dev/null" || command -v emacs 2> "/dev/null" || true)"
+	local _emacs_bin="$(_kiosk_resolve_exec_bin "emacs-gtk+x11" || _kiosk_resolve_exec_bin "emacs-x11" || _kiosk_resolve_exec_bin "emacs-lucid" || _kiosk_resolve_exec_bin "emacs-gtk" || _kiosk_resolve_exec_bin "emacs-nw" || _kiosk_resolve_exec_bin "emacs" || true)"
 	if [ -z "${_emacs_bin}" ]; then
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "emacs não encontrado."
 		fi
+		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 		return 127
 	fi
 
@@ -1900,14 +2099,22 @@ emacs_window_manager_x11() {
 	unset _X11_FLAVOR_OVERRIDE EMACS_OS_MODE
 	_restore_tty_cursor > "/dev/null" 2>&1 || true
 	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
+	_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 	return "${_ret}"
 }
 alias emacs-window-manager-x11="emacs_window_manager_x11" xewm="emacs_window_manager_x11" xew="emacs_window_manager_x11" exwm="emacs_window_manager_x11" exw="emacs_window_manager_x11"
 
 emacs_window_manager() {
 	_kiosk_ensure_session || return 1
+	local _ifs_was_set=0 _saved_ifs=""
+	if [ "${IFS+set}" = "set" ]; then
+		_ifs_was_set=1
+		_saved_ifs="${IFS}"
+	fi
 	local _prev_probe="${_SHELL_DISPATCH_PROBE:-}"
-	export _SHELL_DISPATCH_PROBE=1
+	if ! _kiosk_has_forced_backend "$@"; then
+		export _SHELL_DISPATCH_PROBE=1
+	fi
 	_dispatch_display_server "emacs-window-manager" "$@"
 	local _ret=$?
 	if [ -n "${_prev_probe}" ]; then
@@ -1915,6 +2122,7 @@ emacs_window_manager() {
 	else
 		unset _SHELL_DISPATCH_PROBE
 	fi
+	_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 	return "${_ret}"
 }
 alias emacs-window-manager="emacs_window_manager" ewm="emacs_window_manager" ew="emacs_window_manager"

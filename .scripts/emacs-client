@@ -134,12 +134,13 @@ _ec_probe_socket() {
 }
 
 _ec_exec_nw() {
-	if ! command -v emacs > "/dev/null" 2>&1; then
+	_ec_nw_bin="$(command -v emacs 2> "/dev/null" || command -v emacs-nw 2> "/dev/null" || true)"
+	if [ -z "${_ec_nw_bin}" ]; then
 		printf '%s\n' "emacs: command not found" >&2
 		exit 127
 	fi
 	if [ -t 0 ]; then
-		stty sane 2> "/dev/null" || true
+		command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
 	fi
 	_ec_argc=$#
 	while [ "${_ec_argc}" -gt 0 ]; do
@@ -152,7 +153,7 @@ _ec_exec_nw() {
 		_ec_argc=$((_ec_argc - 1))
 	done
 	unset _ec_argc _ec_arg
-	exec emacs -nw "$@"
+	exec "${_ec_nw_bin}" -nw "$@"
 }
 
 ### ================================
@@ -308,7 +309,7 @@ if [ "${_ec_explicit_server_file}" -eq 0 ]; then
 	if [ -z "${_ec_live_sock}" ]; then
 		_ec_has_daemon=0
 		if [ "${_ec_is_default_mode}" -eq 1 ] && command -v pgrep > "/dev/null" 2>&1; then
-			if pgrep -u "${_ec_uid}" -f 'emacs([[:space:]]|$).*--(fg-|bg-)?daemon' > "/dev/null" 2>&1; then
+			if pgrep -u "${_ec_uid}" -f '(^|/)emacs[^/[:space:]]*[[:space:]].*--(fg-|bg-)?daemon' > "/dev/null" 2>&1; then
 				_ec_has_daemon=1
 			fi
 		fi
@@ -316,9 +317,10 @@ if [ "${_ec_explicit_server_file}" -eq 0 ]; then
 		if [ "${_ec_has_daemon}" -eq 1 ]; then
 			if ! _ec_probe_socket "${_ec_target_sock}"; then
 				if command -v pkill > "/dev/null" 2>&1; then
-					pkill -9 -u "${_ec_uid}" -f 'emacs([[:space:]]|$).*--(fg-|bg-)?daemon' > "/dev/null" 2>&1 || true
+					pkill -9 -u "${_ec_uid}" -f '(^|/)emacs[^/[:space:]]*[[:space:]].*--(fg-|bg-)?daemon' > "/dev/null" 2>&1 || true
 				else
-					for _ec_pid in $(pgrep -u "${_ec_uid}" -f 'emacs([[:space:]]|$).*--(fg-|bg-)?daemon' 2> "/dev/null" || true); do
+					pgrep -u "${_ec_uid}" -f '(^|/)emacs[^/[:space:]]*[[:space:]].*--(fg-|bg-)?daemon' 2> "/dev/null" | while IFS= read -r _ec_pid; do
+						[ -n "${_ec_pid}" ] || continue
 						[ "${_ec_pid}" != "$$" ] && kill -9 "${_ec_pid}" 2> "/dev/null" || true
 					done
 					unset _ec_pid

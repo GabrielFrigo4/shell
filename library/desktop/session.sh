@@ -114,13 +114,13 @@ _resolve_desktop_font() {
 ### --------------------------------
 _enable_numlock_console() {
 	if [ -t 0 ] || [ -c "/dev/tty" ]; then
-		command -v setleds > "/dev/null" 2>&1 && setleds -D +num 2> "/dev/null" || true
-		command -v kbdcontrol > "/dev/null" 2>&1 && kbdcontrol -l num 2> "/dev/null" || true
+		command -v setleds > "/dev/null" 2>&1 && setleds -D +num > "/dev/null" 2>&1 || true
+		command -v kbdcontrol > "/dev/null" 2>&1 && kbdcontrol -l num > "/dev/null" 2>&1 || true
 	fi
 }
 
 _setup_cursor_env() {
-	local _flavor="${1:-}"
+	local _flavor="${1:-}" _c _p
 	export XCURSOR_PATH="${HOME}/.local/share/icons:${HOME}/.icons:/usr/local/share/icons:/usr/share/icons"
 	export WLR_NO_HARDWARE_CURSORS=1
 
@@ -413,7 +413,7 @@ _setup_cursor_env() {
 _set_ini_key() {
 	local _ini_file="$1" _key="$2" _val="$3"
 	if grep -q "^${_key}=" "${_ini_file}" 2> "/dev/null"; then
-		sed "s|^${_key}=.*|${_key}=${_val}|" "${_ini_file}" > "${_ini_file}.1" 2> "/dev/null" && mv -f "${_ini_file}.1" "${_ini_file}" 2> "/dev/null" || true
+		sed "s|^${_key}=.*|${_key}=${_val}|" "${_ini_file}" >| "${_ini_file}.1" 2> "/dev/null" && mv -f "${_ini_file}.1" "${_ini_file}" 2> "/dev/null" || rm -f "${_ini_file}.1" 2> "/dev/null" || true
 	else
 		printf '%s=%s\n' "${_key}" "${_val}" >> "${_ini_file}" 2> "/dev/null" || true
 	fi
@@ -514,14 +514,14 @@ _propagate_session_theme_env() {
 	local _env_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/environment.d"
 	mkdir -p "${_env_dir}" 2> "/dev/null" || true
 	rm -f "${_env_dir}/gtk-dark.conf" 2> "/dev/null" || true
-	cat <<- EOF >| "${_env_dir}/10-theme.conf"
+	cat <<- EOF >| "${_env_dir}/10-theme.conf" 2> "/dev/null" || true
 		QT_QPA_PLATFORMTHEME=${_qt_platform}
 		SAL_USE_VCLPLUGIN=gtk3
 	EOF
 
 	local _xprofile="${HOME}/.xprofile"
 	if [ ! -f "${_xprofile}" ]; then
-		cat <<- EOF >| "${_xprofile}"
+		cat <<- EOF >| "${_xprofile}" 2> "/dev/null" || true
 			#!/usr/bin/env sh
 			export QT_QPA_PLATFORMTHEME="${_qt_platform}"
 			export SAL_USE_VCLPLUGIN="gtk3"
@@ -654,7 +654,7 @@ _apply_common_theme_exports() {
 _wayland_session_env() {
 	local _target_flavor="${1:-}" _is_full_de="${2:-0}"
 	[ -z "${XDG_RUNTIME_DIR:-}" ] && export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"
-	[ ! -d "${XDG_RUNTIME_DIR}" ] && mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
+	[ ! -d "${XDG_RUNTIME_DIR}" ] && mkdir -p -m 0700 "${XDG_RUNTIME_DIR}" 2> "/dev/null" || true
 
 	unset DISPLAY XAUTHORITY 2> "/dev/null" || true
 	export XDG_SESSION_TYPE="wayland"
@@ -664,7 +664,7 @@ _wayland_session_env() {
 	export MOZ_ENABLE_WAYLAND=1 ELECTRON_OZONE_PLATFORM_HINT="auto"
 	export QT_QPA_PLATFORM="wayland;xcb"
 
-	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
+	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}" 2> "/dev/null" || echo "gnome")"
 	local _color_scheme="dark"
 	if command -v _detect_color_scheme > "/dev/null" 2>&1; then
 		_color_scheme="$(_detect_color_scheme "${_theme_flavor}" 2> "/dev/null" || echo "dark")"
@@ -683,7 +683,7 @@ _x11_session_env() {
 	export XORG_RUN_AS_USER_OK=1 XKB_DEFAULT_LAYOUT="br" XKB_DEFAULT_MODEL="abnt2" XKB_DEFAULT_OPTIONS="numpad:mac"
 	export vblank_mode=3 __GL_SYNC_TO_VBLANK=1
 
-	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
+	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}" 2> "/dev/null" || echo "gnome")"
 	local _color_scheme="dark"
 	if command -v _detect_color_scheme > "/dev/null" 2>&1; then
 		_color_scheme="$(_detect_color_scheme "${_theme_flavor}" 2> "/dev/null" || echo "dark")"
@@ -698,7 +698,7 @@ _x11_session_env() {
 		_xres_src="${PROFILE_REPO_DIR}/terminals/xterm/Xresources"
 	fi
 	if [ -n "${_xres_src}" ]; then
-		if [ ! -f "${_xres_target}" ] || ! cmp -s "${_xres_src}" "${_xres_target}"; then
+		if [ ! -f "${_xres_target}" ] || ! cmp -s "${_xres_src}" "${_xres_target}" 2> "/dev/null"; then
 			cp -f "${_xres_src}" "${_xres_target}" 2> "/dev/null" || true
 		fi
 	fi
@@ -709,7 +709,8 @@ _x11_session_env() {
 }
 
 _freebsd_vt_bounce() {
-	if [ "$(_detect_os)" = "freebsd" ]; then
+	local _os_name="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+	if [ "${_os_name}" = "freebsd" ]; then
 		local _cur_tty="$(tty 2> "/dev/null" || true)"
 		case "${_cur_tty}" in
 			/dev/ttyv[0-9a-fA-F]*)
@@ -718,8 +719,8 @@ _freebsd_vt_bounce() {
 					local _vt_idx=$(( 0x${_hex} + 1 ))
 					local _target_vt=1
 					[ "${_vt_idx}" -eq 1 ] && _target_vt=2
-					command vidcontrol -s "${_target_vt}" < "${_cur_tty}" 2> "/dev/null" || true
-					command vidcontrol -s "${_vt_idx}" < "${_cur_tty}" 2> "/dev/null" || echo -n $'\ec'
+					command vidcontrol -s "${_target_vt}" < "${_cur_tty}" > "/dev/null" 2>&1 || true
+					command vidcontrol -s "${_vt_idx}" < "${_cur_tty}" > "/dev/null" 2>&1 || echo -n $'\ec'
 				fi
 				;;
 		esac
@@ -815,21 +816,23 @@ _session_cmd_file() {
 ### PREFLIGHT & XORG DIAGNOSTICS
 ### --------------------------------
 _has_exec_bin() {
-	local _bin="$1" _old_ifs _p
+	local _bin="${1:-}" _path_rest="${PATH:-}" _dir
 	[ -z "${_bin}" ] && return 1
 	case "${_bin}" in
-		/*) [ -x "${_bin}" ] && [ ! -d "${_bin}" ] && return 0 || return 1 ;;
+		*/*) [ -x "${_bin}" ] && [ ! -d "${_bin}" ] && return 0 || return 1 ;;
 	esac
-	_old_ifs="${IFS}"
-	IFS=":"
-	for _p in ${PATH:-}; do
-		[ -z "${_p}" ] && _p="."
-		if [ -x "${_p}/${_bin}" ] && [ ! -d "${_p}/${_bin}" ]; then
-			IFS="${_old_ifs}"
+	[ -z "${_path_rest}" ] && return 1
+	while :; do
+		_dir="${_path_rest%%:*}"
+		[ -z "${_dir}" ] && _dir="."
+		if [ -x "${_dir}/${_bin}" ] && [ ! -d "${_dir}/${_bin}" ]; then
 			return 0
 		fi
+		case "${_path_rest}" in
+			*:*) _path_rest="${_path_rest#*:}" ;;
+			*) break ;;
+		esac
 	done
-	IFS="${_old_ifs}"
 	return 1
 }
 
@@ -869,7 +872,8 @@ _preflight_wayland() {
 
 _x11_driver_preflight() {
 	local _log_target="${1:-}"
-	[ "$(_detect_os)" = "freebsd" ] || return 0
+	local _os_name="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+	[ "${_os_name}" = "freebsd" ] || return 0
 	_has_drm_card && return 0
 	if [ -n "${_log_target}" ]; then
 		printf 'WARNING: /dev/dri/card* ausente: Xorg usará fallback scfb (verifique kld_list i915kms/amdgpu).\n' >> "${_log_target}" 2> "/dev/null" || true
@@ -880,14 +884,27 @@ _x11_driver_preflight() {
 ### GRAPHICAL SESSION LAUNCHERS
 ### --------------------------------
 _exec_wayland() {
-	_preflight_wayland "${1:-}" || return 127
+	local _bin="${1:-}"
+	if ! _preflight_wayland "${_bin}"; then
+		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+			if ! _has_exec_bin "${_bin}"; then
+				_ui_err "Compositor Wayland '${_bin}' não está instalado."
+			elif [ "${_WAYLAND_REQUIRE_XWAYLAND:-0}" = "1" ] && [ -z "${DISPLAY:-}" ] && ! _has_exec_bin "Xwayland"; then
+				_ui_err "Xwayland não encontrado para sessão Wayland '${_bin}'."
+			else
+				_ui_err "Nenhum dispositivo DRM (/dev/dri/card*) disponível para iniciar '${_bin}'."
+			fi
+		fi
+		return 127
+	fi
 	_sanitize_graphical_env
 	local _log_dir="$(_get_shell_log_dir)"
 	local _log_file="${_log_dir}/wayland-session.log"
+	: >| "${_log_file}" 2> "/dev/null" || true
 	local _ret=0
 	local _is_full_de=0
 
-	if [ "${_SESSION_IS_FULL_DE:-0}" = "1" ] || _is_full_de_cmd "${1:-}"; then
+	if [ "${_SESSION_IS_FULL_DE:-0}" = "1" ] || _is_full_de_cmd "${_bin}"; then
 		_is_full_de=1
 		_wayland_session_env "${_WAYLAND_FLAVOR_OVERRIDE:-}" 1
 	fi
@@ -908,7 +925,8 @@ _exec_wayland() {
 		fi
 	fi
 
-	if [ "$(_detect_os)" = "freebsd" ]; then
+	local _os_name="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
+	if [ "${_os_name}" = "freebsd" ]; then
 		if command -v ck-launch-session > "/dev/null" 2>&1; then
 			local _ck_cmd="$(_session_cmd_file "$@")"
 			if command -v dbus-run-session > "/dev/null" 2>&1; then
@@ -921,6 +939,7 @@ _exec_wayland() {
 				ck-launch-session "${_ck_cmd}" >> "${_log_file}" 2>&1
 				_ret=$?
 			fi
+			rm -f "${_ck_cmd}" 2> "/dev/null" || true
 		elif command -v dbus-run-session > "/dev/null" 2>&1; then
 			dbus-run-session -- "$@" >> "${_log_file}" 2>&1
 			_ret=$?
@@ -944,7 +963,7 @@ _exec_wayland() {
 		fi
 	fi
 
-	_freebsd_vt_bounce > "/dev/null" 2>&1
+	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
 	[ "${_ret}" -eq 127 ] && _ret=1
 
 	if [ "${_ret}" -ne 0 ]; then
@@ -970,23 +989,37 @@ _resolve_vt_arg() {
 
 _resolve_free_display() {
 	local _d=0
-	while true; do
+	while [ "${_d}" -lt 256 ]; do
 		if [ ! -e "/tmp/.X${_d}-lock" ] && [ ! -S "/tmp/.X11-unix/X${_d}" ]; then
-			if ! { [ -r "/proc/net/unix" ] && command grep -q "/tmp/.X11-unix/X${_d}" "/proc/net/unix" 2> "/dev/null"; }; then
+			if ! { [ -r "/proc/net/unix" ] && command grep -qE "/tmp/\.X11-unix/X${_d}([[:space:]]|$)" "/proc/net/unix" 2> "/dev/null"; }; then
 				echo ":${_d}"
 				return 0
 			fi
 		fi
 		_d=$((_d + 1))
 	done
+	echo ":0"
 }
 
 _exec_x11() {
 	_sanitize_graphical_env
-	{ _has_exec_bin "startx" || _has_exec_bin "xinit"; } || return 127
-	{ _has_exec_bin "Xorg" || _has_exec_bin "X"; } || return 127
-	if [ "$#" -gt 0 ]; then
-		_has_exec_bin "$1" || return 127
+	if ! { _has_exec_bin "startx" || _has_exec_bin "xinit"; }; then
+		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+			_ui_err "xinit ou startx não encontrado para sessão Xorg."
+		fi
+		return 127
+	fi
+	if ! { _has_exec_bin "Xorg" || _has_exec_bin "X"; }; then
+		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+			_ui_err "Servidor Xorg não encontrado."
+		fi
+		return 127
+	fi
+	if [ "$#" -gt 0 ] && ! _has_exec_bin "$1"; then
+		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+			_ui_err "Executável X11 '$1' não encontrado."
+		fi
+		return 127
 	fi
 
 	local _is_full_de=0
@@ -1007,6 +1040,7 @@ _exec_x11() {
 	local _log_dir="$(_get_shell_log_dir)"
 	local _persistent_log="${_log_dir}/xorg-session.log"
 	rm -f "${_persistent_log}" 2> "/dev/null" || true
+	: >| "${_persistent_log}" 2> "/dev/null" || true
 	_x11_driver_preflight "${_persistent_log}"
 
 	local _session_cmd=""
@@ -1020,9 +1054,9 @@ _exec_x11() {
 		[ -z "${_session_cmd}" ] && _session_cmd="'xterm'"
 	fi
 
-	local _theme_flavor="${_RESOLVED_THEME_FLAVOR:-$(_detect_desktop_theme "${_X11_FLAVOR_OVERRIDE:-}")}"
+	local _theme_flavor="${_RESOLVED_THEME_FLAVOR:-$(_detect_desktop_theme "${_X11_FLAVOR_OVERRIDE:-}" 2> "/dev/null" || echo "gnome")}"
 	local _color_scheme="${_RESOLVED_COLOR_SCHEME:-$(_detect_color_scheme "${_theme_flavor}" 2> "/dev/null" || echo "dark")}"
-	local _ui_font="$(_resolve_desktop_font "${_theme_flavor}")"
+	local _ui_font="$(_resolve_desktop_font "${_theme_flavor}" 2> "/dev/null" || echo "Sans")"
 	local _valid_theme="${XCURSOR_THEME:-Adwaita}"
 	local _icon_theme="${_RESOLVED_ICON_THEME:-Adwaita}"
 	local _gtk_theme="${GTK_THEME:-}"
@@ -1043,6 +1077,7 @@ _exec_x11() {
 	local _bg_cmd="${_X11_SESSION_BG_CMD:-}"
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-session-$$.sh"
+	local _xsettings_host_cfg="${XDG_RUNTIME_DIR:-/tmp}/xsettingsd-session-$$.conf"
 	cat << EOF >| "${_xinit_script}"
 #!/usr/bin/env sh
 unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
@@ -1071,14 +1106,20 @@ EOF
 	cat << EOF >> "${_xinit_script}"
 if [ -z "\${ENVIRONMENT_SESSION_WRAPPED:-}" ]; then
 	export ENVIRONMENT_SESSION_WRAPPED=1
-	_ck=""
-	[ "\$(uname -s)" = "FreeBSD" ] && command -v ck-launch-session > "/dev/null" 2>&1 && _ck="ck-launch-session"
-	if command -v dbus-run-session > "/dev/null" 2>&1; then
-		exec dbus-run-session -- \${_ck} "\$0" "\$@"
-	elif command -v dbus-launch > "/dev/null" 2>&1; then
-		exec dbus-launch --exit-with-session \${_ck} "\$0" "\$@"
-	elif [ -n "\${_ck}" ]; then
-		exec ck-launch-session "\$0" "\$@"
+	if [ "\$(uname -s)" = "FreeBSD" ] && command -v ck-launch-session > "/dev/null" 2>&1; then
+		if command -v dbus-run-session > "/dev/null" 2>&1; then
+			exec dbus-run-session -- ck-launch-session "\$0" "\$@"
+		elif command -v dbus-launch > "/dev/null" 2>&1; then
+			exec dbus-launch --exit-with-session ck-launch-session "\$0" "\$@"
+		else
+			exec ck-launch-session "\$0" "\$@"
+		fi
+	else
+		if command -v dbus-run-session > "/dev/null" 2>&1; then
+			exec dbus-run-session -- "\$0" "\$@"
+		elif command -v dbus-launch > "/dev/null" 2>&1; then
+			exec dbus-launch --exit-with-session "\$0" "\$@"
+		fi
 	fi
 fi
 unset ENVIRONMENT_SESSION_WRAPPED
@@ -1144,7 +1185,8 @@ if command -v gnome-keyring-daemon > "/dev/null" 2>&1; then
 fi
 
 if command -v xrandr > "/dev/null" 2>&1; then
-	for _out in \$(xrandr 2> "/dev/null" | grep " connected" | cut -d ' ' -f1); do
+	xrandr 2> "/dev/null" | grep " connected" | cut -d ' ' -f1 | while IFS= read -r _out; do
+		[ -n "\${_out}" ] || continue
 		xrandr --output "\${_out}" --set "TearFree" "on" > "/dev/null" 2>&1 || true
 	done
 fi
@@ -1161,7 +1203,7 @@ EOF
 	if [ "${_is_full_de}" -eq 0 ]; then
 		cat << EOF >> "${_xinit_script}"
 if command -v xsettingsd > "/dev/null" 2>&1; then
-	_xsettings_cfg="\${XDG_RUNTIME_DIR:-/tmp}/xsettingsd-\$\$.conf"
+	_xsettings_cfg="${_xsettings_host_cfg}"
 	cat << EOF_XSET >| "\${_xsettings_cfg}"
 Net/ThemeName "${_gtk_theme}"
 Net/IconThemeName "${_icon_theme}"
@@ -1170,7 +1212,7 @@ Gtk/CursorThemeSize \${XCURSOR_SIZE}
 Gtk/FontName "${_ui_font} 11"
 Gtk/ApplicationPreferDarkTheme ${_prefer_dark}
 EOF_XSET
-	xsettingsd -c "\${_xsettings_cfg}" > "${_log_dir}/xsettingsd.log" 2>&1 &
+	xsettingsd -c "\${_xsettings_cfg}" >| "${_log_dir}/xsettingsd.log" 2>&1 &
 	_xset_pid=\$!
 fi
 
@@ -1180,16 +1222,16 @@ if [ "\${X11_NO_COMPOSITOR:-0}" != "1" ]; then
 			_picom_log_flag=""
 			picom --help 2> "/dev/null" | grep -q -- "--log-file" && _picom_log_flag="--log-file"
 			if [ -n "\${_picom_log_flag}" ]; then
-				picom --backend glx --vsync --no-use-damage -b "\${_picom_log_flag}" "${_log_dir}/picom.log" > "${_log_dir}/picom.log" 2>&1 || \
-					picom --backend xrender --vsync --no-use-damage -b "\${_picom_log_flag}" "${_log_dir}/picom.log" > "${_log_dir}/picom.log" 2>&1 || true
+				picom --backend glx --vsync --no-use-damage -b "\${_picom_log_flag}" "${_log_dir}/picom.log" >| "${_log_dir}/picom.log" 2>&1 || \
+					picom --backend xrender --vsync --no-use-damage -b "\${_picom_log_flag}" "${_log_dir}/picom.log" >| "${_log_dir}/picom.log" 2>&1 || true
 			else
-				picom --backend glx --vsync --no-use-damage -b > "${_log_dir}/picom.log" 2>&1 || \
-					picom --backend xrender --vsync --no-use-damage -b > "${_log_dir}/picom.log" 2>&1 || true
+				picom --backend glx --vsync --no-use-damage -b >| "${_log_dir}/picom.log" 2>&1 || \
+					picom --backend xrender --vsync --no-use-damage -b >| "${_log_dir}/picom.log" 2>&1 || true
 			fi
 		fi
 	elif command -v xcompmgr > "/dev/null" 2>&1; then
 		{ pgrep -x xcompmgr > "/dev/null" 2>&1 || pkill -0 -x xcompmgr > "/dev/null" 2>&1; } || \
-			xcompmgr -c -C -b > "${_log_dir}/xcompmgr.log" 2>&1 || true
+			xcompmgr -c -C -b >| "${_log_dir}/xcompmgr.log" 2>&1 || true
 	fi
 fi
 EOF
@@ -1197,13 +1239,13 @@ EOF
 
 	if [ -n "${_bg_cmd}" ]; then
 		cat << EOF >> "${_xinit_script}"
-( sleep 0.25; ${_bg_cmd} ) > "${_log_dir}/wwm-bar.log" 2>&1 &
+( sleep 0.25; ${_bg_cmd} ) >| "${_log_dir}/wwm-bar.log" 2>&1 &
 _bg_pid=\$!
 EOF
 	fi
 
 	cat << EOF >> "${_xinit_script}"
-eval "${_session_cmd}"
+${_session_cmd}
 _wm_ret=\$?
 _cleanup_x11_helpers
 exit "\${_wm_ret}"
@@ -1212,43 +1254,65 @@ EOF
 
 	local _server_auth="${XDG_RUNTIME_DIR:-/tmp}/.serverauth-session-$$"
 	local _xinit_ret=0
-	local _auth_args=""
+	local _use_auth=0
 
 	if command -v xauth > "/dev/null" 2>&1; then
-		( umask 0077; : >> "${_server_auth}"; [ -f "${HOME}/.Xauthority" ] || : >> "${HOME}/.Xauthority" ) 2> "/dev/null" || true
+		( umask 0077; rm -f "${_server_auth}"; : >| "${_server_auth}"; [ -f "${HOME}/.Xauthority" ] || : >| "${HOME}/.Xauthority" ) 2> "/dev/null" || true
 		local _cookie=""
 		if command -v mcookie > "/dev/null" 2>&1; then
 			_cookie="$(command mcookie 2> "/dev/null" || true)"
-		elif [ -r "/dev/urandom" ]; then
+		elif [ -r "/dev/urandom" ] && command -v hexdump > "/dev/null" 2>&1; then
 			_cookie="$(command dd if=/dev/urandom bs=16 count=1 2> "/dev/null" | command hexdump -e '16/1 "%02x"' 2> "/dev/null" || true)"
+		elif [ -r "/dev/urandom" ] && command -v od > "/dev/null" 2>&1; then
+			_cookie="$(command dd if=/dev/urandom bs=16 count=1 2> "/dev/null" | command od -An -tx1 2> "/dev/null" | tr -d ' \n' || true)"
 		fi
 		if [ -n "${_cookie}" ]; then
-			command xauth -q -f "${_server_auth}" add "${_display}" . "${_cookie}" 2> "/dev/null" || true
-			command xauth -q add "${_display}" . "${_cookie}" 2> "/dev/null" || true
-			_auth_args="-auth ${_server_auth}"
+			if command xauth -q -f "${_server_auth}" add "${_display}" . "${_cookie}" > "/dev/null" 2>&1; then
+				command xauth -q add "${_display}" . "${_cookie}" > "/dev/null" 2>&1 || true
+				_use_auth=1
+			fi
 		fi
 	fi
 
-	if command -v xinit > "/dev/null" 2>&1 && [ -n "${_auth_args}" ]; then
-		command xinit "${_xinit_script}" -- "${_display}" ${_vt_arg} ${_auth_args} >> "${_persistent_log}" 2>&1
+	if _has_exec_bin "xinit" && [ "${_use_auth}" -eq 1 ]; then
+		if [ -n "${_vt_arg}" ]; then
+			command xinit "${_xinit_script}" -- "${_display}" "${_vt_arg}" "-auth" "${_server_auth}" >> "${_persistent_log}" 2>&1
+		else
+			command xinit "${_xinit_script}" -- "${_display}" "-auth" "${_server_auth}" >> "${_persistent_log}" 2>&1
+		fi
 		_xinit_ret=$?
-	elif command -v startx > "/dev/null" 2>&1; then
-		command startx "${_xinit_script}" -- "${_display}" ${_vt_arg} >> "${_persistent_log}" 2>&1
+		[ "${_xinit_ret}" -eq 127 ] && _xinit_ret=1
+	elif _has_exec_bin "startx"; then
+		if [ -n "${_vt_arg}" ]; then
+			command startx "${_xinit_script}" -- "${_display}" "${_vt_arg}" >> "${_persistent_log}" 2>&1
+		else
+			command startx "${_xinit_script}" -- "${_display}" >> "${_persistent_log}" 2>&1
+		fi
 		_xinit_ret=$?
+		[ "${_xinit_ret}" -eq 127 ] && _xinit_ret=1
+	elif _has_exec_bin "xinit"; then
+		if [ -n "${_vt_arg}" ]; then
+			command xinit "${_xinit_script}" -- "${_display}" "${_vt_arg}" >> "${_persistent_log}" 2>&1
+		else
+			command xinit "${_xinit_script}" -- "${_display}" >> "${_persistent_log}" 2>&1
+		fi
+		_xinit_ret=$?
+		[ "${_xinit_ret}" -eq 127 ] && _xinit_ret=1
 	else
-		command xinit "${_xinit_script}" -- "${_display}" ${_vt_arg} >> "${_persistent_log}" 2>&1
-		_xinit_ret=$?
+		_xinit_ret=127
+		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+			_ui_err "xinit ou startx não encontrado para sessão Xorg."
+		fi
 	fi
-	rm -f "${_server_auth}" "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/xsettingsd-"*.conf 2> "/dev/null" || true
-	command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" 2> "/dev/null" || true
+	rm -f "${_server_auth}" "${_xinit_script}" "${_xsettings_host_cfg}" 2> "/dev/null" || true
+	command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" > "/dev/null" 2>&1 || true
 
-	[ "${_xinit_ret}" -eq 127 ] && _xinit_ret=1
-	if [ "${_xinit_ret}" -ne 0 ]; then
+	if [ "${_xinit_ret}" -ne 0 ] && [ "${_xinit_ret}" -ne 127 ]; then
 		_ui_err "Sessão Xorg encerrou com erro (código ${_xinit_ret}). Log: ${_persistent_log}"
 	fi
 
 	[ "${_had_display}" -eq 0 ] && unset DISPLAY
-	_freebsd_vt_bounce > "/dev/null" 2>&1
+	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
 	return "${_xinit_ret}"
 }
 
@@ -1313,7 +1377,7 @@ _dispatch_display_server() {
 		esac
 	done
 
-	local _idx=1
+	local _idx=1 _curr="" _val="" _next_idx=0
 	while [ "${_idx}" -le "$#" ]; do
 		eval "_curr=\${${_idx}}"
 		case "${_curr}" in
@@ -1356,12 +1420,20 @@ _dispatch_display_server() {
 		*) _fn="$(printf '%s' "${_base_target}" | tr '-' '_')" ;;
 	esac
 
-	if [ "${_forced_backend}" = "wayland" ]; then
-		"${_fn}_wayland" "$@"
-		return $?
-	elif [ "${_forced_backend}" = "x11" ]; then
-		"${_fn}_x11" "$@"
-		return $?
+	if [ "${_forced_backend}" = "wayland" ] || [ "${_forced_backend}" = "x11" ]; then
+		local _prev_forced_probe="${_SHELL_DISPATCH_PROBE:-}" _forced_ret=127
+		unset _SHELL_DISPATCH_PROBE
+		if [ "${_forced_backend}" = "wayland" ]; then
+			"${_fn}_wayland" "$@"
+			_forced_ret=$?
+		else
+			"${_fn}_x11" "$@"
+			_forced_ret=$?
+		fi
+		if [ -n "${_prev_forced_probe}" ]; then
+			export _SHELL_DISPATCH_PROBE="${_prev_forced_probe}"
+		fi
+		return "${_forced_ret}"
 	fi
 
 	local _disp_ret=127
@@ -1382,7 +1454,8 @@ _dispatch_display_server() {
 }
 
 _try_wayland() {
-	local _bin _ret=127
+	local _bin _ret=127 _prev_probe="${_SHELL_DISPATCH_PROBE:-}"
+	export _SHELL_DISPATCH_PROBE=1
 	for _bin in "$@"; do
 		_has_exec_bin "${_bin}" || continue
 		if [ "${_bin}" = "gnome-session" ]; then
@@ -1397,16 +1470,30 @@ _try_wayland() {
 			_exec_wayland "${_bin}"
 			_ret=$?
 		fi
-		[ "${_ret}" -ne 127 ] && return "${_ret}"
+		if [ "${_ret}" -ne 127 ]; then
+			if [ -n "${_prev_probe}" ]; then
+				export _SHELL_DISPATCH_PROBE="${_prev_probe}"
+			else
+				unset _SHELL_DISPATCH_PROBE
+			fi
+			return "${_ret}"
+		fi
 	done
+	if [ -n "${_prev_probe}" ]; then
+		export _SHELL_DISPATCH_PROBE="${_prev_probe}"
+	else
+		unset _SHELL_DISPATCH_PROBE
+	fi
 	return 127
 }
 
 _try_xorg() {
-	local _bin _ret=127 _resolved=""
+	local _bin _ret=127 _resolved="" _prev_probe="${_SHELL_DISPATCH_PROBE:-}"
+	export _SHELL_DISPATCH_PROBE=1
 	for _bin in "$@"; do
 		_has_exec_bin "${_bin}" || continue
-		_resolved="$(command -v "${_bin}")"
+		_resolved="$(command -v "${_bin}" 2> "/dev/null" || true)"
+		[ -x "${_resolved}" ] || _resolved="${_bin}"
 		if [ "${_bin}" = "gnome-session" ]; then
 			_exec_x11 "${_resolved}" --session=gnome-xorg
 			_ret=$?
@@ -1414,9 +1501,81 @@ _try_xorg() {
 			_exec_x11 "${_resolved}"
 			_ret=$?
 		fi
-		[ "${_ret}" -ne 127 ] && return "${_ret}"
+		if [ "${_ret}" -ne 127 ]; then
+			if [ -n "${_prev_probe}" ]; then
+				export _SHELL_DISPATCH_PROBE="${_prev_probe}"
+			else
+				unset _SHELL_DISPATCH_PROBE
+			fi
+			return "${_ret}"
+		fi
 	done
+	if [ -n "${_prev_probe}" ]; then
+		export _SHELL_DISPATCH_PROBE="${_prev_probe}"
+	else
+		unset _SHELL_DISPATCH_PROBE
+	fi
 	return 127
+}
+
+_wayland_drm_missing() {
+	[ -z "${WAYLAND_DISPLAY:-}" ] && [ -z "${DISPLAY:-}" ] && [ -z "${WLR_BACKENDS:-}" ] && [ "${SHELL_ALLOW_NO_DRM:-0}" != "1" ] || return 1
+	case "$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')" in
+		linux|freebsd)
+			_has_drm_card || return 0
+			;;
+	esac
+	return 1
+}
+
+_wayland_cand_list() {
+	case "${1:-}" in
+		kde|plasma)    printf '%s\n' "startplasma-wayland plasma-wayland-session" ;;
+		gnome)         printf '%s\n' "gnome-session gnome-shell" ;;
+		hyprland|hypr) printf '%s\n' "Hyprland hyprland" ;;
+		sway)          printf '%s\n' "sway" ;;
+		cosmic)        printf '%s\n' "cosmic-session start-cosmic" ;;
+		lxqt)          printf '%s\n' "lxqt-wayland-session startlxqt-wayland" ;;
+		budgie)        printf '%s\n' "budgie-desktop" ;;
+		pantheon)      printf '%s\n' "pantheon-session io.elementary.wingpanel" ;;
+		deepin)        printf '%s\n' "startdde dde-session" ;;
+		niri)          printf '%s\n' "niri-session niri" ;;
+		river)         printf '%s\n' "river" ;;
+		wayfire)       printf '%s\n' "wayfire" ;;
+		labwc)         printf '%s\n' "labwc" ;;
+		dwl)           printf '%s\n' "dwl" ;;
+		hikari)        printf '%s\n' "hikari" ;;
+		weston)        printf '%s\n' "weston" ;;
+		"")            printf '%s\n' "startplasma-wayland plasma-wayland-session gnome-session Hyprland hyprland sway cosmic-session start-cosmic lxqt-wayland-session startlxqt-wayland budgie-desktop pantheon-session startdde niri-session niri river wayfire labwc dwl hikari weston" ;;
+		*)             printf '%s\n' "${1}" ;;
+	esac
+}
+
+_has_wayland_candidate_bin() {
+	local _cand_list="" _w_bin=""
+	_cand_list="$(_wayland_cand_list "${1:-}")"
+	while [ -n "${_cand_list}" ]; do
+		case "${_cand_list}" in
+			*" "*)
+				_w_bin="${_cand_list%% *}"
+				_cand_list="${_cand_list#* }"
+				;;
+			*)
+				_w_bin="${_cand_list}"
+				_cand_list=""
+				;;
+		esac
+		[ -n "${_w_bin}" ] && _has_exec_bin "${_w_bin}" && return 0
+	done
+	return 1
+}
+
+_restore_probe_flag() {
+	if [ -n "${1:-}" ]; then
+		export _SHELL_DISPATCH_PROBE="${1}"
+	else
+		unset _SHELL_DISPATCH_PROBE
+	fi
 }
 
 _start_wayland() {
@@ -1517,40 +1676,69 @@ start_session() {
 		esac
 	done
 	local _ret=127
+	local _orig_probe="${_SHELL_DISPATCH_PROBE:-}"
 	local _WAYLAND_FLAVOR_OVERRIDE="${_env}"
 	local _X11_FLAVOR_OVERRIDE="${_env}"
 	case "${_type}" in
 		way|wayland)
 			_start_wayland "${_env}"
 			_ret=$?
-			[ "${_ret}" -eq 127 ] && { _ui_err "Nenhum compositor Wayland '${_env:-detectado}' encontrado."; return 127; }
+			if [ "${_ret}" -eq 127 ] && [ "${_orig_probe:-0}" != "1" ]; then
+				if _has_wayland_candidate_bin "${_env}"; then
+					if [ "${_WAYLAND_REQUIRE_XWAYLAND:-0}" = "1" ] && [ -z "${DISPLAY:-}" ] && ! _has_exec_bin "Xwayland"; then
+						_ui_err "Xwayland não encontrado para sessão Wayland '${_env:-detectado}'."
+					elif _wayland_drm_missing; then
+						_ui_err "Nenhum dispositivo DRM (/dev/dri/card*) disponível para sessão Wayland '${_env:-detectado}'."
+					else
+						_ui_err "Nenhum compositor Wayland '${_env:-detectado}' encontrado."
+					fi
+				else
+					_ui_err "Nenhum compositor Wayland '${_env:-detectado}' encontrado."
+				fi
+			fi
 			return "${_ret}"
 			;;
 		xorg|x11)
 			_start_xorg "${_env}"
 			_ret=$?
-			[ "${_ret}" -eq 127 ] && { _ui_err "Nenhum ambiente Xorg '${_env:-detectado}' encontrado."; return 127; }
+			if [ "${_ret}" -eq 127 ] && [ "${_orig_probe:-0}" != "1" ]; then
+				if ! _has_exec_bin "startx" && ! _has_exec_bin "xinit"; then
+					_ui_err "Nenhum iniciador Xorg (xinit/startx) encontrado no PATH."
+				elif ! _has_exec_bin "Xorg" && ! _has_exec_bin "X"; then
+					_ui_err "Servidor Xorg (Xorg/X) não encontrado no PATH."
+				else
+					_ui_err "Nenhum ambiente Xorg '${_env:-detectado}' encontrado."
+				fi
+			fi
 			return "${_ret}"
 			;;
 		"")
+			export _SHELL_DISPATCH_PROBE=1
 			_start_wayland "${_env}"
 			_ret=$?
 			if [ "${_ret}" -eq 127 ]; then
 				_start_xorg "${_env}"
 				_ret=$?
-				[ "${_ret}" -eq 127 ] && { _ui_err "Nenhum ambiente gráfico encontrado."; return 127; }
+			fi
+			_restore_probe_flag "${_orig_probe}"
+			if [ "${_ret}" -eq 127 ] && [ "${_orig_probe:-0}" != "1" ]; then
+				_ui_err "Nenhum ambiente gráfico encontrado."
 			fi
 			return "${_ret}"
 			;;
 		*)
 			_WAYLAND_FLAVOR_OVERRIDE="${_type}"
 			_X11_FLAVOR_OVERRIDE="${_type}"
+			export _SHELL_DISPATCH_PROBE=1
 			_start_wayland "${_type}"
 			_ret=$?
 			if [ "${_ret}" -eq 127 ]; then
 				_start_xorg "${_type}"
 				_ret=$?
-				[ "${_ret}" -eq 127 ] && { _ui_err "Ambiente '${_type}' não encontrado."; return 127; }
+			fi
+			_restore_probe_flag "${_orig_probe}"
+			if [ "${_ret}" -eq 127 ] && [ "${_orig_probe:-0}" != "1" ]; then
+				_ui_err "Ambiente '${_type}' não encontrado."
 			fi
 			return "${_ret}"
 			;;
@@ -1565,7 +1753,7 @@ desktop_session_x11() { start_session xorg "$@"; }
 alias desktop-session-x11="desktop_session_x11" xorg="desktop_session_x11" x11="desktop_session_x11" start-xorg="desktop_session_x11" start-x11="desktop_session_x11"
 
 ### --------------------------------
-### DESKTOP MENU & BAR GENERATION
+### DESKTOP MENU & BAR
 ### --------------------------------
 _generate_wwm_bar_script() {
 	local _out_script="$1"
@@ -2595,7 +2783,7 @@ EOF_PY_MENU
 	fi
 
 	if [ "${_gen_ok}" -ne 1 ]; then
-		local _cid _target_cat _tuple _t_key _rest _t_id _t_label _t_file _r_dir
+		local _cid _target_cat _tuple _t_key _rest _t_id _t_label _t_file _r_dir _app_dir _df _d_name _d_exec _s_name _s_exec _d_cat
 		_r_dir="${XDG_RUNTIME_DIR:-/tmp}"
 		for _cid in editors dev net office graphics media tools sys; do
 			: >| "${_r_dir}/menu-cat-${_cid}-$$.xml"
@@ -2742,23 +2930,65 @@ window_manager_wayland() {
 			return 127
 		fi
 	else
-		local _w_cand
-		for _w_cand in $(_get_wayland_wm_pipeline); do
+		local _w_cand _w_rest _w_any_bin=0
+		_w_rest="$(_get_wayland_wm_pipeline | tr '\n\t' '  ')"
+		while [ -n "${_w_rest}" ]; do
+			case "${_w_rest}" in
+				*" "*)
+					_w_cand="${_w_rest%% *}"
+					_w_rest="${_w_rest#* }"
+					;;
+				*)
+					_w_cand="${_w_rest}"
+					_w_rest=""
+					;;
+			esac
+			[ -n "${_w_cand}" ] || continue
 			if [ "${_w_cand}" = "hyprland" ] && ! _has_exec_bin "hyprland" && _has_exec_bin "Hyprland"; then
+				_w_any_bin=1
 				if _preflight_wayland "Hyprland"; then
 					_target_wm="Hyprland"
 					break
 				fi
-			elif _preflight_wayland "${_w_cand}"; then
-				_target_wm="${_w_cand}"
-				break
+			else
+				_has_exec_bin "${_w_cand}" && _w_any_bin=1
+				if _preflight_wayland "${_w_cand}"; then
+					_target_wm="${_w_cand}"
+					break
+				fi
 			fi
 		done
 	fi
-	[ -z "${_target_wm}" ] && return 127
+	if [ -z "${_target_wm}" ]; then
+		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+			if [ "${_w_any_bin:-0}" -eq 1 ]; then
+				if [ "${_WAYLAND_REQUIRE_XWAYLAND:-0}" = "1" ] && [ -z "${DISPLAY:-}" ] && ! _has_exec_bin "Xwayland"; then
+					_ui_err "Xwayland não encontrado para sessão Wayland."
+				elif _wayland_drm_missing; then
+					_ui_err "Nenhum dispositivo DRM (/dev/dri/card*) disponível para iniciar compositor Wayland."
+				else
+					_ui_err "Nenhum compositor Wayland compatível encontrado."
+				fi
+			else
+				_ui_err "Nenhum compositor Wayland instalado no pipeline."
+			fi
+		fi
+		return 127
+	fi
 
 	local _check_bin="${_target_wm}"
-	_preflight_wayland "${_check_bin}" || return 127
+	if ! _preflight_wayland "${_check_bin}"; then
+		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+			if ! _has_exec_bin "${_check_bin}"; then
+				_ui_err "Compositor Wayland '${_check_bin}' não está instalado."
+			elif [ "${_WAYLAND_REQUIRE_XWAYLAND:-0}" = "1" ] && [ -z "${DISPLAY:-}" ] && ! _has_exec_bin "Xwayland"; then
+				_ui_err "Xwayland não encontrado para sessão Wayland '${_check_bin}'."
+			else
+				_ui_err "Nenhum dispositivo DRM (/dev/dri/card*) disponível para iniciar '${_check_bin}'."
+			fi
+		fi
+		return 127
+	fi
 
 	local _WAYLAND_FLAVOR_OVERRIDE="${_flavor}"
 	_wayland_session_env "${_flavor}"
@@ -2779,7 +3009,7 @@ window_manager_wayland() {
 	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
 	local _log_dir="$(_get_shell_log_dir)"
 
-	local _wm_term="foot -o dpi-aware=no"
+	local _wm_term="foot -o dpi-aware=no" _t
 	for _t in foot alacritty kitty xterm; do
 		if command -v "${_t}" > "/dev/null" 2>&1; then
 			[ "${_t}" = "foot" ] && _wm_term="foot -o dpi-aware=no" || _wm_term="${_t}"
@@ -2985,7 +3215,7 @@ floating_minimum_size 1 x 1
 gaps top 32
 no_focus [instance="wwm-bar"]
 for_window [instance="wwm-bar"] floating enable, sticky enable, border none, resize set 100 ppt 32 px, move absolute position 0 0
-exec sh -c 'env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="sway" python3 "${_bar_script}" > "${_log_dir}/wwm-bar.log" 2>&1'
+exec sh -c 'env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="sway" python3 "${_bar_script}" >| "${_log_dir}/wwm-bar.log" 2>&1'
 EOF
 			else
 				cat << EOF >> "${_sway_cfg}"
@@ -3087,7 +3317,7 @@ EOF
 			if [ "${_has_gtk3_bar}" -eq 1 ]; then
 				cat << EOF >| "${_labwc_dir}/autostart"
 #!/usr/bin/env sh
-env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="labwc" python3 "${_bar_script}" > "${_log_dir}/wwm-bar.log" 2>&1 &
+env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="labwc" python3 "${_bar_script}" >| "${_log_dir}/wwm-bar.log" 2>&1 &
 EOF
 				chmod 0755 "${_labwc_dir}/autostart"
 			fi
@@ -3127,7 +3357,7 @@ riverctl map normal Super+Shift Q spawn "riverctl exit"
 EOF
 			if [ "${_has_gtk3_bar}" -eq 1 ]; then
 				cat << EOF >> "${_river_init}"
-env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="river" python3 "${_bar_script}" > "${_log_dir}/wwm-bar.log" 2>&1 &
+env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="river" python3 "${_bar_script}" >| "${_log_dir}/wwm-bar.log" 2>&1 &
 EOF
 			fi
 			chmod 0755 "${_river_init}"
@@ -3199,7 +3429,7 @@ windowrulev2 = pin, class:^(wwm-bar)$
 windowrulev2 = noborder, class:^(wwm-bar)$
 windowrulev2 = nofocus, class:^(wwm-bar)$
 windowrulev2 = move 0 0, class:^(wwm-bar)$
-exec-once = sh -c 'env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="hyprland" python3 "${_bar_script}" > "${_log_dir}/wwm-bar.log" 2>&1'
+exec-once = sh -c 'env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="hyprland" python3 "${_bar_script}" >| "${_log_dir}/wwm-bar.log" 2>&1'
 EOF
 			fi
 			_exec_wayland "${_target_wm}" --config "${_hypr_cfg}"
@@ -3230,7 +3460,7 @@ binds {
 }
 EOF
 			if [ "${_has_gtk3_bar}" -eq 1 ]; then
-				printf 'spawn-at-startup "sh" "-c" "env GDK_BACKEND=%s WWM_TERM=%s WWM_BROWSER=%s WWM_FILES=%s WWM_EMACS=%s WWM_MENU=%s WWM_FONT=%s WWM_SCHEME=%s WWM_WM=niri python3 %s > %s/wwm-bar.log 2>&1"\n' \
+				printf 'spawn-at-startup "sh" "-c" "env GDK_BACKEND=%s WWM_TERM=%s WWM_BROWSER=%s WWM_FILES=%s WWM_EMACS=%s WWM_MENU=%s WWM_FONT=%s WWM_SCHEME=%s WWM_WM=niri python3 %s >| %s/wwm-bar.log 2>&1"\n' \
 					"${_bar_gdk}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_ui_font}" "${_scheme}" "${_bar_script}" "${_log_dir}" >> "${_niri_cfg}"
 			fi
 			_exec_wayland niri --config "${_niri_cfg}"
@@ -3259,7 +3489,7 @@ EOF
 			if [ "${_has_gtk3_bar}" -eq 1 ]; then
 				cat << EOF >> "${_wf_cfg}"
 [autostart]
-bar = sh -c 'env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="wayfire" python3 "${_bar_script}" > "${_log_dir}/wwm-bar.log" 2>&1'
+bar = sh -c 'env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="wayfire" python3 "${_bar_script}" >| "${_log_dir}/wwm-bar.log" 2>&1'
 EOF
 			fi
 			_exec_wayland wayfire -c "${_wf_cfg}"
@@ -3272,7 +3502,7 @@ EOF
 			cat << EOF >| "${_dwl_startup}"
 #!/usr/bin/env sh
 if [ "${_has_gtk3_bar}" -eq 1 ]; then
-	env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="dwl" python3 "${_bar_script}" > "${_log_dir}/wwm-bar.log" 2>&1 &
+	env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="dwl" python3 "${_bar_script}" >| "${_log_dir}/wwm-bar.log" 2>&1 &
 fi
 exec ${_wm_term}
 EOF
@@ -3340,13 +3570,20 @@ EOF
 			return "${_ret}"
 			;;
 		cage)
-			_exec_wayland cage -s -- ${_wm_term}
+			if [ "${_wm_term}" = "foot -o dpi-aware=no" ]; then
+				_exec_wayland cage -s -- foot -o dpi-aware=no
+			else
+				_exec_wayland cage -s -- "${_wm_term}"
+			fi
 			local _ret=$?
 			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		*)
 			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+				_ui_err "Compositor Wayland '${_target_wm}' não suportado pelo wwm."
+			fi
 			return 127
 			;;
 	esac
@@ -3416,18 +3653,27 @@ window_manager_x11() {
 		return $?
 	fi
 
-	{ _has_exec_bin "startx" || _has_exec_bin "xinit"; } || return 127
-	{ _has_exec_bin "Xorg" || _has_exec_bin "X"; } || return 127
+	if ! _has_exec_bin "startx" && ! _has_exec_bin "xinit"; then
+		[ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ] && _ui_err "Nenhum iniciador Xorg (xinit/startx) encontrado no PATH."
+		return 127
+	fi
+	if ! _has_exec_bin "Xorg" && ! _has_exec_bin "X"; then
+		[ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ] && _ui_err "Servidor Xorg (Xorg/X) não encontrado no PATH."
+		return 127
+	fi
 
 	local _target_wm="${_selected_wm}" _fvwm_bin=""
 	case "${_target_wm}" in
 		fvwm3|fvwm)
 			if [ "${_target_wm}" = "fvwm3" ] && _has_exec_bin "fvwm3"; then
-				_fvwm_bin="$(command -v fvwm3)"
+				_fvwm_bin="$(command -v fvwm3 2> "/dev/null" || true)"
+				[ -x "${_fvwm_bin}" ] || _fvwm_bin="fvwm3"
 			elif _has_exec_bin "fvwm3"; then
-				_fvwm_bin="$(command -v fvwm3)"
+				_fvwm_bin="$(command -v fvwm3 2> "/dev/null" || true)"
+				[ -x "${_fvwm_bin}" ] || _fvwm_bin="fvwm3"
 			elif _has_exec_bin "fvwm"; then
-				_fvwm_bin="$(command -v fvwm)"
+				_fvwm_bin="$(command -v fvwm 2> "/dev/null" || true)"
+				[ -x "${_fvwm_bin}" ] || _fvwm_bin="fvwm"
 			fi
 			if [ -z "${_fvwm_bin}" ]; then
 				if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
@@ -3450,18 +3696,36 @@ window_manager_x11() {
 			return 127
 		fi
 	else
-		local _x_cand
-		for _x_cand in $(_get_x11_wm_pipeline); do
+		local _x_cand _x_rest
+		_x_rest="$(_get_x11_wm_pipeline | tr '\n\t' '  ')"
+		while [ -n "${_x_rest}" ]; do
+			case "${_x_rest}" in
+				*" "*)
+					_x_cand="${_x_rest%% *}"
+					_x_rest="${_x_rest#* }"
+					;;
+				*)
+					_x_cand="${_x_rest}"
+					_x_rest=""
+					;;
+			esac
+			[ -n "${_x_cand}" ] || continue
 			if _has_exec_bin "${_x_cand}"; then
 				_target_wm="${_x_cand}"
 				case "${_x_cand}" in
-					fvwm3|fvwm) _fvwm_bin="$(command -v "${_x_cand}")" ;;
+					fvwm3|fvwm)
+						_fvwm_bin="$(command -v "${_x_cand}" 2> "/dev/null" || true)"
+						[ -x "${_fvwm_bin}" ] || _fvwm_bin="${_x_cand}"
+						;;
 				esac
 				break
 			fi
 		done
 	fi
-	[ -z "${_target_wm}" ] && return 127
+	if [ -z "${_target_wm}" ]; then
+		[ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ] && _ui_err "Nenhum gerenciador de janelas X11 instalado no pipeline."
+		return 127
+	fi
 
 	local _X11_FLAVOR_OVERRIDE="${_flavor}"
 	_x11_session_env "${_flavor}"
@@ -3565,7 +3829,7 @@ menu.items.active.text.color: #ffffff
 menu.separator.color: ${_c_border}
 OTM
 
-	local _wm_x11_term="xterm"
+	local _wm_x11_term="xterm" _t
 	for _t in alacritty kitty xterm; do
 		if command -v "${_t}" > "/dev/null" 2>&1; then
 			_wm_x11_term="${_t}"
@@ -4012,6 +4276,9 @@ EOF
 			;;
 		*)
 			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+				_ui_err "Gerenciador X11 '${_target_wm}' não suportado pelo xwm."
+			fi
 			return 127
 			;;
 	esac

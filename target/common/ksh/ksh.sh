@@ -5,7 +5,7 @@
 ### --------------------------------
 ### COMPATIBILITY AND PARSING
 ### --------------------------------
-unset IFS
+_shell_ifs="$(printf ' \t\n_')" && IFS="${_shell_ifs%_}" && unset _shell_ifs
 
 ### --------------------------------
 ### LINE EDITING & HISTORY
@@ -14,7 +14,7 @@ set -o emacs 2> "/dev/null" || true
 
 export HISTFILE="${HOME}/.ksh_history"
 export HISTSIZE=50000
-[ -f "${HISTFILE}" ] || { : > "${HISTFILE}" && chmod 0600 "${HISTFILE}"; } 2> "/dev/null" || true
+[ -f "${HISTFILE}" ] || { : >| "${HISTFILE}" && chmod 0600 "${HISTFILE}"; } 2> "/dev/null" || true
 
 ### --------------------------------
 ### INTERACTION & SAFETY

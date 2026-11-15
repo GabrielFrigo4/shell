@@ -4,18 +4,18 @@
 # ----------------------------------------------------------------
 
 SHELL_REPO_DIR="$(cd "$(dirname "${0}")" && pwd)"
-unset IFS
+_shell_ifs="$(printf ' \t\n_')" && IFS="${_shell_ifs%_}" && unset _shell_ifs
 [ -n "${ZSH_VERSION:-}" ] && setopt SH_WORD_SPLIT 2> "/dev/null" || true
 
 ### --------------------------------
 ### ACTIVE SHELL ELEVATION GUARD
 ### --------------------------------
 if [ -z "${ZSH_VERSION:-}" ]; then
-	_esc_test=$'\e'
+	_esc_ok=0
 	_kebab_ok=0
+	(eval '_t=$'\''\e'\''; [ "${#_t}" -eq 1 ]') 2> "/dev/null" && _esc_ok=1
 	(eval 'f-f() { :; }') 2> "/dev/null" && _kebab_ok=1
-	if [ "${#_esc_test}" -ne 1 ] || [ "${_kebab_ok}" -eq 0 ]; then
-		unset _esc_test
+	if [ "${_esc_ok}" -eq 0 ] || [ "${_kebab_ok}" -eq 0 ]; then
 		if command -v zsh > "/dev/null" 2>&1; then
 			exec zsh "$0" "$@"
 		elif command -v bash > "/dev/null" 2>&1; then
@@ -25,7 +25,7 @@ if [ -z "${ZSH_VERSION:-}" ]; then
 			exit 1
 		fi
 	fi
-	unset _esc_test _kebab_ok
+	unset _esc_ok _kebab_ok
 fi
 
 [ -f "${SHELL_REPO_DIR}/library/ui.sh" ] && . "${SHELL_REPO_DIR}/library/ui.sh"

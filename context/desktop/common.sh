@@ -24,8 +24,27 @@ _restore_tty_cursor() {
 	fi
 }
 
+_desktop_has_bin() {
+	local _dhb_target="${1:-}"
+	[ -z "${_dhb_target}" ] && return 1
+	case "${_dhb_target}" in
+		*/*) [ -f "${_dhb_target}" ] && [ -x "${_dhb_target}" ] && return 0 || return 1 ;;
+	esac
+	[ -z "${PATH:-}" ] && return 1
+	local _dhb_rem="${PATH}:" _dhb_dir=""
+	while [ -n "${_dhb_rem}" ]; do
+		_dhb_dir="${_dhb_rem%%:*}"
+		_dhb_rem="${_dhb_rem#*:}"
+		[ -z "${_dhb_dir}" ] && _dhb_dir="."
+		if [ -f "${_dhb_dir}/${_dhb_target}" ] && [ -x "${_dhb_dir}/${_dhb_target}" ]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
 nvim() {
-	command -v nvim > "/dev/null" 2>&1 || { _ui_err "nvim not found."; return 127; }
+	_desktop_has_bin "nvim" || { _ui_err "nvim not found."; return 127; }
 	command nvim "$@"
 	local _status=$?
 	_restore_tty_cursor
@@ -33,7 +52,7 @@ nvim() {
 }
 
 hx() {
-	command -v hx > "/dev/null" 2>&1 || { _ui_err "hx not found."; return 127; }
+	_desktop_has_bin "hx" || { _ui_err "hx not found."; return 127; }
 	local _status=0
 	if [ -t 0 ] && [ -t 1 ] && command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 		local _tty_config="${XDG_CONFIG_HOME:-${HOME}/.config}/helix/config-tty.toml"
@@ -295,15 +314,15 @@ open-smart() {
 		esac
 
 		if { [ -n "${INSIDE_EMACS:-}" ] || [ "${_extension_match}" -eq 1 ]; } && \
-		   command -v emacsclient > "/dev/null" 2>&1; then
-			_live_sock="$(_emacs_live_socket)"
+		   _desktop_has_bin "emacsclient"; then
+			_live_sock="$(_emacs_live_socket || true)"
 			if [ -n "${_live_sock}" ]; then
 				command emacsclient -s "${_live_sock}" -n "${_target}"
 				continue
 			fi
 		fi
 
-		if [ "${_extension_match}" -eq 1 ] && { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && command -v emacs > "/dev/null" 2>&1; then
+		if [ "${_extension_match}" -eq 1 ] && { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && _desktop_has_bin "emacs"; then
 			(command nohup emacs "${_target}" < "/dev/null" > "/dev/null" 2>&1 &)
 			continue
 		fi
@@ -522,7 +541,7 @@ _emacs_timeout_eval() {
 	local _timeout_seconds="${1:-2}"
 	local _lisp_expr="${2:-t}"
 	local _socket_path="${3:-$(_emacs_socket_path)}"
-	command -v emacsclient > "/dev/null" 2>&1 || return 127
+	_desktop_has_bin "emacsclient" || return 127
 	if command -v timeout > "/dev/null" 2>&1; then
 		command timeout "${_timeout_seconds}" emacsclient -s "${_socket_path}" -e "${_lisp_expr}" < "/dev/null" > "/dev/null" 2>&1
 		return "$?"
@@ -565,7 +584,7 @@ _emacs_live_socket() {
 	local _auth_sock=""
 	local _tmp_sock=""
 	local _cand=""
-	command -v emacsclient > "/dev/null" 2>&1 || return 1
+	_desktop_has_bin "emacsclient" || return 1
 	_target="$(_emacs_socket_path "${1:-}")"
 	_emacs_try_live_socket "${_target}" && return 0
 	_emacs_is_default_socket "${_target}" || return 1
@@ -634,7 +653,7 @@ _emacs_stop_daemon() {
 	_live_sock="$(_emacs_live_socket "${_socket_path}" || true)"
 	_pids="$(_emacs_list_pids "${_mode}")"
 
-	if { [ -n "${_live_sock}" ] || [ -e "${_socket_path}" ] || [ -S "${_socket_path}" ] || [ -n "${_pids}" ]; } && command -v emacsclient > "/dev/null" 2>&1; then
+	if { [ -n "${_live_sock}" ] || [ -e "${_socket_path}" ] || [ -S "${_socket_path}" ] || [ -n "${_pids}" ]; } && _desktop_has_bin "emacsclient"; then
 		if _emacs_timeout_eval 2 "(kill-emacs)" "${_live_sock:-${_socket_path}}"; then
 			_emacs_wait_exit 10 "${_mode}" && { _emacs_cleanup_socket; return 0; }
 		fi
@@ -695,7 +714,7 @@ _emacs_ensure_healthy_daemon() {
 }
 
 _emacs_run_nw() {
-	command -v emacs > "/dev/null" 2>&1 || return 127
+	_desktop_has_bin "emacs" || return 127
 	if [ -t 0 ]; then
 		command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
 	fi
@@ -714,14 +733,14 @@ _emacs_run_nw() {
 }
 
 emacs-kill() {
-	command -v emacs > "/dev/null" 2>&1 || command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacs not found."; return 127; }
+	_desktop_has_bin "emacs" || _desktop_has_bin "emacsclient" || { _ui_err "emacs not found."; return 127; }
 	_emacs_stop_daemon "all"
 	local _status=$?
 	_restore_tty_cursor
 	return ${_status}
 }
 emacs-start() {
-	command -v emacs > "/dev/null" 2>&1 || { _ui_err "emacs not found."; return 127; }
+	_desktop_has_bin "emacs" || { _ui_err "emacs not found."; return 127; }
 	_emacs_ensure_healthy_daemon
 	_emacs_ensure_socket_dir "$(_emacs_socket_path)"
 	command emacs --daemon="${EMACS_SOCKET_NAME}"
@@ -752,7 +771,7 @@ emacs-client() {
 				;;
 		esac
 	done
-	command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacsclient not found."; return 127; }
+	_desktop_has_bin "emacsclient" || { _ui_err "emacsclient not found."; return 127; }
 	_emacs_ensure_healthy_daemon
 	_live_sock="$(_emacs_live_socket || true)"
 	if [ -n "${_live_sock}" ]; then
@@ -780,7 +799,7 @@ emacs-nw() {
 	local _status=0
 	local _live_sock=""
 	if _emacs_is_raw_vt; then
-		if command -v emacs > "/dev/null" 2>&1; then
+		if _desktop_has_bin "emacs"; then
 			_emacs_run_nw "$@"
 			_status=$?
 		else
@@ -788,7 +807,7 @@ emacs-nw() {
 			return 127
 		fi
 	else
-		if command -v emacsclient > "/dev/null" 2>&1; then
+		if _desktop_has_bin "emacsclient"; then
 			_live_sock="$(_emacs_live_socket || true)"
 			if [ -n "${_live_sock}" ]; then
 				command emacsclient -t -s "${_live_sock}" "$@" 2> "/dev/null"
@@ -799,10 +818,10 @@ emacs-nw() {
 				fi
 			fi
 		fi
-		if command -v emacs > "/dev/null" 2>&1; then
+		if _desktop_has_bin "emacs"; then
 			_emacs_run_nw "$@"
 			_status=$?
-		elif command -v emacsclient > "/dev/null" 2>&1; then
+		elif _desktop_has_bin "emacsclient"; then
 			command emacsclient -t --alternate-editor="" "$@"
 			_status=$?
 		else
@@ -819,6 +838,7 @@ emacsclient() {
 		emacs-client
 		_status=$?
 	else
+		_desktop_has_bin "emacsclient" || { _ui_err "emacsclient not found."; return 127; }
 		command emacsclient "$@"
 		_status=$?
 	fi
@@ -839,6 +859,7 @@ emacs() {
 			_status=$?
 			;;
 		-*)
+			_desktop_has_bin "emacs" || { _ui_err "emacs not found."; return 127; }
 			command emacs "$@"
 			_status=$?
 			;;
@@ -854,7 +875,7 @@ emacs-open() {
 	local _status=0
 	local _live_sock=""
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
-		command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacsclient not found."; return 127; }
+		_desktop_has_bin "emacsclient" || { _ui_err "emacsclient not found."; return 127; }
 		_emacs_ensure_healthy_daemon
 		_live_sock="$(_emacs_live_socket || true)"
 		if [ -n "${_live_sock}" ]; then
@@ -895,7 +916,7 @@ emacs-open-nw() {
 	return ${_status}
 }
 emacs-eshell() {
-	command -v emacsclient > "/dev/null" 2>&1 || command -v emacs > "/dev/null" 2>&1 || {
+	_desktop_has_bin "emacsclient" || _desktop_has_bin "emacs" || {
 		_ui_err "emacs not found."
 		return 127
 	}
@@ -910,7 +931,7 @@ emacs-eshell() {
 	local _status=0
 	local _live_sock=""
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
-		if command -v emacsclient > "/dev/null" 2>&1; then
+		if _desktop_has_bin "emacsclient"; then
 			_live_sock="$(_emacs_live_socket || true)"
 			if [ -n "${_live_sock}" ]; then
 				(command nohup emacsclient -s "${_live_sock}" --create-frame --alternate-editor="" \
@@ -928,11 +949,15 @@ emacs-eshell() {
 		fi
 	else
 		if _emacs_is_raw_vt; then
+			_desktop_has_bin "emacs" || { _ui_err "emacs not found."; return 127; }
+			if [ -t 0 ]; then
+				command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
+			fi
 			command emacs -nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
 			_status=$?
 		else
 			_live_sock="$(_emacs_live_socket || true)"
-			if [ -n "${_live_sock}" ] && command -v emacsclient > "/dev/null" 2>&1; then
+			if [ -n "${_live_sock}" ] && _desktop_has_bin "emacsclient"; then
 				command emacsclient -t -s "${_live_sock}" \
 					--eval "(progn (cd \"${_dir}/\") (aweshell/new))" 2> "/dev/null"
 				_status=$?
@@ -940,13 +965,13 @@ emacs-eshell() {
 				_status=1
 			fi
 			if [ "${_status}" -ne 0 ]; then
-				if command -v emacs > "/dev/null" 2>&1; then
+				if _desktop_has_bin "emacs"; then
 					if [ -t 0 ]; then
 						command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
 					fi
 					command emacs -nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
 					_status=$?
-				elif command -v emacsclient > "/dev/null" 2>&1; then
+				elif _desktop_has_bin "emacsclient"; then
 					command emacsclient -t --alternate-editor="" \
 						--eval "(progn (cd \"${_dir}/\") (aweshell/new))"
 					_status=$?
