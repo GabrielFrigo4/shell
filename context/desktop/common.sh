@@ -11,6 +11,9 @@ _restore_tty_cursor() {
 		command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
 	fi
 	if [ -t 1 ]; then
+		case "${TERM:-}" in
+			""|dumb|unknown) return 0 ;;
+		esac
 		if command -v _is_raw_tty > "/dev/null" 2>&1 && _is_raw_tty; then
 			if [ "${TERM:-}" = "linux" ] && [ "${_DETECTED_OS-$(_detect_os)}" = "linux" ]; then
 				echo -n $'\e%G\e[?16;238;0c'
@@ -233,7 +236,7 @@ open-libreoffice() {
 		_bin="soffice"
 	fi
 	[ -z "${_bin}" ] && { _ui_err "LibreOffice not found."; return 127; }
-	(SAL_USE_VCLPLUGIN=gtk3 GTK_THEME="${GTK_THEME:-adw-gtk3-dark}" GTK_APPLICATION_PREFER_DARK_THEME=1 command nohup "${_bin}" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+	(SAL_USE_VCLPLUGIN=gtk3 command nohup "${_bin}" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 }
 alias ol="open-libreoffice"
 
@@ -276,6 +279,7 @@ open-smart() {
 
 	local _target=""
 	local _extension_match=0
+	local _live_sock=""
 	for _target in "$@"; do
 		_extension_match=0
 		case "${_target}" in
@@ -291,10 +295,12 @@ open-smart() {
 		esac
 
 		if { [ -n "${INSIDE_EMACS:-}" ] || [ "${_extension_match}" -eq 1 ]; } && \
-		   command -v emacsclient > "/dev/null" 2>&1 && \
-		   _emacs_timeout_eval 2 "t" > "/dev/null" 2>&1; then
-			command emacsclient -n "${_target}"
-			continue
+		   command -v emacsclient > "/dev/null" 2>&1; then
+			_live_sock="$(_emacs_live_socket)"
+			if [ -n "${_live_sock}" ]; then
+				command emacsclient -s "${_live_sock}" -n "${_target}"
+				continue
+			fi
 		fi
 
 		if [ "${_extension_match}" -eq 1 ] && { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && command -v emacs > "/dev/null" 2>&1; then
@@ -346,6 +352,9 @@ fi
 ### --------------------------------
 ### EMACS DAEMON & CLIENT
 ### --------------------------------
+if [ -n "${XDG_RUNTIME_DIR+x}" ] && [ -z "${XDG_RUNTIME_DIR}" ]; then
+	unset XDG_RUNTIME_DIR
+fi
 export EMACS_SOCKET_NAME="${EMACS_SOCKET_NAME:-${HOME}/.emacs.d/var/server/auth/server}"
 
 _emacs_current_user() {
@@ -355,12 +364,100 @@ _emacs_current_user() {
 	esac
 }
 
+_emacs_is_raw_vt() {
+	local _tty=""
+	if [ -t 0 ]; then
+		_tty="$(command tty 2> "/dev/null" || true)"
+	fi
+	if [ -z "${_tty}" ] && [ -t 1 ]; then
+		_tty="$(command tty <&1 2> "/dev/null" || true)"
+	fi
+	case "${_tty}" in
+		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyC*|/dev/ttyE*|/dev/console) return 0 ;;
+	esac
+	return 1
+}
+
+_emacs_std_socket_dir() {
+	local _uid=""
+	local _tmp_dir="${TMPDIR:-/tmp}"
+	local _xdg_dir=""
+	_uid="$(id -u 2> "/dev/null" || printf '1000')"
+	_tmp_dir="${_tmp_dir%/}"
+	[ -n "${_tmp_dir}" ] || _tmp_dir="/tmp"
+	if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+		_xdg_dir="${XDG_RUNTIME_DIR%/}"
+		[ -n "${_xdg_dir}" ] || _xdg_dir="/"
+		printf '%s\n' "${_xdg_dir}/emacs"
+	else
+		printf '%s\n' "${_tmp_dir}/emacs${_uid}"
+	fi
+}
+
 _emacs_socket_path() {
-	local _socket_name="${EMACS_SOCKET_NAME:-${HOME}/.emacs.d/var/server/auth/server}"
+	local _socket_name="${1:-${EMACS_SOCKET_NAME:-${HOME}/.emacs.d/var/server/auth/server}}"
 	case "${_socket_name}" in
 		*/*) printf '%s\n' "${_socket_name}" ;;
-		*) printf '%s\n' "${XDG_RUNTIME_DIR:-/tmp}/emacs$(id -u 2> "/dev/null" || printf '0')/${_socket_name}" ;;
+		*) printf '%s\n' "$(_emacs_std_socket_dir)/${_socket_name}" ;;
 	esac
+}
+
+_emacs_canonical_socket() {
+	local _target="${1:-}"
+	local _resolved=""
+	[ -n "${_target}" ] || return 1
+	if command -v readlink > "/dev/null" 2>&1; then
+		_resolved="$(command readlink -f "${_target}" 2> "/dev/null" || true)"
+		if [ -n "${_resolved}" ]; then
+			printf '%s\n' "${_resolved}"
+			return 0
+		fi
+	fi
+	if command -v realpath > "/dev/null" 2>&1; then
+		_resolved="$(command realpath "${_target}" 2> "/dev/null" || true)"
+		if [ -n "${_resolved}" ]; then
+			printf '%s\n' "${_resolved}"
+			return 0
+		fi
+	fi
+	printf '%s\n' "${_target}"
+}
+
+_emacs_is_default_socket() {
+	local _target=""
+	local _uid=""
+	local _tmp_dir="${TMPDIR:-/tmp}"
+	local _std_sock=""
+	local _auth_sock=""
+	local _tmp_sock=""
+	_target="$(_emacs_socket_path "${1:-}")"
+	_uid="$(id -u 2> "/dev/null" || printf '1000')"
+	_tmp_dir="${_tmp_dir%/}"
+	[ -n "${_tmp_dir}" ] || _tmp_dir="/tmp"
+	_std_sock="$(_emacs_std_socket_dir)/server"
+	_auth_sock="${HOME%/}/.emacs.d/var/server/auth/server"
+	_tmp_sock="${_tmp_dir}/emacs${_uid}/server"
+	case "${_target}" in
+		"${_std_sock}"|"${_auth_sock}"|"${_tmp_sock}"|"/tmp/emacs${_uid}/server") return 0 ;;
+	esac
+	return 1
+}
+
+_emacs_ensure_socket_dir() {
+	local _sock_path="${1:-}"
+	local _parent=""
+	case "${_sock_path}" in
+		*/*) _parent="${_sock_path%/*}" ;;
+		*) return 0 ;;
+	esac
+	[ -n "${_parent}" ] || _parent="/"
+	if [ ! -d "${_parent}" ]; then
+		command mkdir -p "${_parent}" 2> "/dev/null" || true
+	fi
+	if [ -d "${_parent}" ] && [ -O "${_parent}" ]; then
+		command chmod 0700 "${_parent}" 2> "/dev/null" || true
+	fi
+	return 0
 }
 
 _emacs_pgrep() {
@@ -424,15 +521,14 @@ _emacs_send_signal() {
 _emacs_timeout_eval() {
 	local _timeout_seconds="${1:-2}"
 	local _lisp_expr="${2:-t}"
-	local _socket_path=""
-	_socket_path="$(_emacs_socket_path)"
+	local _socket_path="${3:-$(_emacs_socket_path)}"
 	command -v emacsclient > "/dev/null" 2>&1 || return 127
 	if command -v timeout > "/dev/null" 2>&1; then
-		command timeout "${_timeout_seconds}" emacsclient -s "${_socket_path}" -e "${_lisp_expr}" > "/dev/null" 2>&1
+		command timeout "${_timeout_seconds}" emacsclient -s "${_socket_path}" -e "${_lisp_expr}" < "/dev/null" > "/dev/null" 2>&1
 		return "$?"
 	fi
 	(
-		command emacsclient -s "${_socket_path}" -e "${_lisp_expr}" > "/dev/null" 2>&1 &
+		command emacsclient -s "${_socket_path}" -e "${_lisp_expr}" < "/dev/null" > "/dev/null" 2>&1 &
 		_probe_pid=$!
 		(
 			sleep "${_timeout_seconds}" 2> "/dev/null" || true
@@ -451,30 +547,95 @@ _emacs_timeout_eval() {
 	)
 }
 
-_emacs_cleanup_socket() {
-	local _socket_path=""
-	_socket_path="$(_emacs_socket_path)"
-	[ -n "${_socket_path}" ] || return 0
-	if [ -e "${_socket_path}" ] || [ -S "${_socket_path}" ]; then
-		if [ -O "${_socket_path}" ] 2> "/dev/null"; then
-			command rm -f "${_socket_path}" 2> "/dev/null" || true
+_emacs_try_live_socket() {
+	local _cand="${1:-}"
+	[ -n "${_cand}" ] || return 1
+	if [ -S "${_cand}" ] && _emacs_timeout_eval 2 "(+ 1 1)" "${_cand}"; then
+		_emacs_canonical_socket "${_cand}"
+		return 0
+	fi
+	return 1
+}
+
+_emacs_live_socket() {
+	local _target=""
+	local _uid=""
+	local _tmp_dir="${TMPDIR:-/tmp}"
+	local _std_sock=""
+	local _auth_sock=""
+	local _tmp_sock=""
+	local _cand=""
+	command -v emacsclient > "/dev/null" 2>&1 || return 1
+	_target="$(_emacs_socket_path "${1:-}")"
+	_emacs_try_live_socket "${_target}" && return 0
+	_emacs_is_default_socket "${_target}" || return 1
+	_uid="$(id -u 2> "/dev/null" || printf '1000')"
+	_tmp_dir="${_tmp_dir%/}"
+	[ -n "${_tmp_dir}" ] || _tmp_dir="/tmp"
+	_std_sock="$(_emacs_std_socket_dir)/server"
+	_auth_sock="${HOME%/}/.emacs.d/var/server/auth/server"
+	_tmp_sock="${_tmp_dir}/emacs${_uid}/server"
+	for _cand in "${_std_sock}" "${_auth_sock}" "${_tmp_sock}" "/tmp/emacs${_uid}/server"; do
+		[ "${_cand}" != "${_target}" ] || continue
+		_emacs_try_live_socket "${_cand}" && return 0
+	done
+	return 1
+}
+
+_emacs_remove_one_socket() {
+	local _sock="${1:-}"
+	local _parent=""
+	[ -n "${_sock}" ] || return 0
+	if [ -e "${_sock}" ] || [ -S "${_sock}" ] || [ -L "${_sock}" ]; then
+		_parent="${_sock%/*}"
+		[ -n "${_parent}" ] || _parent="/"
+		if [ -O "${_sock}" ] 2> "/dev/null" || { [ -L "${_sock}" ] && [ -O "${_parent}" ] 2> "/dev/null"; }; then
+			command rm -f "${_sock}" 2> "/dev/null" || true
 		else
-			_ui_warn "Refusing to remove Emacs socket not owned by current user: ${_socket_path}"
+			_ui_warn "Refusing to remove Emacs socket not owned by current user: ${_sock}"
 			return 1
 		fi
 	fi
 	return 0
 }
 
+_emacs_cleanup_socket() {
+	local _target=""
+	local _uid=""
+	local _tmp_dir="${TMPDIR:-/tmp}"
+	local _std_sock=""
+	local _auth_sock=""
+	local _tmp_sock=""
+	local _cand=""
+	local _rc=0
+	_target="$(_emacs_socket_path "${1:-}")"
+	_emacs_remove_one_socket "${_target}" || _rc=1
+	if _emacs_is_default_socket "${_target}"; then
+		_uid="$(id -u 2> "/dev/null" || printf '1000')"
+		_tmp_dir="${_tmp_dir%/}"
+		[ -n "${_tmp_dir}" ] || _tmp_dir="/tmp"
+		_std_sock="$(_emacs_std_socket_dir)/server"
+		_auth_sock="${HOME%/}/.emacs.d/var/server/auth/server"
+		_tmp_sock="${_tmp_dir}/emacs${_uid}/server"
+		for _cand in "${_std_sock}" "${_auth_sock}" "${_tmp_sock}" "/tmp/emacs${_uid}/server"; do
+			[ "${_cand}" != "${_target}" ] || continue
+			_emacs_remove_one_socket "${_cand}" || _rc=1
+		done
+	fi
+	return "${_rc}"
+}
+
 _emacs_stop_daemon() {
 	local _mode="${1:-all}"
 	local _socket_path=""
+	local _live_sock=""
 	local _pids=""
 	_socket_path="$(_emacs_socket_path)"
+	_live_sock="$(_emacs_live_socket "${_socket_path}" || true)"
 	_pids="$(_emacs_list_pids "${_mode}")"
 
-	if { [ -e "${_socket_path}" ] || [ -S "${_socket_path}" ] || [ -n "${_pids}" ]; } && command -v emacsclient > "/dev/null" 2>&1; then
-		if _emacs_timeout_eval 2 "(kill-emacs)"; then
+	if { [ -n "${_live_sock}" ] || [ -e "${_socket_path}" ] || [ -S "${_socket_path}" ] || [ -n "${_pids}" ]; } && command -v emacsclient > "/dev/null" 2>&1; then
+		if _emacs_timeout_eval 2 "(kill-emacs)" "${_live_sock:-${_socket_path}}"; then
 			_emacs_wait_exit 10 "${_mode}" && { _emacs_cleanup_socket; return 0; }
 		fi
 	fi
@@ -502,13 +663,54 @@ _emacs_stop_daemon() {
 
 _emacs_ensure_healthy_daemon() {
 	local _socket_path=""
+	local _live_sock=""
+	local _unit_state=""
+	local _attempt=0
 	_socket_path="$(_emacs_socket_path)"
-	if [ -e "${_socket_path}" ] || [ -S "${_socket_path}" ] || [ -n "$(_emacs_list_pids "daemon")" ]; then
-		if ! _emacs_timeout_eval 2 "(+ 1 1)"; then
+	_live_sock="$(_emacs_live_socket "${_socket_path}" || true)"
+	[ -n "${_live_sock}" ] && return 0
+
+	if _emacs_is_default_socket "${_socket_path}" && command -v systemctl > "/dev/null" 2>&1; then
+		_unit_state="$(command systemctl --user show -p ActiveState --value emacs.service 2> "/dev/null" || true)"
+		if [ "${_unit_state}" = "activating" ]; then
+			while [ "${_attempt}" -lt 8 ]; do
+				_live_sock="$(_emacs_live_socket "${_socket_path}" || true)"
+				[ -n "${_live_sock}" ] && return 0
+				if sleep 0.5 2> "/dev/null"; then
+					_attempt=$((_attempt + 1))
+				else
+					sleep 1 2> "/dev/null" || break
+					_attempt=$((_attempt + 2))
+				fi
+			done
+		fi
+	fi
+
+	if [ -e "${_socket_path}" ] || [ -S "${_socket_path}" ] || [ -L "${_socket_path}" ] || [ -n "$(_emacs_list_pids "daemon")" ]; then
+		if ! _emacs_timeout_eval 2 "(+ 1 1)" "${_socket_path}"; then
 			_ui_warn "Emacs daemon unresponsive (deadlock or stale socket detected). Recovering..."
 			_emacs_stop_daemon "daemon"
 		fi
 	fi
+}
+
+_emacs_run_nw() {
+	command -v emacs > "/dev/null" 2>&1 || return 127
+	if [ -t 0 ]; then
+		command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
+	fi
+	local _argc=$#
+	local _arg=""
+	while [ "${_argc}" -gt 0 ]; do
+		_arg="$1"
+		[ "$#" -ge 1 ] && shift 1
+		case "${_arg}" in
+			-t|--tty|-nw|--no-window-system) ;;
+			*) set -- "$@" "${_arg}" ;;
+		esac
+		_argc=$((_argc - 1))
+	done
+	command emacs -nw "$@"
 }
 
 emacs-kill() {
@@ -520,7 +722,9 @@ emacs-kill() {
 }
 emacs-start() {
 	command -v emacs > "/dev/null" 2>&1 || { _ui_err "emacs not found."; return 127; }
-	GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacs --daemon="${EMACS_SOCKET_NAME}"
+	_emacs_ensure_healthy_daemon
+	_emacs_ensure_socket_dir "$(_emacs_socket_path)"
+	command emacs --daemon="${EMACS_SOCKET_NAME}"
 	local _status=$?
 	_restore_tty_cursor
 	return ${_status}
@@ -533,36 +737,78 @@ emacs-restart() {
 }
 
 emacs-client() {
+	local _status=0
+	local _live_sock=""
+	local _arg=""
+	if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+		emacs-nw "$@"
+		return $?
+	fi
+	for _arg in "$@"; do
+		case "${_arg}" in
+			-t|--tty|-nw|--no-window-system)
+				emacs-nw "$@"
+				return $?
+				;;
+		esac
+	done
 	command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacsclient not found."; return 127; }
 	_emacs_ensure_healthy_daemon
-
-	local _status=0
-	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+	_live_sock="$(_emacs_live_socket || true)"
+	if [ -n "${_live_sock}" ]; then
 		if [ "$#" -eq 0 ]; then
-			GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacsclient --create-frame --alternate-editor "" -n
+			command emacsclient -s "${_live_sock}" --create-frame --alternate-editor="" -n
 			_status=$?
 		else
-			GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacsclient --create-frame --alternate-editor "" "$@"
+			command emacsclient -s "${_live_sock}" --create-frame --alternate-editor="" "$@"
 			_status=$?
 		fi
 	else
-		GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command emacsclient -t --alternate-editor "" "$@"
-		_status=$?
+		_emacs_ensure_socket_dir "$(_emacs_socket_path)"
+		if [ "$#" -eq 0 ]; then
+			command emacsclient --create-frame --alternate-editor="" -n
+			_status=$?
+		else
+			command emacsclient --create-frame --alternate-editor="" "$@"
+			_status=$?
+		fi
 	fi
 	_restore_tty_cursor
 	return ${_status}
 }
 emacs-nw() {
 	local _status=0
-	if command -v emacsclient > "/dev/null" 2>&1; then
-		command emacsclient -t --alternate-editor "" "$@"
-		_status=$?
-	elif command -v emacs > "/dev/null" 2>&1; then
-		command emacs -nw "$@"
-		_status=$?
+	local _live_sock=""
+	if _emacs_is_raw_vt; then
+		if command -v emacs > "/dev/null" 2>&1; then
+			_emacs_run_nw "$@"
+			_status=$?
+		else
+			_ui_err "emacs not found."
+			return 127
+		fi
 	else
-		_ui_err "emacs not found."
-		return 127
+		if command -v emacsclient > "/dev/null" 2>&1; then
+			_live_sock="$(_emacs_live_socket || true)"
+			if [ -n "${_live_sock}" ]; then
+				command emacsclient -t -s "${_live_sock}" "$@" 2> "/dev/null"
+				_status=$?
+				if [ "${_status}" -eq 0 ]; then
+					_restore_tty_cursor
+					return 0
+				fi
+			fi
+		fi
+		if command -v emacs > "/dev/null" 2>&1; then
+			_emacs_run_nw "$@"
+			_status=$?
+		elif command -v emacsclient > "/dev/null" 2>&1; then
+			command emacsclient -t --alternate-editor="" "$@"
+			_status=$?
+		else
+			_ui_err "emacs not found."
+			return 127
+		fi
 	fi
 	_restore_tty_cursor
 	return ${_status}
@@ -605,16 +851,29 @@ emacs() {
 	return ${_status}
 }
 emacs-open() {
-	command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacsclient not found."; return 127; }
 	local _status=0
+	local _live_sock=""
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+		command -v emacsclient > "/dev/null" 2>&1 || { _ui_err "emacsclient not found."; return 127; }
 		_emacs_ensure_healthy_daemon
-		if [ "$#" -eq 0 ]; then
-			(GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command nohup emacsclient --create-frame --alternate-editor "" . < "/dev/null" > "/dev/null" 2>&1 &)
-			_status=$?
+		_live_sock="$(_emacs_live_socket || true)"
+		if [ -n "${_live_sock}" ]; then
+			if [ "$#" -eq 0 ]; then
+				(command nohup emacsclient -s "${_live_sock}" --create-frame --alternate-editor="" . < "/dev/null" > "/dev/null" 2>&1 &)
+				_status=$?
+			else
+				(command nohup emacsclient -s "${_live_sock}" --create-frame --alternate-editor="" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+				_status=$?
+			fi
 		else
-			(GTK_THEME="Emacs-Doom-Dark" GTK_APPLICATION_PREFER_DARK_THEME=1 command nohup emacsclient --create-frame --alternate-editor "" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
-			_status=$?
+			_emacs_ensure_socket_dir "$(_emacs_socket_path)"
+			if [ "$#" -eq 0 ]; then
+				(command nohup emacsclient --create-frame --alternate-editor="" . < "/dev/null" > "/dev/null" 2>&1 &)
+				_status=$?
+			else
+				(command nohup emacsclient --create-frame --alternate-editor="" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+				_status=$?
+			fi
 		fi
 	else
 		emacs-open-nw "$@"
@@ -649,23 +908,50 @@ emacs-eshell() {
 	fi
 
 	local _status=0
+	local _live_sock=""
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if command -v emacsclient > "/dev/null" 2>&1; then
-			(command nohup emacsclient --create-frame --alternate-editor "" \
-				--eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
-			_status=$?
+			_live_sock="$(_emacs_live_socket || true)"
+			if [ -n "${_live_sock}" ]; then
+				(command nohup emacsclient -s "${_live_sock}" --create-frame --alternate-editor="" \
+					--eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
+				_status=$?
+			else
+				_emacs_ensure_socket_dir "$(_emacs_socket_path)"
+				(command nohup emacsclient --create-frame --alternate-editor="" \
+					--eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
+				_status=$?
+			fi
 		else
 			(command nohup emacs --eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
 			_status=$?
 		fi
 	else
-		if command -v emacsclient > "/dev/null" 2>&1; then
-			command emacsclient -t --alternate-editor "" \
-				--eval "(progn (cd \"${_dir}/\") (aweshell/new))"
-			_status=$?
-		else
+		if _emacs_is_raw_vt; then
 			command emacs -nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
 			_status=$?
+		else
+			_live_sock="$(_emacs_live_socket || true)"
+			if [ -n "${_live_sock}" ] && command -v emacsclient > "/dev/null" 2>&1; then
+				command emacsclient -t -s "${_live_sock}" \
+					--eval "(progn (cd \"${_dir}/\") (aweshell/new))" 2> "/dev/null"
+				_status=$?
+			else
+				_status=1
+			fi
+			if [ "${_status}" -ne 0 ]; then
+				if command -v emacs > "/dev/null" 2>&1; then
+					if [ -t 0 ]; then
+						command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
+					fi
+					command emacs -nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
+					_status=$?
+				elif command -v emacsclient > "/dev/null" 2>&1; then
+					command emacsclient -t --alternate-editor="" \
+						--eval "(progn (cd \"${_dir}/\") (aweshell/new))"
+					_status=$?
+				fi
+			fi
 		fi
 	fi
 	_restore_tty_cursor
@@ -692,23 +978,46 @@ alias esh="emacs-eshell"
 [ -n "${SHELL_REPO_DIR:-}" ] && [ -f "${SHELL_REPO_DIR}/target/common/session.sh" ] && . "${SHELL_REPO_DIR}/target/common/session.sh"
 
 if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
-	if [ -z "${GTK_THEME:-}" ]; then
-		if [ -n "${_DETECTED_GTK_THEME:-}" ]; then
-			export GTK_THEME="${_DETECTED_GTK_THEME}"
-		elif [ -z "${_DETECTED_GTK_THEME+x}" ] && command -v _detect_gtk_theme > "/dev/null" 2>&1; then
-			_gtk_theme="$(_detect_gtk_theme)"
-			[ -n "${_gtk_theme}" ] && export GTK_THEME="${_gtk_theme}"
-			unset _gtk_theme
-		fi
+	_gui_raw_de="${_DETECTED_DESKTOP_ENV:-${XDG_CURRENT_DESKTOP:-${XDG_SESSION_DESKTOP:-${DESKTOP_SESSION:-}}}}"
+	_gui_is_full_de=0
+	if [ "${KDE_FULL_SESSION:-}" = "true" ]; then
+		_gui_is_full_de=1
+	elif [ -n "${_gui_raw_de}" ]; then
+		case "$(printf '%s' "${_gui_raw_de}" | tr '[:upper:]' '[:lower:]')" in
+			*kde*|*plasma*|*gnome*|*ubuntu*|*unity*|*zorin*|*xfce*|*mate*|*cinnamon*|*cosmic*|*budgie*|*pantheon*|*lxqt*|*lxde*|*deepin*|*dde*)
+				_gui_is_full_de=1
+				;;
+		esac
+	elif command -v pgrep > "/dev/null" 2>&1; then
+		_gui_uid="$(_emacs_current_user)"
+		for _gui_proc in plasmashell kwin_wayland kwin_x11 gnome-shell xfce4-session mate-session cinnamon cosmic-comp cosmic-session budgie-wm budgie-panel gala wingpanel lxqt-session lxsession dde-desktop deepin-wm; do
+			if [ -n "${_gui_uid}" ] && pgrep -u "${_gui_uid}" -x "${_gui_proc}" > "/dev/null" 2>&1; then
+				_gui_is_full_de=1
+				break
+			fi
+		done
+		unset _gui_uid _gui_proc
 	fi
 
-	if [ -z "${QT_STYLE_OVERRIDE:-}" ]; then
-		if [ -n "${_DETECTED_QT_THEME:-}" ]; then
-			export QT_STYLE_OVERRIDE="${_DETECTED_QT_THEME}"
-		elif [ -z "${_DETECTED_QT_THEME+x}" ] && command -v _detect_qt_theme > "/dev/null" 2>&1; then
-			_qt_style="$(_detect_qt_theme)"
-			[ -n "${_qt_style}" ] && export QT_STYLE_OVERRIDE="${_qt_style}"
-			unset _qt_style
+	if [ "${_gui_is_full_de}" -eq 0 ]; then
+		if [ -z "${GTK_THEME:-}" ]; then
+			if [ -n "${_DETECTED_GTK_THEME:-}" ]; then
+				export GTK_THEME="${_DETECTED_GTK_THEME}"
+			elif [ -z "${_DETECTED_GTK_THEME+x}" ] && command -v _detect_gtk_theme > "/dev/null" 2>&1; then
+				_gtk_theme="$(_detect_gtk_theme)"
+				[ -n "${_gtk_theme}" ] && export GTK_THEME="${_gtk_theme}"
+				unset _gtk_theme
+			fi
+		fi
+
+		if [ -z "${QT_STYLE_OVERRIDE:-}" ]; then
+			if [ -n "${_DETECTED_QT_THEME:-}" ]; then
+				export QT_STYLE_OVERRIDE="${_DETECTED_QT_THEME}"
+			elif [ -z "${_DETECTED_QT_THEME+x}" ] && command -v _detect_qt_theme > "/dev/null" 2>&1; then
+				_qt_style="$(_detect_qt_theme)"
+				[ -n "${_qt_style}" ] && export QT_STYLE_OVERRIDE="${_qt_style}"
+				unset _qt_style
+			fi
 		fi
 	fi
 
@@ -725,7 +1034,7 @@ if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 	export ELECTRON_OZONE_PLATFORM_HINT="auto"
 	export _JAVA_AWT_WM_NONREPARENTING=1
 	export SAL_USE_VCLPLUGIN="gtk3"
-	export GTK_APPLICATION_PREFER_DARK_THEME=1
+	unset _gui_raw_de _gui_is_full_de
 
 	_theme_env_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/environment.d"
 	_theme_stamp="${_SHELL_CACHE_DIR:-}/session_theme_propagated_${_DETECTED_DESKTOP_ENV:-default}"

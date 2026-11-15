@@ -194,11 +194,11 @@ zstyle ':completion:*:*:-command-:*' group-order aliases functions builtins comm
 
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle -e ':completion:*:descriptions' format \
-  'local _len=${#3} _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); (( _len == 0 )) && _len=15; local _w=$(( _cols - _len - 7 )); (( _w < 1 )) && _w=1; local _pad=""; reply=("%F{blue}── %F{cyan}%d %F{blue}${(r:${_w}::─:)_pad}%f")'
+  'local _len=${#3} _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); if (( _len > 0 && _cols - _len > 8 )); then local _w=$(( _cols - _len - 6 )) _pad=""; reply=("%F{blue}── %F{cyan}%d %F{blue}${(r:${_w}::─:)_pad}%f"); else reply=("%F{blue}── %F{cyan}%d%f"); fi'
 zstyle -e ':completion:*:messages' format \
-  'local _len=${#3} _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); (( _len == 0 )) && _len=15; local _w=$(( _cols - _len - 7 )); (( _w < 1 )) && _w=1; local _pad=""; reply=("%F{magenta}── %d %F{magenta}${(r:${_w}::─:)_pad}%f")'
+  'local _len=${#3} _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); if (( _len > 0 && _cols - _len > 8 )); then local _w=$(( _cols - _len - 6 )) _pad=""; reply=("%F{magenta}── %d %F{magenta}${(r:${_w}::─:)_pad}%f"); else reply=("%F{magenta}── %d%f"); fi'
 zstyle -e ':completion:*:warnings' format \
-  'local _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); local _w=$(( _cols - 25 )); (( _w < 1 )) && _w=1; local _pad=""; reply=("%F{red}── sem correspondências ${(r:${_w}::─:)_pad}%f")'
+  'local _cols=$(( COLUMNS > 0 ? COLUMNS : 80 )); if (( _cols > 28 )); then local _w=$(( _cols - 26 )) _pad=""; reply=("%F{red}── sem correspondências ${(r:${_w}::─:)_pad}%f"); else reply=("%F{red}── sem correspondências%f"); fi'
 zstyle ':completion:*:corrections' format '%F{yellow}── %d (erros: %e) %f'
 
 zstyle ':completion:*' squeeze-slashes true
@@ -223,10 +223,23 @@ if [ -t 0 ] && [ -t 1 ]; then
 		local -a _hits
 		_hits=(${(k)history[(R)${(b)BUFFER}*]})
 		if [ "${#_hits}" -gt 0 ]; then
+			setopt LOCAL_OPTIONS EXTENDED_GLOB
 			local _last_id="${_hits[1]}"
 			local _candidate="${history[${_last_id}]}"
 			_candidate="${_candidate%%$'\n'*}"
-			[ "${#_candidate}" -gt 80 ] && return 0
+			[[ "${_candidate}" == *[[:cntrl:]]* ]] && return 0
+			local _cols=$(( COLUMNS > 0 ? COLUMNS : 80 ))
+			local _p_last="${${PROMPT:-${PS1:-}}##*$'\n'}"
+			if [[ -o promptsubst ]] && [[ "${_p_last}" != *'$('* && "${_p_last}" != *'`'* ]]; then
+				_p_last="${(e)_p_last}"
+			fi
+			_p_last="${(%)_p_last}"
+			local _p_vis="${_p_last//$'\x1b'\[[0-9;?]#[a-zA-Z]/}"
+			local _p_len=$(( ${#_p_vis} % _cols ))
+			local _max_len=$(( _cols - _p_len - 1 ))
+			(( _max_len > 80 )) && _max_len=80
+			(( _max_len < 1 )) && return 0
+			[ "${#_candidate}" -gt "${_max_len}" ] && return 0
 			if [ "${#_candidate}" -gt "${#BUFFER}" ]; then
 				POSTDISPLAY="${_candidate[${#BUFFER}+1,-1]}"
 				region_highlight=("${#BUFFER} $((${#BUFFER} + ${#POSTDISPLAY})) fg=8")

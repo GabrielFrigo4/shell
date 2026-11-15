@@ -127,7 +127,7 @@ _setup_cursor_env() {
 	local _cursor_theme="" _target_size="${XCURSOR_SIZE:-24}"
 	case "${_flavor}" in
 		kde|plasma|lxqt)
-			_cursor_theme="breeze_cursors"
+			_cursor_theme="$(_resolve_cursor_theme "${_flavor}" 2> "/dev/null" || echo "breeze_cursors")"
 			;;
 		gnome|budgie)
 			if command -v gsettings > "/dev/null" 2>&1; then
@@ -229,7 +229,7 @@ _setup_cursor_env() {
 
 		case "${_flavor}" in
 			kde|lxqt)
-				_cursor_theme="breeze_cursors"
+				_cursor_theme="$(_resolve_cursor_theme "${_flavor}" 2> "/dev/null" || echo "breeze_cursors")"
 				;;
 			gnome|budgie)
 				if command -v gsettings > "/dev/null" 2>&1; then
@@ -277,7 +277,7 @@ _setup_cursor_env() {
 			fi
 			[ -z "${_cursor_theme}" ] && _cursor_theme="Adwaita"
 		elif command -v plasmashell > "/dev/null" 2>&1 || command -v startplasma-wayland > "/dev/null" 2>&1 || command -v startplasma-x11 > "/dev/null" 2>&1; then
-			_cursor_theme="breeze_cursors"
+			_cursor_theme="$(_resolve_cursor_theme kde 2> "/dev/null" || echo "breeze_cursors")"
 		elif command -v mate-session > "/dev/null" 2>&1; then
 			_cursor_theme="Adwaita"
 		elif command -v cinnamon-session > "/dev/null" 2>&1; then
@@ -285,7 +285,7 @@ _setup_cursor_env() {
 		elif command -v xfce4-session > "/dev/null" 2>&1; then
 			_cursor_theme="Adwaita"
 		elif command -v lxqt-session > "/dev/null" 2>&1; then
-			_cursor_theme="breeze_cursors"
+			_cursor_theme="$(_resolve_cursor_theme lxqt 2> "/dev/null" || echo "breeze_cursors")"
 		elif command -v lxsession > "/dev/null" 2>&1; then
 			_cursor_theme="Adwaita"
 		elif command -v budgie-desktop > "/dev/null" 2>&1; then
@@ -300,6 +300,9 @@ _setup_cursor_env() {
 	fi
 
 	local _valid_theme=""
+	if [ -z "${_cursor_theme}" ] && command -v _resolve_cursor_theme > "/dev/null" 2>&1; then
+		_cursor_theme="$(_resolve_cursor_theme "${_flavor}" 2> "/dev/null" || true)"
+	fi
 	if [ -n "${_cursor_theme}" ]; then
 		for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
 			if [ -d "${_p}/${_cursor_theme}/cursors" ]; then
@@ -323,42 +326,33 @@ _setup_cursor_env() {
 
 	export XCURSOR_THEME="${_valid_theme}" XCURSOR_SIZE="${_target_size}"
 
-	local _icon_theme=""
-	case "${_flavor}" in
-		kde|plasma|lxqt)
-			_icon_theme="breeze-dark"
-			;;
-		gnome|budgie)
-			if command -v gsettings > "/dev/null" 2>&1; then
-				_icon_theme="$(gsettings get org.gnome.desktop.interface icon-theme 2> "/dev/null" | tr -d "'\"")"
-			fi
-			[ -z "${_icon_theme}" ] && _icon_theme="Adwaita"
-			;;
-		mate|cinnamon|xfce|lxde)
-			_icon_theme="Adwaita"
-			;;
-		pantheon)
-			_icon_theme="elementary"
-			;;
-		deepin)
-			_icon_theme="bloom"
-			;;
-		cosmic)
-			_icon_theme="cosmic"
-			;;
-	esac
-
-	if [ -z "${_icon_theme}" ]; then
-		if command -v gsettings > "/dev/null" 2>&1; then
-			_icon_theme="$(gsettings get org.gnome.desktop.interface icon-theme 2> "/dev/null" | tr -d "'\"")"
+	local _color_scheme="${2:-}"
+	if [ -z "${_color_scheme}" ]; then
+		if command -v _detect_color_scheme > "/dev/null" 2>&1; then
+			_color_scheme="$(_detect_color_scheme "${_flavor}" 2> "/dev/null" || echo "dark")"
+		else
+			_color_scheme="dark"
 		fi
 	fi
+
+	local _icon_theme=""
+	if command -v _resolve_icon_theme > "/dev/null" 2>&1; then
+		_icon_theme="$(_resolve_icon_theme "${_flavor}" "${_color_scheme}" 2> "/dev/null" || true)"
+	fi
 	if [ -z "${_icon_theme}" ]; then
-		if [ -d "/usr/share/icons/Adwaita" ] || [ -d "/usr/local/share/icons/Adwaita" ] || [ -d "${HOME}/.local/share/icons/Adwaita" ] || [ -d "${HOME}/.icons/Adwaita" ]; then
-			_icon_theme="Adwaita"
-		else
-			_icon_theme="breeze-dark"
-		fi
+		case "${_flavor}" in
+			kde|plasma|lxqt)
+				if [ "${_color_scheme}" = "light" ]; then
+					_icon_theme="breeze"
+				else
+					_icon_theme="breeze-dark"
+				fi
+				;;
+			pantheon) _icon_theme="elementary" ;;
+			deepin)   _icon_theme="bloom" ;;
+			cosmic)   _icon_theme="cosmic" ;;
+			*)        _icon_theme="Adwaita" ;;
+		esac
 	fi
 
 	mkdir -p "${HOME}/.icons/default" 2> "/dev/null" || true
@@ -380,9 +374,60 @@ _setup_cursor_env() {
 		*)            _de_key="gnome" ;;
 	esac
 
+	local _gtk_theme_val=""
+	if command -v _resolve_gtk_theme > "/dev/null" 2>&1; then
+		_gtk_theme_val="$(_resolve_gtk_theme "${_de_key}" "${_color_scheme}" 2> "/dev/null" || true)"
+	fi
+	if [ -z "${_gtk_theme_val}" ]; then
+		if [ "${_de_key}" = "kde" ] || [ "${_de_key}" = "lxqt" ]; then
+			[ "${_color_scheme}" = "light" ] && _gtk_theme_val="Breeze" || _gtk_theme_val="Breeze-Dark"
+		else
+			[ "${_color_scheme}" = "light" ] && _gtk_theme_val="adw-gtk3" || _gtk_theme_val="adw-gtk3-dark"
+		fi
+	fi
+
+	local _prefer_dark=1
+	[ "${_color_scheme}" = "light" ] && _prefer_dark=0
+
+	_sync_gtk_settings_ini "${_de_key}" "${_gtk_theme_val}" "${_icon_theme}" "${_valid_theme}" "${_target_size}" "${_prefer_dark}"
+
+	if [ -n "${DISPLAY:-}" ]; then
+		if command -v xrdb > "/dev/null" 2>&1; then
+			printf "Xcursor.theme: %s\nXcursor.size: %s\nXTerm*cursorBlink: always\nXTerm*cursorOnTime: 600\nXTerm*cursorOffTime: 600\n" "${_valid_theme}" "${_target_size}" | xrdb -merge - > "/dev/null" 2>&1 || true
+		fi
+		command -v xsetroot > "/dev/null" 2>&1 && xsetroot -cursor_name left_ptr > "/dev/null" 2>&1 || true
+	fi
+	if command -v gsettings > "/dev/null" 2>&1; then
+		case "${_de_key}" in
+			gnome|budgie|pantheon|mate|cinnamon|xfce|lxde)
+				gsettings set org.gnome.desktop.interface cursor-theme "${_valid_theme}" > "/dev/null" 2>&1 || true
+				gsettings set org.gnome.desktop.interface cursor-size "${_target_size}" > "/dev/null" 2>&1 || true
+				gsettings set org.gnome.desktop.interface cursor-blink true > "/dev/null" 2>&1 || true
+				gsettings set org.gnome.desktop.interface cursor-blink-time 1200 > "/dev/null" 2>&1 || true
+				gsettings set org.gnome.desktop.interface icon-theme "${_icon_theme}" > "/dev/null" 2>&1 || true
+				;;
+		esac
+	fi
+}
+
+_set_ini_key() {
+	local _ini_file="$1" _key="$2" _val="$3"
+	if grep -q "^${_key}=" "${_ini_file}" 2> "/dev/null"; then
+		sed "s|^${_key}=.*|${_key}=${_val}|" "${_ini_file}" > "${_ini_file}.1" 2> "/dev/null" && mv -f "${_ini_file}.1" "${_ini_file}" 2> "/dev/null" || true
+	else
+		printf '%s=%s\n' "${_key}" "${_val}" >> "${_ini_file}" 2> "/dev/null" || true
+	fi
+}
+
+_sync_gtk_settings_ini() {
+	local _de_key="${1:-gnome}" _gtk_theme_val="${2:-adw-gtk3-dark}" _icon_theme="${3:-Adwaita}"
+	local _valid_theme="${4:-Adwaita}" _target_size="${5:-24}" _prefer_dark="${6:-1}"
+	local _cfg_base="${XDG_CONFIG_HOME:-${HOME}/.config}"
+	local _data_base="${XDG_DATA_HOME:-${HOME}/.local/share}"
 	local _gtk_ver _rt_dir _rt_file _cfg_tmp _symlink
+
 	for _gtk_ver in gtk-3.0 gtk-4.0; do
-		_rt_dir="${XDG_DATA_HOME:-${HOME}/.local/share}/profile/runtime/${_gtk_ver}"
+		_rt_dir="${_data_base}/profile/runtime/${_gtk_ver}"
 		mkdir -p "${_rt_dir}" 2> "/dev/null" || true
 		_rt_file="${_rt_dir}/settings-${_de_key}.ini"
 		_cfg_tmp="${_rt_file}.tmp.$$"
@@ -392,71 +437,41 @@ _setup_cursor_env() {
 			printf '[Settings]\n' >| "${_cfg_tmp}" 2> "/dev/null" || true
 		fi
 
-		if grep -q "^gtk-cursor-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
-			sed "s/^gtk-cursor-theme-name=.*/gtk-cursor-theme-name=${_valid_theme}/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-		else
-			printf 'gtk-cursor-theme-name=%s\n' "${_valid_theme}" >> "${_cfg_tmp}" 2> "/dev/null" || true
-		fi
-		if grep -q "^gtk-cursor-theme-size=" "${_cfg_tmp}" 2> "/dev/null"; then
-			sed "s/^gtk-cursor-theme-size=.*/gtk-cursor-theme-size=${_target_size}/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-		else
-			printf 'gtk-cursor-theme-size=%s\n' "${_target_size}" >> "${_cfg_tmp}" 2> "/dev/null" || true
-		fi
-		if grep -q "^gtk-cursor-blink=" "${_cfg_tmp}" 2> "/dev/null"; then
-			sed "s/^gtk-cursor-blink=.*/gtk-cursor-blink=true/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-		else
-			printf 'gtk-cursor-blink=true\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
-		fi
-		if grep -q "^gtk-cursor-blink-time=" "${_cfg_tmp}" 2> "/dev/null"; then
-			sed "s/^gtk-cursor-blink-time=.*/gtk-cursor-blink-time=1200/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-		else
-			printf 'gtk-cursor-blink-time=1200\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
-		fi
-		if grep -q "^gtk-icon-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
-			sed "s/^gtk-icon-theme-name=.*/gtk-icon-theme-name=${_icon_theme}/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-		else
-			printf 'gtk-icon-theme-name=%s\n' "${_icon_theme}" >> "${_cfg_tmp}" 2> "/dev/null" || true
-		fi
-		local _gtk_theme_val="adw-gtk3-dark"
-		if [ "${_de_key}" = "kde" ]; then
-			_gtk_theme_val="Breeze-Dark"
-		elif command -v _resolve_gtk_theme > "/dev/null" 2>&1; then
-			_gtk_theme_val="$(_resolve_gtk_theme "${_de_key}" 2> "/dev/null" || echo "adw-gtk3-dark")"
-		fi
-		[ -z "${_gtk_theme_val}" ] && _gtk_theme_val="adw-gtk3-dark"
-
-		if grep -q "^gtk-theme-name=" "${_cfg_tmp}" 2> "/dev/null"; then
-			sed "s/^gtk-theme-name=.*/gtk-theme-name=${_gtk_theme_val}/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-		else
-			printf 'gtk-theme-name=%s\n' "${_gtk_theme_val}" >> "${_cfg_tmp}" 2> "/dev/null" || true
-		fi
-		if grep -q "^gtk-application-prefer-dark-theme=" "${_cfg_tmp}" 2> "/dev/null"; then
-			sed "s/^gtk-application-prefer-dark-theme=.*/gtk-application-prefer-dark-theme=1/" "${_cfg_tmp}" > "${_cfg_tmp}.1" 2> "/dev/null" && mv -f "${_cfg_tmp}.1" "${_cfg_tmp}" 2> "/dev/null" || true
-		else
-			printf 'gtk-application-prefer-dark-theme=1\n' >> "${_cfg_tmp}" 2> "/dev/null" || true
-		fi
+		_set_ini_key "${_cfg_tmp}" "gtk-cursor-theme-name" "${_valid_theme}"
+		_set_ini_key "${_cfg_tmp}" "gtk-cursor-theme-size" "${_target_size}"
+		_set_ini_key "${_cfg_tmp}" "gtk-cursor-blink" "true"
+		_set_ini_key "${_cfg_tmp}" "gtk-cursor-blink-time" "1200"
+		_set_ini_key "${_cfg_tmp}" "gtk-icon-theme-name" "${_icon_theme}"
+		_set_ini_key "${_cfg_tmp}" "gtk-theme-name" "${_gtk_theme_val}"
+		_set_ini_key "${_cfg_tmp}" "gtk-application-prefer-dark-theme" "${_prefer_dark}"
 
 		mv -f "${_cfg_tmp}" "${_rt_file}" 2> "/dev/null" || true
 		rm -f "${_cfg_tmp}" "${_cfg_tmp}.1" 2> "/dev/null" || true
 
-		_symlink="${HOME}/.config/${_gtk_ver}/settings.ini"
-		mkdir -p "${HOME}/.config/${_gtk_ver}" 2> "/dev/null" || true
+		_symlink="${_cfg_base}/${_gtk_ver}/settings.ini"
+		mkdir -p "${_cfg_base}/${_gtk_ver}" 2> "/dev/null" || true
 		rm -f "${_symlink}" 2> "/dev/null" || true
 		ln -s "${_rt_file}" "${_symlink}" 2> "/dev/null" || cp -f "${_rt_file}" "${_symlink}" 2> "/dev/null" || true
 	done
+}
 
-	if [ -n "${DISPLAY:-}" ]; then
-		if command -v xrdb > "/dev/null" 2>&1; then
-			printf "Xcursor.theme: %s\nXcursor.size: %s\nXTerm*cursorBlink: always\nXTerm*cursorOnTime: 600\nXTerm*cursorOffTime: 600\n" "${_valid_theme}" "${_target_size}" | xrdb -merge - 2> "/dev/null" || true
-		fi
-		command -v xsetroot > "/dev/null" 2>&1 && xsetroot -cursor_name left_ptr 2> "/dev/null" || true
+_strip_env_var_from_file() {
+	local _target_file="$1" _var_name="$2"
+	[ -f "${_target_file}" ] || return 0
+	if grep -qE "^[[:space:]]*(export[[:space:]]+)?${_var_name}=" "${_target_file}" 2> "/dev/null"; then
+		sed -E "/^[[:space:]]*(export[[:space:]]+)?${_var_name}=/d" "${_target_file}" >| "${_target_file}.tmp.$$" 2> "/dev/null" && \
+			mv -f "${_target_file}.tmp.$$" "${_target_file}" 2> "/dev/null" || rm -f "${_target_file}.tmp.$$" 2> "/dev/null" || true
 	fi
-	if command -v gsettings > "/dev/null" 2>&1; then
-		gsettings set org.gnome.desktop.interface cursor-theme "${_valid_theme}" > "/dev/null" 2>&1 || true
-		gsettings set org.gnome.desktop.interface cursor-size "${_target_size}" > "/dev/null" 2>&1 || true
-		gsettings set org.gnome.desktop.interface cursor-blink true > "/dev/null" 2>&1 || true
-		gsettings set org.gnome.desktop.interface cursor-blink-time 1200 > "/dev/null" 2>&1 || true
-		gsettings set org.gnome.desktop.interface icon-theme "${_icon_theme}" > "/dev/null" 2>&1 || true
+}
+
+_upsert_export_in_file() {
+	local _target_file="$1" _var_name="$2" _var_val="$3"
+	[ -f "${_target_file}" ] || return 0
+	if grep -q "^[[:space:]]*export ${_var_name}=" "${_target_file}" 2> "/dev/null"; then
+		sed "s|^[[:space:]]*export ${_var_name}=.*|export ${_var_name}=\"${_var_val}\"|" "${_target_file}" >| "${_target_file}.tmp.$$" 2> "/dev/null" && \
+			mv -f "${_target_file}.tmp.$$" "${_target_file}" 2> "/dev/null" || rm -f "${_target_file}.tmp.$$" 2> "/dev/null" || true
+	elif ! grep -q "^[[:space:]]*${_var_name}=" "${_target_file}" 2> "/dev/null"; then
+		printf 'export %s="%s"\n' "${_var_name}" "${_var_val}" >> "${_target_file}" 2> "/dev/null" || true
 	fi
 }
 
@@ -465,39 +480,42 @@ _setup_cursor_env() {
 ### --------------------------------
 _propagate_session_theme_env() {
 	local _flavor="${1:-$(_detect_desktop_theme 2> "/dev/null" || echo "gnome")}"
-	local _gtk_theme="adw-gtk3-dark" _qt_theme="Breeze-Dark" _qt_platform="kde"
+	local _scheme="dark"
+	if command -v _detect_color_scheme > "/dev/null" 2>&1; then
+		_scheme="$(_detect_color_scheme "${_flavor}" 2> "/dev/null" || echo "dark")"
+	fi
+
+	local _gtk_theme="adw-gtk3-dark" _qt_theme="" _qt_platform="kde"
+	if command -v _resolve_gtk_theme > "/dev/null" 2>&1; then
+		_gtk_theme="$(_resolve_gtk_theme "${_flavor}" "${_scheme}" 2> "/dev/null" || echo "adw-gtk3-dark")"
+	fi
+	if command -v _detect_qt_theme > "/dev/null" 2>&1; then
+		_qt_theme="$(_detect_qt_theme 2> "/dev/null" || echo "")"
+	fi
 	case "${_flavor}" in
 		kde|plasma)
-			_gtk_theme="Breeze-Dark"
-			_qt_theme="Breeze-Dark"
 			_qt_platform="kde"
+			[ "${_scheme}" = "light" ] && _qt_theme="Breeze" || _qt_theme="Breeze-Dark"
+			[ "${_scheme}" = "light" ] && _gtk_theme="Breeze" || _gtk_theme="Breeze-Dark"
 			;;
 		lxqt)
-			_gtk_theme="Breeze-Dark"
-			_qt_theme="Breeze-Dark"
 			_qt_platform="lxqt"
+			[ "${_scheme}" = "light" ] && _qt_theme="Breeze" || _qt_theme="Breeze-Dark"
+			[ "${_scheme}" = "light" ] && _gtk_theme="Breeze" || _gtk_theme="Breeze-Dark"
 			;;
 		*)
-			if command -v _detect_gtk_theme > "/dev/null" 2>&1; then
-				_gtk_theme="$(_detect_gtk_theme 2> "/dev/null" || echo "adw-gtk3-dark")"
-			fi
-			[ -z "${_gtk_theme}" ] && _gtk_theme="adw-gtk3-dark"
-			if command -v _detect_qt_theme > "/dev/null" 2>&1; then
-				_qt_theme="$(_detect_qt_theme 2> "/dev/null" || echo "")"
-			fi
 			if command -v _detect_qt_platform_theme > "/dev/null" 2>&1; then
 				_qt_platform="$(_detect_qt_platform_theme 2> "/dev/null" || echo "qt6ct")"
 			fi
+			[ -z "${_qt_platform}" ] && _qt_platform="qt6ct"
 			;;
 	esac
 
 	local _env_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/environment.d"
 	mkdir -p "${_env_dir}" 2> "/dev/null" || true
+	rm -f "${_env_dir}/gtk-dark.conf" 2> "/dev/null" || true
 	cat <<- EOF >| "${_env_dir}/10-theme.conf"
-		GTK_THEME=${_gtk_theme}
-		GTK_APPLICATION_PREFER_DARK_THEME=1
 		QT_QPA_PLATFORMTHEME=${_qt_platform}
-		${_qt_theme:+QT_STYLE_OVERRIDE=${_qt_theme}}
 		SAL_USE_VCLPLUGIN=gtk3
 	EOF
 
@@ -505,53 +523,34 @@ _propagate_session_theme_env() {
 	if [ ! -f "${_xprofile}" ]; then
 		cat <<- EOF >| "${_xprofile}"
 			#!/usr/bin/env sh
-			export GTK_THEME="${_gtk_theme}"
-			export GTK_APPLICATION_PREFER_DARK_THEME=1
 			export QT_QPA_PLATFORMTHEME="${_qt_platform}"
-			${_qt_theme:+export QT_STYLE_OVERRIDE="${_qt_theme}"}
 			export SAL_USE_VCLPLUGIN="gtk3"
 		EOF
 		chmod 0755 "${_xprofile}" 2> "/dev/null" || true
 	else
-		for _var in "GTK_THEME=${_gtk_theme}" "GTK_APPLICATION_PREFER_DARK_THEME=1" "QT_QPA_PLATFORMTHEME=${_qt_platform}" "SAL_USE_VCLPLUGIN=gtk3"; do
-			_name="${_var%%=*}"
-			if grep -q "^[[:space:]]*export ${_name}=" "${_xprofile}" 2> "/dev/null"; then
-				sed "s/^[[:space:]]*export ${_name}=.*/export ${_var}/" "${_xprofile}" >| "${_xprofile}.tmp.$$" 2> "/dev/null" && mv -f "${_xprofile}.tmp.$$" "${_xprofile}" 2> "/dev/null" || rm -f "${_xprofile}.tmp.$$" 2> "/dev/null" || true
-			elif ! grep -q "^[[:space:]]*${_name}=" "${_xprofile}" 2> "/dev/null"; then
-				printf 'export %s\n' "${_var}" >> "${_xprofile}" 2> "/dev/null" || true
-			fi
-		done
-		if [ -n "${_qt_theme}" ]; then
-			if grep -q "^[[:space:]]*export QT_STYLE_OVERRIDE=" "${_xprofile}" 2> "/dev/null"; then
-				sed "s/^[[:space:]]*export QT_STYLE_OVERRIDE=.*/export QT_STYLE_OVERRIDE=\"${_qt_theme}\"/" "${_xprofile}" >| "${_xprofile}.tmp.$$" 2> "/dev/null" && mv -f "${_xprofile}.tmp.$$" "${_xprofile}" 2> "/dev/null" || rm -f "${_xprofile}.tmp.$$" 2> "/dev/null" || true
-			elif ! grep -q "^[[:space:]]*QT_STYLE_OVERRIDE=" "${_xprofile}" 2> "/dev/null"; then
-				printf 'export QT_STYLE_OVERRIDE="%s"\n' "${_qt_theme}" >> "${_xprofile}" 2> "/dev/null" || true
-			fi
-		fi
+		_strip_env_var_from_file "${_xprofile}" "GTK_THEME"
+		_strip_env_var_from_file "${_xprofile}" "GTK_APPLICATION_PREFER_DARK_THEME"
+		_strip_env_var_from_file "${_xprofile}" "QT_STYLE_OVERRIDE"
+		_upsert_export_in_file "${_xprofile}" "QT_QPA_PLATFORMTHEME" "${_qt_platform}"
+		_upsert_export_in_file "${_xprofile}" "SAL_USE_VCLPLUGIN" "gtk3"
 	fi
 
-	local _profile="${HOME}/.profile"
-	if [ -f "${_profile}" ]; then
-		for _var in "GTK_THEME=${_gtk_theme}" "GTK_APPLICATION_PREFER_DARK_THEME=1" "QT_QPA_PLATFORMTHEME=${_qt_platform}" "SAL_USE_VCLPLUGIN=gtk3"; do
-			_name="${_var%%=*}"
-			if grep -q "^[[:space:]]*export ${_name}=" "${_profile}" 2> "/dev/null"; then
-				sed "s/^[[:space:]]*export ${_name}=.*/export ${_var}/" "${_profile}" >| "${_profile}.tmp.$$" 2> "/dev/null" && mv -f "${_profile}.tmp.$$" "${_profile}" 2> "/dev/null" || rm -f "${_profile}.tmp.$$" 2> "/dev/null" || true
-			elif ! grep -q "^[[:space:]]*${_name}=" "${_profile}" 2> "/dev/null"; then
-				printf 'export %s\n' "${_var}" >> "${_profile}" 2> "/dev/null" || true
-			fi
-		done
-	fi
+	local _rc_file
+	for _rc_file in "${HOME}/.profile" "${HOME}/.zshenv"; do
+		[ -f "${_rc_file}" ] || continue
+		_strip_env_var_from_file "${_rc_file}" "GTK_THEME"
+		_strip_env_var_from_file "${_rc_file}" "GTK_APPLICATION_PREFER_DARK_THEME"
+		_strip_env_var_from_file "${_rc_file}" "QT_STYLE_OVERRIDE"
+		_upsert_export_in_file "${_rc_file}" "QT_QPA_PLATFORMTHEME" "${_qt_platform}"
+		_upsert_export_in_file "${_rc_file}" "SAL_USE_VCLPLUGIN" "gtk3"
+	done
 
-	local _zshenv="${HOME}/.zshenv"
-	if [ -f "${_zshenv}" ]; then
-		for _var in "GTK_THEME=${_gtk_theme}" "GTK_APPLICATION_PREFER_DARK_THEME=1" "QT_QPA_PLATFORMTHEME=${_qt_platform}" "SAL_USE_VCLPLUGIN=gtk3"; do
-			_name="${_var%%=*}"
-			if grep -q "^[[:space:]]*export ${_name}=" "${_zshenv}" 2> "/dev/null"; then
-				sed "s/^[[:space:]]*export ${_name}=.*/export ${_var}/" "${_zshenv}" >| "${_zshenv}.tmp.$$" 2> "/dev/null" && mv -f "${_zshenv}.tmp.$$" "${_zshenv}" 2> "/dev/null" || rm -f "${_zshenv}.tmp.$$" 2> "/dev/null" || true
-			elif ! grep -q "^[[:space:]]*${_name}=" "${_zshenv}" 2> "/dev/null"; then
-				printf 'export %s\n' "${_var}" >> "${_zshenv}" 2> "/dev/null" || true
-			fi
-		done
+	if command -v gsettings > "/dev/null" 2>&1; then
+		case "${_flavor}" in
+			gnome|budgie|pantheon|adwaita)
+				gsettings set org.gnome.desktop.interface gtk-theme "${_gtk_theme}" > "/dev/null" 2>&1 || true
+				;;
+		esac
 	fi
 
 	local _bin_wrapper=""
@@ -573,37 +572,51 @@ _propagate_session_theme_env() {
 ### --------------------------------
 ### WAYLAND & X11 SESSION ENV
 ### --------------------------------
-_wayland_session_env() {
-	local _target_flavor="${1:-}"
-	[ -z "${XDG_RUNTIME_DIR:-}" ] && export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"
-	[ ! -d "${XDG_RUNTIME_DIR}" ] && mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
-
-	unset DISPLAY XAUTHORITY 2> "/dev/null" || true
-	export XDG_SESSION_TYPE="wayland"
-	export XKB_DEFAULT_LAYOUT="br" XKB_DEFAULT_MODEL="abnt2" XKB_DEFAULT_OPTIONS="numpad:mac"
-	export WLR_KEYBOARD_REPEAT_DELAY=200 WLR_KEYBOARD_REPEAT_RATE=50
-	export GDK_BACKEND="wayland,x11" CLUTTER_BACKEND="wayland" SDL_VIDEODRIVER="wayland"
-	export MOZ_ENABLE_WAYLAND=1 ELECTRON_OZONE_PLATFORM_HINT="auto"
-	export GTK_APPLICATION_PREFER_DARK_THEME=1 ADW_DEBUG_COLOR_SCHEME="prefer-dark"
+_apply_common_theme_exports() {
+	local _theme_flavor="$1" _color_scheme="$2" _is_full_de="${3:-0}"
+	export _RESOLVED_THEME_FLAVOR="${_theme_flavor}"
+	export _RESOLVED_COLOR_SCHEME="${_color_scheme}"
 	export SAL_USE_VCLPLUGIN="gtk3"
 
-	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
-	if [ -z "${GTK_THEME:-}" ] && [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
-		local _ini_gtk="$(grep -E '^[[:space:]]*gtk-theme-name[[:space:]]*=' "${HOME}/.config/gtk-3.0/settings.ini" 2> "/dev/null" | head -n 1 | cut -d= -f2- | tr -d ' "' || true)"
-		[ -n "${_ini_gtk}" ] && export GTK_THEME="${_ini_gtk}"
+	local _gtk_theme=""
+	if command -v _resolve_gtk_theme > "/dev/null" 2>&1; then
+		_gtk_theme="$(_resolve_gtk_theme "${_theme_flavor}" "${_color_scheme}" 2> "/dev/null" || true)"
+	fi
+	if [ -z "${_gtk_theme}" ]; then
+		if [ "${_theme_flavor}" = "kde" ] || [ "${_theme_flavor}" = "lxqt" ]; then
+			[ "${_color_scheme}" = "light" ] && _gtk_theme="Breeze" || _gtk_theme="Breeze-Dark"
+		else
+			[ "${_color_scheme}" = "light" ] && _gtk_theme="adw-gtk3" || _gtk_theme="adw-gtk3-dark"
+		fi
 	fi
 
-	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
-	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="adw-gtk3-dark"
-	export QT_QPA_PLATFORM="wayland;xcb"
+	local _icon_theme="Adwaita"
+	if command -v _resolve_icon_theme > "/dev/null" 2>&1; then
+		_icon_theme="$(_resolve_icon_theme "${_theme_flavor}" "${_color_scheme}" 2> "/dev/null" || echo "Adwaita")"
+	fi
+	export _RESOLVED_ICON_THEME="${_icon_theme}"
+
+	if [ "${_is_full_de}" -eq 1 ]; then
+		unset GTK_THEME GTK_APPLICATION_PREFER_DARK_THEME ADW_DEBUG_COLOR_SCHEME QT_STYLE_OVERRIDE 2> "/dev/null" || true
+	else
+		export GTK_THEME="${_gtk_theme}"
+		if [ "${_color_scheme}" = "light" ]; then
+			export GTK_APPLICATION_PREFER_DARK_THEME=0 ADW_DEBUG_COLOR_SCHEME="default"
+		else
+			export GTK_APPLICATION_PREFER_DARK_THEME=1 ADW_DEBUG_COLOR_SCHEME="prefer-dark"
+		fi
+	fi
+
 	case "${_theme_flavor}" in
 		kde|plasma)
-			export XDG_CURRENT_DESKTOP="KDE" DESKTOP_SESSION="${DESKTOP_SESSION:-kde}" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze-Dark"
-			export GTK_THEME="Breeze-Dark"
-			export GTK_APPLICATION_PREFER_DARK_THEME=1
+			export XDG_CURRENT_DESKTOP="KDE" DESKTOP_SESSION="${DESKTOP_SESSION:-kde}" QT_QPA_PLATFORMTHEME="kde"
+			if [ "${_is_full_de}" -eq 0 ]; then
+				[ "${_color_scheme}" = "light" ] && export QT_STYLE_OVERRIDE="Breeze" || export QT_STYLE_OVERRIDE="Breeze-Dark"
+			fi
 			;;
 		lxqt)
-			export XDG_CURRENT_DESKTOP="LXQt" DESKTOP_SESSION="${DESKTOP_SESSION:-lxqt}" QT_QPA_PLATFORMTHEME="lxqt" QT_STYLE_OVERRIDE="Breeze"
+			export XDG_CURRENT_DESKTOP="LXQt" DESKTOP_SESSION="${DESKTOP_SESSION:-lxqt}" QT_QPA_PLATFORMTHEME="lxqt"
+			[ "${_is_full_de}" -eq 0 ] && export QT_STYLE_OVERRIDE="Breeze"
 			;;
 		cosmic)
 			export XDG_CURRENT_DESKTOP="COSMIC" DESKTOP_SESSION="${DESKTOP_SESSION:-cosmic}" QT_QPA_PLATFORMTHEME="cosmic"
@@ -636,66 +649,47 @@ _wayland_session_env() {
 			;;
 	esac
 	export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
+}
 
-	_setup_cursor_env "${_target_flavor}"
+_wayland_session_env() {
+	local _target_flavor="${1:-}" _is_full_de="${2:-0}"
+	[ -z "${XDG_RUNTIME_DIR:-}" ] && export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"
+	[ ! -d "${XDG_RUNTIME_DIR}" ] && mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
+
+	unset DISPLAY XAUTHORITY 2> "/dev/null" || true
+	export XDG_SESSION_TYPE="wayland"
+	export XKB_DEFAULT_LAYOUT="br" XKB_DEFAULT_MODEL="abnt2" XKB_DEFAULT_OPTIONS="numpad:mac"
+	export WLR_KEYBOARD_REPEAT_DELAY=200 WLR_KEYBOARD_REPEAT_RATE=50
+	export GDK_BACKEND="wayland,x11" CLUTTER_BACKEND="wayland" SDL_VIDEODRIVER="wayland"
+	export MOZ_ENABLE_WAYLAND=1 ELECTRON_OZONE_PLATFORM_HINT="auto"
+	export QT_QPA_PLATFORM="wayland;xcb"
+
+	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
+	local _color_scheme="dark"
+	if command -v _detect_color_scheme > "/dev/null" 2>&1; then
+		_color_scheme="$(_detect_color_scheme "${_theme_flavor}" 2> "/dev/null" || echo "dark")"
+	fi
+
+	_apply_common_theme_exports "${_theme_flavor}" "${_color_scheme}" "${_is_full_de}"
+	_setup_cursor_env "${_theme_flavor}" "${_color_scheme}"
 	_propagate_session_theme_env "${_theme_flavor}"
 	_enable_numlock_console
 }
 
 _x11_session_env() {
-	local _target_flavor="${1:-}"
+	local _target_flavor="${1:-}" _is_full_de="${2:-0}"
 	unset WAYLAND_DISPLAY 2> "/dev/null" || true
 	export XDG_SESSION_TYPE="x11" GDK_BACKEND="x11" QT_QPA_PLATFORM="xcb" SDL_VIDEODRIVER="x11" CLUTTER_BACKEND="x11"
 	export XORG_RUN_AS_USER_OK=1 XKB_DEFAULT_LAYOUT="br" XKB_DEFAULT_MODEL="abnt2" XKB_DEFAULT_OPTIONS="numpad:mac"
-	export GTK_APPLICATION_PREFER_DARK_THEME=1 ADW_DEBUG_COLOR_SCHEME="prefer-dark"
-	export SAL_USE_VCLPLUGIN="gtk3"
+	export vblank_mode=3 __GL_SYNC_TO_VBLANK=1
 
 	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}")"
-	if [ -z "${GTK_THEME:-}" ] && [ -r "${HOME}/.config/gtk-3.0/settings.ini" ]; then
-		local _ini_gtk="$(grep -E '^[[:space:]]*gtk-theme-name[[:space:]]*=' "${HOME}/.config/gtk-3.0/settings.ini" 2> "/dev/null" | head -n 1 | cut -d= -f2- | tr -d ' "' || true)"
-		[ -n "${_ini_gtk}" ] && export GTK_THEME="${_ini_gtk}"
+	local _color_scheme="dark"
+	if command -v _detect_color_scheme > "/dev/null" 2>&1; then
+		_color_scheme="$(_detect_color_scheme "${_theme_flavor}" 2> "/dev/null" || echo "dark")"
 	fi
 
-	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="$(_resolve_gtk_theme "${_theme_flavor}")"
-	[ -z "${GTK_THEME:-}" ] && export GTK_THEME="adw-gtk3-dark"
-	case "${_theme_flavor}" in
-		kde|plasma)
-			export XDG_CURRENT_DESKTOP="KDE" DESKTOP_SESSION="${DESKTOP_SESSION:-kde}" QT_QPA_PLATFORMTHEME="kde" QT_STYLE_OVERRIDE="Breeze-Dark"
-			export GTK_THEME="Breeze-Dark"
-			export GTK_APPLICATION_PREFER_DARK_THEME=1
-			;;
-		lxqt)
-			export XDG_CURRENT_DESKTOP="LXQt" DESKTOP_SESSION="${DESKTOP_SESSION:-lxqt}" QT_QPA_PLATFORMTHEME="lxqt" QT_STYLE_OVERRIDE="Breeze"
-			;;
-		cosmic)
-			export XDG_CURRENT_DESKTOP="COSMIC" DESKTOP_SESSION="${DESKTOP_SESSION:-cosmic}" QT_QPA_PLATFORMTHEME="cosmic"
-			;;
-		budgie)
-			export XDG_CURRENT_DESKTOP="Budgie:GNOME" DESKTOP_SESSION="${DESKTOP_SESSION:-budgie}" QT_QPA_PLATFORMTHEME="qt6ct"
-			;;
-		pantheon)
-			export XDG_CURRENT_DESKTOP="Pantheon" DESKTOP_SESSION="${DESKTOP_SESSION:-pantheon}" QT_QPA_PLATFORMTHEME="qt6ct"
-			;;
-		deepin)
-			export XDG_CURRENT_DESKTOP="DDE" DESKTOP_SESSION="${DESKTOP_SESSION:-deepin}" QT_QPA_PLATFORMTHEME="deepin"
-			;;
-		*)
-			case "${_theme_flavor}" in
-				cinnamon) export XDG_CURRENT_DESKTOP="X-Cinnamon" DESKTOP_SESSION="${DESKTOP_SESSION:-cinnamon}" ;;
-				mate)     export XDG_CURRENT_DESKTOP="MATE" DESKTOP_SESSION="${DESKTOP_SESSION:-mate}" ;;
-				xfce)     export XDG_CURRENT_DESKTOP="XFCE" DESKTOP_SESSION="${DESKTOP_SESSION:-xfce}" ;;
-				lxde)     export XDG_CURRENT_DESKTOP="LXDE" DESKTOP_SESSION="${DESKTOP_SESSION:-lxde}" ;;
-				*)        export XDG_CURRENT_DESKTOP="GNOME" DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}" ;;
-			esac
-			unset QT_STYLE_OVERRIDE 2> "/dev/null" || true
-			if [ -f "${HOME}/.config/qt6ct/qt6ct.conf" ] || command -v qt6ct > "/dev/null" 2>&1; then
-				export QT_QPA_PLATFORMTHEME="qt6ct"
-			else
-				export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
-			fi
-			;;
-	esac
-	export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
+	_apply_common_theme_exports "${_theme_flavor}" "${_color_scheme}" "${_is_full_de}"
 
 	local _xres_target="${HOME}/.Xresources" _xres_src=""
 	if [ -f "${HOME}/.local/share/profile/terminals/xterm/Xresources" ]; then
@@ -709,7 +703,7 @@ _x11_session_env() {
 		fi
 	fi
 
-	_setup_cursor_env "${_theme_flavor}"
+	_setup_cursor_env "${_theme_flavor}" "${_color_scheme}"
 	_propagate_session_theme_env "${_theme_flavor}"
 	_enable_numlock_console
 }
@@ -818,32 +812,99 @@ _session_cmd_file() {
 }
 
 ### --------------------------------
-### XORG DIAGNOSTICS
+### PREFLIGHT & XORG DIAGNOSTICS
 ### --------------------------------
+_has_exec_bin() {
+	local _bin="$1" _old_ifs _p
+	[ -z "${_bin}" ] && return 1
+	case "${_bin}" in
+		/*) [ -x "${_bin}" ] && [ ! -d "${_bin}" ] && return 0 || return 1 ;;
+	esac
+	_old_ifs="${IFS}"
+	IFS=":"
+	for _p in ${PATH:-}; do
+		[ -z "${_p}" ] && _p="."
+		if [ -x "${_p}/${_bin}" ] && [ ! -d "${_p}/${_bin}" ]; then
+			IFS="${_old_ifs}"
+			return 0
+		fi
+	done
+	IFS="${_old_ifs}"
+	return 1
+}
+
+_has_drm_card() {
+	local _dri
+	for _dri in /dev/dri/card*; do
+		[ -c "${_dri}" ] && return 0
+	done
+	return 1
+}
+
+_is_full_de_cmd() {
+	local _cmd="${1##*/}"
+	case "${_cmd}" in
+		startplasma-wayland|plasma-wayland-session|startplasma-x11|startkde|gnome-session|gnome-shell|startxfce4|xfce4-session|mate-session|cinnamon-session|cinnamon-session-wayland|startlxqt|lxqt-wayland-session|startlxqt-wayland|lxqt-session|startlxde|lxsession|budgie-desktop|pantheon-session|startdde|dde-session|cosmic-session|start-cosmic)
+			return 0
+			;;
+	esac
+	return 1
+}
+
+_preflight_wayland() {
+	local _bin="${1:-}"
+	_has_exec_bin "${_bin}" || return 127
+	if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -z "${DISPLAY:-}" ] && [ -z "${WLR_BACKENDS:-}" ] && [ "${SHELL_ALLOW_NO_DRM:-0}" != "1" ]; then
+		case "$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')" in
+			linux|freebsd)
+				_has_drm_card || return 127
+				;;
+		esac
+	fi
+	if [ "${_WAYLAND_REQUIRE_XWAYLAND:-0}" = "1" ] && [ -z "${DISPLAY:-}" ]; then
+		_has_exec_bin "Xwayland" || return 127
+	fi
+	return 0
+}
+
 _x11_driver_preflight() {
+	local _log_target="${1:-}"
 	[ "$(_detect_os)" = "freebsd" ] || return 0
-	[ -c "/dev/dri/card0" ] && return 0
-	_ui_warn "/dev/dri/card0 ausente: Xorg usará o fallback scfb (sem aceleração). Verifique kld_list (i915kms/amdgpu)."
+	_has_drm_card && return 0
+	if [ -n "${_log_target}" ]; then
+		printf 'WARNING: /dev/dri/card* ausente: Xorg usará fallback scfb (verifique kld_list i915kms/amdgpu).\n' >> "${_log_target}" 2> "/dev/null" || true
+	fi
 }
 
 ### --------------------------------
 ### GRAPHICAL SESSION LAUNCHERS
 ### --------------------------------
 _exec_wayland() {
+	_preflight_wayland "${1:-}" || return 127
 	_sanitize_graphical_env
 	local _log_dir="$(_get_shell_log_dir)"
 	local _log_file="${_log_dir}/wayland-session.log"
 	local _ret=0
+	local _is_full_de=0
+
+	if [ "${_SESSION_IS_FULL_DE:-0}" = "1" ] || _is_full_de_cmd "${1:-}"; then
+		_is_full_de=1
+		_wayland_session_env "${_WAYLAND_FLAVOR_OVERRIDE:-}" 1
+	fi
 
 	unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 	export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
 
+	if [ "${_is_full_de}" -eq 1 ]; then
+		unset GTK_THEME GTK_APPLICATION_PREFER_DARK_THEME ADW_DEBUG_COLOR_SCHEME QT_STYLE_OVERRIDE 2> "/dev/null" || true
+	fi
+
 	if command -v gnome-keyring-daemon > "/dev/null" 2>&1; then
-		eval "$(gnome-keyring-daemon --start --components=secrets,ssh,pkcs11 2> "/dev/null")"
+		eval "$(gnome-keyring-daemon --start --components=secrets,ssh,pkcs11 2>> "${_log_file}")" > "/dev/null" 2>&1 || true
 		[ -n "${SSH_AUTH_SOCK:-}" ] && export SSH_AUTH_SOCK
 		if command -v dbus-update-activation-environment > "/dev/null" 2>&1; then
-			dbus-update-activation-environment --systemd SSH_AUTH_SOCK DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP 2> "/dev/null" || \
-			dbus-update-activation-environment SSH_AUTH_SOCK DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP 2> "/dev/null" || true
+			dbus-update-activation-environment --systemd SSH_AUTH_SOCK DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP >> "${_log_file}" 2>&1 || \
+			dbus-update-activation-environment SSH_AUTH_SOCK DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP >> "${_log_file}" 2>&1 || true
 		fi
 	fi
 
@@ -851,39 +912,40 @@ _exec_wayland() {
 		if command -v ck-launch-session > "/dev/null" 2>&1; then
 			local _ck_cmd="$(_session_cmd_file "$@")"
 			if command -v dbus-run-session > "/dev/null" 2>&1; then
-				dbus-run-session -- ck-launch-session "${_ck_cmd}" >| "${_log_file}" 2>&1
+				dbus-run-session -- ck-launch-session "${_ck_cmd}" >> "${_log_file}" 2>&1
 				_ret=$?
 			elif command -v dbus-launch > "/dev/null" 2>&1; then
-				dbus-launch --exit-with-session ck-launch-session "${_ck_cmd}" >| "${_log_file}" 2>&1
+				dbus-launch --exit-with-session ck-launch-session "${_ck_cmd}" >> "${_log_file}" 2>&1
 				_ret=$?
 			else
-				ck-launch-session "${_ck_cmd}" >| "${_log_file}" 2>&1
+				ck-launch-session "${_ck_cmd}" >> "${_log_file}" 2>&1
 				_ret=$?
 			fi
 		elif command -v dbus-run-session > "/dev/null" 2>&1; then
-			dbus-run-session -- "$@" >| "${_log_file}" 2>&1
+			dbus-run-session -- "$@" >> "${_log_file}" 2>&1
 			_ret=$?
 		elif command -v dbus-launch > "/dev/null" 2>&1; then
-			dbus-launch --exit-with-session "$@" >| "${_log_file}" 2>&1
+			dbus-launch --exit-with-session "$@" >> "${_log_file}" 2>&1
 			_ret=$?
 		else
-			"$@" >| "${_log_file}" 2>&1
+			"$@" >> "${_log_file}" 2>&1
 			_ret=$?
 		fi
 	else
 		if command -v dbus-run-session > "/dev/null" 2>&1; then
-			dbus-run-session -- "$@" >| "${_log_file}" 2>&1
+			dbus-run-session -- "$@" >> "${_log_file}" 2>&1
 			_ret=$?
 		elif command -v dbus-launch > "/dev/null" 2>&1; then
-			dbus-launch --exit-with-session "$@" >| "${_log_file}" 2>&1
+			dbus-launch --exit-with-session "$@" >> "${_log_file}" 2>&1
 			_ret=$?
 		else
-			"$@" >| "${_log_file}" 2>&1
+			"$@" >> "${_log_file}" 2>&1
 			_ret=$?
 		fi
 	fi
 
-	_freebsd_vt_bounce
+	_freebsd_vt_bounce > "/dev/null" 2>&1
+	[ "${_ret}" -eq 127 ] && _ret=1
 
 	if [ "${_ret}" -ne 0 ]; then
 		_ui_err "Sessão Wayland encerrou com erro (código ${_ret}). Log: ${_log_file}"
@@ -921,7 +983,16 @@ _resolve_free_display() {
 
 _exec_x11() {
 	_sanitize_graphical_env
-	command -v startx > "/dev/null" 2>&1 || command -v xinit > "/dev/null" 2>&1 || return 1
+	{ _has_exec_bin "startx" || _has_exec_bin "xinit"; } || return 127
+	{ _has_exec_bin "Xorg" || _has_exec_bin "X"; } || return 127
+	if [ "$#" -gt 0 ]; then
+		_has_exec_bin "$1" || return 127
+	fi
+
+	local _is_full_de=0
+	if [ "${_X11_SESSION_IS_FULL_DE:-0}" = "1" ] || { [ "$#" -gt 0 ] && _is_full_de_cmd "$1"; }; then
+		_is_full_de=1
+	fi
 
 	local _had_display=1
 	[ -z "${DISPLAY:-}" ] && _had_display=0
@@ -931,9 +1002,12 @@ _exec_x11() {
 
 	local _display="$(_resolve_free_display)"
 	export DISPLAY="${_display}"
-	_x11_session_env "${_X11_FLAVOR_OVERRIDE:-}"
+	_x11_session_env "${_X11_FLAVOR_OVERRIDE:-}" "${_is_full_de}"
 
-	_x11_driver_preflight
+	local _log_dir="$(_get_shell_log_dir)"
+	local _persistent_log="${_log_dir}/xorg-session.log"
+	rm -f "${_persistent_log}" 2> "/dev/null" || true
+	_x11_driver_preflight "${_persistent_log}"
 
 	local _session_cmd=""
 	if [ "$#" -gt 0 ]; then
@@ -946,30 +1020,27 @@ _exec_x11() {
 		[ -z "${_session_cmd}" ] && _session_cmd="'xterm'"
 	fi
 
-	local _theme_flavor="$(_detect_desktop_theme "${_X11_FLAVOR_OVERRIDE:-}")"
+	local _theme_flavor="${_RESOLVED_THEME_FLAVOR:-$(_detect_desktop_theme "${_X11_FLAVOR_OVERRIDE:-}")}"
+	local _color_scheme="${_RESOLVED_COLOR_SCHEME:-$(_detect_color_scheme "${_theme_flavor}" 2> "/dev/null" || echo "dark")}"
 	local _ui_font="$(_resolve_desktop_font "${_theme_flavor}")"
 	local _valid_theme="${XCURSOR_THEME:-Adwaita}"
+	local _icon_theme="${_RESOLVED_ICON_THEME:-Adwaita}"
 	local _gtk_theme="${GTK_THEME:-}"
-	if [ -z "${_gtk_theme}" ]; then
-		case "${_theme_flavor}" in
-			kde|plasma|lxqt) _gtk_theme="Breeze-Dark" ;;
-			*)
-				if command -v _detect_gtk_theme > "/dev/null" 2>&1; then
-					_gtk_theme="$(_detect_gtk_theme 2> "/dev/null" || true)"
-				fi
-				[ -z "${_gtk_theme}" ] && _gtk_theme="adw-gtk3-dark"
-				;;
-		esac
+	if [ -z "${_gtk_theme}" ] && command -v _resolve_gtk_theme > "/dev/null" 2>&1; then
+		_gtk_theme="$(_resolve_gtk_theme "${_theme_flavor}" "${_color_scheme}" 2> "/dev/null" || true)"
 	fi
-	local _icon_theme=""
-	case "${_theme_flavor}" in
-		kde|plasma|lxqt) _icon_theme="breeze-dark" ;;
-		pantheon)        _icon_theme="elementary" ;;
-		deepin)          _icon_theme="bloom" ;;
-		cosmic)          _icon_theme="cosmic" ;;
-		*)               _icon_theme="Adwaita" ;;
-	esac
+	if [ -z "${_gtk_theme}" ]; then
+		[ "${_color_scheme}" = "light" ] && _gtk_theme="adw-gtk3" || _gtk_theme="adw-gtk3-dark"
+	fi
 
+	local _prefer_dark=1 _adw_scheme="prefer-dark" _root_bg="#1e1e22"
+	if [ "${_color_scheme}" = "light" ]; then
+		_prefer_dark=0
+		_adw_scheme="default"
+		_root_bg="#f6f5f4"
+	fi
+
+	local _bg_cmd="${_X11_SESSION_BG_CMD:-}"
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-session-$$.sh"
 	cat << EOF >| "${_xinit_script}"
@@ -980,9 +1051,24 @@ export EMACS_OS_MODE="${EMACS_OS_MODE:-}"
 export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-GNOME}"
 export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
 export SAL_USE_VCLPLUGIN="gtk3"
-export GTK_THEME="${_gtk_theme:-adw-gtk3-dark}"
-export GTK_APPLICATION_PREFER_DARK_THEME=1
+export vblank_mode=3
+export __GL_SYNC_TO_VBLANK=1
+EOF
 
+	if [ "${_is_full_de}" -eq 1 ]; then
+		cat << 'EOF' >> "${_xinit_script}"
+unset GTK_THEME GTK_APPLICATION_PREFER_DARK_THEME ADW_DEBUG_COLOR_SCHEME QT_STYLE_OVERRIDE 2> "/dev/null" || true
+EOF
+	else
+		cat << EOF >> "${_xinit_script}"
+export GTK_THEME="${_gtk_theme}"
+export GTK_APPLICATION_PREFER_DARK_THEME=${_prefer_dark}
+export ADW_DEBUG_COLOR_SCHEME="${_adw_scheme}"
+${QT_STYLE_OVERRIDE:+export QT_STYLE_OVERRIDE="${QT_STYLE_OVERRIDE}"}
+EOF
+	fi
+
+	cat << EOF >> "${_xinit_script}"
 if [ -z "\${ENVIRONMENT_SESSION_WRAPPED:-}" ]; then
 	export ENVIRONMENT_SESSION_WRAPPED=1
 	_ck=""
@@ -1006,78 +1092,124 @@ export CLUTTER_BACKEND="x11"
 export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-GNOME}"
 export DESKTOP_SESSION="${DESKTOP_SESSION:-gnome}"
 export SAL_USE_VCLPLUGIN="gtk3"
-export GTK_THEME="${_gtk_theme:-adw-gtk3-dark}"
-export GTK_APPLICATION_PREFER_DARK_THEME=1
+export vblank_mode=3
+export __GL_SYNC_TO_VBLANK=1
 export QT_QPA_PLATFORMTHEME="\${QT_QPA_PLATFORMTHEME:-qt6ct}"
 export XCURSOR_THEME="\${XCURSOR_THEME}"
 export XCURSOR_SIZE="\${XCURSOR_SIZE:-24}"
+EOF
 
+	if [ "${_is_full_de}" -eq 1 ]; then
+		cat << 'EOF' >> "${_xinit_script}"
+unset GTK_THEME GTK_APPLICATION_PREFER_DARK_THEME ADW_DEBUG_COLOR_SCHEME QT_STYLE_OVERRIDE 2> "/dev/null" || true
+EOF
+	else
+		cat << EOF >> "${_xinit_script}"
+export GTK_THEME="${_gtk_theme}"
+export GTK_APPLICATION_PREFER_DARK_THEME=${_prefer_dark}
+export ADW_DEBUG_COLOR_SCHEME="${_adw_scheme}"
+${QT_STYLE_OVERRIDE:+export QT_STYLE_OVERRIDE="${QT_STYLE_OVERRIDE}"}
+EOF
+	fi
+
+	cat << EOF >> "${_xinit_script}"
 if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
-	xrdb -merge "\${HOME}/.Xresources" 2> "/dev/null" || true
+	xrdb -merge "\${HOME}/.Xresources" > "/dev/null" 2>&1 || true
 fi
 if command -v xrdb > "/dev/null" 2>&1; then
-	printf "Xcursor.theme: %s\nXcursor.size: %s\n" "\${XCURSOR_THEME}" "\${XCURSOR_SIZE}" | xrdb -merge - 2> "/dev/null" || true
+	printf "Xcursor.theme: %s\nXcursor.size: %s\n" "\${XCURSOR_THEME}" "\${XCURSOR_SIZE}" | xrdb -merge - > "/dev/null" 2>&1 || true
 fi
 if command -v xsetroot > "/dev/null" 2>&1; then
-	xsetroot -solid "#16161e" -cursor_name left_ptr 2> "/dev/null" || true
+	xsetroot -solid "${_root_bg}" -cursor_name left_ptr > "/dev/null" 2>&1 || true
 fi
 
 if command -v setxkbmap > "/dev/null" 2>&1; then
-	setxkbmap -model abnt2 -layout br -option numpad:mac 2> "/dev/null" || true
+	setxkbmap -model abnt2 -layout br -option numpad:mac > "/dev/null" 2>&1 || true
 fi
 if command -v xset > "/dev/null" 2>&1; then
-	xset r rate 200 50 2> "/dev/null" || true
-	xset led named "Num Lock" 2> "/dev/null" || true
+	xset r rate 200 50 > "/dev/null" 2>&1 || true
+	xset led named "Num Lock" > "/dev/null" 2>&1 || true
 fi
 if command -v numlockx > "/dev/null" 2>&1; then
-	numlockx on 2> "/dev/null" || true
+	numlockx on > "/dev/null" 2>&1 || true
 fi
 
 if command -v gnome-keyring-daemon > "/dev/null" 2>&1; then
-	eval "\$(gnome-keyring-daemon --start --components=secrets,ssh,pkcs11 2> "/dev/null")"
+	eval "\$(gnome-keyring-daemon --start --components=secrets,ssh,pkcs11 2> "/dev/null")" > "/dev/null" 2>&1 || true
 	[ -n "\${SSH_AUTH_SOCK:-}" ] && export SSH_AUTH_SOCK
 	if command -v dbus-update-activation-environment > "/dev/null" 2>&1; then
-		dbus-update-activation-environment --systemd SSH_AUTH_SOCK DISPLAY XDG_CURRENT_DESKTOP 2> "/dev/null" || \
-		dbus-update-activation-environment SSH_AUTH_SOCK DISPLAY XDG_CURRENT_DESKTOP 2> "/dev/null" || true
+		dbus-update-activation-environment --systemd SSH_AUTH_SOCK DISPLAY XDG_CURRENT_DESKTOP > "/dev/null" 2>&1 || \
+		dbus-update-activation-environment SSH_AUTH_SOCK DISPLAY XDG_CURRENT_DESKTOP > "/dev/null" 2>&1 || true
 	fi
 fi
 
 if command -v xrandr > "/dev/null" 2>&1; then
 	for _out in \$(xrandr 2> "/dev/null" | grep " connected" | cut -d ' ' -f1); do
-		xrandr --output "\${_out}" --set "TearFree" "on" 2> "/dev/null" || true
+		xrandr --output "\${_out}" --set "TearFree" "on" > "/dev/null" 2>&1 || true
 	done
 fi
 
+_xset_pid=""
+_bg_pid=""
+_cleanup_x11_helpers() {
+	[ -n "\${_bg_pid}" ] && kill "\${_bg_pid}" 2> "/dev/null" || true
+	[ -n "\${_xset_pid}" ] && kill "\${_xset_pid}" 2> "/dev/null" || true
+}
+trap '_cleanup_x11_helpers' EXIT TERM INT
+EOF
+
+	if [ "${_is_full_de}" -eq 0 ]; then
+		cat << EOF >> "${_xinit_script}"
 if command -v xsettingsd > "/dev/null" 2>&1; then
 	_xsettings_cfg="\${XDG_RUNTIME_DIR:-/tmp}/xsettingsd-\$\$.conf"
 	cat << EOF_XSET >| "\${_xsettings_cfg}"
-Net/ThemeName "${_gtk_theme:-adw-gtk3-dark}"
+Net/ThemeName "${_gtk_theme}"
 Net/IconThemeName "${_icon_theme}"
 Gtk/CursorThemeName "${_valid_theme}"
-Gtk/CursorThemeSize 24
-Gtk/FontName "${_ui_font}"
+Gtk/CursorThemeSize \${XCURSOR_SIZE}
+Gtk/FontName "${_ui_font} 11"
+Gtk/ApplicationPreferDarkTheme ${_prefer_dark}
 EOF_XSET
-	xsettingsd -c "\${_xsettings_cfg}" > "/dev/null" 2>&1 &
+	xsettingsd -c "\${_xsettings_cfg}" > "${_log_dir}/xsettingsd.log" 2>&1 &
+	_xset_pid=\$!
 fi
 
 if [ "\${X11_NO_COMPOSITOR:-0}" != "1" ]; then
 	if command -v picom > "/dev/null" 2>&1; then
-		{ pgrep -x picom > "/dev/null" 2>&1 || pkill -0 -x picom > "/dev/null" 2>&1; } || \
-			picom --backend glx --vsync -b > "/dev/null" 2>&1 || \
-			picom --backend xrender --vsync -b > "/dev/null" 2>&1 || true
+		if ! { pgrep -x picom > "/dev/null" 2>&1 || pkill -0 -x picom > "/dev/null" 2>&1; }; then
+			_picom_log_flag=""
+			picom --help 2> "/dev/null" | grep -q -- "--log-file" && _picom_log_flag="--log-file"
+			if [ -n "\${_picom_log_flag}" ]; then
+				picom --backend glx --vsync --no-use-damage -b "\${_picom_log_flag}" "${_log_dir}/picom.log" > "${_log_dir}/picom.log" 2>&1 || \
+					picom --backend xrender --vsync --no-use-damage -b "\${_picom_log_flag}" "${_log_dir}/picom.log" > "${_log_dir}/picom.log" 2>&1 || true
+			else
+				picom --backend glx --vsync --no-use-damage -b > "${_log_dir}/picom.log" 2>&1 || \
+					picom --backend xrender --vsync --no-use-damage -b > "${_log_dir}/picom.log" 2>&1 || true
+			fi
+		fi
 	elif command -v xcompmgr > "/dev/null" 2>&1; then
 		{ pgrep -x xcompmgr > "/dev/null" 2>&1 || pkill -0 -x xcompmgr > "/dev/null" 2>&1; } || \
-			xcompmgr -c -C -b > "/dev/null" 2>&1 || true
+			xcompmgr -c -C -b > "${_log_dir}/xcompmgr.log" 2>&1 || true
 	fi
 fi
+EOF
+	fi
 
-exec ${_session_cmd}
+	if [ -n "${_bg_cmd}" ]; then
+		cat << EOF >> "${_xinit_script}"
+( sleep 0.25; ${_bg_cmd} ) > "${_log_dir}/wwm-bar.log" 2>&1 &
+_bg_pid=\$!
+EOF
+	fi
+
+	cat << EOF >> "${_xinit_script}"
+eval "${_session_cmd}"
+_wm_ret=\$?
+_cleanup_x11_helpers
+exit "\${_wm_ret}"
 EOF
 	chmod 0755 "${_xinit_script}"
 
-	local _log_dir="$(_get_shell_log_dir)"
-	local _persistent_log="${_log_dir}/xorg-session.log"
-	rm -f "${_persistent_log}" 2> "/dev/null" || true
 	local _server_auth="${XDG_RUNTIME_DIR:-/tmp}/.serverauth-session-$$"
 	local _xinit_ret=0
 	local _auth_args=""
@@ -1098,24 +1230,25 @@ EOF
 	fi
 
 	if command -v xinit > "/dev/null" 2>&1 && [ -n "${_auth_args}" ]; then
-		command xinit "${_xinit_script}" -- "${_display}" ${_vt_arg} ${_auth_args} >| "${_persistent_log}" 2>&1
+		command xinit "${_xinit_script}" -- "${_display}" ${_vt_arg} ${_auth_args} >> "${_persistent_log}" 2>&1
 		_xinit_ret=$?
 	elif command -v startx > "/dev/null" 2>&1; then
-		command startx "${_xinit_script}" -- "${_display}" ${_vt_arg} >| "${_persistent_log}" 2>&1
+		command startx "${_xinit_script}" -- "${_display}" ${_vt_arg} >> "${_persistent_log}" 2>&1
 		_xinit_ret=$?
 	else
-		command xinit "${_xinit_script}" -- "${_display}" ${_vt_arg} >| "${_persistent_log}" 2>&1
+		command xinit "${_xinit_script}" -- "${_display}" ${_vt_arg} >> "${_persistent_log}" 2>&1
 		_xinit_ret=$?
 	fi
-	rm -f "${_server_auth}" "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/xsettingsd-$$.conf" 2> "/dev/null" || true
+	rm -f "${_server_auth}" "${_xinit_script}" "${XDG_RUNTIME_DIR:-/tmp}/xsettingsd-"*.conf 2> "/dev/null" || true
 	command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" 2> "/dev/null" || true
 
-	if [ "${_xinit_ret}" -ne 0 ] && [ -f "${_persistent_log}" ] && [ -s "${_persistent_log}" ]; then
+	[ "${_xinit_ret}" -eq 127 ] && _xinit_ret=1
+	if [ "${_xinit_ret}" -ne 0 ]; then
 		_ui_err "Sessão Xorg encerrou com erro (código ${_xinit_ret}). Log: ${_persistent_log}"
 	fi
 
 	[ "${_had_display}" -eq 0 ] && unset DISPLAY
-	_freebsd_vt_bounce
+	_freebsd_vt_bounce > "/dev/null" 2>&1
 	return "${_xinit_ret}"
 }
 
@@ -1135,7 +1268,7 @@ _has_wayland() {
 
 	local _compositor
 	for _compositor in cage river labwc sway gnome-shell startplasma-wayland cosmic-session Hyprland hyprland niri wayfire dwl hikari weston ewm; do
-		command -v "${_compositor}" > "/dev/null" 2>&1 && return 0
+		_has_exec_bin "${_compositor}" && return 0
 	done
 	return 1
 }
@@ -1144,7 +1277,7 @@ _has_x11() {
 	[ -n "${DISPLAY:-}" ] && return 0
 	local _xbin _session_dir
 	for _xbin in Xorg X xinit startx; do
-		command -v "${_xbin}" > "/dev/null" 2>&1 && return 0
+		_has_exec_bin "${_xbin}" && return 0
 	done
 	for _session_dir in /usr/share/xsessions /usr/local/share/xsessions /usr/X11R7/share/xsessions /usr/X11R6/share/xsessions "${XDG_DATA_HOME:-${HOME}/.local/share}/xsessions"; do
 		if [ -d "${_session_dir}" ] && [ -n "$(command ls -A "${_session_dir}" 2> "/dev/null")" ]; then
@@ -1171,10 +1304,10 @@ _dispatch_display_server() {
 	local _forced_backend=""
 	for _arg in "$@"; do
 		case "${_arg}" in
-			--sway|--labwc|--river|--cage|--hyprland|--niri|--wayfire|--dwl)
+			--sway|--labwc|--river|--cage|--hyprland|--niri|--wayfire|--dwl|--hikari|--weston|--ewm)
 				_forced_backend="wayland"
 				;;
-			--openbox|--cwm|--dwm|--fvwm|--twm|--matchbox|--matchbox-window-manager)
+			--openbox|--cwm|--dwm|--fvwm3|--fvwm|--fluxbox|--icewm|--jwm|--pekwm|--twm|--matchbox|--matchbox-window-manager)
 				_forced_backend="x11"
 				;;
 		esac
@@ -1189,10 +1322,10 @@ _dispatch_display_server() {
 				if [ "${_next_idx}" -le "$#" ]; then
 					eval "_val=\${${_next_idx}}"
 					case "${_val}" in
-						sway|labwc|river|cage|hyprland|niri|wayfire|dwl)
+						sway|labwc|river|cage|hyprland|niri|wayfire|dwl|hikari|weston|ewm)
 							_forced_backend="wayland"
 							;;
-						openbox|cwm|dwm|fvwm|twm|matchbox|matchbox-window-manager)
+						openbox|cwm|dwm|fvwm3|fvwm|fluxbox|icewm|jwm|pekwm|twm|matchbox|matchbox-window-manager)
 							_forced_backend="x11"
 							;;
 					esac
@@ -1201,10 +1334,10 @@ _dispatch_display_server() {
 			--wm=*)
 				_val="${_curr#--wm=}"
 				case "${_val}" in
-					sway|labwc|river|cage|hyprland|niri|wayfire|dwl)
+					sway|labwc|river|cage|hyprland|niri|wayfire|dwl|hikari|weston|ewm)
 						_forced_backend="wayland"
 						;;
-					openbox|cwm|dwm|fvwm|twm|matchbox|matchbox-window-manager)
+					openbox|cwm|dwm|fvwm3|fvwm|fluxbox|icewm|jwm|pekwm|twm|matchbox|matchbox-window-manager)
 						_forced_backend="x11"
 						;;
 				esac
@@ -1225,46 +1358,65 @@ _dispatch_display_server() {
 
 	if [ "${_forced_backend}" = "wayland" ]; then
 		"${_fn}_wayland" "$@"
+		return $?
 	elif [ "${_forced_backend}" = "x11" ]; then
 		"${_fn}_x11" "$@"
-	elif _has_wayland && command -v "${_fn}_wayland" > "/dev/null" 2>&1; then
-		"${_fn}_wayland" "$@"
-	elif _has_x11 && command -v "${_fn}_x11" > "/dev/null" 2>&1; then
-		"${_fn}_x11" "$@"
-	else
-		_ui_err "Nenhum backend gráfico suportado (Wayland ou X11) disponível para '${_base_target}'."
-		return 127
+		return $?
 	fi
+
+	local _disp_ret=127
+	if _has_wayland && command -v "${_fn}_wayland" > "/dev/null" 2>&1; then
+		"${_fn}_wayland" "$@"
+		_disp_ret=$?
+		[ "${_disp_ret}" -ne 127 ] && return "${_disp_ret}"
+	fi
+	if _has_x11 && command -v "${_fn}_x11" > "/dev/null" 2>&1; then
+		"${_fn}_x11" "$@"
+		_disp_ret=$?
+		[ "${_disp_ret}" -ne 127 ] && return "${_disp_ret}"
+	fi
+	if [ "${_disp_ret}" -eq 127 ]; then
+		_ui_err "Nenhum backend gráfico suportado (Wayland ou X11) disponível para '${_base_target}'."
+	fi
+	return "${_disp_ret}"
 }
 
 _try_wayland() {
-	local _bin
+	local _bin _ret=127
 	for _bin in "$@"; do
-		command -v "${_bin}" > "/dev/null" 2>&1 || continue
+		_has_exec_bin "${_bin}" || continue
 		if [ "${_bin}" = "gnome-session" ]; then
 			export XDG_SESSION_TYPE="wayland"
 			_exec_wayland gnome-session --session=gnome
+			_ret=$?
 		elif [ "${_bin}" = "gnome-shell" ]; then
 			export XDG_SESSION_TYPE="wayland"
 			_exec_wayland gnome-shell --wayland
+			_ret=$?
 		else
 			_exec_wayland "${_bin}"
+			_ret=$?
 		fi
+		[ "${_ret}" -ne 127 ] && return "${_ret}"
 	done
-	return 1
+	return 127
 }
 
 _try_xorg() {
-	local _bin
+	local _bin _ret=127 _resolved=""
 	for _bin in "$@"; do
-		command -v "${_bin}" > "/dev/null" 2>&1 || continue
+		_has_exec_bin "${_bin}" || continue
+		_resolved="$(command -v "${_bin}")"
 		if [ "${_bin}" = "gnome-session" ]; then
-			_exec_x11 "$(command -v gnome-session)" --session=gnome-xorg
+			_exec_x11 "${_resolved}" --session=gnome-xorg
+			_ret=$?
 		else
-			_exec_x11 "$(command -v "${_bin}")"
+			_exec_x11 "${_resolved}"
+			_ret=$?
 		fi
+		[ "${_ret}" -ne 127 ] && return "${_ret}"
 	done
-	return 1
+	return 127
 }
 
 _start_wayland() {
@@ -1291,7 +1443,8 @@ _start_wayland() {
 }
 
 _start_xorg() {
-	command -v startx > "/dev/null" 2>&1 || command -v xinit > "/dev/null" 2>&1 || return 1
+	{ _has_exec_bin "startx" || _has_exec_bin "xinit"; } || return 127
+	{ _has_exec_bin "Xorg" || _has_exec_bin "X"; } || return 127
 	case "${1:-}" in
 		kde|plasma) _try_xorg startplasma-x11 startkde ;;
 		gnome)      _try_xorg gnome-session ;;
@@ -1305,10 +1458,26 @@ _start_xorg() {
 		deepin)     _try_xorg startdde dde-session ;;
 		cosmic)     _try_xorg start-cosmic cosmic-session ;;
 		openbox)    _try_xorg openbox-session openbox ;;
+		fvwm3|fvwm) _try_xorg fvwm3 fvwm ;;
+		cwm)        _try_xorg cwm ;;
+		dwm)        _try_xorg dwm ;;
+		fluxbox)    _try_xorg startfluxbox fluxbox ;;
+		icewm)      _try_xorg icewm-session icewm ;;
+		jwm)        _try_xorg jwm ;;
+		pekwm)      _try_xorg pekwm ;;
+		twm)        _try_xorg twm ;;
+		matchbox|matchbox-window-manager) _try_xorg matchbox-window-manager ;;
 		"")
-			[ -f "${HOME}/.xinitrc" ] || [ -f "${HOME}/.xsession" ] || [ -f "${HOME}/.Xclients" ] && _exec_x11
-			_try_xorg startplasma-x11 startxfce4 gnome-session mate-session cinnamon-session startlxqt startlxde budgie-desktop pantheon-session startdde cosmic-session openbox-session openbox
+			if [ -f "${HOME}/.xinitrc" ] || [ -f "${HOME}/.xsession" ] || [ -f "${HOME}/.Xclients" ]; then
+				_exec_x11
+				return $?
+			fi
+			local _xret=127
+			_try_xorg startplasma-x11 startxfce4 gnome-session mate-session cinnamon-session startlxqt startlxde budgie-desktop pantheon-session startdde cosmic-session openbox-session openbox fvwm3 fvwm
+			_xret=$?
+			[ "${_xret}" -ne 127 ] && return "${_xret}"
 			_exec_x11
+			return $?
 			;;
 		*) _try_xorg "${1}" ;;
 	esac
@@ -1316,7 +1485,6 @@ _start_xorg() {
 
 start_session() {
 	_sanitize_graphical_env
-	[ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] && _ui_warn "Uma sessão gráfica já está ativa (${WAYLAND_DISPLAY:-${DISPLAY:-}})."
 	local _type=""
 	local _env=""
 	while [ "$#" -gt 0 ]; do
@@ -1348,11 +1516,44 @@ start_session() {
 				;;
 		esac
 	done
+	local _ret=127
+	local _WAYLAND_FLAVOR_OVERRIDE="${_env}"
+	local _X11_FLAVOR_OVERRIDE="${_env}"
 	case "${_type}" in
-		way|wayland) _start_wayland "${_env}" || { _ui_err "Nenhum compositor Wayland '${_env:-detectado}' encontrado."; return 1; } ;;
-		xorg|x11)    _start_xorg "${_env}" || { _ui_err "Nenhum ambiente Xorg '${_env:-detectado}' encontrado."; return 1; } ;;
-		"")          _start_wayland "${_env}" || _start_xorg "${_env}" || { _ui_err "Nenhum ambiente gráfico encontrado."; return 1; } ;;
-		*)           _start_wayland "${_type}" || _start_xorg "${_type}" || { _ui_err "Ambiente '${_type}' não encontrado."; return 1; } ;;
+		way|wayland)
+			_start_wayland "${_env}"
+			_ret=$?
+			[ "${_ret}" -eq 127 ] && { _ui_err "Nenhum compositor Wayland '${_env:-detectado}' encontrado."; return 127; }
+			return "${_ret}"
+			;;
+		xorg|x11)
+			_start_xorg "${_env}"
+			_ret=$?
+			[ "${_ret}" -eq 127 ] && { _ui_err "Nenhum ambiente Xorg '${_env:-detectado}' encontrado."; return 127; }
+			return "${_ret}"
+			;;
+		"")
+			_start_wayland "${_env}"
+			_ret=$?
+			if [ "${_ret}" -eq 127 ]; then
+				_start_xorg "${_env}"
+				_ret=$?
+				[ "${_ret}" -eq 127 ] && { _ui_err "Nenhum ambiente gráfico encontrado."; return 127; }
+			fi
+			return "${_ret}"
+			;;
+		*)
+			_WAYLAND_FLAVOR_OVERRIDE="${_type}"
+			_X11_FLAVOR_OVERRIDE="${_type}"
+			_start_wayland "${_type}"
+			_ret=$?
+			if [ "${_ret}" -eq 127 ]; then
+				_start_xorg "${_type}"
+				_ret=$?
+				[ "${_ret}" -eq 127 ] && { _ui_err "Ambiente '${_type}' não encontrado."; return 127; }
+			fi
+			return "${_ret}"
+			;;
 	esac
 }
 alias start-session="start_session"
@@ -1369,10 +1570,16 @@ alias desktop-session-x11="desktop_session_x11" xorg="desktop_session_x11" x11="
 _generate_wwm_bar_script() {
 	local _out_script="$1"
 	cat << 'EOF_WBAR' >| "${_out_script}"
-import os, sys, subprocess, json, datetime, shutil, shlex
+import os, sys, subprocess, json, datetime, shutil
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GLib
+
+try:
+    from Xlib import display as xlib_display, X as xlib_X, Xatom as xlib_Xatom
+    HAS_XLIB = True
+except Exception:
+    HAS_XLIB = False
 
 BAR_H = 32
 
@@ -1394,19 +1601,50 @@ class WwmBar(Gtk.Window):
         self.move(0, 0)
 
         self.has_sway = bool(os.environ.get("SWAYSOCK") and shutil.which("swaymsg"))
+        self.has_hypr = bool(os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and shutil.which("hyprctl"))
+        self.has_niri = bool(os.environ.get("NIRI_SOCKET") and shutil.which("niri"))
+        self.is_x11 = bool(os.environ.get("DISPLAY") and not self.has_sway and not self.has_hypr and not self.has_niri)
+        self.xdisp = None
+        if HAS_XLIB and os.environ.get("DISPLAY"):
+            try:
+                self.xdisp = xlib_display.Display()
+            except Exception:
+                self.xdisp = None
+
         self.managed_workspaces = {1}
         self.current_fallback_ws = 1
         self.last_ws_state = None
+        self.last_win_state = None
         self.realize()
         self.setup_struts()
+
+        scheme = os.environ.get("WWM_SCHEME", "dark").strip().lower()
+        if scheme == "light":
+            win_bg = "#f6f5f4"
+            btn_bg = "#ffffff"
+            border = "#cdc7c2"
+            fg = "#241f31"
+            muted = "#5e5c64"
+            accent = "#3584e4"
+            danger = "#e01b24"
+            tab_active_bg = "#ffffff"
+        else:
+            win_bg = "#1e1e22"
+            btn_bg = "#2b2b30"
+            border = "#38383d"
+            fg = "#ffffff"
+            muted = "#9a9996"
+            accent = "#3584e4"
+            danger = "#e01b24"
+            tab_active_bg = "#2b2b30"
 
         font_name = os.environ.get("WWM_FONT", "JetBrainsMono Nerd Font")
         css_provider = Gtk.CssProvider()
         css = f"""
         window {{
-            background-color: #1e1e22;
+            background-color: {win_bg};
             background-image: none;
-            border-bottom: 1px solid #38383d;
+            border-bottom: 1px solid {border};
             padding: 0;
             margin: 0;
         }}
@@ -1421,26 +1659,26 @@ class WwmBar(Gtk.Window):
             border-radius: 6px;
         }}
         button.app-btn {{
-            background-color: #2b2b30;
+            background-color: {btn_bg};
             background-image: none;
-            color: #ffffff;
-            border: 1px solid #38383d;
+            color: {fg};
+            border: 1px solid {border};
             border-radius: 6px;
             padding: 2px 10px;
             margin: 3px 2px;
             min-height: 22px;
         }}
         button.app-btn:hover {{
-            background-color: #3584e4;
+            background-color: {accent};
             background-image: none;
             color: #ffffff;
-            border-color: #3584e4;
+            border-color: {accent};
         }}
         button.ws-inactive {{
-            background-color: #1e1e22;
+            background-color: {win_bg};
             background-image: none;
-            color: #9a9996;
-            border: 1px solid #38383d;
+            color: {muted};
+            border: 1px solid {border};
             border-radius: 6px;
             padding: 2px 8px;
             margin: 3px 2px;
@@ -1448,16 +1686,16 @@ class WwmBar(Gtk.Window):
             min-height: 22px;
         }}
         button.ws-inactive:hover {{
-            background-color: #2b2b30;
+            background-color: {btn_bg};
             background-image: none;
-            color: #ffffff;
-            border-color: #3584e4;
+            color: {fg};
+            border-color: {accent};
         }}
         button.ws-active {{
-            background-color: #2b2b30;
+            background-color: {tab_active_bg};
             background-image: none;
-            color: #ffffff;
-            border: 1px solid #3584e4;
+            color: {fg};
+            border: 1px solid {accent};
             border-radius: 6px;
             padding: 2px 8px;
             margin: 3px 2px;
@@ -1466,16 +1704,16 @@ class WwmBar(Gtk.Window):
             font-weight: bold;
         }}
         button.ws-active:hover {{
-            background-color: #3584e4;
+            background-color: {accent};
             background-image: none;
             color: #ffffff;
-            border-color: #3584e4;
+            border-color: {accent};
         }}
         button.ws-ctrl-btn {{
-            background-color: #2b2b30;
+            background-color: {btn_bg};
             background-image: none;
-            color: #ffffff;
-            border: 1px solid #38383d;
+            color: {fg};
+            border: 1px solid {border};
             border-radius: 6px;
             padding: 2px 7px;
             margin: 3px 2px;
@@ -1484,28 +1722,62 @@ class WwmBar(Gtk.Window):
             font-weight: bold;
         }}
         button.ws-ctrl-btn:hover {{
-            background-color: #3584e4;
-            background-image: none;
-            border-color: #3584e4;
-        }}
-        button.danger-btn {{
-            background-color: #2b2b30;
+            background-color: {accent};
             background-image: none;
             color: #ffffff;
-            border: 1px solid #38383d;
+            border-color: {accent};
+        }}
+        button.win-tab {{
+            background-color: {win_bg};
+            background-image: none;
+            color: {muted};
+            border: 1px solid {border};
+            border-radius: 6px;
+            padding: 2px 10px;
+            margin: 3px 2px;
+            min-height: 22px;
+        }}
+        button.win-tab:hover {{
+            background-color: {btn_bg};
+            background-image: none;
+            color: {fg};
+            border-color: {accent};
+        }}
+        button.win-tab-active {{
+            background-color: {tab_active_bg};
+            background-image: none;
+            color: {fg};
+            border: 1px solid {accent};
+            border-radius: 6px;
+            padding: 2px 10px;
+            margin: 3px 2px;
+            min-height: 22px;
+            font-weight: bold;
+        }}
+        button.win-tab-active:hover {{
+            background-color: {accent};
+            background-image: none;
+            color: #ffffff;
+            border-color: {accent};
+        }}
+        button.danger-btn {{
+            background-color: {btn_bg};
+            background-image: none;
+            color: {fg};
+            border: 1px solid {border};
             border-radius: 6px;
             padding: 2px 10px;
             margin: 3px 2px;
             min-height: 22px;
         }}
         button.danger-btn:hover {{
-            background-color: #e01b24;
+            background-color: {danger};
             background-image: none;
             color: #ffffff;
-            border-color: #e01b24;
+            border-color: {danger};
         }}
         label.clock-lbl {{
-            color: #9a9996;
+            color: {muted};
             font-size: 11px;
             margin: 0 10px;
         }}
@@ -1529,13 +1801,19 @@ class WwmBar(Gtk.Window):
         btn_add.connect("clicked", self.on_add_ws)
         ws_ctrl_box.pack_start(btn_add, False, False, 0)
 
-        btn_del = Gtk.Button(label="−")
+        btn_del = Gtk.Button(label="-")
         btn_del.get_style_context().add_class("ws-ctrl-btn")
         btn_del.connect("clicked", self.on_del_ws)
         ws_ctrl_box.pack_start(btn_del, False, False, 0)
         main_box.pack_start(ws_ctrl_box, False, False, 2)
 
         center_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
+        scroll.set_shadow_type(Gtk.ShadowType.NONE)
+        self.tabs_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        scroll.add(self.tabs_box)
+        center_box.pack_start(scroll, True, True, 4)
         main_box.pack_start(center_box, True, True, 0)
 
         actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -1570,21 +1848,49 @@ class WwmBar(Gtk.Window):
             b.connect("clicked", lambda widget, c=cmd: self.run_cmd(c))
             actions_box.pack_end(b, False, False, 0)
 
-        self.update_workspaces()
+        self.refresh_tick()
         self.update_clock()
-        GLib.timeout_add(250, self.update_workspaces)
+        GLib.timeout_add(250, self.refresh_tick)
         GLib.timeout_add(1000, self.update_clock)
         self.show_all()
 
-    def setup_struts(self):
+    def _spawn(self, args, shell=False):
+        try:
+            subprocess.Popen(
+                args,
+                shell=shell,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+
+    def _self_xid(self):
         try:
             gdk_win = self.get_window()
             if gdk_win and hasattr(gdk_win, "get_xid"):
-                xid = gdk_win.get_xid()
+                return int(gdk_win.get_xid())
+        except Exception:
+            pass
+        return 0
+
+    def setup_struts(self):
+        try:
+            xid = self._self_xid()
+            if xid and shutil.which("xprop"):
                 sp = f"0, 0, {BAR_H}, 0, 0, 0, 0, 0, 0, {self.screen_w}, 0, 0"
                 st = f"0, 0, {BAR_H}, 0"
-                subprocess.run(["xprop", "-id", str(xid), "-f", "_NET_WM_STRUT_PARTIAL", "32c", "-set", "_NET_WM_STRUT_PARTIAL", sp], capture_output=True)
-                subprocess.run(["xprop", "-id", str(xid), "-f", "_NET_WM_STRUT", "32c", "-set", "_NET_WM_STRUT", st], capture_output=True)
+                subprocess.run(
+                    ["xprop", "-id", str(xid), "-f", "_NET_WM_STRUT_PARTIAL", "32c", "-set", "_NET_WM_STRUT_PARTIAL", sp],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                subprocess.run(
+                    ["xprop", "-id", str(xid), "-f", "_NET_WM_STRUT", "32c", "-set", "_NET_WM_STRUT", st],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
         except Exception:
             pass
 
@@ -1592,24 +1898,40 @@ class WwmBar(Gtk.Window):
         if not cmd:
             return
         if self.has_sway:
-            subprocess.Popen(["swaymsg", "exec", cmd])
+            self._spawn(["swaymsg", "exec", cmd])
         else:
-            subprocess.Popen(cmd, shell=True)
+            self._spawn(cmd, shell=True)
 
     def on_exit_session(self, widget=None):
         exit_cmd = os.environ.get("WWM_EXIT_CMD", "")
         if exit_cmd:
-            subprocess.Popen(exit_cmd, shell=True)
+            self._spawn(exit_cmd, shell=True)
         elif self.has_sway:
-            subprocess.Popen(["swaymsg", "exit"])
-        elif os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
-            subprocess.Popen(["hyprctl", "dispatch", "exit"])
-        elif os.environ.get("RIVER_SOCKET"):
-            subprocess.Popen(["riverctl", "exit"])
-        elif shutil.which("labwc"):
-            subprocess.Popen(["labwc", "--exit"])
-        elif shutil.which("openbox"):
-            subprocess.Popen(["openbox", "--exit"])
+            self._spawn(["swaymsg", "exit"])
+        elif self.has_hypr:
+            self._spawn(["hyprctl", "dispatch", "exit"])
+        elif self.has_niri:
+            self._spawn(["niri", "msg", "action", "quit", "--skip-confirmation"])
+        elif os.environ.get("RIVER_SOCKET") and shutil.which("riverctl"):
+            self._spawn(["riverctl", "exit"])
+        elif os.environ.get("WWM_WM") == "labwc" and shutil.which("labwc"):
+            self._spawn(["labwc", "--exit"])
+        elif os.environ.get("WWM_WM") == "openbox" and shutil.which("openbox"):
+            self._spawn(["openbox", "--exit"])
+        elif os.environ.get("DISPLAY"):
+            wm_hint = os.environ.get("WWM_WM", "")
+            if wm_hint == "openbox" and shutil.which("openbox"):
+                self._spawn(["openbox", "--exit"])
+            elif wm_hint == "jwm" and shutil.which("jwm"):
+                self._spawn(["jwm", "-exit"])
+            elif wm_hint == "icewm" and shutil.which("pkill"):
+                self._spawn(["pkill", "-TERM", "-x", "icewm"])
+            elif wm_hint in ("fvwm3", "fvwm") and shutil.which("pkill"):
+                self._spawn(["pkill", "-TERM", "-x", wm_hint])
+            elif wm_hint and shutil.which("pkill"):
+                self._spawn(["pkill", "-TERM", "-x", wm_hint])
+            else:
+                Gtk.main_quit()
         else:
             Gtk.main_quit()
 
@@ -1674,27 +1996,28 @@ class WwmBar(Gtk.Window):
         if self.has_sway:
             target_id = self.get_target_app_con_id()
             if target_id is not None:
-                subprocess.Popen(["swaymsg", f"[con_id={target_id}] kill"])
-        elif os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
-            subprocess.Popen(["hyprctl", "dispatch", "killactive"])
-        elif os.environ.get("RIVER_SOCKET"):
-            subprocess.Popen(["riverctl", "close"])
+                self._spawn(["swaymsg", f"[con_id={target_id}] kill"])
+        elif self.has_hypr:
+            self._spawn(["hyprctl", "dispatch", "killactive"])
+        elif self.has_niri:
+            self._spawn(["niri", "msg", "action", "close-window"])
+        elif os.environ.get("RIVER_SOCKET") and shutil.which("riverctl"):
+            self._spawn(["riverctl", "close"])
         else:
             if shutil.which("xdotool"):
                 try:
                     res = subprocess.run(["xdotool", "getactivewindow"], capture_output=True, text=True)
                     act_id = res.stdout.strip()
-                    gdk_win = self.get_window()
-                    self_xid = str(gdk_win.get_xid()) if gdk_win else ""
+                    self_xid = str(self._self_xid() or "")
                     if act_id and act_id != self_xid:
-                        subprocess.Popen(["xdotool", "windowclose", act_id])
+                        self._spawn(["xdotool", "windowclose", act_id])
                         return
                 except Exception:
                     pass
             if shutil.which("wmctrl"):
-                subprocess.Popen(["wmctrl", "-c", ":ACTIVE:"])
+                self._spawn(["wmctrl", "-c", ":ACTIVE:"])
             elif shutil.which("wlrctl"):
-                subprocess.Popen(["wlrctl", "window", "close"])
+                self._spawn(["wlrctl", "window", "close"])
 
     def update_clock(self):
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -1716,7 +2039,41 @@ class WwmBar(Gtk.Window):
                         focused_num = num
             except Exception:
                 focused_num = 1
-                used_nums = set([1])
+                used_nums = {1}
+            all_ws = sorted(list(self.managed_workspaces.union(used_nums)))
+            return all_ws, focused_num
+
+        if self.has_hypr:
+            focused_num = 1
+            used_nums = set()
+            try:
+                ws_res = subprocess.run(["hyprctl", "workspaces", "-j"], capture_output=True, text=True)
+                act_res = subprocess.run(["hyprctl", "activeworkspace", "-j"], capture_output=True, text=True)
+                for ws in json.loads(ws_res.stdout or "[]"):
+                    wid = ws.get("id")
+                    if isinstance(wid, int) and wid > 0:
+                        used_nums.add(wid)
+                act = json.loads(act_res.stdout or "{}")
+                if isinstance(act.get("id"), int) and act.get("id") > 0:
+                    focused_num = act["id"]
+            except Exception:
+                used_nums = {1}
+            all_ws = sorted(list(self.managed_workspaces.union(used_nums)))
+            return all_ws, focused_num
+
+        if self.has_niri:
+            focused_num = 1
+            used_nums = set()
+            try:
+                res = subprocess.run(["niri", "msg", "-j", "workspaces"], capture_output=True, text=True)
+                for ws in json.loads(res.stdout or "[]"):
+                    idx = ws.get("idx")
+                    if isinstance(idx, int) and idx > 0:
+                        used_nums.add(idx)
+                        if ws.get("is_focused"):
+                            focused_num = idx
+            except Exception:
+                used_nums = {1}
             all_ws = sorted(list(self.managed_workspaces.union(used_nums)))
             return all_ws, focused_num
 
@@ -1740,15 +2097,223 @@ class WwmBar(Gtk.Window):
         all_ws = sorted(list(self.managed_workspaces))
         return all_ws, self.current_fallback_ws
 
+    def get_windows(self):
+        windows = []
+        if self.has_sway:
+            try:
+                res = subprocess.run(["swaymsg", "-t", "get_tree"], capture_output=True, text=True)
+                root = json.loads(res.stdout or "{}")
+                def find_focused_ws(node):
+                    if node.get("type") == "workspace":
+                        def has_focus(n):
+                            if n.get("focused"):
+                                return True
+                            return any(has_focus(c) for c in n.get("nodes", []) + n.get("floating_nodes", []))
+                        if has_focus(node):
+                            return node
+                    for c in node.get("nodes", []) + node.get("floating_nodes", []):
+                        r = find_focused_ws(c)
+                        if r:
+                            return r
+                    return None
+                ws = find_focused_ws(root) or root
+                def collect(node):
+                    children = node.get("nodes", []) + node.get("floating_nodes", [])
+                    name = str(node.get("name") or "")
+                    app_id = str(node.get("app_id") or "")
+                    win_props = node.get("window_properties") or {}
+                    inst = str(win_props.get("instance") or "")
+                    is_bar = (name == "wwm-bar" or app_id == "wwm-bar" or inst == "wwm-bar")
+                    if not children:
+                        if not is_bar and node.get("id") and node.get("type") not in ("workspace", "output", "root"):
+                            title = name or app_id or win_props.get("class") or "Window"
+                            windows.append((str(node.get("id")), title, bool(node.get("focused"))))
+                    else:
+                        for c in children:
+                            collect(c)
+                collect(ws)
+            except Exception:
+                pass
+            return windows
+
+        if self.has_hypr:
+            try:
+                c_res = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True, text=True)
+                a_res = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True, text=True)
+                active_addr = json.loads(a_res.stdout or "{}").get("address", "")
+                for c in json.loads(c_res.stdout or "[]"):
+                    cls = str(c.get("class") or "")
+                    title = str(c.get("title") or cls or "Window")
+                    if cls == "wwm-bar" or title == "wwm-bar":
+                        continue
+                    addr = c.get("address", "")
+                    if addr:
+                        windows.append((addr, title, addr == active_addr))
+            except Exception:
+                pass
+            return windows
+
+        if self.has_niri:
+            try:
+                res = subprocess.run(["niri", "msg", "-j", "windows"], capture_output=True, text=True)
+                for w in json.loads(res.stdout or "[]"):
+                    app_id = str(w.get("app_id") or "")
+                    title = str(w.get("title") or app_id or "Window")
+                    if app_id == "wwm-bar" or title == "wwm-bar":
+                        continue
+                    wid = w.get("id")
+                    if wid is not None:
+                        windows.append((str(wid), title, bool(w.get("is_focused"))))
+            except Exception:
+                pass
+            return windows
+
+        self_xid = self._self_xid()
+        if self.xdisp is not None:
+            try:
+                root = self.xdisp.screen().root
+                atom_client_list = self.xdisp.intern_atom("_NET_CLIENT_LIST")
+                atom_active = self.xdisp.intern_atom("_NET_ACTIVE_WINDOW")
+                atom_net_name = self.xdisp.intern_atom("_NET_WM_NAME")
+                atom_utf8 = self.xdisp.intern_atom("UTF8_STRING")
+                atom_wtype = self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE")
+                atom_dock = self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_DOCK")
+
+                act_prop = root.get_full_property(atom_active, xlib_Xatom.WINDOW)
+                active_wid = act_prop.value[0] if act_prop and act_prop.value else 0
+                if not active_wid:
+                    try:
+                        focus_win = self.xdisp.get_input_focus().focus
+                        if hasattr(focus_win, "id"):
+                            active_wid = focus_win.id
+                    except Exception:
+                        pass
+
+                prop = root.get_full_property(atom_client_list, xlib_Xatom.WINDOW)
+                wids = list(prop.value) if prop and prop.value else []
+                if not wids:
+                    for child in root.query_tree().children:
+                        try:
+                            attrs = child.get_attributes()
+                            if attrs.map_state == xlib_X.IsViewable and not attrs.override_redirect:
+                                wids.append(child.id)
+                        except Exception:
+                            pass
+
+                for wid in wids:
+                    if wid == self_xid:
+                        continue
+                    try:
+                        win = self.xdisp.create_resource_object("window", wid)
+                        wtype = win.get_full_property(atom_wtype, xlib_Xatom.ATOM)
+                        if wtype and atom_dock in wtype.value:
+                            continue
+                        wclass = win.get_wm_class()
+                        if wclass and "wwm-bar" in wclass:
+                            continue
+                        title = ""
+                        nprop = win.get_full_property(atom_net_name, atom_utf8)
+                        if nprop and nprop.value:
+                            raw = nprop.value
+                            title = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else str(raw)
+                        if not title:
+                            title = win.get_wm_name() or ""
+                        if not title and wclass:
+                            title = wclass[1] or wclass[0]
+                        if title == "wwm-bar":
+                            continue
+                        windows.append((str(wid), title or f"Window {wid}", wid == active_wid))
+                    except Exception:
+                        continue
+                if windows:
+                    return windows
+            except Exception:
+                pass
+
+        if shutil.which("wmctrl"):
+            try:
+                active_wid = 0
+                if shutil.which("xprop"):
+                    ap = subprocess.run(["xprop", "-root", "_NET_ACTIVE_WINDOW"], capture_output=True, text=True)
+                    if "0x" in ap.stdout:
+                        active_wid = int(ap.stdout.strip().split()[-1], 16)
+                res = subprocess.run(["wmctrl", "-l"], capture_output=True, text=True)
+                for line in res.stdout.splitlines():
+                    parts = line.split(None, 3)
+                    if len(parts) >= 3:
+                        wid = int(parts[0], 16)
+                        if wid == self_xid:
+                            continue
+                        title = parts[3] if len(parts) == 4 else "Window"
+                        if title == "wwm-bar":
+                            continue
+                        windows.append((str(wid), title, wid == active_wid))
+            except Exception:
+                pass
+            return windows
+
+        if shutil.which("xdotool"):
+            try:
+                act_res = subprocess.run(["xdotool", "getactivewindow"], capture_output=True, text=True)
+                active_str = act_res.stdout.strip()
+                res = subprocess.run(["xdotool", "search", "--onlyvisible", "--name", ""], capture_output=True, text=True)
+                for w_str in res.stdout.splitlines():
+                    w_str = w_str.strip()
+                    if not w_str or w_str == str(self_xid):
+                        continue
+                    n_res = subprocess.run(["xdotool", "getwindowname", w_str], capture_output=True, text=True)
+                    title = n_res.stdout.strip()
+                    if not title or title == "wwm-bar":
+                        continue
+                    windows.append((w_str, title, w_str == active_str))
+            except Exception:
+                pass
+        return windows
+
+    def focus_window(self, wid):
+        if self.has_sway:
+            self._spawn(["swaymsg", f"[con_id={wid}]", "focus"])
+        elif self.has_hypr:
+            self._spawn(["hyprctl", "dispatch", "focuswindow", f"address:{wid}"])
+        elif self.has_niri:
+            self._spawn(["niri", "msg", "action", "focus-window", "--id", str(wid)])
+        else:
+            focused = False
+            if self.xdisp is not None:
+                try:
+                    from Xlib import protocol
+                    xid = int(wid)
+                    win = self.xdisp.create_resource_object("window", xid)
+                    root = self.xdisp.screen().root
+                    atom_active = self.xdisp.intern_atom("_NET_ACTIVE_WINDOW")
+                    ev = protocol.event.ClientMessage(
+                        window=win,
+                        client_type=atom_active,
+                        data=(32, [2, xlib_X.CurrentTime, 0, 0, 0])
+                    )
+                    root.send_event(ev, event_mask=xlib_X.SubstructureRedirectMask | xlib_X.SubstructureNotifyMask)
+                    win.raise_window()
+                    win.set_input_focus(xlib_X.RevertToPointerRoot, xlib_X.CurrentTime)
+                    self.xdisp.flush()
+                    focused = True
+                except Exception:
+                    pass
+            if shutil.which("wmctrl"):
+                self._spawn(["wmctrl", "-i", "-a", hex(int(wid))])
+            elif not focused and shutil.which("xdotool"):
+                self._spawn(["xdotool", "windowactivate", str(wid)])
+
     def switch_ws(self, num):
         if self.has_sway:
-            subprocess.Popen(["swaymsg", "workspace", "number", str(num)])
+            self._spawn(["swaymsg", "workspace", "number", str(num)])
+        elif self.has_hypr:
+            self._spawn(["hyprctl", "dispatch", "workspace", str(num)])
+        elif self.has_niri:
+            self._spawn(["niri", "msg", "action", "focus-workspace", str(num)])
         elif shutil.which("wmctrl"):
-            subprocess.Popen(["wmctrl", "-s", str(num - 1)])
+            self._spawn(["wmctrl", "-s", str(num - 1)])
         elif shutil.which("xdotool"):
-            subprocess.Popen(["xdotool", "set_desktop", str(num - 1)])
-        elif os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
-            subprocess.Popen(["hyprctl", "dispatch", "workspace", str(num)])
+            self._spawn(["xdotool", "set_desktop", str(num - 1)])
         self.current_fallback_ws = num
         self.update_workspaces()
 
@@ -1779,7 +2344,7 @@ class WwmBar(Gtk.Window):
         all_ws, focused_num = self.get_workspaces_info()
         current_state = (tuple(all_ws), focused_num)
         if current_state == self.last_ws_state:
-            return True
+            return
         self.last_ws_state = current_state
 
         for child in self.ws_box.get_children():
@@ -1794,6 +2359,32 @@ class WwmBar(Gtk.Window):
             b.connect("clicked", lambda widget, n=num: self.switch_ws(n))
             self.ws_box.pack_start(b, False, False, 0)
         self.ws_box.show_all()
+
+    def update_windows(self):
+        windows = self.get_windows()
+        current_state = tuple((str(w), str(t), bool(f)) for w, t, f in windows)
+        if current_state == self.last_win_state:
+            return
+        self.last_win_state = current_state
+
+        for child in self.tabs_box.get_children():
+            self.tabs_box.remove(child)
+
+        for wid, title, is_active in windows:
+            short = (title[:28] + "...") if len(title) > 31 else title
+            b = Gtk.Button(label=short)
+            b.set_tooltip_text(title)
+            if is_active:
+                b.get_style_context().add_class("win-tab-active")
+            else:
+                b.get_style_context().add_class("win-tab")
+            b.connect("clicked", lambda widget, w=wid: self.focus_window(w))
+            self.tabs_box.pack_start(b, False, False, 0)
+        self.tabs_box.show_all()
+
+    def refresh_tick(self):
+        self.update_workspaces()
+        self.update_windows()
         return True
 
 win = WwmBar()
@@ -2106,7 +2697,7 @@ window_manager_wayland() {
 				_selected_wm="${1#--wm=}"
 				shift
 				;;
-			--sway|--labwc|--river|--cage|--hyprland|--niri|--wayfire|--dwl)
+			--sway|--labwc|--river|--cage|--hyprland|--niri|--wayfire|--dwl|--hikari|--weston|--ewm)
 				_selected_wm="${1#--}"
 				shift
 				;;
@@ -2130,11 +2721,63 @@ window_manager_wayland() {
 		start-session way "$@"
 		return $?
 	fi
+
+	if [ "${_selected_wm}" = "ewm" ]; then
+		if [ -n "${_flavor}" ]; then
+			emacs_window_manager_wayland "--${_flavor}"
+		else
+			emacs_window_manager_wayland
+		fi
+		return $?
+	fi
+
+	local _target_wm="${_selected_wm}"
+	if [ -n "${_target_wm}" ]; then
+		if [ "${_target_wm}" = "hyprland" ] && ! _has_exec_bin "hyprland" && _has_exec_bin "Hyprland"; then
+			_target_wm="Hyprland"
+		elif ! _has_exec_bin "${_target_wm}"; then
+			if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+				_ui_err "Compositor Wayland '${_target_wm}' não está instalado."
+			fi
+			return 127
+		fi
+	else
+		local _w_cand
+		for _w_cand in $(_get_wayland_wm_pipeline); do
+			if [ "${_w_cand}" = "hyprland" ] && ! _has_exec_bin "hyprland" && _has_exec_bin "Hyprland"; then
+				if _preflight_wayland "Hyprland"; then
+					_target_wm="Hyprland"
+					break
+				fi
+			elif _preflight_wayland "${_w_cand}"; then
+				_target_wm="${_w_cand}"
+				break
+			fi
+		done
+	fi
+	[ -z "${_target_wm}" ] && return 127
+
+	local _check_bin="${_target_wm}"
+	_preflight_wayland "${_check_bin}" || return 127
+
+	local _WAYLAND_FLAVOR_OVERRIDE="${_flavor}"
 	_wayland_session_env "${_flavor}"
+
+	local _scheme="${_RESOLVED_COLOR_SCHEME:-dark}"
+	local _c_bg="#1e1e22" _c_panel="#2b2b30" _c_fg="#ffffff" _c_muted="#9a9996" _c_border="#38383d" _c_accent="#3584e4" _c_urgent="#e01b24"
+	if [ "${_scheme}" = "light" ]; then
+		_c_bg="#f6f5f4"
+		_c_panel="#ffffff"
+		_c_fg="#241f31"
+		_c_muted="#5e5c64"
+		_c_border="#cdc7c2"
+	fi
+	local _hex_bg="${_c_bg#\#}" _hex_border="${_c_border#\#}" _hex_accent="${_c_accent#\#}"
 
 	local _cur_theme="${XCURSOR_THEME}"
 	local _cur_size="${XCURSOR_SIZE:-24}"
 	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
+	local _log_dir="$(_get_shell_log_dir)"
 
 	local _wm_term="foot -o dpi-aware=no"
 	for _t in foot alacritty kitty xterm; do
@@ -2225,14 +2868,14 @@ _menu="${_menu_script}"
 	printf '{"version":1,"click_events":true}\n[\n'
 	while :; do
 		_date_str="\$(date "+%Y-%m-%d %H:%M:%S")"
-		printf '[{"name":"browser","full_text":" Web Browser ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"term","full_text":" Terminal ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"files","full_text":" Files ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"emacs","full_text":" Emacs ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"menu","full_text":" Menu ","background":"#2b2b30","color":"#ffffff","border":"#3584e4"},'
-		printf '{"name":"close","full_text":" Close ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
-		printf '{"name":"exit","full_text":" Exit ","background":"#2b2b30","color":"#ffffff","border":"#e01b24"},'
-		printf '{"name":"time","full_text":" %s ","background":"#1e1e22","color":"#9a9996","border":"#38383d"}],\n' "\${_date_str}"
+		printf '[{"name":"browser","full_text":" Web Browser ","background":"${_c_panel}","color":"${_c_fg}","border":"${_c_accent}"},'
+		printf '{"name":"term","full_text":" Terminal ","background":"${_c_panel}","color":"${_c_fg}","border":"${_c_accent}"},'
+		printf '{"name":"files","full_text":" Files ","background":"${_c_panel}","color":"${_c_fg}","border":"${_c_accent}"},'
+		printf '{"name":"emacs","full_text":" Emacs ","background":"${_c_panel}","color":"${_c_fg}","border":"${_c_accent}"},'
+		printf '{"name":"menu","full_text":" Menu ","background":"${_c_panel}","color":"${_c_fg}","border":"${_c_accent}"},'
+		printf '{"name":"close","full_text":" Close ","background":"${_c_panel}","color":"${_c_fg}","border":"${_c_urgent}"},'
+		printf '{"name":"exit","full_text":" Exit ","background":"${_c_panel}","color":"${_c_fg}","border":"${_c_urgent}"},'
+		printf '{"name":"time","full_text":" %s ","background":"${_c_bg}","color":"${_c_muted}","border":"${_c_border}"}],\n' "\${_date_str}"
 		sleep 1
 	done
 ) &
@@ -2253,36 +2896,26 @@ done
 EOF
 	chmod 0755 "${_status_script}"
 
-	local _target_wm="${_selected_wm}"
-	if [ -n "${_target_wm}" ]; then
-		if ! command -v "${_target_wm}" > "/dev/null" 2>&1; then
-			_ui_err "Compositor Wayland '${_target_wm}' não está instalado."
-			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
-			return 1
-		fi
-	else
-		local _w_cand
-		for _w_cand in $(_get_wayland_wm_pipeline); do
-			if command -v "${_w_cand}" > "/dev/null" 2>&1; then
-				_target_wm="${_w_cand}"
-				break
-			fi
-		done
+	local _xwayland_line="xwayland disable" _bar_gdk="wayland"
+	if _has_exec_bin "Xwayland"; then
+		_xwayland_line="xwayland enable"
+		_bar_gdk="x11"
 	fi
 
 	case "${_target_wm}" in
 		sway)
 			local _sway_cfg="${_run_dir}/sway-wm-$$.conf"
 			cat << EOF >| "${_sway_cfg}"
-output * bg #1e1e22 solid_color
+output * bg ${_c_bg} solid_color
 font pango:${_ui_font} Bold 10
+workspace_layout tabbed
 titlebar_padding 10 6
 default_border pixel 2
 default_floating_border pixel 2
-client.focused #3584e4 #2b2b30 #ffffff #3584e4 #3584e4
-client.focused_inactive #38383d #1e1e22 #9a9996 #38383d #38383d
-client.unfocused #38383d #1e1e22 #9a9996 #38383d #38383d
-client.urgent #e01b24 #2b2b30 #ffffff #e01b24 #e01b24
+client.focused ${_c_accent} ${_c_panel} ${_c_fg} ${_c_accent} ${_c_accent}
+client.focused_inactive ${_c_border} ${_c_bg} ${_c_muted} ${_c_border} ${_c_border}
+client.unfocused ${_c_border} ${_c_bg} ${_c_muted} ${_c_border} ${_c_border}
+client.urgent ${_c_urgent} ${_c_panel} #ffffff ${_c_urgent} ${_c_urgent}
 seat * xcursor_theme ${_cur_theme} ${_cur_size}
 seat * fallback true
 seat * hide_cursor when-typing disable
@@ -2308,7 +2941,7 @@ input type:keyboard {
     xkb_numlock enabled
 }
 focus_follows_mouse yes
-xwayland enable
+${_xwayland_line}
 bindsym Mod4+Return exec ${_term_script}
 bindsym Ctrl+Mod1+t exec ${_term_script}
 bindsym Mod4+b exec ${_browser_script}
@@ -2352,7 +2985,7 @@ floating_minimum_size 1 x 1
 gaps top 32
 no_focus [instance="wwm-bar"]
 for_window [instance="wwm-bar"] floating enable, sticky enable, border none, resize set 100 ppt 32 px, move absolute position 0 0
-exec env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}"
+exec sh -c 'env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="sway" python3 "${_bar_script}" > "${_log_dir}/wwm-bar.log" 2>&1'
 EOF
 			else
 				cat << EOF >> "${_sway_cfg}"
@@ -2361,11 +2994,11 @@ bar {
     status_command "${_status_script}"
     font pango:${_ui_font} Bold 10
     colors {
-        background #1e1e22
-        statusline #ffffff
-        separator #38383d
-        focused_workspace #3584e4 #2b2b30 #ffffff
-        inactive_workspace #1e1e22 #1e1e22 #9a9996
+        background ${_c_bg}
+        statusline ${_c_fg}
+        separator ${_c_border}
+        focused_workspace ${_c_accent} ${_c_panel} ${_c_fg}
+        inactive_workspace ${_c_bg} ${_c_bg} ${_c_muted}
     }
 }
 EOF
@@ -2378,20 +3011,20 @@ EOF
 		labwc)
 			local _labwc_dir="${_run_dir}/labwc-wm-$$"
 			mkdir -p "${_labwc_dir}"
-			cat << 'EOF' >| "${_labwc_dir}/themerc"
-window.active.title.bg.color: #2b2b30
-window.active.label.text.color: #ffffff
-window.inactive.title.bg.color: #1e1e22
-window.inactive.label.text.color: #9a9996
+			cat << EOF >| "${_labwc_dir}/themerc"
+window.active.title.bg.color: ${_c_panel}
+window.active.label.text.color: ${_c_fg}
+window.inactive.title.bg.color: ${_c_bg}
+window.inactive.label.text.color: ${_c_muted}
 border.width: 2
-border.color: #38383d
-window.active.border.color: #3584e4
-window.inactive.border.color: #38383d
+border.color: ${_c_border}
+window.active.border.color: ${_c_accent}
+window.inactive.border.color: ${_c_border}
 menu.border.width: 2
-menu.border.color: #38383d
-menu.items.bg.color: #1e1e22
-menu.items.text.color: #ffffff
-menu.items.active.bg.color: #3584e4
+menu.border.color: ${_c_border}
+menu.items.bg.color: ${_c_bg}
+menu.items.text.color: ${_c_fg}
+menu.items.active.bg.color: ${_c_accent}
 menu.items.active.text.color: #ffffff
 EOF
 			_generate_openbox_menu_xml "${_labwc_dir}/menu.xml" "${_browser_script}" "${_term_script}" "${_files_script}" "${_emacs_script}" "${_wm_term}"
@@ -2402,7 +3035,7 @@ EOF
     <name>kiosk</name>
     <cornerRadius>0</cornerRadius>
     <border.width>2</border.width>
-    <border.color>#38383d</border.color>
+    <border.color>${_c_border}</border.color>
   </theme>
   <keyboard>
     <repeatRate>50</repeatRate>
@@ -2413,10 +3046,16 @@ EOF
     <keybind key="W-b"><action name="Execute" command="${_browser_script}"/></keybind>
     <keybind key="W-e"><action name="Execute" command="${_emacs_script}"/></keybind>
     <keybind key="W-f"><action name="Execute" command="${_files_script}"/></keybind>
+    <keybind key="W-m"><action name="ToggleMaximize"/></keybind>
+    <keybind key="A-Tab"><action name="NextWindow"/></keybind>
+    <keybind key="W-Tab"><action name="NextWindow"/></keybind>
     <keybind key="W-q"><action name="Close"/></keybind>
     <keybind key="W-S-q"><action name="Exit"/></keybind>
     <keybind key="A-F4"><action name="Close"/></keybind>
   </keyboard>
+  <windowRules>
+    <windowRule identifier="wwm-bar" serverDecoration="no" skipTaskbar="yes"/>
+  </windowRules>
   <mouse>
     <context name="Titlebar">
       <mousebind button="Left" action="Drag"><action name="Move"/></mousebind>
@@ -2448,7 +3087,7 @@ EOF
 			if [ "${_has_gtk3_bar}" -eq 1 ]; then
 				cat << EOF >| "${_labwc_dir}/autostart"
 #!/usr/bin/env sh
-env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
+env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="labwc" python3 "${_bar_script}" > "${_log_dir}/wwm-bar.log" 2>&1 &
 EOF
 				chmod 0755 "${_labwc_dir}/autostart"
 			fi
@@ -2462,9 +3101,9 @@ EOF
 			cat << EOF >| "${_river_init}"
 #!/usr/bin/env sh
 riverctl border-width 2
-riverctl border-color-focused "0x3584e4"
-riverctl border-color-unfocused "0x38383d"
-riverctl background-color "0x1e1e22"
+riverctl border-color-focused "0x${_hex_accent}"
+riverctl border-color-unfocused "0x${_hex_border}"
+riverctl background-color "0x${_hex_bg}"
 riverctl xcursor-theme "${_cur_theme}" "${_cur_size}"
 riverctl input pointer-* accel-profile adaptive
 riverctl input pointer-* pointer-accel 0.35
@@ -2480,12 +3119,15 @@ riverctl map normal Control+Alt T spawn "${_term_script}"
 riverctl map normal Super B spawn "${_browser_script}"
 riverctl map normal Super E spawn "${_emacs_script}"
 riverctl map normal Super F spawn "${_files_script}"
+riverctl map normal Super Tab focus-view next
+riverctl map normal Alt Tab focus-view next
+riverctl map normal Super M toggle-fullscreen
 riverctl map normal Super Q close
 riverctl map normal Super+Shift Q spawn "riverctl exit"
 EOF
 			if [ "${_has_gtk3_bar}" -eq 1 ]; then
 				cat << EOF >> "${_river_init}"
-env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
+env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="river" python3 "${_bar_script}" > "${_log_dir}/wwm-bar.log" 2>&1 &
 EOF
 			fi
 			chmod 0755 "${_river_init}"
@@ -2494,7 +3136,7 @@ EOF
 			rm -f "${_river_init}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
-		hyprland)
+		Hyprland|hyprland)
 			local _hypr_cfg="${_run_dir}/hyprland-wm-$$.conf"
 			cat << EOF >| "${_hypr_cfg}"
 monitor=,preferred,auto,1
@@ -2502,12 +3144,12 @@ general {
     border_size = 2
     gaps_in = 2
     gaps_out = 4
-    col.active_border = rgb(3584e4)
-    col.inactive_border = rgb(38383d)
+    col.active_border = rgb(${_hex_accent})
+    col.inactive_border = rgb(${_hex_border})
 }
 misc {
     disable_hyprland_logo = true
-    background_color = rgb(1e1e22)
+    background_color = rgb(${_hex_bg})
 }
 input {
     kb_layout = br
@@ -2526,6 +3168,9 @@ bind = SUPER, B, exec, ${_browser_script}
 bind = SUPER, E, exec, ${_emacs_script}
 bind = SUPER, F, exec, ${_files_script}
 bind = SUPER, D, exec, ${_menu_script}
+bind = SUPER, Tab, cyclenext
+bind = ALT, Tab, cyclenext
+bind = SUPER, M, fullscreen, 1
 bind = SUPER, Q, killactive
 bind = SUPER SHIFT, Q, exit
 bind = SUPER, 1, workspace, 1
@@ -2549,14 +3194,15 @@ bind = SUPER SHIFT, 9, movetoworkspace, 9
 EOF
 			if [ "${_has_gtk3_bar}" -eq 1 ]; then
 				cat << EOF >> "${_hypr_cfg}"
-exec-once = env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}"
+windowrulev2 = float, class:^(wwm-bar)$
+windowrulev2 = pin, class:^(wwm-bar)$
+windowrulev2 = noborder, class:^(wwm-bar)$
+windowrulev2 = nofocus, class:^(wwm-bar)$
+windowrulev2 = move 0 0, class:^(wwm-bar)$
+exec-once = sh -c 'env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="hyprland" python3 "${_bar_script}" > "${_log_dir}/wwm-bar.log" 2>&1'
 EOF
 			fi
-			if command -v Hyprland > "/dev/null" 2>&1; then
-				_exec_wayland Hyprland --config "${_hypr_cfg}"
-			else
-				_exec_wayland hyprland --config "${_hypr_cfg}"
-			fi
+			_exec_wayland "${_target_wm}" --config "${_hypr_cfg}"
 			local _ret=$?
 			rm -f "${_hypr_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
 			return "${_ret}"
@@ -2568,8 +3214,8 @@ prefer-no-csd
 layout {
     border {
         width 2
-        active-color "#3584e4"
-        inactive-color "#38383d"
+        active-color "${_c_accent}"
+        inactive-color "${_c_border}"
     }
 }
 binds {
@@ -2584,8 +3230,8 @@ binds {
 }
 EOF
 			if [ "${_has_gtk3_bar}" -eq 1 ]; then
-				printf 'spawn-at-startup "env" "GDK_BACKEND=x11" "WWM_TERM=%s" "WWM_BROWSER=%s" "WWM_FILES=%s" "WWM_EMACS=%s" "WWM_MENU=%s" "WWM_FONT=%s" "python3" "%s"
-' "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_ui_font}" "${_bar_script}" >> "${_niri_cfg}"
+				printf 'spawn-at-startup "sh" "-c" "env GDK_BACKEND=%s WWM_TERM=%s WWM_BROWSER=%s WWM_FILES=%s WWM_EMACS=%s WWM_MENU=%s WWM_FONT=%s WWM_SCHEME=%s WWM_WM=niri python3 %s > %s/wwm-bar.log 2>&1"\n' \
+					"${_bar_gdk}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_ui_font}" "${_scheme}" "${_bar_script}" "${_log_dir}" >> "${_niri_cfg}"
 			fi
 			_exec_wayland niri --config "${_niri_cfg}"
 			local _ret=$?
@@ -2613,7 +3259,7 @@ EOF
 			if [ "${_has_gtk3_bar}" -eq 1 ]; then
 				cat << EOF >> "${_wf_cfg}"
 [autostart]
-bar = env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}"
+bar = sh -c 'env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="wayfire" python3 "${_bar_script}" > "${_log_dir}/wwm-bar.log" 2>&1'
 EOF
 			fi
 			_exec_wayland wayfire -c "${_wf_cfg}"
@@ -2626,7 +3272,7 @@ EOF
 			cat << EOF >| "${_dwl_startup}"
 #!/usr/bin/env sh
 if [ "${_has_gtk3_bar}" -eq 1 ]; then
-	env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
+	env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="dwl" python3 "${_bar_script}" > "${_log_dir}/wwm-bar.log" 2>&1 &
 fi
 exec ${_wm_term}
 EOF
@@ -2634,6 +3280,63 @@ EOF
 			_exec_wayland dwl -s "${_dwl_startup}"
 			local _ret=$?
 			rm -f "${_dwl_startup}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		hikari)
+			local _hikari_cfg="${_run_dir}/hikari-wm-$$.conf"
+			cat << EOF >| "${_hikari_cfg}"
+ui {
+  border = 2
+  gap = 4
+  active = 0x${_hex_accent}
+  inactive = 0x${_hex_border}
+}
+actions {
+  terminal = "${_term_script}"
+  browser = "${_browser_script}"
+  emacs = "${_emacs_script}"
+  files = "${_files_script}"
+}
+bindings {
+  keyboard {
+    "L+Return" = action-terminal
+    "CA+t" = action-terminal
+    "L+b" = action-browser
+    "L+e" = action-emacs
+    "L+f" = action-files
+    "L+q" = view-quit
+    "LS+q" = quit
+  }
+}
+EOF
+			_exec_wayland hikari -c "${_hikari_cfg}"
+			local _ret=$?
+			rm -f "${_hikari_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		weston)
+			local _weston_cfg="${_run_dir}/weston-wm-$$.ini"
+			cat << EOF >| "${_weston_cfg}"
+[core]
+xwayland=true
+[shell]
+background-color=0xff${_hex_bg}
+panel-position=top
+[keyboard]
+keymap_layout=br
+keymap_model=abnt2
+repeat-delay=200
+repeat-rate=50
+[launcher]
+path=${_term_script}
+[launcher]
+path=${_browser_script}
+[launcher]
+path=${_emacs_script}
+EOF
+			_exec_wayland weston --config="${_weston_cfg}"
+			local _ret=$?
+			rm -f "${_weston_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		cage)
@@ -2644,11 +3347,7 @@ EOF
 			;;
 		*)
 			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
-			if command -v emacs > "/dev/null" 2>&1 || [ -f "${HOME}/.local/lib/libewm_core.so" ] || [ -f "${HOME}/.local/lib/libewm.so" ]; then
-				emacs-window-manager-wayland
-			else
-				desktop-session-wayland
-			fi
+			return 127
 			;;
 	esac
 }
@@ -2679,7 +3378,7 @@ window_manager_x11() {
 				_selected_wm="${1#--wm=}"
 				shift
 				;;
-			--openbox|--cwm|--dwm|--fvwm|--twm)
+			--openbox|--cwm|--dwm|--fvwm3|--fvwm|--fluxbox|--icewm|--jwm|--pekwm|--twm)
 				_selected_wm="${1#--}"
 				shift
 				;;
@@ -2707,93 +3406,163 @@ window_manager_x11() {
 		start-session xorg "$@"
 		return $?
 	fi
+
+	if [ "${_selected_wm}" = "ewm" ]; then
+		if [ -n "${_flavor}" ]; then
+			emacs_window_manager_x11 "--${_flavor}"
+		else
+			emacs_window_manager_x11
+		fi
+		return $?
+	fi
+
+	{ _has_exec_bin "startx" || _has_exec_bin "xinit"; } || return 127
+	{ _has_exec_bin "Xorg" || _has_exec_bin "X"; } || return 127
+
+	local _target_wm="${_selected_wm}" _fvwm_bin=""
+	case "${_target_wm}" in
+		fvwm3|fvwm)
+			if [ "${_target_wm}" = "fvwm3" ] && _has_exec_bin "fvwm3"; then
+				_fvwm_bin="$(command -v fvwm3)"
+			elif _has_exec_bin "fvwm3"; then
+				_fvwm_bin="$(command -v fvwm3)"
+			elif _has_exec_bin "fvwm"; then
+				_fvwm_bin="$(command -v fvwm)"
+			fi
+			if [ -z "${_fvwm_bin}" ]; then
+				if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+					_ui_err "Gerenciador X11 '${_target_wm}' não está instalado."
+				fi
+				return 127
+			fi
+			_target_wm="${_fvwm_bin##*/}"
+			;;
+		matchbox)
+			_target_wm="matchbox-window-manager"
+			;;
+	esac
+
+	if [ -n "${_target_wm}" ]; then
+		if [ "${_target_wm}" != "fvwm3" ] && [ "${_target_wm}" != "fvwm" ] && ! _has_exec_bin "${_target_wm}"; then
+			if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
+				_ui_err "Gerenciador X11 '${_target_wm}' não está instalado."
+			fi
+			return 127
+		fi
+	else
+		local _x_cand
+		for _x_cand in $(_get_x11_wm_pipeline); do
+			if _has_exec_bin "${_x_cand}"; then
+				_target_wm="${_x_cand}"
+				case "${_x_cand}" in
+					fvwm3|fvwm) _fvwm_bin="$(command -v "${_x_cand}")" ;;
+				esac
+				break
+			fi
+		done
+	fi
+	[ -z "${_target_wm}" ] && return 127
+
+	local _X11_FLAVOR_OVERRIDE="${_flavor}"
 	_x11_session_env "${_flavor}"
+
+	local _scheme="${_RESOLVED_COLOR_SCHEME:-dark}"
+	local _c_bg="#1e1e22" _c_panel="#2b2b30" _c_menu_bg="#242428" _c_fg="#ffffff" _c_muted="#9a9996" _c_dis="#5e5c64" _c_border="#38383d" _c_accent="#3584e4" _c_urgent="#e01b24"
+	if [ "${_scheme}" = "light" ]; then
+		_c_bg="#f6f5f4"
+		_c_panel="#ffffff"
+		_c_menu_bg="#ffffff"
+		_c_fg="#241f31"
+		_c_muted="#5e5c64"
+		_c_dis="#9a9996"
+		_c_border="#cdc7c2"
+	fi
 
 	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
 
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
 	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
-	cat << 'OTM' >| "${_kiosk_theme_dir}/themerc"
+	cat << OTM >| "${_kiosk_theme_dir}/themerc"
 border.width: 3
-border.color: #38383d
+border.color: ${_c_border}
 padding.width: 8
 padding.height: 6
 window.handle.width: 3
 window.client.padding.width: 0
 
-window.active.border.color: #3584e4
+window.active.border.color: ${_c_accent}
 window.active.title.bg: flat solid
-window.active.title.bg.color: #2b2b30
+window.active.title.bg.color: ${_c_panel}
 window.active.label.bg: parentrelative
-window.active.label.text.color: #ffffff
+window.active.label.text.color: ${_c_fg}
 window.active.handle.bg: flat solid
-window.active.handle.bg.color: #2b2b30
+window.active.handle.bg.color: ${_c_panel}
 window.active.grip.bg: flat solid
-window.active.grip.bg.color: #3584e4
+window.active.grip.bg.color: ${_c_accent}
 window.active.button.unpressed.bg: parentrelative
-window.active.button.unpressed.image.color: #ffffff
+window.active.button.unpressed.image.color: ${_c_fg}
 window.active.button.pressed.bg: flat solid
-window.active.button.pressed.bg.color: #3584e4
+window.active.button.pressed.bg.color: ${_c_accent}
 window.active.button.pressed.image.color: #ffffff
 window.active.button.hover.bg: flat solid
-window.active.button.hover.bg.color: #3584e4
+window.active.button.hover.bg.color: ${_c_accent}
 window.active.button.hover.image.color: #ffffff
 window.active.button.disabled.bg: parentrelative
-window.active.button.disabled.image.color: #5e5c64
-window.inactive.border.color: #38383d
+window.active.button.disabled.image.color: ${_c_dis}
+window.inactive.border.color: ${_c_border}
 window.inactive.title.bg: flat solid
-window.inactive.title.bg.color: #1e1e22
+window.inactive.title.bg.color: ${_c_bg}
 window.inactive.label.bg: parentrelative
-window.inactive.label.text.color: #9a9996
+window.inactive.label.text.color: ${_c_muted}
 window.inactive.handle.bg: flat solid
-window.inactive.handle.bg.color: #1e1e22
+window.inactive.handle.bg.color: ${_c_bg}
 window.inactive.grip.bg: flat solid
-window.inactive.grip.bg.color: #2b2b30
+window.inactive.grip.bg.color: ${_c_panel}
 window.inactive.button.unpressed.bg: parentrelative
-window.inactive.button.unpressed.image.color: #9a9996
+window.inactive.button.unpressed.image.color: ${_c_muted}
 window.inactive.button.pressed.bg: flat solid
-window.inactive.button.pressed.bg.color: #38383d
-window.inactive.button.pressed.image.color: #ffffff
+window.inactive.button.pressed.bg.color: ${_c_border}
+window.inactive.button.pressed.image.color: ${_c_fg}
 window.inactive.button.hover.bg: flat solid
-window.inactive.button.hover.bg.color: #38383d
-window.inactive.button.hover.image.color: #ffffff
+window.inactive.button.hover.bg.color: ${_c_border}
+window.inactive.button.hover.image.color: ${_c_fg}
 window.inactive.button.disabled.bg: parentrelative
-window.inactive.button.disabled.image.color: #5e5c64
+window.inactive.button.disabled.image.color: ${_c_dis}
 osd.border.width: 2
-osd.border.color: #3584e4
+osd.border.color: ${_c_accent}
 osd.bg: flat solid
-osd.bg.color: #2b2b30
+osd.bg.color: ${_c_panel}
 osd.label.bg: parentrelative
-osd.label.text.color: #ffffff
+osd.label.text.color: ${_c_fg}
 osd.hilight.bg: flat solid
-osd.hilight.bg.color: #3584e4
+osd.hilight.bg.color: ${_c_accent}
 osd.unhilight.bg: flat solid
-osd.unhilight.bg.color: #1e1e22
+osd.unhilight.bg.color: ${_c_bg}
 osd.button.unpressed.bg: flat solid
-osd.button.unpressed.bg.color: #1e1e22
-osd.button.unpressed.text.color: #ffffff
-osd.button.unpressed.border.color: #38383d
+osd.button.unpressed.bg.color: ${_c_bg}
+osd.button.unpressed.text.color: ${_c_fg}
+osd.button.unpressed.border.color: ${_c_border}
 osd.button.pressed.bg: flat solid
-osd.button.pressed.bg.color: #3584e4
+osd.button.pressed.bg.color: ${_c_accent}
 osd.button.pressed.text.color: #ffffff
-osd.button.pressed.border.color: #3584e4
+osd.button.pressed.border.color: ${_c_accent}
 osd.button.focused.bg: flat solid
-osd.button.focused.bg.color: #3584e4
+osd.button.focused.bg.color: ${_c_accent}
 osd.button.focused.text.color: #ffffff
-osd.button.focused.border.color: #3584e4
+osd.button.focused.border.color: ${_c_accent}
 menu.border.width: 2
-menu.border.color: #38383d
+menu.border.color: ${_c_border}
 menu.title.bg: flat solid
-menu.title.bg.color: #1e1e22
-menu.title.text.color: #3584e4
+menu.title.bg.color: ${_c_bg}
+menu.title.text.color: ${_c_accent}
 menu.items.bg: flat solid
-menu.items.bg.color: #242428
-menu.items.text.color: #ffffff
-menu.items.disabled.text.color: #5e5c64
+menu.items.bg.color: ${_c_menu_bg}
+menu.items.text.color: ${_c_fg}
+menu.items.disabled.text.color: ${_c_dis}
 menu.items.active.bg: flat solid
-menu.items.active.bg.color: #3584e4
+menu.items.active.bg.color: ${_c_accent}
 menu.items.active.text.color: #ffffff
-menu.separator.color: #38383d
+menu.separator.color: ${_c_border}
 OTM
 
 	local _wm_x11_term="xterm"
@@ -2809,6 +3578,7 @@ OTM
 	local _browser_script="${_run_dir}/xwm-browser-$$.sh"
 	local _files_script="${_run_dir}/xwm-files-$$.sh"
 	local _emacs_script="${_run_dir}/xwm-emacs-$$.sh"
+	local _menu_script="${_run_dir}/xwm-menu-$$.sh"
 	local _bar_script="${_run_dir}/xwm-bar-$$.py"
 
 	local _has_gtk3_bar=0
@@ -2854,23 +3624,24 @@ done
 EOF
 	chmod 0755 "${_emacs_script}"
 
-	local _target_wm="${_selected_wm}"
-	if [ -n "${_target_wm}" ]; then
-		if ! command -v "${_target_wm}" > "/dev/null" 2>&1; then
-			_ui_err "Gerenciador X11 '${_target_wm}' não está instalado."
-			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
-			return 1
-		fi
-	else
-		local _x_cand
-		for _x_cand in $(_get_x11_wm_pipeline); do
-			if command -v "${_x_cand}" > "/dev/null" 2>&1; then
-				_target_wm="${_x_cand}"
-				break
-			fi
-		done
+	cat << EOF >| "${_menu_script}"
+#!/usr/bin/env sh
+if command -v rofi > "/dev/null" 2>&1; then
+	exec rofi -show drun
+elif command -v dmenu_run > "/dev/null" 2>&1; then
+	exec dmenu_run
+else
+	exec ${_wm_x11_term}
+fi
+EOF
+	chmod 0755 "${_menu_script}"
+
+	local _X11_SESSION_BG_CMD=""
+	if [ "${_has_gtk3_bar}" -eq 1 ]; then
+		_X11_SESSION_BG_CMD="exec env GDK_BACKEND=x11 WWM_TERM=\"${_term_script}\" WWM_BROWSER=\"${_browser_script}\" WWM_FILES=\"${_files_script}\" WWM_EMACS=\"${_emacs_script}\" WWM_MENU=\"${_menu_script}\" WWM_FONT=\"${_ui_font}\" WWM_SCHEME=\"${_scheme}\" WWM_WM=\"${_target_wm}\" python3 \"${_bar_script}\""
 	fi
 
+	local _ret=0
 	case "${_target_wm}" in
 		openbox)
 			local _ob_menu_cfg="${_run_dir}/openbox-menu-$$.xml"
@@ -2891,6 +3662,12 @@ EOF
     <font place="ActiveOnScreenDisplay"><name>${_ui_font}</name><size>10</size><weight>Bold</weight><slant>Normal</slant></font>
     <font place="InactiveOnScreenDisplay"><name>${_ui_font}</name><size>10</size><weight>Normal</weight><slant>Normal</slant></font>
   </theme>
+  <margins>
+    <top>32</top>
+    <bottom>0</bottom>
+    <left>0</left>
+    <right>0</right>
+  </margins>
   <mouse>
     <dragThreshold>1</dragThreshold>
     <doubleClickTime>500</doubleClickTime>
@@ -2986,98 +3763,256 @@ EOF
     <keybind key="W-b"><action name="Execute"><command>${_browser_script}</command></action></keybind>
     <keybind key="W-e"><action name="Execute"><command>${_emacs_script}</command></action></keybind>
     <keybind key="W-f"><action name="Execute"><command>${_files_script}</command></action></keybind>
+    <keybind key="W-m"><action name="ToggleMaximize"/></keybind>
     <keybind key="A-F4"><action name="Close"/></keybind>
     <keybind key="W-q"><action name="Close"/></keybind>
     <keybind key="A-Tab"><action name="NextWindow"/></keybind>
+    <keybind key="W-Tab"><action name="NextWindow"/></keybind>
     <keybind key="W-S-q"><action name="Exit"/></keybind>
   </keyboard>
 </openbox_config>
 EOF
-			if [ "${_has_gtk3_bar}" -eq 1 ]; then
-				env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
-			fi
 			_exec_x11 openbox --config-file "${_ob_wm_cfg}"
-			local _ret=$?
-			rm -f "${_ob_menu_cfg}" "${_ob_wm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+			_ret=$?
+			rm -f "${_ob_menu_cfg}" "${_ob_wm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		cwm)
 			local _cwm_cfg="${_run_dir}/cwmrc-wm-$$"
 			cat << EOF >| "${_cwm_cfg}"
-color activeborder "#3584e4"
-color inactiveborder "#38383d"
-color menubg "#1e1e22"
-color menufg "#ffffff"
+borderwidth 2
+color activeborder "${_c_accent}"
+color inactiveborder "${_c_border}"
+color groupborder "${_c_accent}"
+color urgencyborder "${_c_urgent}"
+color menubg "${_c_bg}"
+color menufg "${_c_fg}"
+color font "${_c_fg}"
+color selfont "#ffffff"
+fontname "${_ui_font}:size=10"
 gap 32 0 0 0
+ignore wwm-bar
+sticky yes
+autogroup 1 "xterm,XTerm"
+autogroup 1 "emacs,Emacs"
 bind-key 4-Return "${_term_script}"
 bind-key CM-t "${_term_script}"
 bind-key 4-b "${_browser_script}"
 bind-key 4-e "${_emacs_script}"
 bind-key 4-f "${_files_script}"
+bind-key 4-m window-maximize
+bind-key M-Tab window-cycle
+bind-key 4-Tab window-cycle
 bind-key 4-q window-close
 bind-key M-F4 window-close
 bind-key 4S-q quit
 EOF
-			if [ "${_has_gtk3_bar}" -eq 1 ]; then
-				env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
-			fi
 			_exec_x11 cwm -c "${_cwm_cfg}"
-			local _ret=$?
-			rm -f "${_cwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+			_ret=$?
+			rm -f "${_cwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
-		dwm)
-			if [ "${_has_gtk3_bar}" -eq 1 ]; then
-				env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
-			fi
-			_exec_x11 dwm
-			local _ret=$?
-			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
-			return "${_ret}"
-			;;
-		fvwm)
+		fvwm3|fvwm)
 			local _fvwm_cfg="${_run_dir}/fvwm-wm-$$.conf"
 			cat << EOF >| "${_fvwm_cfg}"
 EwmhBaseStruts 0 0 32 0
-Style * HilightBorderColor #3584e4, BorderColor #38383d
-Style * HilightFore #ffffff, HilightBack #2b2b30
-Style * ForeColor #9a9996, BackColor #1e1e22
+Style * BorderWidth 2, HandleWidth 2
+Style * HilightBorderColor ${_c_accent}, BorderColor ${_c_border}
+Style * HilightFore ${_c_fg}, HilightBack ${_c_panel}
+Style * ForeColor ${_c_muted}, BackColor ${_c_bg}
+Style * Font "xft:${_ui_font}:size=10:bold"
+Style "wwm-bar" !Title, !Borders, !Handles, Sticky, WindowListSkip, CirculateSkip, StaysOnTop
 Key Return A 4 Exec exec ${_term_script}
 Key b A 4 Exec exec ${_browser_script}
 Key e A 4 Exec exec ${_emacs_script}
 Key f A 4 Exec exec ${_files_script}
+Key m A 4 Maximize 100 100
+Key Tab A 4 Next (AcceptsFocus) Focus
+Key Tab A M Next (AcceptsFocus) Focus
 Key q A 4 Close
+Key F4 A M Close
 Key q A 4S Quit
 EOF
-			if [ "${_has_gtk3_bar}" -eq 1 ]; then
-				env GDK_BACKEND=x11 WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_FONT="${_ui_font}" python3 "${_bar_script}" > "/dev/null" 2>&1 &
-			fi
-			_exec_x11 fvwm -f "${_fvwm_cfg}"
-			local _ret=$?
-			rm -f "${_fvwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+			_exec_x11 "${_fvwm_bin}" -f "${_fvwm_cfg}"
+			_ret=$?
+			rm -f "${_fvwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
-		twm)
-			_exec_x11 twm
-			local _ret=$?
-			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+		fluxbox)
+			local _fb_dir="${_run_dir}/fluxbox-wm-$$"
+			mkdir -p "${_fb_dir}"
+			cat << EOF >| "${_fb_dir}/keys"
+Mod4 Return :Exec ${_term_script}
+Control Mod1 t :Exec ${_term_script}
+Mod4 b :Exec ${_browser_script}
+Mod4 e :Exec ${_emacs_script}
+Mod4 f :Exec ${_files_script}
+Mod4 m :Maximize
+Mod1 Tab :NextWindow
+Mod4 Tab :NextWindow
+Mod4 q :Close
+Mod1 F4 :Close
+Mod4 Shift q :Exit
+EOF
+			cat << EOF >| "${_fb_dir}/overlay"
+background: solid
+background.color: ${_c_bg}
+window.borderWidth: 2
+window.borderColor: ${_c_border}
+window.title.focus.color: ${_c_panel}
+window.title.unfocus.color: ${_c_bg}
+window.label.focus.textColor: ${_c_fg}
+window.label.unfocus.textColor: ${_c_muted}
+window.frame.focusColor: ${_c_accent}
+window.frame.unfocusColor: ${_c_border}
+EOF
+			cat << EOF >| "${_fb_dir}/init"
+session.screen0.toolbar.visible: false
+session.screen0.struts: 0,0,32,0
+session.keyFile: ${_fb_dir}/keys
+session.styleOverlay: ${_fb_dir}/overlay
+EOF
+			_exec_x11 fluxbox -rc "${_fb_dir}/init"
+			_ret=$?
+			rm -rf "${_fb_dir}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		icewm)
+			local _ice_dir="${_run_dir}/icewm-wm-$$"
+			mkdir -p "${_ice_dir}"
+			cat << EOF >| "${_ice_dir}/preferences"
+ShowTaskBar=0
+BorderSizeX=2
+BorderSizeY=2
+DesktopBackgroundColor="${_c_bg}"
+ColorActiveTitleBar="${_c_panel}"
+ColorNormalTitleBar="${_c_bg}"
+ColorActiveTitleBarText="${_c_fg}"
+ColorNormalTitleBarText="${_c_muted}"
+ColorActiveBorder="${_c_accent}"
+ColorNormalBorder="${_c_border}"
+EOF
+			cat << EOF >| "${_ice_dir}/keys"
+key "Super+Return" ${_term_script}
+key "Ctrl+Alt+t" ${_term_script}
+key "Super+b" ${_browser_script}
+key "Super+e" ${_emacs_script}
+key "Super+f" ${_files_script}
+EOF
+			cat << 'EOF' >| "${_ice_dir}/winoptions"
+wwm-bar.ignoreTaskBar: 1
+wwm-bar.dTitleBar: 0
+wwm-bar.dBorder: 0
+wwm-bar.allWorkspaces: 1
+EOF
+			ICEWM_PRIVCFG="${_ice_dir}" _exec_x11 icewm -c "${_ice_dir}/preferences"
+			_ret=$?
+			rm -rf "${_ice_dir}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		jwm)
+			local _jwm_cfg="${_run_dir}/jwm-wm-$$.xml"
+			cat << EOF >| "${_jwm_cfg}"
+<?xml version="1.0"?>
+<JWM>
+  <Desktops width="1" height="1">
+    <Background type="solid">${_c_bg}</Background>
+  </Desktops>
+  <WindowStyle>
+    <Font>${_ui_font}-10:bold</Font>
+    <Width>2</Width>
+    <Height>22</Height>
+    <Foreground>${_c_muted}</Foreground>
+    <Background>${_c_bg}</Background>
+    <Outline>${_c_border}</Outline>
+    <Active>
+      <Foreground>${_c_fg}</Foreground>
+      <Background>${_c_panel}</Background>
+      <Outline>${_c_accent}</Outline>
+    </Active>
+  </WindowStyle>
+  <Group>
+    <Name>wwm-bar</Name>
+    <Option>nolist</Option>
+    <Option>noborder</Option>
+    <Option>notitle</Option>
+    <Option>sticky</Option>
+    <Option>layer:above</Option>
+  </Group>
+  <Key mask="4" key="Return">exec:${_term_script}</Key>
+  <Key mask="CA" key="t">exec:${_term_script}</Key>
+  <Key mask="4" key="b">exec:${_browser_script}</Key>
+  <Key mask="4" key="e">exec:${_emacs_script}</Key>
+  <Key mask="4" key="f">exec:${_files_script}</Key>
+  <Key mask="4" key="m">maximize</Key>
+  <Key mask="A" key="Tab">next</Key>
+  <Key mask="4" key="Tab">next</Key>
+  <Key mask="4" key="q">close</Key>
+  <Key mask="A" key="F4">close</Key>
+  <Key mask="4S" key="q">exit</Key>
+</JWM>
+EOF
+			_exec_x11 jwm -f "${_jwm_cfg}"
+			_ret=$?
+			rm -f "${_jwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		pekwm)
+			local _pekwm_dir="${_run_dir}/pekwm-wm-$$"
+			mkdir -p "${_pekwm_dir}"
+			cat << EOF >| "${_pekwm_dir}/config"
+Files {
+    Keys = "${_pekwm_dir}/keys"
+    AutoProps = "${_pekwm_dir}/autoproperties"
+}
+Screen {
+    EdgeSize = "2"
+    EdgeIndent = "True"
+}
+EOF
+			cat << EOF >| "${_pekwm_dir}/keys"
+Global {
+    KeyPress = "Mod4 Return" { Actions = "Exec ${_term_script}" }
+    KeyPress = "Ctrl Mod1 t" { Actions = "Exec ${_term_script}" }
+    KeyPress = "Mod4 b" { Actions = "Exec ${_browser_script}" }
+    KeyPress = "Mod4 e" { Actions = "Exec ${_emacs_script}" }
+    KeyPress = "Mod4 f" { Actions = "Exec ${_files_script}" }
+    KeyPress = "Mod4 m" { Actions = "Toggle Maximized True True" }
+    KeyPress = "Mod1 Tab" { Actions = "NextFrame EndRaise" }
+    KeyPress = "Mod4 Tab" { Actions = "NextFrame EndRaise" }
+    KeyPress = "Mod4 q" { Actions = "Close" }
+    KeyPress = "Mod4 Shift q" { Actions = "Exit" }
+}
+EOF
+			cat << 'EOF' >| "${_pekwm_dir}/autoproperties"
+Property = "wwm-bar,wwm-bar" {
+    Titlebar = "False";
+    Border = "False";
+    Sticky = "True";
+    Skip = "Taskbar FocusToggle";
+    Layer = "AboveDock";
+}
+EOF
+			_exec_x11 pekwm --config "${_pekwm_dir}/config"
+			_ret=$?
+			rm -rf "${_pekwm_dir}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			return "${_ret}"
+			;;
+		dwm|twm)
+			_exec_x11 "${_target_wm}"
+			_ret=$?
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		matchbox|matchbox-window-manager)
 			_exec_x11 sh -c '(command -v xterm > "/dev/null" 2>&1 && xterm &); exec matchbox-window-manager'
-			local _ret=$?
-			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
+			_ret=$?
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		*)
-			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_bar_script}" 2> "/dev/null" || true
-			if command -v openbox-session > "/dev/null" 2>&1; then
-				_exec_x11 openbox-session
-			elif command -v emacs > "/dev/null" 2>&1; then
-				emacs-window-manager-x11
-			else
-				desktop-session-x11
-			fi
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			return 127
 			;;
 	esac
 }
@@ -3086,6 +4021,17 @@ alias window-manager-x11="window_manager_x11" xwm="window_manager_x11"
 ### --------------------------------
 ### WINDOW MANAGER ENTRYPOINT
 ### --------------------------------
-window_manager() { _dispatch_display_server "window-manager" "$@"; }
+window_manager() {
+	local _prev_probe="${_SHELL_DISPATCH_PROBE:-}"
+	export _SHELL_DISPATCH_PROBE=1
+	_dispatch_display_server "window-manager" "$@"
+	local _ret=$?
+	if [ -n "${_prev_probe}" ]; then
+		export _SHELL_DISPATCH_PROBE="${_prev_probe}"
+	else
+		unset _SHELL_DISPATCH_PROBE
+	fi
+	return "${_ret}"
+}
 alias window-manager="window_manager" wm="window_manager" win="window_manager" win-man="window_manager" window="window_manager"
 _SHELL_DESKTOP_SESSION_LOADED=1

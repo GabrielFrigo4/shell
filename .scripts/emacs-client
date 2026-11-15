@@ -1,97 +1,395 @@
 #!/usr/bin/env sh
 # ----------------------------------------------------------------
-# Wrapper: GNU Emacs Client with Auto-Recovery & Theme Guard
+# Wrapper: GNU Emacs Client with Auto-Recovery
 # ----------------------------------------------------------------
 set -eu
 
 ### ================================
 ### ENVIRONMENT RESOLUTION
 ### ================================
-if ! command -v emacsclient > "/dev/null" 2>&1; then
-	if [ -x "/usr/local/bin/emacsclient" ]; then
-		PATH="/usr/local/bin:${PATH}"
-	elif [ -x "/usr/bin/emacsclient" ]; then
-		PATH="/usr/bin:${PATH}"
+for _ec_bin_dir in \
+	"/usr/local/bin" \
+	"${HOME:-}/.local/bin"
+do
+	[ -n "${_ec_bin_dir}" ] && [ -d "${_ec_bin_dir}" ] || continue
+	case ":${PATH:-}:" in
+		*":${_ec_bin_dir}:"*) ;;
+		*) PATH="${_ec_bin_dir}${PATH:+:${PATH}}" ;;
+	esac
+done
+for _ec_bin_dir in \
+	"/opt/homebrew/bin" \
+	"/usr/pkg/bin" \
+	"/run/current-system/sw/bin" \
+	"/snap/bin" \
+	"/usr/bin" \
+	"/bin"
+do
+	[ -n "${_ec_bin_dir}" ] && [ -d "${_ec_bin_dir}" ] || continue
+	case ":${PATH:-}:" in
+		*":${_ec_bin_dir}:"*) ;;
+		*) PATH="${PATH:+${PATH}:}${_ec_bin_dir}" ;;
+	esac
+done
+unset _ec_bin_dir
+export PATH
+
+if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
+	unset XDG_RUNTIME_DIR 2> "/dev/null" || true
+fi
+
+### ================================
+### TERMINAL & SOCKET HELPERS
+### ================================
+_ec_is_raw_vt() {
+	_ec_tty=""
+	if [ -t 0 ]; then
+		_ec_tty="$(tty 2> "/dev/null" || true)"
 	fi
+	if [ -z "${_ec_tty}" ] && [ -t 1 ]; then
+		_ec_tty="$(tty <&1 2> "/dev/null" || true)"
+	fi
+	case "${_ec_tty}" in
+		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyC*|/dev/ttyE*|/dev/console)
+			unset _ec_tty
+			return 0
+			;;
+	esac
+	unset _ec_tty
+	return 1
+}
+
+_ec_canonical_path() {
+	_ec_target="${1:-}"
+	[ -n "${_ec_target}" ] || return 1
+	if command -v readlink > "/dev/null" 2>&1; then
+		_ec_resolved="$(readlink -f "${_ec_target}" 2> "/dev/null" || true)"
+		if [ -n "${_ec_resolved}" ]; then
+			printf '%s\n' "${_ec_resolved}"
+			unset _ec_target _ec_resolved
+			return 0
+		fi
+		unset _ec_resolved
+	fi
+	if command -v realpath > "/dev/null" 2>&1; then
+		_ec_resolved="$(realpath "${_ec_target}" 2> "/dev/null" || true)"
+		if [ -n "${_ec_resolved}" ]; then
+			printf '%s\n' "${_ec_resolved}"
+			unset _ec_target _ec_resolved
+			return 0
+		fi
+		unset _ec_resolved
+	fi
+	printf '%s\n' "${_ec_target}"
+	unset _ec_target
+	return 0
+}
+
+_ec_ensure_socket_dir() {
+	_ec_sock_path="${1:-}"
+	case "${_ec_sock_path}" in
+		*/*) _ec_parent="${_ec_sock_path%/*}" ;;
+		*) return 0 ;;
+	esac
+	[ -n "${_ec_parent}" ] || _ec_parent="/"
+	if [ ! -d "${_ec_parent}" ]; then
+		mkdir -p "${_ec_parent}" 2> "/dev/null" || true
+	fi
+	if [ -d "${_ec_parent}" ] && [ -O "${_ec_parent}" ]; then
+		chmod 0700 "${_ec_parent}" 2> "/dev/null" || true
+	fi
+	unset _ec_sock_path _ec_parent
+	return 0
+}
+
+_ec_probe_socket() {
+	_ec_psock="${1:-}"
+	command -v emacsclient > "/dev/null" 2>&1 || return 1
+	if command -v timeout > "/dev/null" 2>&1; then
+		if [ -n "${_ec_psock}" ]; then
+			timeout 2 emacsclient -s "${_ec_psock}" -e '(+ 1 1)' < "/dev/null" > "/dev/null" 2>&1 && return 0
+		else
+			timeout 2 emacsclient -e '(+ 1 1)' < "/dev/null" > "/dev/null" 2>&1 && return 0
+		fi
+		return 1
+	fi
+	(
+		if [ -n "${_ec_psock}" ]; then
+			emacsclient -s "${_ec_psock}" -e '(+ 1 1)' < "/dev/null" > "/dev/null" 2>&1 &
+		else
+			emacsclient -e '(+ 1 1)' < "/dev/null" > "/dev/null" 2>&1 &
+		fi
+		_ec_probe_pid=$!
+		(
+			sleep 2 2> "/dev/null" || true
+			kill -0 "${_ec_probe_pid}" 2> "/dev/null" && kill -9 "${_ec_probe_pid}" 2> "/dev/null" || true
+		) &
+		_ec_wd_pid=$!
+		wait "${_ec_probe_pid}" 2> "/dev/null"
+		_ec_probe_ret=$?
+		kill -9 "${_ec_wd_pid}" 2> "/dev/null" || true
+		wait "${_ec_wd_pid}" 2> "/dev/null" || true
+		exit "${_ec_probe_ret}"
+	)
+}
+
+_ec_exec_nw() {
+	if ! command -v emacs > "/dev/null" 2>&1; then
+		printf '%s\n' "emacs: command not found" >&2
+		exit 127
+	fi
+	if [ -t 0 ]; then
+		stty sane 2> "/dev/null" || true
+	fi
+	_ec_argc=$#
+	while [ "${_ec_argc}" -gt 0 ]; do
+		_ec_arg="$1"
+		[ "$#" -ge 1 ] && shift 1
+		case "${_ec_arg}" in
+			-t|--tty|-nw|--no-window-system) ;;
+			*) set -- "$@" "${_ec_arg}" ;;
+		esac
+		_ec_argc=$((_ec_argc - 1))
+	done
+	unset _ec_argc _ec_arg
+	exec emacs -nw "$@"
+}
+
+### ================================
+### ARGUMENT PRE-SCAN
+### ================================
+_ec_want_tui=0
+_ec_want_eval=0
+_ec_explicit_socket=""
+_ec_explicit_server_file=0
+_ec_want_info=0
+_ec_next_is=""
+
+for _ec_arg in "$@"; do
+	if [ -n "${_ec_next_is}" ]; then
+		case "${_ec_next_is}" in
+			socket) _ec_explicit_socket="${_ec_arg}" ;;
+		esac
+		_ec_next_is=""
+		continue
+	fi
+	case "${_ec_arg}" in
+		-s|--socket-name)
+			_ec_next_is="socket"
+			;;
+		--socket-name=*)
+			_ec_explicit_socket="${_ec_arg#--socket-name=}"
+			;;
+		-f|--server-file)
+			_ec_explicit_server_file=1
+			_ec_next_is="file"
+			;;
+		--server-file=*)
+			_ec_explicit_server_file=1
+			;;
+		-t|--tty|-nw|--no-window-system)
+			_ec_want_tui=1
+			;;
+		-e|--eval)
+			_ec_want_eval=1
+			;;
+		-h|--help|-V|--version)
+			_ec_want_info=1
+			;;
+	esac
+done
+unset _ec_arg _ec_next_is
+
+if [ "${_ec_want_info}" -eq 1 ] && command -v emacsclient > "/dev/null" 2>&1; then
+	exec emacsclient "$@"
+fi
+
+if [ "${_ec_want_eval}" -eq 0 ] && [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+	_ec_want_tui=1
+fi
+
+if [ "${_ec_want_tui}" -eq 1 ] && _ec_is_raw_vt; then
+	_ec_exec_nw "$@"
 fi
 
 if ! command -v emacsclient > "/dev/null" 2>&1; then
+	if [ "${_ec_want_tui}" -eq 1 ]; then
+		_ec_exec_nw "$@"
+	fi
+	if command -v emacs > "/dev/null" 2>&1; then
+		exec emacs "$@"
+	fi
 	printf '%s\n' "emacsclient: command not found" >&2
 	exit 127
 fi
 
 ### ================================
-### THEME ISOLATION
-### ================================
-export GTK_THEME="Emacs-Doom-Dark"
-export GTK_APPLICATION_PREFER_DARK_THEME=1
-
-### ================================
 ### DAEMON HEALTHCHECK & AUTO-HEAL
 ### ================================
-_emacs_uid="$(id -u 2> "/dev/null" || echo 1000)"
-_emacs_sock_dir="${XDG_RUNTIME_DIR:-/tmp}/emacs${_emacs_uid}"
-if [ -n "${EMACS_SOCKET_NAME:-}" ]; then
-	case "${EMACS_SOCKET_NAME}" in
-		*/*) _emacs_socket="${EMACS_SOCKET_NAME}" ;;
-		*)   _emacs_socket="${_emacs_sock_dir}/${EMACS_SOCKET_NAME}" ;;
-	esac
+_ec_uid="$(id -u 2> "/dev/null" || printf '1000')"
+_ec_tmp_dir="${TMPDIR:-/tmp}"
+_ec_tmp_dir="${_ec_tmp_dir%/}"
+[ -n "${_ec_tmp_dir}" ] || _ec_tmp_dir="/tmp"
+
+if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+	_ec_xdg_dir="${XDG_RUNTIME_DIR%/}"
+	[ -n "${_ec_xdg_dir}" ] || _ec_xdg_dir="/"
+	_ec_std_sock_dir="${_ec_xdg_dir}/emacs"
+	unset _ec_xdg_dir
 else
-	_emacs_socket="${_emacs_sock_dir}/server"
+	_ec_std_sock_dir="${_ec_tmp_dir}/emacs${_ec_uid}"
 fi
 
-_has_daemon=0
-if command -v pgrep > "/dev/null" 2>&1 && pgrep -f "emacs.*--.*daemon" > "/dev/null" 2>&1; then
-	_has_daemon=1
+_ec_std_sock="${_ec_std_sock_dir}/server"
+_ec_tmp_sock="${_ec_tmp_dir}/emacs${_ec_uid}/server"
+_ec_auth_sock=""
+if [ -n "${HOME:-}" ]; then
+	_ec_auth_sock="${HOME%/}/.emacs.d/var/server/auth/server"
 fi
 
-if [ "${_has_daemon}" -eq 1 ] || [ -S "${_emacs_socket}" ] || [ -e "${_emacs_socket}" ]; then
-	_probe_ok=0
-	if command -v timeout > "/dev/null" 2>&1; then
-		timeout 2 emacsclient -e '(+ 1 1)' > "/dev/null" 2>&1 && _probe_ok=1 || _probe_ok=0
-	else
-		(
-			emacsclient -e '(+ 1 1)' > "/dev/null" 2>&1 &
-			_probe_pid=$!
-			(
-				sleep 2 2> "/dev/null" || true
-				kill -0 "${_probe_pid}" 2> "/dev/null" && kill -9 "${_probe_pid}" 2> "/dev/null" || true
-			) &
-			_wd_pid=$!
-			wait "${_probe_pid}" 2> "/dev/null"
-			_probe_ret=$?
-			kill -9 "${_wd_pid}" 2> "/dev/null" || true
-			wait "${_wd_pid}" 2> "/dev/null" || true
-			exit "${_probe_ret}"
-		) && _probe_ok=1 || _probe_ok=0
-	fi
-	if [ "${_probe_ok}" -eq 0 ]; then
-		if [ "${_has_daemon}" -eq 1 ]; then
-			if command -v pkill > "/dev/null" 2>&1; then
-				pkill -9 -f "emacs.*--.*daemon" > "/dev/null" 2>&1 || true
-			else
-				for _daemon_pid in $(pgrep -f "emacs.*--.*daemon" 2> "/dev/null" || true); do
-					[ "${_daemon_pid}" != "$$" ] && kill -9 "${_daemon_pid}" 2> "/dev/null" || true
-				done
-				unset _daemon_pid
+_ec_req_sock="${_ec_explicit_socket:-${EMACS_SOCKET_NAME:-}}"
+_ec_is_default_mode=1
+_ec_target_sock="${_ec_std_sock}"
+
+if [ -n "${_ec_req_sock}" ]; then
+	case "${_ec_req_sock}" in
+		*/*) _ec_req_resolved="${_ec_req_sock}" ;;
+		*)   _ec_req_resolved="${_ec_std_sock_dir}/${_ec_req_sock}" ;;
+	esac
+	case "${_ec_req_resolved}" in
+		"${_ec_std_sock}"|"${_ec_auth_sock}"|"${_ec_tmp_sock}"|"/tmp/emacs${_ec_uid}/server")
+			_ec_target_sock="${_ec_req_resolved}"
+			;;
+		*)
+			_ec_is_default_mode=0
+			_ec_target_sock="${_ec_req_resolved}"
+			;;
+	esac
+	unset _ec_req_resolved
+fi
+
+_ec_live_sock=""
+if [ "${_ec_explicit_server_file}" -eq 0 ]; then
+	if [ "${_ec_is_default_mode}" -eq 1 ]; then
+		for _ec_cand in "${_ec_target_sock}" "${_ec_std_sock}" "${_ec_auth_sock}" "${_ec_tmp_sock}" "/tmp/emacs${_ec_uid}/server"; do
+			[ -n "${_ec_cand}" ] || continue
+			if [ -S "${_ec_cand}" ] && _ec_probe_socket "${_ec_cand}"; then
+				_ec_live_sock="$(_ec_canonical_path "${_ec_cand}")"
+				break
 			fi
-			sleep 0.5 2> "/dev/null" || sleep 1 2> "/dev/null" || true
+		done
+		unset _ec_cand
+	else
+		if [ -S "${_ec_target_sock}" ] && _ec_probe_socket "${_ec_target_sock}"; then
+			_ec_live_sock="$(_ec_canonical_path "${_ec_target_sock}")"
 		fi
-		[ -e "${_emacs_socket}" ] && rm -f "${_emacs_socket}" 2> "/dev/null" || true
 	fi
-	unset _probe_ok
+
+	if [ -z "${_ec_live_sock}" ] && [ "${_ec_is_default_mode}" -eq 1 ] && command -v systemctl > "/dev/null" 2>&1; then
+		_ec_unit_state="$(systemctl --user show -p ActiveState --value emacs.service 2> "/dev/null" || true)"
+		if [ "${_ec_unit_state}" = "activating" ]; then
+			_ec_wait=0
+			while [ "${_ec_wait}" -lt 8 ]; do
+				for _ec_cand in "${_ec_std_sock}" "${_ec_auth_sock}"; do
+					[ -n "${_ec_cand}" ] || continue
+					if [ -S "${_ec_cand}" ] && _ec_probe_socket "${_ec_cand}"; then
+						_ec_live_sock="$(_ec_canonical_path "${_ec_cand}")"
+						break 2
+					fi
+				done
+				sleep 0.5 2> "/dev/null" || sleep 1 2> "/dev/null" || true
+				_ec_wait=$((_ec_wait + 1))
+			done
+			unset _ec_wait _ec_cand
+		fi
+		unset _ec_unit_state
+	fi
+
+	if [ -z "${_ec_live_sock}" ]; then
+		_ec_has_daemon=0
+		if [ "${_ec_is_default_mode}" -eq 1 ] && command -v pgrep > "/dev/null" 2>&1; then
+			if pgrep -u "${_ec_uid}" -f 'emacs([[:space:]]|$).*--(fg-|bg-)?daemon' > "/dev/null" 2>&1; then
+				_ec_has_daemon=1
+			fi
+		fi
+
+		if [ "${_ec_has_daemon}" -eq 1 ]; then
+			if ! _ec_probe_socket "${_ec_target_sock}"; then
+				if command -v pkill > "/dev/null" 2>&1; then
+					pkill -9 -u "${_ec_uid}" -f 'emacs([[:space:]]|$).*--(fg-|bg-)?daemon' > "/dev/null" 2>&1 || true
+				else
+					for _ec_pid in $(pgrep -u "${_ec_uid}" -f 'emacs([[:space:]]|$).*--(fg-|bg-)?daemon' 2> "/dev/null" || true); do
+						[ "${_ec_pid}" != "$$" ] && kill -9 "${_ec_pid}" 2> "/dev/null" || true
+					done
+					unset _ec_pid
+				fi
+				sleep 0.5 2> "/dev/null" || sleep 1 2> "/dev/null" || true
+			else
+				_ec_live_sock="$(_ec_canonical_path "${_ec_target_sock}")"
+			fi
+		fi
+
+		if [ -z "${_ec_live_sock}" ]; then
+			if [ "${_ec_is_default_mode}" -eq 1 ]; then
+				for _ec_stale in "${_ec_target_sock}" "${_ec_std_sock}" "${_ec_auth_sock}" "${_ec_tmp_sock}" "/tmp/emacs${_ec_uid}/server"; do
+					[ -n "${_ec_stale}" ] || continue
+					if [ -e "${_ec_stale}" ] || [ -L "${_ec_stale}" ]; then
+						rm -f "${_ec_stale}" 2> "/dev/null" || true
+					fi
+				done
+				unset _ec_stale
+			else
+				if [ -e "${_ec_target_sock}" ] || [ -L "${_ec_target_sock}" ]; then
+					rm -f "${_ec_target_sock}" 2> "/dev/null" || true
+				fi
+			fi
+		fi
+		unset _ec_has_daemon
+	fi
 fi
-unset _emacs_uid _emacs_sock_dir _emacs_socket _has_daemon
+
+if [ -n "${_ec_live_sock}" ]; then
+	if [ -z "${_ec_explicit_socket}" ] && [ "${_ec_explicit_server_file}" -eq 0 ]; then
+		EMACS_SOCKET_NAME="${_ec_live_sock}"
+		export EMACS_SOCKET_NAME
+	fi
+else
+	_ec_ensure_socket_dir "${_ec_target_sock}"
+fi
 
 ### ================================
 ### CLIENT EXECUTION
 ### ================================
-if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
-	if [ "$#" -eq 0 ]; then
-		exec emacsclient --create-frame --alternate-editor="" -n
-	else
-		exec emacsclient --create-frame --alternate-editor="" "$@"
+if [ "${_ec_want_tui}" -eq 1 ]; then
+	if [ -n "${_ec_live_sock}" ] || [ "${_ec_explicit_server_file}" -eq 1 ]; then
+		if [ -n "${_ec_live_sock}" ] && [ -z "${_ec_explicit_socket}" ] && [ "${_ec_explicit_server_file}" -eq 0 ]; then
+			if emacsclient -t -s "${_ec_live_sock}" "$@" 2> "/dev/null"; then
+				exit 0
+			fi
+		else
+			if emacsclient -t "$@" 2> "/dev/null"; then
+				exit 0
+			fi
+		fi
 	fi
-else
-	exec emacsclient -t --alternate-editor="" "$@"
+	_ec_exec_nw "$@"
 fi
+
+if [ "${_ec_want_eval}" -eq 1 ]; then
+	if [ -n "${_ec_live_sock}" ] && [ -z "${_ec_explicit_socket}" ] && [ "${_ec_explicit_server_file}" -eq 0 ]; then
+		exec emacsclient -s "${_ec_live_sock}" --alternate-editor="" "$@"
+	fi
+	exec emacsclient --alternate-editor="" "$@"
+fi
+
+if [ -n "${_ec_live_sock}" ] && [ -z "${_ec_explicit_socket}" ] && [ "${_ec_explicit_server_file}" -eq 0 ]; then
+	if [ "$#" -eq 0 ]; then
+		exec emacsclient -s "${_ec_live_sock}" --create-frame --alternate-editor="" -n
+	fi
+	exec emacsclient -s "${_ec_live_sock}" --create-frame --alternate-editor="" "$@"
+fi
+
+if [ "$#" -eq 0 ]; then
+	exec emacsclient --create-frame --alternate-editor="" -n
+fi
+exec emacsclient --create-frame --alternate-editor="" "$@"

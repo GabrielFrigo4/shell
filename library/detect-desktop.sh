@@ -34,8 +34,16 @@ _detect_desktop_environment() {
 		*niri*)                                           _DETECTED_DESKTOP_ENV="niri" ;;
 		*wayfire*)                                        _DETECTED_DESKTOP_ENV="wayfire" ;;
 		*dwl*)                                            _DETECTED_DESKTOP_ENV="dwl" ;;
+		*hikari*)                                         _DETECTED_DESKTOP_ENV="hikari" ;;
+		*weston*)                                         _DETECTED_DESKTOP_ENV="weston" ;;
 		*openbox*)                                        _DETECTED_DESKTOP_ENV="openbox" ;;
 		*cwm*)                                            _DETECTED_DESKTOP_ENV="cwm" ;;
+		*fluxbox*)                                        _DETECTED_DESKTOP_ENV="fluxbox" ;;
+		*icewm*)                                          _DETECTED_DESKTOP_ENV="icewm" ;;
+		*jwm*)                                            _DETECTED_DESKTOP_ENV="jwm" ;;
+		*pekwm*)                                          _DETECTED_DESKTOP_ENV="pekwm" ;;
+		*twm*)                                            _DETECTED_DESKTOP_ENV="twm" ;;
+		*matchbox*)                                       _DETECTED_DESKTOP_ENV="matchbox" ;;
 		*i3*|*bspwm*|*dwm*|*fvwm*|*xmonad*|*qtile*|*wm*)   _DETECTED_DESKTOP_ENV="wm" ;;
 		*)                                                _DETECTED_DESKTOP_ENV="" ;;
 	esac
@@ -79,14 +87,26 @@ _detect_desktop_environment() {
 			_DETECTED_DESKTOP_ENV="wayfire"
 		elif pgrep -x dwl > "/dev/null" 2>&1; then
 			_DETECTED_DESKTOP_ENV="dwl"
+		elif pgrep -x hikari > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="hikari"
+		elif pgrep -x weston > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="weston"
 		elif pgrep -x openbox > "/dev/null" 2>&1; then
 			_DETECTED_DESKTOP_ENV="openbox"
 		elif pgrep -x cwm > "/dev/null" 2>&1; then
 			_DETECTED_DESKTOP_ENV="cwm"
 		elif pgrep -x dwm > "/dev/null" 2>&1; then
 			_DETECTED_DESKTOP_ENV="dwm"
-		elif pgrep -x fvwm > "/dev/null" 2>&1 || pgrep -x fvwm3 > "/dev/null" 2>&1; then
+		elif pgrep -x fvwm3 > "/dev/null" 2>&1 || pgrep -x fvwm > "/dev/null" 2>&1; then
 			_DETECTED_DESKTOP_ENV="fvwm"
+		elif pgrep -x fluxbox > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="fluxbox"
+		elif pgrep -x icewm > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="icewm"
+		elif pgrep -x jwm > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="jwm"
+		elif pgrep -x pekwm > "/dev/null" 2>&1; then
+			_DETECTED_DESKTOP_ENV="pekwm"
 		elif pgrep -x twm > "/dev/null" 2>&1; then
 			_DETECTED_DESKTOP_ENV="twm"
 		elif pgrep -x matchbox-window-manager > "/dev/null" 2>&1; then
@@ -103,55 +123,99 @@ _detect_desktop_environment() {
 ### DETECT COLOR SCHEME
 ### --------------------------------
 _detect_color_scheme() {
-	[ -n "${_DETECTED_COLOR_SCHEME+x}" ] && echo "${_DETECTED_COLOR_SCHEME}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/color_scheme" ]; then
-		_DETECTED_COLOR_SCHEME="$(_cache_read "color_scheme")"
-		echo "${_DETECTED_COLOR_SCHEME}"
-		return 0
-	fi
+	local _flavor="${1:-$(_detect_desktop_theme 2> "/dev/null" || echo "")}"
+	local _scheme=""
+	local _cfg_dir="${XDG_CONFIG_HOME:-${HOME}/.config}"
+	local _c=""
 
-	_DETECTED_COLOR_SCHEME="dark"
-	if command -v gdbus > "/dev/null" 2>&1; then
+	if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] && command -v gdbus > "/dev/null" 2>&1; then
 		local _portal_scheme
 		_portal_scheme="$(gdbus call --session --dest org.freedesktop.portal.Desktop \
 			--object-path /org/freedesktop/portal/desktop \
 			--method org.freedesktop.portal.Settings.Read \
-			"org.freedesktop.appearance" "color-scheme" 2> "/dev/null")"
+			"org.freedesktop.appearance" "color-scheme" 2> "/dev/null" || true)"
 		case "${_portal_scheme}" in
-			*uint32\ 1*) _DETECTED_COLOR_SCHEME="dark" ;;
-			*uint32\ 2*) _DETECTED_COLOR_SCHEME="light" ;;
+			*uint32\ 1*) _scheme="dark" ;;
+			*uint32\ 2*) _scheme="light" ;;
 		esac
-	elif command -v gsettings > "/dev/null" 2>&1; then
-		local _gnome_scheme
-		_gnome_scheme="$(gsettings get org.gnome.desktop.interface color-scheme 2> "/dev/null")"
-		case "${_gnome_scheme}" in
-			*prefer-dark*)  _DETECTED_COLOR_SCHEME="dark" ;;
-			*prefer-light*) _DETECTED_COLOR_SCHEME="light" ;;
-		esac
-	elif command -v kreadconfig6 > "/dev/null" 2>&1; then
-		local _kde_scheme
-		_kde_scheme="$(kreadconfig6 --group General --key ColorScheme 2> "/dev/null")"
+	fi
+
+	if [ -z "${_scheme}" ] && { [ "${_flavor}" = "kde" ] || [ "${_flavor}" = "lxqt" ] || [ -z "${_flavor}" ]; }; then
+		local _kde_scheme="" _kde_laf=""
+		if command -v kreadconfig6 > "/dev/null" 2>&1; then
+			_kde_scheme="$(kreadconfig6 --group General --key ColorScheme 2> "/dev/null" || true)"
+			_kde_laf="$(kreadconfig6 --group KDE --key LookAndFeelPackage 2> "/dev/null" || true)"
+		elif command -v kreadconfig5 > "/dev/null" 2>&1; then
+			_kde_scheme="$(kreadconfig5 --group General --key ColorScheme 2> "/dev/null" || true)"
+			_kde_laf="$(kreadconfig5 --group KDE --key LookAndFeelPackage 2> "/dev/null" || true)"
+		fi
+		if [ -z "${_kde_scheme}" ] && [ -f "${_cfg_dir}/kdeglobals" ]; then
+			_kde_scheme="$(sed -n 's/^[Cc]olor[Ss]cheme=//p' "${_cfg_dir}/kdeglobals" 2> "/dev/null" | head -n 1)"
+			_kde_laf="$(sed -n 's/^[Ll]ook[Aa]nd[Ff]eel[Pp]ackage=//p' "${_cfg_dir}/kdeglobals" 2> "/dev/null" | head -n 1)"
+		fi
 		case "${_kde_scheme}" in
-			*[Dd]ark*)  _DETECTED_COLOR_SCHEME="dark" ;;
-			*[Ll]ight*) _DETECTED_COLOR_SCHEME="light" ;;
+			*[Dd]ark*)  _scheme="dark" ;;
+			*[Ll]ight*|Breeze|breeze|BreezeClassic) _scheme="light" ;;
 		esac
-	elif command -v kreadconfig5 > "/dev/null" 2>&1; then
-		local _kde_scheme5
-		_kde_scheme5="$(kreadconfig5 --group General --key ColorScheme 2> "/dev/null")"
-		case "${_kde_scheme5}" in
-			*[Dd]ark*)  _DETECTED_COLOR_SCHEME="dark" ;;
-			*[Ll]ight*) _DETECTED_COLOR_SCHEME="light" ;;
-		esac
-	elif [ -f "${HOME}/.config/kdeglobals" ]; then
-		if grep -qi "ColorScheme=.*Dark" "${HOME}/.config/kdeglobals" 2> "/dev/null"; then
-			_DETECTED_COLOR_SCHEME="dark"
-		elif grep -qi "ColorScheme=.*Light" "${HOME}/.config/kdeglobals" 2> "/dev/null"; then
-			_DETECTED_COLOR_SCHEME="light"
+		if [ -z "${_scheme}" ] && [ -n "${_kde_laf}" ]; then
+			case "${_kde_laf}" in
+				*breezedark*|*[Dd]ark*) _scheme="dark" ;;
+				org.kde.breeze.desktop|*[Ll]ight*) _scheme="light" ;;
+			esac
 		fi
 	fi
 
-	_cache_write "color_scheme" "${_DETECTED_COLOR_SCHEME}"
-	echo "${_DETECTED_COLOR_SCHEME}"
+	if [ -z "${_scheme}" ] && [ "${_flavor}" = "cosmic" ] && [ -f "${_cfg_dir}/cosmic/com.system76.CosmicTheme.Mode/v1/is_dark" ]; then
+		case "$(cat "${_cfg_dir}/cosmic/com.system76.CosmicTheme.Mode/v1/is_dark" 2> "/dev/null" || true)" in
+			true)  _scheme="dark" ;;
+			false) _scheme="light" ;;
+		esac
+	fi
+
+	if [ -z "${_scheme}" ] && [ "${_flavor}" = "xfce" ] && command -v xfconf-query > "/dev/null" 2>&1; then
+		local _xfce_theme
+		_xfce_theme="$(xfconf-query -c xsettings -p /Net/ThemeName 2> "/dev/null" || true)"
+		case "${_xfce_theme}" in
+			*[Dd]ark*) _scheme="dark" ;;
+			?*)        _scheme="light" ;;
+		esac
+	fi
+
+	if [ -z "${_scheme}" ] && command -v gsettings > "/dev/null" 2>&1; then
+		local _gnome_scheme="" _gnome_gtk=""
+		_gnome_scheme="$(gsettings get org.gnome.desktop.interface color-scheme 2> "/dev/null" || true)"
+		case "${_gnome_scheme}" in
+			*prefer-dark*)            _scheme="dark" ;;
+			*prefer-light*|*default*) _scheme="light" ;;
+		esac
+		if [ -z "${_scheme}" ] && [ "${_flavor}" = "cinnamon" ]; then
+			_gnome_gtk="$(gsettings get org.cinnamon.desktop.interface gtk-theme 2> "/dev/null" | tr -d "'" || true)"
+			case "${_gnome_gtk}" in
+				*[Dd]ark*) _scheme="dark" ;;
+				?*)        _scheme="light" ;;
+			esac
+		elif [ -z "${_scheme}" ] && [ "${_flavor}" = "mate" ]; then
+			_gnome_gtk="$(gsettings get org.mate.interface gtk-theme 2> "/dev/null" | tr -d "'" || true)"
+			case "${_gnome_gtk}" in
+				*[Dd]ark*) _scheme="dark" ;;
+				?*)        _scheme="light" ;;
+			esac
+		fi
+	fi
+
+	if [ -z "${_scheme}" ]; then
+		if [ -f "${_cfg_dir}/kdeglobals" ]; then
+			if grep -qiE "^ColorScheme=.*Dark|^LookAndFeelPackage=.*[Dd]ark" "${_cfg_dir}/kdeglobals" 2> "/dev/null"; then
+				_scheme="dark"
+			elif grep -qiE "^ColorScheme=.*(Light|Breeze$)|^LookAndFeelPackage=org\.kde\.breeze\.desktop" "${_cfg_dir}/kdeglobals" 2> "/dev/null"; then
+				_scheme="light"
+			fi
+		fi
+	fi
+
+	[ -z "${_scheme}" ] && _scheme="dark"
+	_DETECTED_COLOR_SCHEME="${_scheme}"
+	echo "${_scheme}"
 }
 
 ### --------------------------------
@@ -237,8 +301,28 @@ _detect_desktop_theme() {
 ### --------------------------------
 ### RESOLVE & DETECT GTK THEME
 ### --------------------------------
+_theme_dir_exists() {
+	local _tname="$1"
+	[ -n "${_tname}" ] || return 1
+	[ -d "/usr/share/themes/${_tname}" ] || \
+		[ -d "/usr/local/share/themes/${_tname}" ] || \
+		[ -d "${HOME}/.themes/${_tname}" ] || \
+		[ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/${_tname}" ]
+}
+
+_icon_dir_exists() {
+	local _iname="$1"
+	[ -n "${_iname}" ] || return 1
+	[ -d "/usr/share/icons/${_iname}" ] || \
+		[ -d "/usr/local/share/icons/${_iname}" ] || \
+		[ -d "${HOME}/.icons/${_iname}" ] || \
+		[ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/icons/${_iname}" ]
+}
+
 _resolve_gtk_theme() {
-	local _flavor="${1:-$(_detect_desktop_theme)}"
+	local _raw_flavor="${1:-$(_detect_desktop_theme)}"
+	local _flavor="$(_detect_desktop_theme "${_raw_flavor}")"
+	local _scheme="${2:-$(_detect_color_scheme "${_flavor}")}"
 
 	if [ "${_flavor}" = "gnome" ] || [ "${_flavor}" = "budgie" ] || [ "${_flavor}" = "pantheon" ] || [ "${_flavor}" = "adwaita" ]; then
 		if command -v gsettings > "/dev/null" 2>&1; then
@@ -246,26 +330,74 @@ _resolve_gtk_theme() {
 			_gset_theme="$(command gsettings get org.gnome.desktop.interface gtk-theme 2> "/dev/null" | tr -d "'" || true)"
 			if [ -n "${_gset_theme}" ]; then
 				case "${_gset_theme}" in
-					Adwaita)
-						if [ "$(_detect_color_scheme)" = "dark" ]; then
-							_gset_theme="Adwaita-dark"
+					adw-gtk3|adw-gtk3-dark|Adwaita|Adwaita-dark|Adwaita:dark)
+						if [ "${_scheme}" = "light" ]; then
+							if _theme_dir_exists "adw-gtk3"; then
+								echo "adw-gtk3"
+								return 0
+							elif _theme_dir_exists "Adwaita"; then
+								echo "Adwaita"
+								return 0
+							fi
+						else
+							if _theme_dir_exists "adw-gtk3-dark"; then
+								echo "adw-gtk3-dark"
+								return 0
+							elif _theme_dir_exists "Adwaita-dark"; then
+								echo "Adwaita-dark"
+								return 0
+							fi
+						fi
+						;;
+					*)
+						if [ "${_scheme}" = "light" ]; then
+							case "${_gset_theme}" in
+								*-dark|*-Dark)
+									local _light_gset="${_gset_theme%-dark}"
+									_light_gset="${_light_gset%-Dark}"
+									if _theme_dir_exists "${_light_gset}"; then
+										echo "${_light_gset}"
+										return 0
+									fi
+									;;
+								*)
+									if _theme_dir_exists "${_gset_theme}"; then
+										echo "${_gset_theme}"
+										return 0
+									fi
+									;;
+							esac
+						else
+							case "${_gset_theme}" in
+								*-dark|*-Dark)
+									if _theme_dir_exists "${_gset_theme}"; then
+										echo "${_gset_theme}"
+										return 0
+									fi
+									;;
+								*)
+									if _theme_dir_exists "${_gset_theme}-dark"; then
+										echo "${_gset_theme}-dark"
+										return 0
+									elif _theme_dir_exists "${_gset_theme}-Dark"; then
+										echo "${_gset_theme}-Dark"
+										return 0
+									elif _theme_dir_exists "${_gset_theme}"; then
+										echo "${_gset_theme}"
+										return 0
+									fi
+									;;
+							esac
 						fi
 						;;
 				esac
-				if [ -d "/usr/share/themes/${_gset_theme}" ] || \
-				   [ -d "/usr/local/share/themes/${_gset_theme}" ] || \
-				   [ -d "${HOME}/.themes/${_gset_theme}" ] || \
-				   [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/${_gset_theme}" ]; then
-					echo "${_gset_theme}"
-					return 0
-				fi
 			fi
 		fi
 	fi
 
 	case "${_flavor}" in
 		kde)
-			if [ "$(_detect_color_scheme)" = "light" ]; then
+			if [ "${_scheme}" = "light" ]; then
 				echo "Breeze"
 			else
 				echo "Breeze-Dark"
@@ -275,65 +407,183 @@ _resolve_gtk_theme() {
 	esac
 
 	local _candidates=""
+	if [ "${_scheme}" = "light" ]; then
+		case "${_flavor}" in
+			xfce)     _candidates="Greybird adw-gtk3 Adwaita" ;;
+			cinnamon) _candidates="Mint-Y adw-gtk3 Adwaita" ;;
+			mate)     _candidates="Yaru-MATE TraditionalOk adw-gtk3 Adwaita" ;;
+			lxqt)     _candidates="Breeze adw-gtk3 Adwaita Arc" ;;
+			lxde)     _candidates="Clearlooks-Phenix Arc adw-gtk3 Adwaita Numix" ;;
+			budgie)   _candidates="Materia Arc Yaru adw-gtk3 Adwaita" ;;
+			pantheon) _candidates="io.elementary.stylesheet.blueberry adw-gtk3 Adwaita" ;;
+			deepin)   _candidates="deepin adw-gtk3 Adwaita" ;;
+			cosmic)   _candidates="cosmic adw-gtk3 Adwaita" ;;
+			*)        _candidates="adw-gtk3 Adwaita Yaru Breeze Greybird" ;;
+		esac
+	else
+		case "${_flavor}" in
+			xfce)     _candidates="Greybird-dark adw-gtk3-dark Adwaita-dark Greybird" ;;
+			cinnamon) _candidates="Mint-Y-Dark adw-gtk3-dark Adwaita-dark" ;;
+			mate)     _candidates="Yaru-MATE-dark BlackMATE adw-gtk3-dark Adwaita-dark" ;;
+			lxqt)     _candidates="Breeze-Dark adw-gtk3-dark Adwaita-dark Arc-Dark" ;;
+			lxde)     _candidates="Clearlooks-Phenix Arc-Dark adw-gtk3-dark Adwaita-dark Numix" ;;
+			budgie)   _candidates="Materia-dark Arc-Dark Yaru-dark adw-gtk3-dark Adwaita-dark" ;;
+			pantheon) _candidates="io.elementary.stylesheet.blueberry-dark io.elementary.stylesheet.blueberry adw-gtk3-dark Adwaita-dark" ;;
+			deepin)   _candidates="deepin-dark deepin adw-gtk3-dark Adwaita-dark" ;;
+			cosmic)   _candidates="cosmic-dark cosmic adw-gtk3-dark Adwaita-dark" ;;
+			*)        _candidates="adw-gtk3-dark Yaru-dark Adwaita-dark Breeze-Dark Greybird-dark" ;;
+		esac
+	fi
+
+	local _cand
+	for _cand in ${_candidates}; do
+		if _theme_dir_exists "${_cand}"; then
+			echo "${_cand}"
+			return 0
+		fi
+	done
+
+	if [ "${_scheme}" = "light" ]; then
+		if _theme_dir_exists "adw-gtk3"; then
+			echo "adw-gtk3"
+		else
+			echo "Adwaita"
+		fi
+	else
+		if _theme_dir_exists "adw-gtk3-dark"; then
+			echo "adw-gtk3-dark"
+		elif _theme_dir_exists "Adwaita-dark"; then
+			echo "Adwaita-dark"
+		else
+			echo "Adwaita"
+		fi
+	fi
+}
+
+_resolve_icon_theme() {
+	local _raw_flavor="${1:-$(_detect_desktop_theme)}"
+	local _flavor="$(_detect_desktop_theme "${_raw_flavor}")"
+	local _scheme="${2:-$(_detect_color_scheme "${_flavor}")}"
+
+	if [ "${_flavor}" = "gnome" ] || [ "${_flavor}" = "budgie" ] || [ "${_flavor}" = "pantheon" ] || [ "${_flavor}" = "adwaita" ]; then
+		if command -v gsettings > "/dev/null" 2>&1; then
+			local _gset_icon=""
+			_gset_icon="$(command gsettings get org.gnome.desktop.interface icon-theme 2> "/dev/null" | tr -d "'" || true)"
+			if [ -n "${_gset_icon}" ] && _icon_dir_exists "${_gset_icon}"; then
+				echo "${_gset_icon}"
+				return 0
+			fi
+		fi
+	fi
+
+	local _candidates=""
 	case "${_flavor}" in
-		kde)      _candidates="Breeze-Dark Breeze:dark Breeze adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
-		xfce)     _candidates="Greybird-dark Greybird adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
-		cinnamon) _candidates="Mint-Y-Dark adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
-		mate)     _candidates="Yaru-MATE-dark BlackMATE adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
-		lxqt)     _candidates="Breeze-Dark Breeze:dark adw-gtk3-dark Adwaita-dark Adwaita:dark Arc-Dark" ;;
-		lxde)     _candidates="Clearlooks-Phenix Arc-Dark adw-gtk3-dark Adwaita-dark Adwaita:dark Numix" ;;
-		budgie)   _candidates="Materia-dark Arc-Dark Yaru-dark adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
-		pantheon) _candidates="io.elementary.stylesheet.blueberry-dark io.elementary.stylesheet.blueberry adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
-		deepin)   _candidates="deepin-dark deepin adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
-		cosmic)   _candidates="cosmic-dark cosmic adw-gtk3-dark Adwaita-dark Adwaita:dark" ;;
-		*)        _candidates="adw-gtk3-dark Yaru-dark Adwaita-dark Adwaita:dark Breeze-Dark Greybird-dark" ;;
+		kde|lxqt)
+			if [ "${_scheme}" = "light" ]; then
+				_candidates="breeze breeze-dark Adwaita"
+			else
+				_candidates="breeze-dark breeze Adwaita"
+			fi
+			;;
+		xfce)
+			if [ "${_scheme}" = "light" ]; then
+				_candidates="elementary-xfce Tango Adwaita"
+			else
+				_candidates="elementary-xfce-dark elementary-xfce Adwaita"
+			fi
+			;;
+		cinnamon)
+			if [ "${_scheme}" = "light" ]; then
+				_candidates="Mint-Y Adwaita"
+			else
+				_candidates="Mint-Y-Dark Mint-Y Adwaita"
+			fi
+			;;
+		mate)
+			if [ "${_scheme}" = "light" ]; then
+				_candidates="Yaru-MATE MATE Adwaita"
+			else
+				_candidates="Yaru-MATE-dark MATE Adwaita"
+			fi
+			;;
+		*)
+			if [ "${_scheme}" = "light" ]; then
+				_candidates="Adwaita Papirus Yaru breeze hicolor"
+			else
+				_candidates="Adwaita Papirus-Dark Yaru breeze-dark hicolor"
+			fi
+			;;
 	esac
 
 	local _cand
 	for _cand in ${_candidates}; do
-		case "${_cand}" in
-			*:dark)
-				local _base_cand="${_cand%:dark}"
-				if [ -d "/usr/share/themes/${_base_cand}" ] || [ -d "/usr/local/share/themes/${_base_cand}" ]; then
-					echo "${_cand}"
-					return 0
-				fi
-				;;
-			*)
-				if [ -d "/usr/share/themes/${_cand}" ] || \
-				   [ -d "/usr/local/share/themes/${_cand}" ] || \
-				   [ -d "${HOME}/.themes/${_cand}" ] || \
-				   [ -d "${XDG_DATA_HOME:-${HOME}/.local/share}/themes/${_cand}" ]; then
-					echo "${_cand}"
-					return 0
-				fi
-				;;
-		esac
+		if _icon_dir_exists "${_cand}"; then
+			echo "${_cand}"
+			return 0
+		fi
 	done
 
-	if [ -d "/usr/share/themes/adw-gtk3-dark" ] || [ -d "/usr/local/share/themes/adw-gtk3-dark" ]; then
-		echo "adw-gtk3-dark"
-	elif [ -d "/usr/share/themes/Adwaita-dark" ] || [ -d "/usr/local/share/themes/Adwaita-dark" ]; then
-		echo "Adwaita-dark"
-	else
-		echo "Adwaita:dark"
-	fi
+	case "${_flavor}" in
+		kde|lxqt)
+			if [ "${_scheme}" = "light" ]; then
+				echo "breeze"
+			else
+				echo "breeze-dark"
+			fi
+			;;
+		*) echo "Adwaita" ;;
+	esac
 }
 
-_detect_gtk_theme() {
-	[ -n "${_DETECTED_GTK_THEME:-}" ] && echo "${_DETECTED_GTK_THEME}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/gtk_theme" ]; then
-		_DETECTED_GTK_THEME="$(_cache_read "gtk_theme")"
-		if [ -n "${_DETECTED_GTK_THEME}" ]; then
-			echo "${_DETECTED_GTK_THEME}"
+_resolve_cursor_theme() {
+	local _raw_flavor="${1:-$(_detect_desktop_theme)}"
+	local _flavor="$(_detect_desktop_theme "${_raw_flavor}")"
+	local _cfg_dir="${XDG_CONFIG_HOME:-${HOME}/.config}"
+	local _c=""
+
+	if [ "${_flavor}" = "kde" ] || [ "${_flavor}" = "lxqt" ]; then
+		local _kde_cur=""
+		if command -v kreadconfig6 > "/dev/null" 2>&1; then
+			_kde_cur="$(kreadconfig6 --file kcminputrc --group Mouse --key cursorTheme 2> "/dev/null" || true)"
+		elif command -v kreadconfig5 > "/dev/null" 2>&1; then
+			_kde_cur="$(kreadconfig5 --file kcminputrc --group Mouse --key cursorTheme 2> "/dev/null" || true)"
+		fi
+		if [ -z "${_kde_cur}" ] && [ -f "${_cfg_dir}/kcminputrc" ]; then
+			_kde_cur="$(sed -n 's/^cursorTheme=//p' "${_cfg_dir}/kcminputrc" 2> "/dev/null" | head -n 1)"
+		fi
+		if [ -n "${_kde_cur}" ]; then
+			echo "${_kde_cur}"
+			return 0
+		fi
+	elif command -v gsettings > "/dev/null" 2>&1; then
+		local _gset_cur=""
+		_gset_cur="$(command gsettings get org.gnome.desktop.interface cursor-theme 2> "/dev/null" | tr -d "'" || true)"
+		if [ -n "${_gset_cur}" ]; then
+			echo "${_gset_cur}"
 			return 0
 		fi
 	fi
 
-	local _desktop_env="$(_detect_desktop_environment)"
-	[ "${_desktop_env}" = "unknown" ] && _desktop_env="$(_detect_desktop_theme)"
-	_DETECTED_GTK_THEME="$(_resolve_gtk_theme "${_desktop_env}")"
-	_cache_write "gtk_theme" "${_DETECTED_GTK_THEME}"
+	case "${_flavor}" in
+		kde|lxqt)
+			for _c in breeze_cursors Breeze_Snow Adwaita default; do
+				_icon_dir_exists "${_c}" && echo "${_c}" && return 0
+			done
+			echo "breeze_cursors"
+			;;
+		*)
+			for _c in Adwaita default DMZ-Black breeze_cursors; do
+				_icon_dir_exists "${_c}" && echo "${_c}" && return 0
+			done
+			echo "Adwaita"
+			;;
+	esac
+}
+
+_detect_gtk_theme() {
+	local _flavor="$(_detect_desktop_theme)"
+	local _scheme="$(_detect_color_scheme "${_flavor}")"
+	_DETECTED_GTK_THEME="$(_resolve_gtk_theme "${_flavor}" "${_scheme}")"
 	echo "${_DETECTED_GTK_THEME}"
 }
 
@@ -341,18 +591,10 @@ _detect_gtk_theme() {
 ### DETECT QT THEME & PLATFORM
 ### --------------------------------
 _detect_qt_theme() {
-	[ -n "${_DETECTED_QT_THEME+x}" ] && echo "${_DETECTED_QT_THEME}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/qt_theme" ]; then
-		_DETECTED_QT_THEME="$(_cache_read "qt_theme")"
-		echo "${_DETECTED_QT_THEME}"
-		return 0
-	fi
+	local _flavor="$(_detect_desktop_theme)"
+	local _color_scheme="$(_detect_color_scheme "${_flavor}")"
 
-	local _desktop_env="$(_detect_desktop_environment)"
-	[ "${_desktop_env}" = "unknown" ] && _desktop_env="$(_detect_desktop_theme)"
-	local _color_scheme="$(_detect_color_scheme)"
-
-	case "${_desktop_env}" in
+	case "${_flavor}" in
 		kde|lxqt)
 			if [ "${_color_scheme}" = "dark" ]; then
 				_DETECTED_QT_THEME="Breeze-Dark"
@@ -367,20 +609,16 @@ _detect_qt_theme() {
 			_DETECTED_QT_THEME=""
 			;;
 	esac
-	_cache_write "qt_theme" "${_DETECTED_QT_THEME}"
 	echo "${_DETECTED_QT_THEME}"
 }
 
 _detect_qt_platform_theme() {
-	[ -n "${_DETECTED_QT_PLATFORM_THEME+x}" ] && echo "${_DETECTED_QT_PLATFORM_THEME}" && return 0
-	if [ -f "${_SHELL_CACHE_DIR}/qt_platform_theme" ]; then
-		_DETECTED_QT_PLATFORM_THEME="$(_cache_read "qt_platform_theme")"
-		echo "${_DETECTED_QT_PLATFORM_THEME}"
-		return 0
-	fi
-
 	local _desktop_env="$(_detect_desktop_environment)"
-	[ "${_desktop_env}" = "unknown" ] && _desktop_env="$(_detect_desktop_theme)"
+	case "${_desktop_env}" in
+		unknown|wm|sway|hyprland|river|labwc|cage|niri|wayfire|dwl|hikari|weston|openbox|cwm|dwm|fvwm|fluxbox|icewm|jwm|pekwm|twm|matchbox)
+			_desktop_env="$(_detect_desktop_theme)"
+			;;
+	esac
 
 	case "${_desktop_env}" in
 		kde)
@@ -395,26 +633,18 @@ _detect_qt_platform_theme() {
 		xfce|mate|cinnamon|lxde)
 			_DETECTED_QT_PLATFORM_THEME="gtk3"
 			;;
-		gnome|budgie|pantheon|cosmic|sway|hyprland|river|labwc|cage|niri|wayfire|dwl)
-			if command -v qt6ct > "/dev/null" 2>&1; then
-				_DETECTED_QT_PLATFORM_THEME="qt6ct"
-			elif command -v qt5ct > "/dev/null" 2>&1; then
-				_DETECTED_QT_PLATFORM_THEME="qt5ct"
-			else
-				_DETECTED_QT_PLATFORM_THEME="xdgdesktopportal"
-			fi
-			;;
 		*)
 			if command -v qt6ct > "/dev/null" 2>&1; then
 				_DETECTED_QT_PLATFORM_THEME="qt6ct"
 			elif command -v qt5ct > "/dev/null" 2>&1; then
 				_DETECTED_QT_PLATFORM_THEME="qt5ct"
+			elif [ "${_desktop_env}" = "gnome" ] || [ "${_desktop_env}" = "budgie" ] || [ "${_desktop_env}" = "pantheon" ] || [ "${_desktop_env}" = "cosmic" ]; then
+				_DETECTED_QT_PLATFORM_THEME="xdgdesktopportal"
 			else
 				_DETECTED_QT_PLATFORM_THEME=""
 			fi
 			;;
 	esac
-	_cache_write "qt_platform_theme" "${_DETECTED_QT_PLATFORM_THEME}"
 	echo "${_DETECTED_QT_PLATFORM_THEME}"
 }
 
@@ -548,16 +778,16 @@ _get_x11_wm_pipeline() {
 	local _os="${1:-${_DETECTED_OS-$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')}}"
 	case "${_os}" in
 		openbsd)
-			printf '%s\n' "openbox cwm dwm fvwm twm matchbox-window-manager"
+			printf '%s\n' "openbox cwm dwm fvwm3 fvwm fluxbox icewm jwm pekwm twm matchbox-window-manager"
 			;;
 		*)
-			printf '%s\n' "openbox cwm dwm matchbox-window-manager"
+			printf '%s\n' "openbox cwm dwm fvwm3 fvwm fluxbox icewm jwm pekwm twm matchbox-window-manager"
 			;;
 	esac
 }
 
 _get_wayland_wm_pipeline() {
-	printf '%s\n' "sway labwc river hyprland niri wayfire dwl cage"
+	printf '%s\n' "sway labwc river hyprland niri wayfire dwl hikari weston cage"
 }
 
 _show_wm_pipeline() {
