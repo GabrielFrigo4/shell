@@ -31,36 +31,40 @@ if [ "${_ses_is_kde}" -eq 1 ]; then
 else
 	export GTK_APPLICATION_PREFER_DARK_THEME=1
 	if [ -z "${GTK_THEME:-}" ]; then
-		_ses_gtk_ini="${XDG_CONFIG_HOME:-${HOME}/.config}/gtk-3.0/settings.ini"
-		if [ -r "${_ses_gtk_ini}" ]; then
-			_ses_ini=""
-			while IFS='=' read -r _ses_key _ses_val || [ -n "${_ses_key}" ]; do
-				while :; do
-					case "${_ses_key}" in
-						" "*|"	"*) _ses_key="${_ses_key#?}" ;;
-						*" "|*"	") _ses_key="${_ses_key%?}" ;;
-						*) break ;;
-					esac
-				done
-				if [ "${_ses_key}" = "gtk-theme-name" ]; then
-					_ses_cr="$(printf '\r')"
+		if [ -n "${_DETECTED_GTK_THEME:-}" ]; then
+			export GTK_THEME="${_DETECTED_GTK_THEME}"
+		else
+			_ses_gtk_ini="${XDG_CONFIG_HOME:-${HOME}/.config}/gtk-3.0/settings.ini"
+			if [ -r "${_ses_gtk_ini}" ]; then
+				_ses_ini=""
+				_ses_cr=$'\r'
+				[ "${#_ses_cr}" -eq 1 ] || _ses_cr="$(printf '\r')"
+				while IFS='=' read -r _ses_key _ses_val || [ -n "${_ses_key}" ]; do
 					while :; do
-						case "${_ses_val}" in
-							" "*|"	"*) _ses_val="${_ses_val#?}" ;;
-							*" "|*"	"|*"${_ses_cr}") _ses_val="${_ses_val%?}" ;;
+						case "${_ses_key}" in
+							" "*|"	"*) _ses_key="${_ses_key#?}" ;;
+							*" "|*"	") _ses_key="${_ses_key%?}" ;;
 							*) break ;;
 						esac
 					done
-					_ses_ini="${_ses_val}"
-					unset _ses_cr
-					break
-				fi
-			done < "${_ses_gtk_ini}"
-			[ -n "${_ses_ini}" ] && export GTK_THEME="${_ses_ini}"
-			unset _ses_ini _ses_key _ses_val
+					if [ "${_ses_key}" = "gtk-theme-name" ]; then
+						while :; do
+							case "${_ses_val}" in
+								" "*|"	"*) _ses_val="${_ses_val#?}" ;;
+								*" "|*"	"|*"${_ses_cr}") _ses_val="${_ses_val%?}" ;;
+								*) break ;;
+							esac
+						done
+						_ses_ini="${_ses_val}"
+						break
+					fi
+				done < "${_ses_gtk_ini}"
+				[ -n "${_ses_ini}" ] && export GTK_THEME="${_ses_ini}"
+				unset _ses_ini _ses_key _ses_val _ses_cr
+			fi
+			unset _ses_gtk_ini
+			[ -z "${GTK_THEME:-}" ] && export GTK_THEME="adw-gtk3-dark"
 		fi
-		unset _ses_gtk_ini
-		[ -z "${GTK_THEME:-}" ] && export GTK_THEME="adw-gtk3-dark"
 	fi
 fi
 export SAL_USE_VCLPLUGIN="gtk3"

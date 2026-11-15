@@ -75,3 +75,4 @@ case "${SHELL_USERLAND:-default}" in
 esac
 export MANPATH="${_illumos_manpath}"
 unset -v _remaining_manpath _clean_manpath _man_entry _illumos_manpath
+_SHELL_TARGET_ENV_LOADED=1

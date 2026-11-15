@@ -17,3 +17,4 @@ path-dedup
 ### VARIABLES
 ### --------------------------------
 export HOMEBREW_NO_ANALYTICS=1
+_SHELL_TARGET_ENV_LOADED=1

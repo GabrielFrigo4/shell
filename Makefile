@@ -7,7 +7,7 @@ MAKEFLAGS += --no-print-directory -s
 # Makefile: Shell Runtime Engine
 # ----------------------------------------------------------------
 
-.PHONY: help hooks bench test format prettier install ci clean
+.PHONY: help hooks bench audit test format prettier install ci clean
 
 ### ================================
 ### HELP & DOCUMENTATION
@@ -27,6 +27,7 @@ help:
 	sec "Desempenho & Benchmark:"; \
 	cmd "bench"          "Mede latência de boot e módulos (alvo binário <64ms)"; \
 	sec "Qualidade & Testes:"; \
+	cmd "audit"          "Alias para test (auditoria sintática e invariantes do Shell)"; \
 	cmd "test"           "Valida sintaxe Zsh, Bash, POSIX sh e ksh em todos os módulos"; \
 	cmd "format"         "Formata arquivos Markdown com Prettier"; \
 	cmd "prettier"       "Formata arquivos Markdown com Prettier"; \
@@ -64,18 +65,30 @@ test:
 	done
 	if grep -q '^_shell_ls()' core/environment.sh; then \
 		echo "🧪 Validando comportamento limpo em pipe (sem ANSI ou glifos Nerd Fonts)..."; \
-		sh -c '. ./library/detect.sh 2> "/dev/null" && . ./library/functions.sh 2> "/dev/null" && . ./core/environment.sh 2> "/dev/null"; \
-			for _fn in l la ll lr lar llr; do \
-				_out=$$("$${_fn}" core | cat); \
-				[ -n "$${_out}" ] || { echo "❌ Saída vazia em $${_fn} | cat" >&2; exit 1; }; \
-				printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" \
-					|| { echo "❌ Escape ANSI ou glifo Nerd Font detectado em $${_fn} | cat" >&2; exit 1; }; \
-			done; \
-			_out=$$(c Makefile | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1; \
-			_out=$$(g test Makefile | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1; \
-			_out=$$(f Makefile | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1'; \
+		_pipe_sh=""; \
+		if command -v bash > "/dev/null" 2>&1; then \
+			_pipe_sh="bash"; \
+		elif command -v zsh > "/dev/null" 2>&1; then \
+			_pipe_sh="zsh"; \
+		elif sh -c 'f-f() { :; }' 2> "/dev/null"; then \
+			_pipe_sh="sh"; \
+		fi; \
+		if [ -n "$${_pipe_sh}" ]; then \
+			"$${_pipe_sh}" -c '. ./library/detect.sh 2> "/dev/null" && . ./library/functions.sh 2> "/dev/null" && . ./core/environment.sh 2> "/dev/null"; \
+				for _fn in l la ll lr lar llr; do \
+					_out=$$("$${_fn}" core | cat); \
+					[ -n "$${_out}" ] || { echo "❌ Saída vazia em $${_fn} | cat" >&2; exit 1; }; \
+					printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" \
+						|| { echo "❌ Escape ANSI ou glifo Nerd Font detectado em $${_fn} | cat" >&2; exit 1; }; \
+				done; \
+				_out=$$(c Makefile | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1; \
+				_out=$$(g test Makefile | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1; \
+				_out=$$(f Makefile | cat); [ -n "$${_out}" ] && printf "%s" "$${_out}" | python3 -c "import sys,re; s=sys.stdin.read(); sys.exit(1 if re.search(r\"\x1b\[|[\ue000-\uf8ff]\", s) else 0)" || exit 1'; \
+		fi; \
 	fi
 	echo "✅ Sintaxe e invariantes do Shell validadas com sucesso!"
+
+audit: test
 
 prettier: format
 

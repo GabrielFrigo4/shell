@@ -26,3 +26,4 @@ unset -v _sock
 if [ ! -s "/etc/installurl" ] && [ -z "${PKG_PATH:-}" ]; then
 	export PKG_PATH="https://cdn.openbsd.org/pub/OpenBSD/$(uname -r 2> "/dev/null")/packages/$(uname -m 2> "/dev/null")/"
 fi
+_SHELL_TARGET_ENV_LOADED=1

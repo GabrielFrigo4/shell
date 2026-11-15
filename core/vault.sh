@@ -24,7 +24,42 @@ export VAULT_DIR
 ### --------------------------------
 ### VAULT ENVIRONMENT
 ### --------------------------------
-[ -f "${VAULT_DIR}/vault.sh" ] && . "${VAULT_DIR}/vault.sh"
+_vault_load_runtime() {
+	[ -n "${_VAULT_RUNTIME_LOADED:-}" ] && return 0
+	if [ -f "${VAULT_DIR}/vault.sh" ]; then
+		. "${VAULT_DIR}/vault.sh"
+		_VAULT_RUNTIME_LOADED=1
+		return 0
+	fi
+	return 1
+}
+
+if [ -f "${VAULT_DIR}/core/env.sh" ]; then
+	. "${VAULT_DIR}/core/env.sh"
+	vault_keys()        { _vault_load_runtime && vault_keys "$@"; }
+	vault_status()      { _vault_load_runtime && vault_status "$@"; }
+	vault_lock()        { _vault_load_runtime && vault_lock "$@"; }
+	vault_unlock()      { _vault_load_runtime && vault_unlock "$@"; }
+	vault_perms()       { _vault_load_runtime && vault_perms "$@"; }
+	vault_audit()       { _vault_load_runtime && vault_audit "$@"; }
+	vault_age_keygen()  { _vault_load_runtime && vault_age_keygen "$@"; }
+	vault_age_encrypt() { _vault_load_runtime && vault_age_encrypt "$@"; }
+	vault_age_decrypt() { _vault_load_runtime && vault_age_decrypt "$@"; }
+	vault_backup()      { _vault_load_runtime && vault_backup "$@"; }
+
+	alias vault-keys=vault_keys 2> "/dev/null" || true
+	alias vault-status=vault_status 2> "/dev/null" || true
+	alias vault-lock=vault_lock 2> "/dev/null" || true
+	alias vault-unlock=vault_unlock 2> "/dev/null" || true
+	alias vault-perms=vault_perms 2> "/dev/null" || true
+	alias vault-audit=vault_audit 2> "/dev/null" || true
+	alias vault-age-keygen=vault_age_keygen 2> "/dev/null" || true
+	alias vault-age-encrypt=vault_age_encrypt 2> "/dev/null" || true
+	alias vault-age-decrypt=vault_age_decrypt 2> "/dev/null" || true
+elif [ -f "${VAULT_DIR}/vault.sh" ]; then
+	. "${VAULT_DIR}/vault.sh"
+	_VAULT_RUNTIME_LOADED=1
+fi
 
 ### --------------------------------
 ### SSH KEYS

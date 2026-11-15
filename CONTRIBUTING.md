@@ -28,7 +28,7 @@ Todo o fluxo de desenvolvimento segue o desacoplamento estrito entre a bancada d
 
 1. **Bancada de Edição:** Alterações devem ocorrer exclusivamente na bancada em `~/Documents/`. Nunca altere clones ou diretórios de produção diretamente.
 2. **Implementação Limpa:** Desenvolva mantendo o código autoexplicativo, respeitando a Taxonomia Tripartite de Comentários e a portabilidade POSIX.
-3. **Quality Gates Locais:** Valide seu trabalho localmente executando `make format`, `make test`, `make bench` e `make ci`.
+3. **Quality Gates Locais:** Valide seu trabalho localmente executando `make format`, `make audit`, `make test` e `make ci`.
 4. **Commit Semântico:** Registre alterações atômicas seguindo a convenção de commits semânticos, protegida pelos ganchos Git com auto-cura.
 5. **Deploy Canônico:** Envie as alterações via `git push`. Ambientes de produção recebem atualizações unicamente via `git pull`.
 
@@ -44,8 +44,8 @@ Toda contribuição deve respeitar rigorosamente as diretrizes em [PRINCIPLES.md
     - _Comentários Explicativos/Narrativos:_ PROIBIDOS em código-fonte, configurações e blocos de código dentro de arquivos Markdown.
 
 2. **Invariante de Modos no Git Index (`0755` vs `0644`):**
-    - Entrypoints executáveis com shebang `#!`, scripts de `.scripts/` com `#!` e ganchos Git (`.githooks/*`) devem manter permissão `0755` (`100755` no Git Index).
-    - Bibliotecas carregadas via `source` (`.`), arquivos de configuração, documentações e templates devem manter `0644` (`100644` no Git Index).
+    - Entrypoints executáveis com shebang `#!`, scripts utilitários com `#!` e ganchos Git (`.githooks/*`) devem manter permissão `0755` (`100755` no Git Index).
+    - Bibliotecas carregadas via `source` (`.`), arquivos de configuração, código-fonte sem shebang, documentações e templates devem manter `0644` (`100644` no Git Index).
     - Permissões no índice podem ser ajustadas manualmente quando necessário:
         ```sh
         git update-index --chmod=+x scripts/util.sh
@@ -66,9 +66,9 @@ Toda contribuição deve respeitar rigorosamente as diretrizes em [PRINCIPLES.md
 O repositório adota ganchos defensivos com auto-cura ativa em `.githooks/`:
 
 - **`.githooks/pre-commit`:**
-    - _Auto-cura de Modos:_ Detecta entrypoints com `#!` e ganchos ajustando permissões para `0755` no disco e no Git Index; normaliza bibliotecas `sourced` e arquivos de texto para `0644`.
-    - _Auto-cura de Formatação:_ Remove trailing whitespaces, executa Prettier em Markdowns e manifestos estruturados, corrige cabeçalhos de banners estruturais e re-adiciona ao stage.
-    - _Quality Gates Estáticos:_ Bloqueia escapes ANSI em notação octal (base-8 para `0x1b`), redirecionamentos não aspeados (`> /dev/null`), inconsistências de whitespace/conflito e falhas de sintaxe de shell (`bash -n` / `zsh -n` / `sh -n`).
+    - _Auto-cura de Modos:_ Detecta entrypoints com `#!` e ganchos ajustando permissões para `0755` no disco e no Git Index; normaliza bibliotecas `sourced`, códigos e arquivos de texto para `0644`.
+    - _Auto-cura de Formatação:_ Remove trailing whitespaces, normaliza finais de linha (`eol=lf`/`crlf`), executa Prettier em Markdowns e manifestos estruturados, corrige cabeçalhos de banners estruturais e re-adiciona ao stage.
+    - _Quality Gates Estáticos:_ Bloqueia escapes ANSI em notação octal (base-8 para `0x1b`), redirecionamentos não aspeados, inconsistências de whitespace/conflito e falhas de sintaxe de shell (`bash -n` / `zsh -n` / `sh -n`).
 - **`.githooks/commit-msg`:**
     - _Auto-cura de Prefixo:_ Valida o prefixo semântico e formata automaticamente a mensagem com `chore:` se o tipo for omitido ou inválido.
     - _Validação de Comprimento:_ Garante mensagens significativas com comprimento mínimo de 8 caracteres.
@@ -78,9 +78,9 @@ Para executar os quality gates manualmente:
 | Comando       | Finalidade Operacional                                           |
 | :------------ | :--------------------------------------------------------------- |
 | `make hooks`  | Instala e ativa os ganchos Git locais com permissão `0755`       |
-| `make format` | Formata documentações e manifestos com Prettier                  |
-| `make test`   | Valida sintaxe (`zsh`, `bash`/`sh`, `ksh`, `fish`) e invariantes |
-| `make bench`  | Mede a latência de inicialização de sessão e módulos isolados    |
+| `make format` | Formata todo o repositório com Prettier e ferramentas canônicas  |
+| `make audit`  | Executa suíte estática de integridade, banners e taxonomia       |
+| `make test`   | Executa testes unitários e de integração locais                  |
 | `make ci`     | Executa o pipeline completo de verificação local antes de commit |
 
 ---

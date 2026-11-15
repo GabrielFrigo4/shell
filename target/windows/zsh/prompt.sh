@@ -29,14 +29,18 @@ command_not_found_handler() {
 	return 127
 }
 
-[ -f "${SHELL_REPO_DIR:-}/target/windows/environment.sh" ] && \
+if [ -z "${_SHELL_TARGET_ENV_LOADED:-}" ] && [ -f "${SHELL_REPO_DIR:-}/target/windows/environment.sh" ]; then
 	. "${SHELL_REPO_DIR:-}/target/windows/environment.sh"
+fi
 
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
-[ -f "${SHELL_REPO_DIR:-}/context/${SHELL_CONTEXT}/common.sh" ] && \
-	. "${SHELL_REPO_DIR:-}/context/${SHELL_CONTEXT}/common.sh"
-[ -f "${SHELL_REPO_DIR:-}/context/${SHELL_CONTEXT}/windows.sh" ] && \
-	. "${SHELL_REPO_DIR:-}/context/${SHELL_CONTEXT}/windows.sh"
+if [ -z "${_SHELL_CONTEXT_LOADED:-}" ]; then
+	[ -f "${SHELL_REPO_DIR:-}/context/${SHELL_CONTEXT}/common.sh" ] && \
+		. "${SHELL_REPO_DIR:-}/context/${SHELL_CONTEXT}/common.sh"
+	[ -f "${SHELL_REPO_DIR:-}/context/${SHELL_CONTEXT}/windows.sh" ] && \
+		. "${SHELL_REPO_DIR:-}/context/${SHELL_CONTEXT}/windows.sh"
+	_SHELL_CONTEXT_LOADED=1
+fi
 
 ### ================================
 ### SHELL CONFIGURATION

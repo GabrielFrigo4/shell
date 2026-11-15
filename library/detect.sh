@@ -65,6 +65,8 @@ _cache_write() {
 		procs)             _var_name="_DETECTED_PROCS" ;;
 		bottom)            _var_name="_DETECTED_BOTTOM" ;;
 		zoxide)            _var_name="_DETECTED_ZOXIDE" ;;
+		cursor_theme)      _var_name="_DETECTED_CURSOR_THEME" ;;
+		cursor_size)       _var_name="_DETECTED_CURSOR_SIZE" ;;
 		*)                 _var_name="_DETECTED_$(printf '%s' "${1}" | tr '[:lower:]' '[:upper:]')" ;;
 	esac
 	if [ -f "${_SHELL_CACHE_FILE}" ]; then
@@ -106,8 +108,9 @@ _cache_clean() {
 		_DETECTED_COLOR_SCHEME _DETECTED_GTK_THEME _DETECTED_QT_THEME \
 		_DETECTED_QT_PLATFORM_THEME _DETECTED_EZA _DETECTED_BAT _DETECTED_RG \
 		_DETECTED_FD _DETECTED_DUST _DETECTED_PROCS _DETECTED_BOTTOM \
-		_DETECTED_ZOXIDE _DETECTED_ESCALATOR _DETECTED_KERNEL_RELEASE \
-		_IS_RAW_TTY_CACHED 2> "/dev/null" || true
+		_DETECTED_ZOXIDE _DETECTED_CURSOR_THEME _DETECTED_CURSOR_SIZE \
+		_DETECTED_ESCALATOR _DETECTED_KERNEL_RELEASE _IS_RAW_TTY_CACHED \
+		_SHELL_TARGET_ENV_LOADED _SHELL_CONTEXT_LOADED 2> "/dev/null" || true
 }
 
 ### ================================

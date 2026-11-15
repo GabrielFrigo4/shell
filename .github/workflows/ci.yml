@@ -1,10 +1,10 @@
-name: Universal Shell CI
+name: CI
 
 on:
     push:
-        branches: [main]
+        branches: [main, master]
     pull_request:
-        branches: [main]
+        branches: [main, master]
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,558 +14,318 @@ env:
     FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-    lint:
-        name: 🔍 Lint & Syntax Validation
+    quality-gate:
+        name: 🛡️ Universal Quality Gate
         runs-on: ubuntu-latest
+
         steps:
-            - name: Checkout Code
+            - name: Checkout Repository
               uses: actions/checkout@v7
               with:
                   fetch-depth: 0
 
+            - name: Validate Submodules Integrity
+              if: hashFiles('.gitmodules') != ''
+              run: |
+                  git submodule sync --recursive
+                  git submodule update --init --recursive || echo "⚠️ Some private submodules could not be initialized without SSH credentials."
+                  git submodule status | while read -r sha path rest; do
+                    case "$sha" in
+                      U*)
+                        echo "❌ Submodule $path has merge conflicts!" >&2
+                        exit 1
+                        ;;
+                    esac
+                  done
+
             - name: Install Shell Interpreters
               run: |
                   sudo apt-get update
                   sudo apt-get install -y zsh fish
 
-            - name: Whitespace & Formatting Check (git diff --check)
+            - name: Check Whitespace & Conflict Markers
               run: |
-                  ### --------------------------------
-                  ### WHITESPACE & FORMATTING
-                  ### --------------------------------
                   git diff --check HEAD~1..HEAD 2> "/dev/null" || git diff --check
-
-            - name: Git Index Permissions Audit (Regra 4a)
-              run: |
-                  ### --------------------------------
-                  ### INDEX PERMISSIONS AUDIT
-                  ### --------------------------------
                   python3 -c '
                   import os, subprocess, sys
-                  out = subprocess.check_output(["git", "ls-files", "--stage"]).decode("utf-8", "replace")
+                  out = subprocess.check_output(["git", "-c", "core.quotePath=false", "ls-files", "-z"]).split(b"\0")
                   errors = []
-                  for row in out.splitlines():
-                      if "\t" not in row:
+                  for raw in out:
+                      if not raw:
                           continue
-                      meta, path = row.split("\t", 1)
-                      mode = meta.split()[0]
-                      if mode == "120000":
+                      p = raw.decode("utf-8", "replace")
+                      if "/OSS/" in p or p.startswith("OSS/") or not os.path.isfile(p):
                           continue
-                      is_entry = False
-                      if path.startswith(".githooks/") and os.path.isfile(path):
-                          is_entry = True
-                      elif path in ("shell.sh", "init.sh", "install.sh", "benchmark.sh"):
-                          is_entry = True
-                      elif path.startswith(".scripts/") and os.path.isfile(path):
-                          with open(path, "rb") as fp:
-                              is_entry = fp.read(2) == b"#!"
-                      expected = "100755" if is_entry else "100644"
-                      if mode != expected:
-                          errors.append(f"{path}: {mode} != {expected}")
-                  if not os.path.isfile(".scripts/emacs-client"):
-                      errors.append(".scripts/emacs-client missing")
+                      if p.endswith((".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".zip", ".gz", ".bin", ".o", ".a", ".so")):
+                          continue
+                      try:
+                          with open(p, "r", encoding="utf-8", errors="ignore") as fp:
+                              for idx, line in enumerate(fp, 1):
+                                  if line.startswith(("<<<<<<< ", ">>>>>>> ")):
+                                      errors.append(f"{p}:{idx}")
+                      except OSError:
+                          pass
                   if errors:
-                      print("❌ Regra 4a permission errors:", errors, file=sys.stderr)
+                      print("❌ Unresolved conflict markers:", errors, file=sys.stderr)
                       sys.exit(1)
-                  print("✅ Git Index permissions match Regra 4a.")
                   '
 
-            - name: Bash Syntax Check (bash -n)
+            - name: Audit Git Index Modes (Regra 4a) & EOL (LF)
               run: |
-                  ### --------------------------------
-                  ### BASH & SHARED SHELL SYNTAX
-                  ### --------------------------------
-                  find . -name "*.sh" -not -path "./.git/*" -not -path "*/OSS/*" -not -path "*/zsh/*" -not -name "zsh.sh" -not -path "*/ksh/*" -not -name "ksh.sh" -exec bash -n {} +
+                  python3 -c '
+                  import os, subprocess, sys
 
-            - name: Zsh Syntax Check (zsh -n)
-              run: |
-                  ### --------------------------------
-                  ### ZSH SYNTAX
-                  ### --------------------------------
-                  find . -name "*.sh" -not -path "./.git/*" -not -path "*/OSS/*" -not -path "*/bash/*" -not -name "bash.sh" -not -path "*/ksh/*" -not -name "ksh.sh" -exec zsh -n {} +
+                  repo_name = os.path.basename(os.getcwd())
+                  is_vault = repo_name.lower() == "vault"
+                  non_exec_exts = {
+                      ".md", ".txt", ".json", ".jsonc", ".yml", ".yaml", ".toml", ".ini", ".conf",
+                      ".css", ".scss", ".html", ".svg", ".tex", ".bib", ".cls", ".sty", ".pdf",
+                      ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".bmp", ".tiff",
+                      ".ps1", ".cmd", ".bat", ".reg", ".sln", ".vcxproj", ".desktop", ".profile",
+                      ".terminfo", ".pub", ".env", ".org", ".texi", ".kdl", ".xml", ".csv",
+                      ".c", ".h", ".cpp", ".hpp", ".cc", ".rs", ".go", ".java", ".js", ".mjs",
+                      ".cjs", ".ts", ".jsx", ".tsx", ".svelte", ".el", ".lisp", ".vim", ".nix",
+                      ".typ", ".glsl", ".vert", ".frag", ".sql", ".fish", ".nu"
+                  }
+                  non_exec_names = {
+                      ".gitignore", ".gitmodules", ".gitattributes", ".editorconfig", ".prettierrc",
+                      ".clang-format", ".stylua.toml", ".clangd", ".luarc.json", "Makefile",
+                      "GNUmakefile", "BSDmakefile", "CMakeLists.txt", "Dockerfile", "Containerfile",
+                      "Bastillefile", "Justfile", "justfile", "Procfile", "Vagrantfile",
+                      "LICENSE", "VERSION", "editrc", "Xresources", "authinfo", "extensions.txt"
+                  }
 
-            - name: POSIX Entrypoints Syntax Check (sh -n)
-              run: |
-                  ### --------------------------------
-                  ### POSIX SH ENTRYPOINTS
-                  ### --------------------------------
-                  sh -n shell.sh init.sh install.sh benchmark.sh .scripts/emacs-client .githooks/pre-commit .githooks/commit-msg
+                  def is_entrypoint(path):
+                      if not os.path.isfile(path):
+                          return False
+                      if path.startswith(".githooks/"):
+                          return True
+                      base = os.path.basename(path)
+                      _, ext = os.path.splitext(path)
+                      if base in non_exec_names or ext.lower() in non_exec_exts:
+                          return False
+                      with open(path, "rb") as fp:
+                          return fp.read(2) == b"#!"
 
-            - name: Fish Syntax Check (fish -n)
-              run: |
-                  ### --------------------------------
-                  ### FISH SYNTAX
-                  ### --------------------------------
-                  for _fish_file in target/common/fish/*.fish; do
-                    [ -f "${_fish_file}" ] && fish -n "${_fish_file}" || exit 1
-                  done
+                  stage_out = subprocess.check_output(["git", "-c", "core.quotePath=false", "ls-files", "-z", "--stage"]).split(b"\0")
+                  tracked, mode_errors = [], []
+                  for row in stage_out:
+                      if not row or b"\t" not in row:
+                          continue
+                      meta, raw_path = row.split(b"\t", 1)
+                      mode = meta.split()[0].decode("ascii", "replace")
+                      path = raw_path.decode("utf-8", "replace")
+                      if mode in ("120000", "160000"):
+                          continue
+                      tracked.append(path)
+                      if os.path.isfile(path) and not is_vault:
+                          expected = "100755" if is_entrypoint(path) else "100644"
+                          if mode != expected:
+                              mode_errors.append(f"{path}: {mode} != {expected}")
 
-            - name: Quoting, Octals & Reference Audit
+                  proc = subprocess.Popen(
+                      ["git", "-c", "core.quotePath=false", "check-attr", "-z", "--stdin", "eol", "filter"],
+                      stdin=subprocess.PIPE,
+                      stdout=subprocess.PIPE,
+                  )
+                  payload = b"\0".join(p.encode("utf-8") for p in tracked) + b"\0" if tracked else b""
+                  out, _ = proc.communicate(payload)
+                  tokens = [t.decode("utf-8", "replace") for t in out.split(b"\0")]
+                  attrs, idx = {}, 0
+                  while idx + 2 < len(tokens):
+                      attrs.setdefault(tokens[idx], {})[tokens[idx + 1]] = tokens[idx + 2]
+                      idx += 3
+
+                  crlf_errors = []
+                  for path in tracked:
+                      info = attrs.get(path, {})
+                      if info.get("filter") == "git-crypt" or not os.path.isfile(path):
+                          continue
+                      if info.get("eol") == "lf":
+                          with open(path, "rb") as fp:
+                              if b"\r\n" in fp.read():
+                                  crlf_errors.append(path)
+
+                  if mode_errors:
+                      print("❌ Regra 4a index permission mismatches:", mode_errors, file=sys.stderr)
+                      sys.exit(1)
+                  if crlf_errors:
+                      print("❌ CRLF line endings found in eol=lf files:", crlf_errors, file=sys.stderr)
+                      sys.exit(1)
+                  print("✅ Regra 4a modes and LF line endings verified.")
+                  '
+
+            - name: Run Static Policy Audit
               run: |
-                  ### --------------------------------
-                  ### QUOTING & SECURITY RULES
-                  ### --------------------------------
                   python3 -c '
                   import os, re, subprocess, sys
-                  files = subprocess.check_output(["git", "ls-files"]).decode("utf-8", "replace").splitlines()
-                  octal_needle = chr(92) + "033"
-                  redir_rx = re.compile(r">\s*/dev/null")
-                  bin_emacs_rx = re.compile(r"(?<!\.local/)bin/" + "emacs-client")
-                  legacy_bsd_rx = re.compile("dragon" + "fly", re.IGNORECASE)
+
+                  tracked = [p.decode("utf-8", "replace") for p in subprocess.check_output(["git", "-c", "core.quotePath=false", "ls-files", "-z"]).split(b"\0") if p]
+                  octal_033 = chr(92) + "033"
+                  octal_001 = chr(92) + "001"
+                  redir_rx = re.compile(">" + r"\s*/dev/null")
+                  user_prefix = "gab" + "riel"
+                  path_rx = re.compile(rf"(/home/{user_prefix}|/Users/{user_prefix}|C:\\\\Users\\\\{user_prefix}|{user_prefix}f@)", re.IGNORECASE)
+                  leaked_rx = re.compile(r"(\.DS_Store|vault_env_.*\.bat|\.bak$|~$|\.tmp$|\.swp$|Thumbs\.db)")
                   errors = []
-                  for path in files:
-                      if not os.path.isfile(path):
+
+                  for path in tracked:
+                      if "/OSS/" in path or path.startswith("OSS/") or "node_modules/" in path or ".venv/" in path or not os.path.isfile(path):
                           continue
-                      if path.endswith(".sh") or path.startswith((".githooks/", ".scripts/")):
-                          with open(path, "r", encoding="utf-8", newline="\n", errors="replace") as fp:
-                              for line_no, line in enumerate(fp, 1):
-                                  if redir_rx.search(line):
-                                      errors.append(f"{path}:{line_no}: unquoted /dev/null redirect")
-                      if path.endswith((".sh", ".py", ".fish", ".nu", ".lua")) or path == "Makefile" or path.startswith((".githooks/", ".scripts/", ".github/", ".agents/")):
-                          with open(path, "r", encoding="utf-8", newline="\n", errors="replace") as fp:
-                              content = fp.read()
-                          if octal_needle in content:
-                              errors.append(f"{path}: octal escape detected")
-                          if bin_emacs_rx.search(content):
-                              errors.append(f"{path}: legacy wrapper path")
-                          if legacy_bsd_rx.search(content):
-                              errors.append(f"{path}: legacy BSD reference")
+                      if leaked_rx.search(os.path.basename(path)) or "vault_env_" in path:
+                          errors.append(f"{path}: prohibited temporary/backup file tracked")
+                          continue
+                      _, ext = os.path.splitext(path)
+                      ext_l = ext.lower()
+                      is_shell_src = ext_l in (".sh", ".bash", ".zsh", ".ksh") or path.startswith(".githooks/")
+                      is_code = (
+                          ext_l in (".sh", ".bash", ".zsh", ".ksh", ".fish", ".nu", ".ps1", ".cmd", ".lua", ".py", ".yml", ".yaml")
+                          or path in ("Makefile", "GNUmakefile", "BSDmakefile")
+                          or path.startswith((".githooks/", ".scripts/", ".github/"))
+                      )
+                      if is_code:
+                          with open(path, "rb") as fp:
+                              first = fp.readline()
+                          if first.startswith(b"#!") and not first.startswith(b"#!/usr/bin/env"):
+                              errors.append(f"{path}: non-portable shebang")
+                      if not is_code or path.startswith(".scripts/audit/") or path == ".githooks/pre-commit":
+                          continue
+                      with open(path, "r", encoding="utf-8", errors="replace") as fp:
+                          lines = fp.read().splitlines()
+                      for idx, line in enumerate(lines):
+                          if ext_l != ".md" and (octal_033 in line or octal_001 in line):
+                              errors.append(f"{path}:{idx + 1}: octal ANSI escape")
+                          if is_shell_src and redir_rx.search(line):
+                              errors.append(f"{path}:{idx + 1}: unquoted /dev/null redirect")
+                          if path_rx.search(line):
+                              errors.append(f"{path}:{idx + 1}: hardcoded personal OS path")
+                          stripped = line.lstrip()
+                          if stripped in ("### --------------------------------", "### ================================"):
+                              if idx + 1 < len(lines) and lines[idx + 1].lstrip().startswith("### "):
+                                  title = lines[idx + 1].lstrip()[4:]
+                                  if len(title) > 32 or title != title.upper() or "(" in title or ")" in title:
+                                      errors.append(f"{path}:{idx + 2}: banner {title!r}")
+
                   if errors:
-                      print("❌ Audit failures:", "\n".join(errors), sep="\n", file=sys.stderr)
+                      print("❌ Static policy violations:", *errors[:40], sep="\n  - ", file=sys.stderr)
                       sys.exit(1)
-                  print("✅ All quoting, ANSI, and reference checks passed.")
+                  print("✅ Static policy audit passed cleanly.")
                   '
 
-    linux:
-        name: 🐧 Linux (Ubuntu) Matrix
-        needs: lint
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v7
-
-            - name: Install Shell Interpreters
+            - name: Validate Shell & Python Syntax
               run: |
-                  sudo apt-get update
-                  sudo apt-get install -y zsh fish
+                  PYTHONDONTWRITEBYTECODE=1 python3 -c '
+                  import os, py_compile, shutil, subprocess, sys
 
-            - name: Install Shell Environment (install.sh)
-              run: |
-                  ### --------------------------------
-                  ### RUN UNIVERSAL SHELL INSTALLER
-                  ### --------------------------------
-                  ./install.sh --pure
+                  def resolve_shell(name):
+                      for cand in (shutil.which(name), f"/usr/bin/{name}", f"/bin/{name}"):
+                          if cand and os.path.isfile(cand):
+                              r = subprocess.run([cand, "-n", "-c", ":"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                              if r.returncode == 0:
+                                  return cand
+                      return None
 
-            - name: Test in Linux Shell (Zsh, Bash & Fish)
-              run: |
-                  ### ================================
-                  ### LINUX ENVIRONMENT
-                  ### ================================
-                  . ./library/detect.sh
-                  OS=$(_detect_os)
-                  echo "Detected OS: ${OS}"
-                  [ "${OS}" = "linux" ] || { echo "Expected linux, got ${OS}"; exit 1; }
+                  out = subprocess.check_output(["git", "-c", "core.quotePath=false", "ls-files", "-z"]).split(b"\0")
+                  sh_compat = subprocess.run(["sh", "-c", "f-f() { :; }"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
 
-                  ### --------------------------------
-                  ### LINUX TARGET PROMPTS
-                  ### --------------------------------
-                  zsh -n target/linux/zsh/prompt.sh
-                  bash -n target/linux/bash/prompt.sh
-                  for _fish_file in target/common/fish/*.fish; do
-                    [ -f "${_fish_file}" ] && fish -n "${_fish_file}" || exit 1
-                  done
+                  bash_targets, zsh_targets, sh_targets, ksh_targets, fish_targets, py_targets = [], [], [], [], [], []
+                  for raw in out:
+                      if not raw:
+                          continue
+                      p = raw.decode("utf-8", "replace")
+                      if "/OSS/" in p or p.startswith("OSS/") or "node_modules/" in p or ".venv/" in p or not os.path.isfile(p):
+                          continue
+                      if p.endswith(".py"):
+                          py_targets.append(p)
+                          continue
+                      if p.endswith(".fish"):
+                          fish_targets.append(p)
+                          continue
+                      if p.endswith(".ksh"):
+                          ksh_targets.append(p)
+                          continue
+                      if p.endswith(".zsh"):
+                          zsh_targets.append(p)
+                          continue
+                      if p.endswith(".bash"):
+                          bash_targets.append(p)
+                          continue
+                      if not (p.endswith(".sh") or p.startswith(".githooks/")):
+                          continue
+                      with open(p, "rb") as fp:
+                          first = fp.readline().decode("utf-8", "replace").strip()
+                      if p.startswith(".githooks/") or first == "#!/usr/bin/env sh" or first == "#!/bin/sh":
+                          sh_targets.append(p)
+                      if "zsh" in first:
+                          zsh_targets.append(p)
+                      elif "bash" in first:
+                          bash_targets.append(p)
+                      elif "ksh" in first:
+                          ksh_targets.append(p)
+                      elif "python" in first or "fish" in first:
+                          continue
+                      else:
+                          segs = f"/{p}"
+                          if "/bash/" not in segs and not p.endswith("bash.sh") and "/ksh/" not in segs and not p.endswith("ksh.sh"):
+                              zsh_targets.append(p)
+                          if "/zsh/" not in segs and not p.endswith("zsh.sh") and "/ksh/" not in segs and not p.endswith("ksh.sh"):
+                              bash_targets.append(p)
+                          if "/ksh/" in segs or p.endswith("ksh.sh") or p.startswith(("core/", "library/")):
+                              ksh_targets.append(p)
+                          if sh_compat and ("/zsh/" not in segs and "/bash/" not in segs and "/ksh/" not in segs and not p.endswith(("zsh.sh", "bash.sh", "ksh.sh"))):
+                              if p not in sh_targets:
+                                  sh_targets.append(p)
 
-                  ### --------------------------------
-                  ### LINUX ZSH INTERACTIVE BOOT
-                  ### --------------------------------
-                  test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
-                  zsh -i -c 'echo "Linux Zsh boot with dotfiles OK: ${PROMPT}"'
+                  for shell_bin, targets in ((resolve_shell("bash"), bash_targets), (resolve_shell("zsh"), zsh_targets), (resolve_shell("sh"), sh_targets), (resolve_shell("ksh") or resolve_shell("oksh"), ksh_targets), (resolve_shell("fish"), fish_targets)):
+                      if shell_bin and targets:
+                          for i in range(0, len(targets), 100):
+                              r = subprocess.run([shell_bin, "-n", *targets[i:i + 100]])
+                              if r.returncode != 0:
+                                  sys.exit(r.returncode)
 
-                  ### --------------------------------
-                  ### LINUX BASH INTERACTIVE BOOT
-                  ### --------------------------------
-                  test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
-                  bash -i -c 'echo "Linux Bash boot with dotfiles OK: ${PS1}"'
-
-                  ### --------------------------------
-                  ### LINUX FISH INTERACTIVE BOOT
-                  ### --------------------------------
-                  test -f "${XDG_CONFIG_HOME:-${HOME}/.config}/fish/config.fish" || { echo "Missing config.fish"; exit 1; }
-                  fish -i -c 'echo "Linux Fish boot OK"'
-
-                  ### --------------------------------
-                  ### STARTUP LATENCY BENCHMARK
-                  ### --------------------------------
-                  ./benchmark.sh
-
-    freebsd:
-        name: 😈 FreeBSD (15.x) Matrix
-        needs: lint
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v7
-
-            - name: Test in FreeBSD Shell (zsh, bash, sh)
-              uses: vmactions/freebsd-vm@v1
-              with:
-                  release: "15"
-                  usesh: true
-                  envs: "CI GITHUB_ACTIONS"
-                  run: |
-                      ### ================================
-                      ### FREEBSD ENVIRONMENT
-                      ### ================================
-                      freebsd-version || uname -a
-                      . ./library/detect.sh
-                      OS=$(_detect_os)
-                      echo "Detected OS: ${OS}"
-                      [ "${OS}" = "freebsd" ] || { echo "Expected freebsd, got ${OS}"; exit 1; }
-
-                      ### --------------------------------
-                      ### DEPENDENCIES
-                      ### --------------------------------
-                      pkg install -y zsh bash python3
-
-                      ### --------------------------------
-                      ### RUN UNIVERSAL SHELL INSTALLER
-                      ### --------------------------------
-                      ./install.sh --pure
-
-                      ### --------------------------------
-                      ### FREEBSD TARGET PROMPTS
-                      ### --------------------------------
-                      zsh -n target/freebsd/zsh/prompt.sh
-                      zsh -n theme/zsh.sh
-                      bash -n target/freebsd/bash/prompt.sh
-                      bash -n theme/bash.sh
-                      sh -n library/functions.sh
-                      sh -n core/environment.sh
-                      sh -n target/freebsd/environment.sh
-                      sh -n target/freebsd/sh/terminal.sh
-                      sh -n target/freebsd/sh/prompt.sh
-                      sh -n theme/sh.sh
-
-                      ### --------------------------------
-                      ### FREEBSD ZSH INTERACTIVE
-                      ### --------------------------------
-                      test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
-                      zsh -i -c 'echo "FreeBSD Zsh prompt: ${PROMPT}"'
-
-                      ### --------------------------------
-                      ### FREEBSD BASH INTERACTIVE PTY
-                      ### --------------------------------
-                      test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
-                      script -q /dev/null bash -i -c 'echo "FreeBSD Bash prompt: ${PS1}"'
-
-                      ### --------------------------------
-                      ### FREEBSD SH INTERACTIVE PTY
-                      ### --------------------------------
-                      test -f "${HOME}/.shrc" || { echo "Missing .shrc"; exit 1; }
-                      ENV="${HOME}/.shrc" script -q /dev/null sh -i -c 'echo "FreeBSD sh prompt: ${PS1}"'
-
-                      ### --------------------------------
-                      ### STARTUP LATENCY BENCHMARK
-                      ### --------------------------------
-                      ./benchmark.sh
-
-    windows:
-        name: 🪟 Windows (MSYS2) Matrix
-        needs: lint
-        runs-on: windows-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v7
-
-            - name: Setup MSYS2
-              uses: msys2/setup-msys2@v2
-              with:
-                  msystem: UCRT64
-                  update: true
-                  install: zsh bash python
-
-            - name: Test in MSYS2 Shell (Zsh & Bash)
-              shell: msys2 {0}
-              run: |
-                  ### ================================
-                  ### MSYS2 ENVIRONMENT
-                  ### ================================
-                  . ./library/detect.sh
-                  OS=$(_detect_os)
-                  echo "Detected OS: ${OS}"
-                  [ "${OS}" = "windows" ] || { echo "Expected windows, got ${OS}"; exit 1; }
-
-                  ### --------------------------------
-                  ### RUN UNIVERSAL SHELL INSTALLER
-                  ### --------------------------------
-                  ./install.sh --pure
-
-                  ### --------------------------------
-                  ### WINDOWS TARGET PROMPTS
-                  ### --------------------------------
-                  zsh -n target/windows/zsh/prompt.sh
-                  bash -n target/windows/bash/prompt.sh
-
-                  ### --------------------------------
-                  ### MSYS2 ZSH INTERACTIVE
-                  ### --------------------------------
-                  test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
-                  zsh -i -c 'echo "Windows MSYS2 Zsh OK: ${PROMPT}"'
-
-                  ### --------------------------------
-                  ### MSYS2 BASH INTERACTIVE
-                  ### --------------------------------
-                  test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
-                  bash -i -c 'echo "Windows MSYS2 Bash OK: ${PS1}"'
-
-                  ### --------------------------------
-                  ### STARTUP LATENCY BENCHMARK
-                  ### --------------------------------
-                  ./benchmark.sh
-
-    macos:
-        name: 🍎 macOS (Darwin) Matrix
-        needs: lint
-        runs-on: macos-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v7
-
-            - name: Install Shell Interpreters
-              run: |
-                  brew install bash 2> "/dev/null" || true
-
-            - name: Test in macOS Shell (Zsh & Bash)
-              run: |
-                  ### ================================
-                  ### MACOS ENVIRONMENT
-                  ### ================================
-                  . ./library/detect.sh
-                  OS=$(_detect_os)
-                  echo "Detected OS: ${OS}"
-                  [ "${OS}" = "macos" ] || { echo "Expected macos, got ${OS}"; exit 1; }
-
-                  ### --------------------------------
-                  ### RUN UNIVERSAL SHELL INSTALLER
-                  ### --------------------------------
-                  ./install.sh --pure
-
-                  ### --------------------------------
-                  ### MACOS TARGET PROMPTS
-                  ### --------------------------------
-                  zsh -n target/macos/zsh/prompt.sh
-                  bash -n target/macos/bash/prompt.sh
-
-                  ### --------------------------------
-                  ### MACOS ZSH INTERACTIVE
-                  ### --------------------------------
-                  test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
-                  zsh -i -c 'echo "macOS Zsh prompt OK: ${PROMPT}"'
-
-                  ### --------------------------------
-                  ### MACOS BASH INTERACTIVE
-                  ### --------------------------------
-                  test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
-                  bash -i -c 'echo "macOS Bash prompt OK: ${PS1}"'
-
-                  ### --------------------------------
-                  ### STARTUP LATENCY BENCHMARK
-                  ### --------------------------------
-                  ./benchmark.sh
-
-    openbsd:
-        name: 🐡 OpenBSD (7.x) Matrix
-        needs: lint
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v7
-
-            - name: Test in OpenBSD Shell (zsh, bash, ksh)
-              uses: vmactions/openbsd-vm@v1
-              with:
-                  usesh: true
-                  envs: "CI GITHUB_ACTIONS"
-                  run: |
-                      ### ================================
-                      ### OPENBSD ENVIRONMENT
-                      ### ================================
-                      uname -a
-                      . ./library/detect.sh
-                      OS=$(_detect_os)
-                      echo "Detected OS: ${OS}"
-                      [ "${OS}" = "openbsd" ] || { echo "Expected openbsd, got ${OS}"; exit 1; }
-
-                      ### --------------------------------
-                      ### DEPENDENCIES
-                      ### --------------------------------
-                      pkg_add -I zsh bash python
-
-                      ### --------------------------------
-                      ### RUN UNIVERSAL SHELL INSTALLER
-                      ### --------------------------------
-                      ./install.sh --pure
-
-                      ### --------------------------------
-                      ### OPENBSD TARGET PROMPTS
-                      ### --------------------------------
-                      zsh -n target/openbsd/zsh/prompt.sh
-                      zsh -n theme/zsh.sh
-                      bash -n target/openbsd/bash/prompt.sh
-                      ksh -n target/openbsd/ksh/prompt.sh
-                      ksh -n theme/ksh.sh
-                      ksh -n target/common/ksh/ksh.sh
-                      sh -n target/openbsd/environment.sh
-
-                      ### --------------------------------
-                      ### OPENBSD ZSH INTERACTIVE
-                      ### --------------------------------
-                      test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
-                      zsh -i -c 'echo "OpenBSD Zsh prompt: ${PROMPT}"'
-
-                      ### --------------------------------
-                      ### OPENBSD BASH INTERACTIVE
-                      ### --------------------------------
-                      test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
-                      bash -i -c 'echo "OpenBSD Bash prompt: ${PS1}"'
-
-                      ### --------------------------------
-                      ### OPENBSD NATIVE KSH INTERACTIVE
-                      ### --------------------------------
-                      test -f "${HOME}/.kshrc" || { echo "Missing .kshrc"; exit 1; }
-                      ENV="${HOME}/.kshrc" ksh -i -c 'echo "OpenBSD ksh prompt: ${PS1}"'
-
-                      ### --------------------------------
-                      ### STARTUP LATENCY BENCHMARK
-                      ### --------------------------------
-                      ./benchmark.sh -i 3
-
-    netbsd:
-        name: 🚩 NetBSD (11.x) Matrix
-        needs: lint
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v7
-
-            - name: Test in NetBSD Shell (zsh, bash)
-              uses: vmactions/netbsd-vm@v1
-              with:
-                  usesh: true
-                  envs: "CI GITHUB_ACTIONS"
-                  run: |
-                      ### ================================
-                      ### NETBSD ENVIRONMENT
-                      ### ================================
-                      export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:${PATH}"
-                      uname -a
-                      . ./library/detect.sh
-                      OS=$(_detect_os)
-                      echo "Detected OS: ${OS}"
-                      [ "${OS}" = "netbsd" ] || { echo "Expected netbsd, got ${OS}"; exit 1; }
-
-                      ### --------------------------------
-                      ### DEPENDENCIES
-                      ### --------------------------------
-                      _pkgs=""
-                      command -v zsh > "/dev/null" 2>&1 || _pkgs="${_pkgs} zsh"
-                      command -v bash > "/dev/null" 2>&1 || _pkgs="${_pkgs} bash"
-                      if ! command -v python3 > "/dev/null" 2>&1 && [ ! -x "/usr/pkg/bin/python3.12" ]; then
-                        _pkgs="${_pkgs} python312"
-                      fi
-                      if [ -n "${_pkgs}" ]; then
-                        if command -v pkg_add > "/dev/null" 2>&1; then
-                          pkg_add -u ${_pkgs} || pkg_add -I ${_pkgs} || pkg_add ${_pkgs} || true
-                        elif command -v pkgin > "/dev/null" 2>&1; then
-                          pkgin -y update || true
-                          pkgin -y install ${_pkgs}
-                        fi
-                      fi
-
-                      if [ -x "/usr/pkg/bin/python3.12" ] && [ ! -x "/usr/pkg/bin/python3" ]; then
-                        ln -sf /usr/pkg/bin/python3.12 /usr/pkg/bin/python3
-                      fi
-
-                      ### --------------------------------
-                      ### RUN UNIVERSAL SHELL INSTALLER
-                      ### --------------------------------
-                      ./install.sh --pure
-
-                      ### --------------------------------
-                      ### NETBSD TARGET PROMPTS
-                      ### --------------------------------
-                      zsh -n target/netbsd/zsh/prompt.sh
-                      zsh -n theme/zsh.sh
-                      bash -n target/netbsd/bash/prompt.sh
-                      sh -n target/netbsd/environment.sh
-
-                      ### --------------------------------
-                      ### NETBSD ZSH INTERACTIVE
-                      ### --------------------------------
-                      test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
-                      zsh -i -c 'echo "NetBSD Zsh prompt: ${PROMPT}"'
-
-                      ### --------------------------------
-                      ### NETBSD BASH INTERACTIVE
-                      ### --------------------------------
-                      test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
-                      bash -i -c 'echo "NetBSD Bash prompt: ${PS1}"'
-
-                      ### --------------------------------
-                      ### STARTUP LATENCY BENCHMARK
-                      ### --------------------------------
-                      ./benchmark.sh -i 2
-
-    illumos:
-        name: ☀️ illumos (Syntax & Simulation) Matrix
-        needs: lint
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v7
-
-            - name: Install Shell Interpreters
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y zsh
-
-            - name: Validate illumos Target Syntax
-              run: |
-                  ### --------------------------------
-                  ### ILLUMOS TARGET PROMPTS
-                  ### --------------------------------
-                  zsh -n target/illumos/zsh/prompt.sh
-                  zsh -n theme/zsh.sh
-                  bash -n target/illumos/bash/prompt.sh
-                  bash -n target/illumos/environment.sh
-
-                  ### --------------------------------
-                  ### ILLUMOS MOCK BOOT ZSH
-                  ### --------------------------------
-                  zsh -c '
-                    export SHELL_REPO_DIR="${PWD}"
-                    export SHELL_CONTEXT="desktop"
-                    export PROMPT_OS_NAME="illumos"
-                    . ./library/detect.sh
-                    . ./library/functions.sh
-                    . ./core/environment.sh
-                    . ./target/illumos/environment.sh
-                    . ./theme/zsh.sh
-                    echo "illumos simulated zsh prompt: ${PROMPT}"
+                  for p in py_targets:
+                      py_compile.compile(p, doraise=True)
+                  print("✅ Shell and Python syntax checks passed.")
                   '
 
-                  ### --------------------------------
-                  ### ILLUMOS MOCK BOOT BASH
-                  ### --------------------------------
-                  bash -c '
-                    export SHELL_REPO_DIR="${PWD}"
-                    export SHELL_CONTEXT="desktop"
-                    export PROMPT_OS_NAME="illumos"
-                    . ./library/detect.sh
-                    . ./library/functions.sh
-                    . ./core/environment.sh
-                    . ./target/illumos/environment.sh
-                    . ./theme/bash.sh
-                    _update_prompt
-                    echo "illumos simulated bash prompt: ${PS1}"
+            - name: Setup Node.js & Prettier
+              uses: actions/setup-node@v7
+              with:
+                  node-version: "22"
+
+            - name: Validate Formatting (Prettier)
+              run: |
+                  npm install -g prettier
+                  python3 -c '
+                  import os, subprocess, sys
+                  out = subprocess.check_output(["git", "-c", "core.quotePath=false", "ls-files", "-z"]).split(b"\0")
+                  all_files = [r.decode("utf-8", "replace") for r in out if r]
+                  proc = subprocess.Popen(
+                      ["git", "-c", "core.quotePath=false", "check-attr", "-z", "--stdin", "filter"],
+                      stdin=subprocess.PIPE,
+                      stdout=subprocess.PIPE,
+                  )
+                  payload = b"\0".join(p.encode("utf-8") for p in all_files) + b"\0" if all_files else b""
+                  attr_out, _ = proc.communicate(payload)
+                  tokens = [t.decode("utf-8", "replace") for t in attr_out.split(b"\0")]
+                  encrypted = {tokens[i] for i in range(0, len(tokens) - 2, 3) if tokens[i + 1] == "filter" and tokens[i + 2] == "git-crypt"}
+                  targets = [
+                      p for p in all_files
+                      if p not in encrypted
+                      and "/OSS/" not in p
+                      and not p.startswith("OSS/")
+                      and "node_modules/" not in p
+                      and ".venv/" not in p
+                      and os.path.isfile(p)
+                      and p.endswith((".md", ".json", ".jsonc", ".yml", ".yaml"))
+                  ]
+                  for i in range(0, len(targets), 100):
+                      r = subprocess.run(["prettier", "--check", "--", *targets[i:i + 100]])
+                      if r.returncode != 0:
+                          sys.exit(r.returncode)
                   '
+
+            - name: Run Architecture Audit Suite
+              if: hashFiles('.scripts/audit/all.py') != ''
+              run: |
+                  PYTHONDONTWRITEBYTECODE=1 python3 .scripts/audit/all.py

@@ -202,8 +202,8 @@ Para assegurar longevidade, determinismo, idempotência e soberania técnica, to
 ### 3. Invariante Out-of-the-Box (Zero Manual Tweaks Post-Clone) & Permissões Octais Canônicas
 
 - Repositórios clonados devem operar imediatamente sem requerer ajustes manuais pós-clone. Modos de permissão POSIX devem estar rigorosamente registrados no índice do Git:
-    - `chmod 0755` para diretórios, ganchos de automação (`.githooks/*`) e entrypoints executáveis com shebang `#!` (`shell.sh`, `init.sh`, `install.sh`, `benchmark.sh`, `.scripts/*`).
-    - `chmod 0644` para bibliotecas carregadas via `source` (`.`), arquivos de configuração, templates e documentação Markdown.
+    - `chmod 0755` para diretórios, ganchos de automação (`.githooks/*`) e scripts ou entrypoints executáveis iniciados com shebang `#!` (`.scripts/*`, utilitários CLI).
+    - `chmod 0644` para bibliotecas carregadas via `source` (`.`), arquivos de configuração, código-fonte, templates e documentação Markdown.
     - `chmod 0700` / `chmod 0600` para diretórios e arquivos de segurança crítica e credenciais privadas.
 - Scripts e utilitários devem aplicar auto-cura de permissões em tempo de execução caso clonados sob sistemas de arquivos que não preservam bits octais POSIX.
 

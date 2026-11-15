@@ -530,6 +530,7 @@ _install_shell_target() {
 		${_context_line}
 		${_userland_line}
 		export SHELL_FRAMEWORK=${SHELL_FRAMEWORK}
+		unset _SHELL_TARGET_ENV_LOADED _SHELL_CONTEXT_LOADED
 
 		for _file in detect.sh detect-desktop.sh ui.sh functions.sh; do
 			[ -f "\${SHELL_REPO_DIR}/library/\${_file}" ] && ${_source_cmd} "\${SHELL_REPO_DIR}/library/\${_file}"

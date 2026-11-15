@@ -102,19 +102,21 @@ vimrc             text eol=lf
 # ================================================================
 # TOOLING, DOTFILES & EXTENSIONLESS TEXT
 # ================================================================
-.prettierrc           text eol=lf
-.clang-format         text eol=lf
-.stylua.toml          text eol=lf
-tools/.*              text eol=lf
-LICENSE               text eol=lf
-target/freebsd/editrc text eol=lf
-*.desktop             text eol=lf
-extensions.txt        text eol=lf
-*.profile             text eol=lf
-*.terminfo            text eol=lf
-Xresources            text eol=lf
-tokens/authinfo       text eol=lf
-keys/*.pub            text eol=lf
+.prettierrc       text eol=lf
+.clang-format     text eol=lf
+.stylua.toml      text eol=lf
+.clangd           text eol=lf
+.luarc.json       text eol=lf
+LICENSE           text eol=lf
+VERSION           text eol=lf
+editrc            text eol=lf
+Xresources        text eol=lf
+authinfo          text eol=lf
+extensions.txt    text eol=lf
+*.desktop         text eol=lf
+*.profile         text eol=lf
+*.terminfo        text eol=lf
+*.pub             text eol=lf
 
 # ================================================================
 # WINDOWS ENVIRONMENT FORCE CRLF

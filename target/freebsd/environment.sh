@@ -32,3 +32,4 @@ unset -v _sock
 ### --------------------------------
 alias zarcstat="arcstat"
 alias arcstats="arcstat"
+_SHELL_TARGET_ENV_LOADED=1

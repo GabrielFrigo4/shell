@@ -165,7 +165,23 @@ alias e="editor"
 command -v xterm > "/dev/null" 2>&1 && alias xterm="xterm -bc -bcf 600 -bcn 600"
 [ -f "${HOME}/.Xresources" ] && export XENVIRONMENT="${HOME}/.Xresources"
 if [ -n "${DISPLAY:-}" ] && [ -f "${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
-	xrdb -merge "${HOME}/.Xresources" > "/dev/null" 2>&1 || true
+	_xrdb_disp="${DISPLAY}"
+	while :; do
+		case "${_xrdb_disp}" in
+			*:*) _xrdb_disp="${_xrdb_disp%%:*}_${_xrdb_disp#*:}" ;;
+			*/*) _xrdb_disp="${_xrdb_disp%%/*}_${_xrdb_disp#*/}" ;;
+			*)   break ;;
+		esac
+	done
+	_xrdb_stamp="${_SHELL_CACHE_DIR:-/tmp}/xresources_merged_${_xrdb_disp}"
+	if [ -z "${_SHELL_CACHE_DIR:-}" ] || [ ! -f "${_xrdb_stamp}" ] || [ "${HOME}/.Xresources" -nt "${_xrdb_stamp}" ]; then
+		xrdb -merge "${HOME}/.Xresources" > "/dev/null" 2>&1 || true
+		if [ -n "${_SHELL_CACHE_DIR:-}" ]; then
+			[ -d "${_SHELL_CACHE_DIR}" ] || command mkdir -p "${_SHELL_CACHE_DIR}" 2> "/dev/null" || true
+			: >| "${_xrdb_stamp}" 2> "/dev/null" || true
+		fi
+	fi
+	unset _xrdb_disp _xrdb_stamp
 fi
 
 ### --------------------------------
@@ -506,7 +522,7 @@ if [ -n "${_zoxide_bin}" ]; then
 		esac
 	fi
 	if [ "${_zoxide_mode}" = "zsh" ] && command -v __zoxide_pwd > "/dev/null" 2>&1; then
-		__zoxide_oldpwd="$(__zoxide_pwd)"
+		__zoxide_oldpwd="${PWD}"
 		__zoxide_hook() {
 			_pwd_tmp="$(__zoxide_pwd)"
 			if [ "${__zoxide_oldpwd}" != "${_pwd_tmp}" ]; then

@@ -15,13 +15,18 @@ PROMPT_OS_NAME="${_os_ver%%-*}"
 unset -v _os_ver
 
 . "${SHELL_REPO_DIR}/theme/bash.sh"
-. "${SHELL_REPO_DIR}/target/freebsd/environment.sh"
+if [ -z "${_SHELL_TARGET_ENV_LOADED:-}" ] && [ -f "${SHELL_REPO_DIR}/target/freebsd/environment.sh" ]; then
+	. "${SHELL_REPO_DIR}/target/freebsd/environment.sh"
+fi
 
 SHELL_CONTEXT="${SHELL_CONTEXT:-desktop}"
-[ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh" ] && \
-	. "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh"
-[ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/freebsd.sh" ] && \
-	. "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/freebsd.sh"
+if [ -z "${_SHELL_CONTEXT_LOADED:-}" ]; then
+	[ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh" ] && \
+		. "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/common.sh"
+	[ -f "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/freebsd.sh" ] && \
+		. "${SHELL_REPO_DIR}/context/${SHELL_CONTEXT}/freebsd.sh"
+	_SHELL_CONTEXT_LOADED=1
+fi
 
 ### ================================
 ### SHELL CONFIGURATION

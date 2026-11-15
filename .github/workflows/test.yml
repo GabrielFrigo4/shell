@@ -1,0 +1,445 @@
+name: Tests
+
+on:
+    push:
+        branches: [main, master]
+    pull_request:
+        branches: [main, master]
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+    linux:
+        name: 🐧 Linux (Ubuntu) Matrix
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v7
+
+            - name: Install Shell Interpreters
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y zsh fish
+
+            - name: Install Shell Environment (install.sh)
+              run: |
+                  ### --------------------------------
+                  ### RUN UNIVERSAL SHELL INSTALLER
+                  ### --------------------------------
+                  ./install.sh --pure
+
+            - name: Run Shell Test Suite (make test)
+              run: make test
+
+            - name: Test in Linux Shell (Zsh, Bash & Fish)
+              run: |
+                  ### ================================
+                  ### LINUX ENVIRONMENT
+                  ### ================================
+                  . ./library/detect.sh
+                  OS=$(_detect_os)
+                  echo "Detected OS: ${OS}"
+                  [ "${OS}" = "linux" ] || { echo "Expected linux, got ${OS}"; exit 1; }
+
+                  ### --------------------------------
+                  ### LINUX TARGET PROMPTS
+                  ### --------------------------------
+                  zsh -n target/linux/zsh/prompt.sh
+                  bash -n target/linux/bash/prompt.sh
+                  for _fish_file in target/common/fish/*.fish; do
+                    [ -f "${_fish_file}" ] && fish -n "${_fish_file}" || exit 1
+                  done
+
+                  ### --------------------------------
+                  ### LINUX ZSH INTERACTIVE BOOT
+                  ### --------------------------------
+                  test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
+                  zsh -i -c 'echo "Linux Zsh boot with dotfiles OK: ${PROMPT}"'
+
+                  ### --------------------------------
+                  ### LINUX BASH INTERACTIVE BOOT
+                  ### --------------------------------
+                  test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
+                  bash -i -c 'echo "Linux Bash boot with dotfiles OK: ${PS1}"'
+
+                  ### --------------------------------
+                  ### LINUX FISH INTERACTIVE BOOT
+                  ### --------------------------------
+                  test -f "${XDG_CONFIG_HOME:-${HOME}/.config}/fish/config.fish" || { echo "Missing config.fish"; exit 1; }
+                  fish -i -c 'echo "Linux Fish boot OK"'
+
+                  ### --------------------------------
+                  ### STARTUP LATENCY BENCHMARK
+                  ### --------------------------------
+                  ./benchmark.sh
+
+    freebsd:
+        name: 😈 FreeBSD (15.x) Matrix
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v7
+
+            - name: Test in FreeBSD Shell (zsh, bash, sh)
+              uses: vmactions/freebsd-vm@v1
+              with:
+                  release: "15"
+                  usesh: true
+                  envs: "CI GITHUB_ACTIONS"
+                  run: |
+                      ### ================================
+                      ### FREEBSD ENVIRONMENT
+                      ### ================================
+                      freebsd-version || uname -a
+                      . ./library/detect.sh
+                      OS=$(_detect_os)
+                      echo "Detected OS: ${OS}"
+                      [ "${OS}" = "freebsd" ] || { echo "Expected freebsd, got ${OS}"; exit 1; }
+
+                      ### --------------------------------
+                      ### DEPENDENCIES
+                      ### --------------------------------
+                      pkg install -y zsh bash python3
+
+                      ### --------------------------------
+                      ### RUN UNIVERSAL SHELL INSTALLER
+                      ### --------------------------------
+                      ./install.sh --pure
+
+                      ### --------------------------------
+                      ### FREEBSD TARGET PROMPTS
+                      ### --------------------------------
+                      zsh -n target/freebsd/zsh/prompt.sh
+                      zsh -n theme/zsh.sh
+                      bash -n target/freebsd/bash/prompt.sh
+                      bash -n theme/bash.sh
+                      sh -n library/functions.sh
+                      sh -n core/environment.sh
+                      sh -n target/freebsd/environment.sh
+                      sh -n target/freebsd/sh/terminal.sh
+                      sh -n target/freebsd/sh/prompt.sh
+                      sh -n theme/sh.sh
+
+                      ### --------------------------------
+                      ### FREEBSD ZSH INTERACTIVE
+                      ### --------------------------------
+                      test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
+                      zsh -i -c 'echo "FreeBSD Zsh prompt: ${PROMPT}"'
+
+                      ### --------------------------------
+                      ### FREEBSD BASH INTERACTIVE PTY
+                      ### --------------------------------
+                      test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
+                      script -q /dev/null bash -i -c 'echo "FreeBSD Bash prompt: ${PS1}"'
+
+                      ### --------------------------------
+                      ### FREEBSD SH INTERACTIVE PTY
+                      ### --------------------------------
+                      test -f "${HOME}/.shrc" || { echo "Missing .shrc"; exit 1; }
+                      ENV="${HOME}/.shrc" script -q /dev/null sh -i -c 'echo "FreeBSD sh prompt: ${PS1}"'
+
+                      ### --------------------------------
+                      ### STARTUP LATENCY BENCHMARK
+                      ### --------------------------------
+                      ./benchmark.sh
+
+    windows:
+        name: 🪟 Windows (MSYS2) Matrix
+        runs-on: windows-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v7
+
+            - name: Setup MSYS2
+              uses: msys2/setup-msys2@v2
+              with:
+                  msystem: UCRT64
+                  update: true
+                  install: zsh bash python
+
+            - name: Test in MSYS2 Shell (Zsh & Bash)
+              shell: msys2 {0}
+              run: |
+                  ### ================================
+                  ### MSYS2 ENVIRONMENT
+                  ### ================================
+                  . ./library/detect.sh
+                  OS=$(_detect_os)
+                  echo "Detected OS: ${OS}"
+                  [ "${OS}" = "windows" ] || { echo "Expected windows, got ${OS}"; exit 1; }
+
+                  ### --------------------------------
+                  ### RUN UNIVERSAL SHELL INSTALLER
+                  ### --------------------------------
+                  ./install.sh --pure
+
+                  ### --------------------------------
+                  ### WINDOWS TARGET PROMPTS
+                  ### --------------------------------
+                  zsh -n target/windows/zsh/prompt.sh
+                  bash -n target/windows/bash/prompt.sh
+
+                  ### --------------------------------
+                  ### MSYS2 ZSH INTERACTIVE
+                  ### --------------------------------
+                  test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
+                  zsh -i -c 'echo "Windows MSYS2 Zsh OK: ${PROMPT}"'
+
+                  ### --------------------------------
+                  ### MSYS2 BASH INTERACTIVE
+                  ### --------------------------------
+                  test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
+                  bash -i -c 'echo "Windows MSYS2 Bash OK: ${PS1}"'
+
+                  ### --------------------------------
+                  ### STARTUP LATENCY BENCHMARK
+                  ### --------------------------------
+                  ./benchmark.sh
+
+    macos:
+        name: 🍎 macOS (Darwin) Matrix
+        runs-on: macos-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v7
+
+            - name: Install Shell Interpreters
+              run: |
+                  brew install bash 2> "/dev/null" || true
+
+            - name: Test in macOS Shell (Zsh & Bash)
+              run: |
+                  ### ================================
+                  ### MACOS ENVIRONMENT
+                  ### ================================
+                  . ./library/detect.sh
+                  OS=$(_detect_os)
+                  echo "Detected OS: ${OS}"
+                  [ "${OS}" = "macos" ] || { echo "Expected macos, got ${OS}"; exit 1; }
+
+                  ### --------------------------------
+                  ### RUN UNIVERSAL SHELL INSTALLER
+                  ### --------------------------------
+                  ./install.sh --pure
+
+                  ### --------------------------------
+                  ### MACOS TARGET PROMPTS
+                  ### --------------------------------
+                  zsh -n target/macos/zsh/prompt.sh
+                  bash -n target/macos/bash/prompt.sh
+
+                  ### --------------------------------
+                  ### MACOS ZSH INTERACTIVE
+                  ### --------------------------------
+                  test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
+                  zsh -i -c 'echo "macOS Zsh prompt OK: ${PROMPT}"'
+
+                  ### --------------------------------
+                  ### MACOS BASH INTERACTIVE
+                  ### --------------------------------
+                  test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
+                  bash -i -c 'echo "macOS Bash prompt OK: ${PS1}"'
+
+                  ### --------------------------------
+                  ### STARTUP LATENCY BENCHMARK
+                  ### --------------------------------
+                  ./benchmark.sh
+
+    openbsd:
+        name: 🐡 OpenBSD (7.x) Matrix
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v7
+
+            - name: Test in OpenBSD Shell (zsh, bash, ksh)
+              uses: vmactions/openbsd-vm@v1
+              with:
+                  usesh: true
+                  envs: "CI GITHUB_ACTIONS"
+                  run: |
+                      ### ================================
+                      ### OPENBSD ENVIRONMENT
+                      ### ================================
+                      uname -a
+                      . ./library/detect.sh
+                      OS=$(_detect_os)
+                      echo "Detected OS: ${OS}"
+                      [ "${OS}" = "openbsd" ] || { echo "Expected openbsd, got ${OS}"; exit 1; }
+
+                      ### --------------------------------
+                      ### DEPENDENCIES
+                      ### --------------------------------
+                      pkg_add -I zsh bash python
+
+                      ### --------------------------------
+                      ### RUN UNIVERSAL SHELL INSTALLER
+                      ### --------------------------------
+                      ./install.sh --pure
+
+                      ### --------------------------------
+                      ### OPENBSD TARGET PROMPTS
+                      ### --------------------------------
+                      zsh -n target/openbsd/zsh/prompt.sh
+                      zsh -n theme/zsh.sh
+                      bash -n target/openbsd/bash/prompt.sh
+                      ksh -n target/openbsd/ksh/prompt.sh
+                      ksh -n theme/ksh.sh
+                      ksh -n target/common/ksh/ksh.sh
+                      sh -n target/openbsd/environment.sh
+
+                      ### --------------------------------
+                      ### OPENBSD ZSH INTERACTIVE
+                      ### --------------------------------
+                      test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
+                      zsh -i -c 'echo "OpenBSD Zsh prompt: ${PROMPT}"'
+
+                      ### --------------------------------
+                      ### OPENBSD BASH INTERACTIVE
+                      ### --------------------------------
+                      test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
+                      bash -i -c 'echo "OpenBSD Bash prompt: ${PS1}"'
+
+                      ### --------------------------------
+                      ### OPENBSD NATIVE KSH INTERACTIVE
+                      ### --------------------------------
+                      test -f "${HOME}/.kshrc" || { echo "Missing .kshrc"; exit 1; }
+                      ENV="${HOME}/.kshrc" ksh -i -c 'echo "OpenBSD ksh prompt: ${PS1}"'
+
+                      ### --------------------------------
+                      ### STARTUP LATENCY BENCHMARK
+                      ### --------------------------------
+                      ./benchmark.sh -i 3
+
+    netbsd:
+        name: 🚩 NetBSD (11.x) Matrix
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v7
+
+            - name: Test in NetBSD Shell (zsh, bash)
+              uses: vmactions/netbsd-vm@v1
+              with:
+                  usesh: true
+                  envs: "CI GITHUB_ACTIONS"
+                  run: |
+                      ### ================================
+                      ### NETBSD ENVIRONMENT
+                      ### ================================
+                      export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:${PATH}"
+                      uname -a
+                      . ./library/detect.sh
+                      OS=$(_detect_os)
+                      echo "Detected OS: ${OS}"
+                      [ "${OS}" = "netbsd" ] || { echo "Expected netbsd, got ${OS}"; exit 1; }
+
+                      ### --------------------------------
+                      ### DEPENDENCIES
+                      ### --------------------------------
+                      _pkgs=""
+                      command -v zsh > "/dev/null" 2>&1 || _pkgs="${_pkgs} zsh"
+                      command -v bash > "/dev/null" 2>&1 || _pkgs="${_pkgs} bash"
+                      if ! command -v python3 > "/dev/null" 2>&1 && [ ! -x "/usr/pkg/bin/python3.12" ]; then
+                        _pkgs="${_pkgs} python312"
+                      fi
+                      if [ -n "${_pkgs}" ]; then
+                        if command -v pkg_add > "/dev/null" 2>&1; then
+                          pkg_add -u ${_pkgs} || pkg_add -I ${_pkgs} || pkg_add ${_pkgs} || true
+                        elif command -v pkgin > "/dev/null" 2>&1; then
+                          pkgin -y update || true
+                          pkgin -y install ${_pkgs}
+                        fi
+                      fi
+
+                      if [ -x "/usr/pkg/bin/python3.12" ] && [ ! -x "/usr/pkg/bin/python3" ]; then
+                        ln -sf /usr/pkg/bin/python3.12 /usr/pkg/bin/python3
+                      fi
+
+                      ### --------------------------------
+                      ### RUN UNIVERSAL SHELL INSTALLER
+                      ### --------------------------------
+                      ./install.sh --pure
+
+                      ### --------------------------------
+                      ### NETBSD TARGET PROMPTS
+                      ### --------------------------------
+                      zsh -n target/netbsd/zsh/prompt.sh
+                      zsh -n theme/zsh.sh
+                      bash -n target/netbsd/bash/prompt.sh
+                      sh -n target/netbsd/environment.sh
+
+                      ### --------------------------------
+                      ### NETBSD ZSH INTERACTIVE
+                      ### --------------------------------
+                      test -f "${HOME}/.zshrc" || { echo "Missing .zshrc"; exit 1; }
+                      zsh -i -c 'echo "NetBSD Zsh prompt: ${PROMPT}"'
+
+                      ### --------------------------------
+                      ### NETBSD BASH INTERACTIVE
+                      ### --------------------------------
+                      test -f "${HOME}/.bashrc" || { echo "Missing .bashrc"; exit 1; }
+                      bash -i -c 'echo "NetBSD Bash prompt: ${PS1}"'
+
+                      ### --------------------------------
+                      ### STARTUP LATENCY BENCHMARK
+                      ### --------------------------------
+                      ./benchmark.sh -i 2
+
+    illumos:
+        name: ☀️ illumos (Syntax & Simulation) Matrix
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v7
+
+            - name: Install Shell Interpreters
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y zsh
+
+            - name: Validate illumos Target Syntax
+              run: |
+                  ### --------------------------------
+                  ### ILLUMOS TARGET PROMPTS
+                  ### --------------------------------
+                  zsh -n target/illumos/zsh/prompt.sh
+                  zsh -n theme/zsh.sh
+                  bash -n target/illumos/bash/prompt.sh
+                  bash -n target/illumos/environment.sh
+
+                  ### --------------------------------
+                  ### ILLUMOS MOCK BOOT ZSH
+                  ### --------------------------------
+                  zsh -c '
+                    export SHELL_REPO_DIR="${PWD}"
+                    export SHELL_CONTEXT="desktop"
+                    export PROMPT_OS_NAME="illumos"
+                    . ./library/detect.sh
+                    . ./library/functions.sh
+                    . ./core/environment.sh
+                    . ./target/illumos/environment.sh
+                    . ./theme/zsh.sh
+                    echo "illumos simulated zsh prompt: ${PROMPT}"
+                  '
+
+                  ### --------------------------------
+                  ### ILLUMOS MOCK BOOT BASH
+                  ### --------------------------------
+                  bash -c '
+                    export SHELL_REPO_DIR="${PWD}"
+                    export SHELL_CONTEXT="desktop"
+                    export PROMPT_OS_NAME="illumos"
+                    . ./library/detect.sh
+                    . ./library/functions.sh
+                    . ./core/environment.sh
+                    . ./target/illumos/environment.sh
+                    . ./theme/bash.sh
+                    _update_prompt
+                    echo "illumos simulated bash prompt: ${PS1}"
+                  '

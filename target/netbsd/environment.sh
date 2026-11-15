@@ -13,3 +13,4 @@ path-front "/usr/local/sbin"
 path-front "${HOME}/.local/bin"
 path-back "${HOME}/.cargo/bin"
 path-dedup
+_SHELL_TARGET_ENV_LOADED=1

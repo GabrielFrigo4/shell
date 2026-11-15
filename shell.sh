@@ -125,6 +125,8 @@ _shell_bootstrap() {
 	done
 	[ -f "${_SHELL_ROOT}/context/${_ctx}/common.sh" ] && . "${_SHELL_ROOT}/context/${_ctx}/common.sh"
 	[ -f "${_SHELL_ROOT}/context/${_ctx}/${_ctx_os}.sh" ] && . "${_SHELL_ROOT}/context/${_ctx}/${_ctx_os}.sh"
+	_SHELL_TARGET_ENV_LOADED=1
+	_SHELL_CONTEXT_LOADED=1
 	unset _module _ctx _ctx_os
 }
 
