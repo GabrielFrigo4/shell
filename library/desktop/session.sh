@@ -1781,6 +1781,10 @@ class WwmBar(Gtk.Window):
         self.set_accept_focus(False)
         self.set_focus_on_map(False)
         self.set_type_hint(Gdk.WindowTypeHint.DOCK)
+        self.set_keep_above(True)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.stick()
 
         screen = Gdk.Screen.get_default()
         self.screen_w = screen.get_width() if screen else 1920
@@ -1803,7 +1807,9 @@ class WwmBar(Gtk.Window):
         self.current_fallback_ws = 1
         self.last_ws_state = None
         self.last_win_state = None
+        self.connect("map-event", self._on_map_event)
         self.realize()
+        self.pin_bar()
         self.setup_struts()
 
         scheme = os.environ.get("WWM_SCHEME", "dark").strip().lower()
@@ -2041,6 +2047,19 @@ class WwmBar(Gtk.Window):
         GLib.timeout_add(250, self.refresh_tick)
         GLib.timeout_add(1000, self.update_clock)
         self.show_all()
+        self.pin_bar()
+        self.setup_struts()
+        GLib.timeout_add(300, self._deferred_pin)
+
+    def _deferred_pin(self):
+        self.pin_bar()
+        self.setup_struts()
+        return False
+
+    def _on_map_event(self, widget=None, event=None):
+        self.pin_bar()
+        self.setup_struts()
+        return False
 
     def _spawn(self, args, shell=False):
         try:
@@ -2063,10 +2082,82 @@ class WwmBar(Gtk.Window):
             pass
         return 0
 
+    def pin_bar(self):
+        try:
+            self.stick()
+            self.set_keep_above(True)
+            self.set_skip_taskbar_hint(True)
+            self.set_skip_pager_hint(True)
+        except Exception:
+            pass
+        if not self.is_x11:
+            return
+        xid = self._self_xid()
+        if not xid:
+            return
+        if self.xdisp is not None:
+            try:
+                from Xlib import protocol
+                win = self.xdisp.create_resource_object("window", xid)
+                root = self.xdisp.screen().root
+                atom_desk = self.xdisp.intern_atom("_NET_WM_DESKTOP")
+                atom_state = self.xdisp.intern_atom("_NET_WM_STATE")
+                atom_sticky = self.xdisp.intern_atom("_NET_WM_STATE_STICKY")
+                atom_above = self.xdisp.intern_atom("_NET_WM_STATE_ABOVE")
+                atom_skip_tb = self.xdisp.intern_atom("_NET_WM_STATE_SKIP_TASKBAR")
+                atom_skip_pg = self.xdisp.intern_atom("_NET_WM_STATE_SKIP_PAGER")
+                win.change_property(atom_desk, xlib_Xatom.CARDINAL, 32, [0xFFFFFFFF])
+                ev_desk = protocol.event.ClientMessage(
+                    window=win,
+                    client_type=atom_desk,
+                    data=(32, [0xFFFFFFFF, 2, 0, 0, 0]),
+                )
+                root.send_event(ev_desk, event_mask=xlib_X.SubstructureRedirectMask | xlib_X.SubstructureNotifyMask)
+                win.change_property(atom_state, xlib_Xatom.ATOM, 32, [atom_sticky, atom_above, atom_skip_tb, atom_skip_pg])
+                for s1, s2 in ((atom_sticky, atom_above), (atom_skip_tb, atom_skip_pg)):
+                    ev_state = protocol.event.ClientMessage(
+                        window=win,
+                        client_type=atom_state,
+                        data=(32, [1, s1, s2, 2, 0]),
+                    )
+                    root.send_event(ev_state, event_mask=xlib_X.SubstructureRedirectMask | xlib_X.SubstructureNotifyMask)
+                self.xdisp.flush()
+                return
+            except Exception:
+                pass
+        if shutil.which("xprop"):
+            try:
+                subprocess.run(
+                    ["xprop", "-id", str(xid), "-f", "_NET_WM_DESKTOP", "32c", "-set", "_NET_WM_DESKTOP", "0xffffffff"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except Exception:
+                pass
+        if shutil.which("wmctrl"):
+            try:
+                subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-t", "-1"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-b", "add,sticky,above,skip_taskbar,skip_pager"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+
     def setup_struts(self):
         try:
             xid = self._self_xid()
-            if xid and shutil.which("xprop"):
+            if not xid:
+                return
+            if self.xdisp is not None:
+                try:
+                    win = self.xdisp.create_resource_object("window", xid)
+                    atom_sp = self.xdisp.intern_atom("_NET_WM_STRUT_PARTIAL")
+                    atom_st = self.xdisp.intern_atom("_NET_WM_STRUT")
+                    win.change_property(atom_sp, xlib_Xatom.CARDINAL, 32, [0, 0, BAR_H, 0, 0, 0, 0, 0, 0, self.screen_w, 0, 0])
+                    win.change_property(atom_st, xlib_Xatom.CARDINAL, 32, [0, 0, BAR_H, 0])
+                    self.xdisp.flush()
+                    return
+                except Exception:
+                    pass
+            if shutil.which("xprop"):
                 sp = f"0, 0, {BAR_H}, 0, 0, 0, 0, 0, 0, {self.screen_w}, 0, 0"
                 st = f"0, 0, {BAR_H}, 0"
                 subprocess.run(
@@ -2265,6 +2356,49 @@ class WwmBar(Gtk.Window):
             all_ws = sorted(list(self.managed_workspaces.union(used_nums)))
             return all_ws, focused_num
 
+        wm_name = os.environ.get("WWM_WM", "")
+        if wm_name == "cwm":
+            used_nums = set(self.managed_workspaces)
+            focused_num = self.current_fallback_ws
+            if self.xdisp is not None:
+                try:
+                    root = self.xdisp.screen().root
+                    atom_cur = self.xdisp.intern_atom("_NET_CURRENT_DESKTOP")
+                    cur_p = root.get_full_property(atom_cur, xlib_Xatom.CARDINAL)
+                    if cur_p and cur_p.value:
+                        focused_num = max(1, int(cur_p.value[0]) + 1)
+                        used_nums.add(focused_num)
+                except Exception:
+                    pass
+            elif shutil.which("wmctrl"):
+                try:
+                    res = subprocess.run(["wmctrl", "-d"], capture_output=True, text=True)
+                    for l in res.stdout.splitlines():
+                        parts = l.split()
+                        if len(parts) >= 2 and "*" in parts[1]:
+                            focused_num = int(parts[0]) + 1
+                            used_nums.add(focused_num)
+                            break
+                except Exception:
+                    pass
+            if shutil.which("wmctrl"):
+                try:
+                    lres = subprocess.run(["wmctrl", "-l"], capture_output=True, text=True)
+                    self_xid = self._self_xid()
+                    for line in lres.stdout.splitlines():
+                        parts = line.split(None, 3)
+                        if len(parts) >= 3:
+                            wid = int(parts[0], 16)
+                            title = parts[3] if len(parts) == 4 else ""
+                            if wid == self_xid or title == "wwm-bar":
+                                continue
+                            wdesk = int(parts[1])
+                            if wdesk >= 0:
+                                used_nums.add(wdesk + 1)
+                except Exception:
+                    pass
+            return sorted(list(used_nums or {1})), focused_num
+
         if shutil.which("wmctrl"):
             try:
                 res = subprocess.run(["wmctrl", "-d"], capture_output=True, text=True)
@@ -2279,6 +2413,20 @@ class WwmBar(Gtk.Window):
                         if "*" in parts[1]:
                             focused_num = idx
                     return all_ws, focused_num
+            except Exception:
+                pass
+
+        if self.xdisp is not None:
+            try:
+                root = self.xdisp.screen().root
+                atom_num = self.xdisp.intern_atom("_NET_NUMBER_OF_DESKTOPS")
+                atom_cur = self.xdisp.intern_atom("_NET_CURRENT_DESKTOP")
+                num_p = root.get_full_property(atom_num, xlib_Xatom.CARDINAL)
+                cur_p = root.get_full_property(atom_cur, xlib_Xatom.CARDINAL)
+                total = int(num_p.value[0]) if num_p and num_p.value else 1
+                cur = int(cur_p.value[0]) if cur_p and cur_p.value else 0
+                if total >= 1:
+                    return list(range(1, total + 1)), max(1, min(total, cur + 1))
             except Exception:
                 pass
 
@@ -2328,8 +2476,12 @@ class WwmBar(Gtk.Window):
             try:
                 c_res = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True, text=True)
                 a_res = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True, text=True)
+                w_res = subprocess.run(["hyprctl", "activeworkspace", "-j"], capture_output=True, text=True)
                 active_addr = json.loads(a_res.stdout or "{}").get("address", "")
+                active_ws_id = json.loads(w_res.stdout or "{}").get("id")
                 for c in json.loads(c_res.stdout or "[]"):
+                    if active_ws_id is not None and (c.get("workspace") or {}).get("id") != active_ws_id:
+                        continue
                     cls = str(c.get("class") or "")
                     title = str(c.get("title") or cls or "Window")
                     if cls == "wwm-bar" or title == "wwm-bar":
@@ -2343,8 +2495,16 @@ class WwmBar(Gtk.Window):
 
         if self.has_niri:
             try:
+                ws_res = subprocess.run(["niri", "msg", "-j", "workspaces"], capture_output=True, text=True)
+                active_ws_id = None
+                for ws in json.loads(ws_res.stdout or "[]"):
+                    if ws.get("is_focused"):
+                        active_ws_id = ws.get("id")
+                        break
                 res = subprocess.run(["niri", "msg", "-j", "windows"], capture_output=True, text=True)
                 for w in json.loads(res.stdout or "[]"):
+                    if active_ws_id is not None and w.get("workspace_id") != active_ws_id:
+                        continue
                     app_id = str(w.get("app_id") or "")
                     title = str(w.get("title") or app_id or "Window")
                     if app_id == "wwm-bar" or title == "wwm-bar":
@@ -2366,6 +2526,13 @@ class WwmBar(Gtk.Window):
                 atom_utf8 = self.xdisp.intern_atom("UTF8_STRING")
                 atom_wtype = self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE")
                 atom_dock = self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_DOCK")
+                atom_cur_desk = self.xdisp.intern_atom("_NET_CURRENT_DESKTOP")
+                atom_wm_desk = self.xdisp.intern_atom("_NET_WM_DESKTOP")
+
+                cur_desk = None
+                cur_prop = root.get_full_property(atom_cur_desk, xlib_Xatom.CARDINAL)
+                if cur_prop and cur_prop.value:
+                    cur_desk = int(cur_prop.value[0])
 
                 act_prop = root.get_full_property(atom_active, xlib_Xatom.WINDOW)
                 active_wid = act_prop.value[0] if act_prop and act_prop.value else 0
@@ -2399,6 +2566,12 @@ class WwmBar(Gtk.Window):
                         wclass = win.get_wm_class()
                         if wclass and "wwm-bar" in wclass:
                             continue
+                        if cur_desk is not None:
+                            dprop = win.get_full_property(atom_wm_desk, xlib_Xatom.CARDINAL)
+                            if dprop and dprop.value:
+                                wdesk = int(dprop.value[0])
+                                if wdesk != cur_desk and wdesk != 0xFFFFFFFF:
+                                    continue
                         title = ""
                         nprop = win.get_full_property(atom_net_name, atom_utf8)
                         if nprop and nprop.value:
@@ -2413,14 +2586,20 @@ class WwmBar(Gtk.Window):
                         windows.append((str(wid), title or f"Window {wid}", wid == active_wid))
                     except Exception:
                         continue
-                if windows:
-                    return windows
+                return windows
             except Exception:
                 pass
 
         if shutil.which("wmctrl"):
             try:
                 active_wid = 0
+                cur_desk = None
+                dres = subprocess.run(["wmctrl", "-d"], capture_output=True, text=True)
+                for dl in dres.stdout.splitlines():
+                    dparts = dl.split()
+                    if len(dparts) >= 2 and "*" in dparts[1]:
+                        cur_desk = int(dparts[0])
+                        break
                 if shutil.which("xprop"):
                     ap = subprocess.run(["xprop", "-root", "_NET_ACTIVE_WINDOW"], capture_output=True, text=True)
                     if "0x" in ap.stdout:
@@ -2432,6 +2611,12 @@ class WwmBar(Gtk.Window):
                         wid = int(parts[0], 16)
                         if wid == self_xid:
                             continue
+                        try:
+                            wdesk = int(parts[1])
+                            if cur_desk is not None and wdesk not in (-1, cur_desk):
+                                continue
+                        except Exception:
+                            pass
                         title = parts[3] if len(parts) == 4 else "Window"
                         if title == "wwm-bar":
                             continue
@@ -2491,6 +2676,100 @@ class WwmBar(Gtk.Window):
             elif not focused and shutil.which("xdotool"):
                 self._spawn(["xdotool", "windowactivate", str(wid)])
 
+    def set_desktop_count(self, count):
+        count = max(1, int(count))
+        wm_name = os.environ.get("WWM_WM", "")
+        if self.has_sway or self.has_hypr or self.has_niri or wm_name == "cwm":
+            return
+        if self.xdisp is not None:
+            try:
+                from Xlib import protocol
+                root = self.xdisp.screen().root
+                atom_num = self.xdisp.intern_atom("_NET_NUMBER_OF_DESKTOPS")
+                ev = protocol.event.ClientMessage(
+                    window=root,
+                    client_type=atom_num,
+                    data=(32, [count, 0, 0, 0, 0]),
+                )
+                root.send_event(ev, event_mask=xlib_X.SubstructureRedirectMask | xlib_X.SubstructureNotifyMask)
+                self.xdisp.sync()
+            except Exception:
+                pass
+        if shutil.which("wmctrl"):
+            try:
+                subprocess.run(["wmctrl", "-n", str(count)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.5)
+            except Exception:
+                pass
+
+    def _move_x11_window_desk(self, wid, target_desk):
+        if self.xdisp is not None:
+            try:
+                from Xlib import protocol
+                win = self.xdisp.create_resource_object("window", int(wid))
+                root = self.xdisp.screen().root
+                atom_desk = self.xdisp.intern_atom("_NET_WM_DESKTOP")
+                ev = protocol.event.ClientMessage(
+                    window=win,
+                    client_type=atom_desk,
+                    data=(32, [int(target_desk), 2, 0, 0, 0]),
+                )
+                root.send_event(ev, event_mask=xlib_X.SubstructureRedirectMask | xlib_X.SubstructureNotifyMask)
+                self.xdisp.sync()
+                return
+            except Exception:
+                pass
+        if shutil.which("wmctrl"):
+            try:
+                subprocess.run(["wmctrl", "-i", "-r", hex(int(wid)), "-t", str(int(target_desk))], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.5)
+            except Exception:
+                pass
+
+    def _list_x11_window_desks(self):
+        items = []
+        self_xid = self._self_xid()
+        if self.xdisp is not None:
+            try:
+                root = self.xdisp.screen().root
+                atom_client_list = self.xdisp.intern_atom("_NET_CLIENT_LIST")
+                atom_wm_desk = self.xdisp.intern_atom("_NET_WM_DESKTOP")
+                atom_wtype = self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE")
+                atom_dock = self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_DOCK")
+                prop = root.get_full_property(atom_client_list, xlib_Xatom.WINDOW)
+                wids = list(prop.value) if prop and prop.value else []
+                for wid in wids:
+                    if wid == self_xid:
+                        continue
+                    try:
+                        win = self.xdisp.create_resource_object("window", wid)
+                        wtype = win.get_full_property(atom_wtype, xlib_Xatom.ATOM)
+                        if wtype and atom_dock in wtype.value:
+                            continue
+                        wclass = win.get_wm_class()
+                        if wclass and "wwm-bar" in wclass:
+                            continue
+                        dprop = win.get_full_property(atom_wm_desk, xlib_Xatom.CARDINAL)
+                        if dprop and dprop.value:
+                            items.append((wid, int(dprop.value[0])))
+                    except Exception:
+                        continue
+                return items
+            except Exception:
+                pass
+        if shutil.which("wmctrl"):
+            try:
+                res = subprocess.run(["wmctrl", "-l"], capture_output=True, text=True, timeout=1.5)
+                for line in res.stdout.splitlines():
+                    parts = line.split(None, 3)
+                    if len(parts) >= 3:
+                        wid = int(parts[0], 16)
+                        title = parts[3] if len(parts) == 4 else ""
+                        if wid == self_xid or title == "wwm-bar":
+                            continue
+                        items.append((wid, int(parts[1])))
+            except Exception:
+                pass
+        return items
+
     def switch_ws(self, num):
         if self.has_sway:
             self._spawn(["swaymsg", "workspace", "number", str(num)])
@@ -2498,17 +2777,39 @@ class WwmBar(Gtk.Window):
             self._spawn(["hyprctl", "dispatch", "workspace", str(num)])
         elif self.has_niri:
             self._spawn(["niri", "msg", "action", "focus-workspace", str(num)])
-        elif shutil.which("wmctrl"):
-            self._spawn(["wmctrl", "-s", str(num - 1)])
-        elif shutil.which("xdotool"):
-            self._spawn(["xdotool", "set_desktop", str(num - 1)])
+        else:
+            if self.xdisp is not None:
+                try:
+                    from Xlib import protocol
+                    root = self.xdisp.screen().root
+                    atom_cur = self.xdisp.intern_atom("_NET_CURRENT_DESKTOP")
+                    ev = protocol.event.ClientMessage(
+                        window=root,
+                        client_type=atom_cur,
+                        data=(32, [max(0, int(num) - 1), xlib_X.CurrentTime, 0, 0, 0]),
+                    )
+                    root.send_event(ev, event_mask=xlib_X.SubstructureRedirectMask | xlib_X.SubstructureNotifyMask)
+                    self.xdisp.sync()
+                except Exception:
+                    pass
+            if shutil.which("wmctrl"):
+                try:
+                    subprocess.run(["wmctrl", "-s", str(max(0, int(num) - 1))], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.5)
+                except Exception:
+                    pass
+            elif shutil.which("xdotool"):
+                try:
+                    subprocess.run(["xdotool", "set_desktop", str(max(0, int(num) - 1))], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.5)
+                except Exception:
+                    pass
         self.current_fallback_ws = num
-        self.update_workspaces()
+        self.refresh_tick()
 
     def on_add_ws(self, widget=None):
         all_ws, focused_num = self.get_workspaces_info()
         next_num = (max(all_ws) + 1) if all_ws else 1
         self.managed_workspaces.add(next_num)
+        self.set_desktop_count(max(next_num, len(all_ws) + 1))
         self.switch_ws(next_num)
 
     def on_del_ws(self, widget=None):
@@ -2521,12 +2822,37 @@ class WwmBar(Gtk.Window):
                 subprocess.run(
                     ["swaymsg", f"[workspace=__focused__] move container to workspace number {target_num}"],
                     stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
+                    stderr=subprocess.DEVNULL,
                 )
-            elif shutil.which("wmctrl"):
-                subprocess.run(["wmctrl", "-n", str(len(remaining))], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            self.managed_workspaces.discard(focused_num)
-            self.switch_ws(target_num)
+                self.managed_workspaces.discard(focused_num)
+                self.switch_ws(target_num)
+            elif self.has_hypr or self.has_niri:
+                self.managed_workspaces.discard(focused_num)
+                self.switch_ws(target_num)
+            else:
+                wm_name = os.environ.get("WWM_WM", "")
+                del_idx = focused_num - 1
+                if wm_name == "cwm":
+                    for wid, wdesk in self._list_x11_window_desks():
+                        if wdesk == del_idx:
+                            self._move_x11_window_desk(wid, target_num - 1)
+                    self.managed_workspaces.discard(focused_num)
+                    self.switch_ws(target_num)
+                else:
+                    final_num = target_num if target_num < focused_num else max(1, target_num - 1)
+                    final_idx = final_num - 1
+                    for wid, wdesk in self._list_x11_window_desks():
+                        if wdesk < 0 or wdesk == 0xFFFFFFFF:
+                            continue
+                        if wdesk == del_idx:
+                            if final_idx != del_idx:
+                                self._move_x11_window_desk(wid, final_idx)
+                        elif wdesk > del_idx:
+                            self._move_x11_window_desk(wid, wdesk - 1)
+                    self.switch_ws(final_num)
+                    self.set_desktop_count(len(remaining))
+                    self.managed_workspaces = set(range(1, len(remaining) + 1))
+                    self.refresh_tick()
 
     def update_workspaces(self):
         all_ws, focused_num = self.get_workspaces_info()
@@ -3214,7 +3540,9 @@ EOF
 floating_minimum_size 1 x 1
 gaps top 32
 no_focus [instance="wwm-bar"]
+no_focus [app_id="wwm-bar"]
 for_window [instance="wwm-bar"] floating enable, sticky enable, border none, resize set 100 ppt 32 px, move absolute position 0 0
+for_window [app_id="wwm-bar"] floating enable, sticky enable, border none, resize set 100 ppt 32 px, move absolute position 0 0
 exec sh -c 'env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="sway" python3 "${_bar_script}" >| "${_log_dir}/wwm-bar.log" 2>&1'
 EOF
 			else
@@ -3283,6 +3611,12 @@ EOF
     <keybind key="W-S-q"><action name="Exit"/></keybind>
     <keybind key="A-F4"><action name="Close"/></keybind>
   </keyboard>
+  <desktops>
+    <number>1</number>
+    <names>
+      <name>1</name>
+    </names>
+  </desktops>
   <windowRules>
     <windowRule identifier="wwm-bar" serverDecoration="no" skipTaskbar="yes"/>
   </windowRules>
@@ -3429,6 +3763,11 @@ windowrulev2 = pin, class:^(wwm-bar)$
 windowrulev2 = noborder, class:^(wwm-bar)$
 windowrulev2 = nofocus, class:^(wwm-bar)$
 windowrulev2 = move 0 0, class:^(wwm-bar)$
+windowrulev2 = float, title:^(wwm-bar)$
+windowrulev2 = pin, title:^(wwm-bar)$
+windowrulev2 = noborder, title:^(wwm-bar)$
+windowrulev2 = nofocus, title:^(wwm-bar)$
+windowrulev2 = move 0 0, title:^(wwm-bar)$
 exec-once = sh -c 'env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="hyprland" python3 "${_bar_script}" >| "${_log_dir}/wwm-bar.log" 2>&1'
 EOF
 			fi
@@ -3455,8 +3794,32 @@ binds {
     Mod+E { spawn "${_emacs_script}"; }
     Mod+F { spawn "${_files_script}"; }
     Mod+D { spawn "${_menu_script}"; }
+    Mod+1 { focus-workspace 1; }
+    Mod+2 { focus-workspace 2; }
+    Mod+3 { focus-workspace 3; }
+    Mod+4 { focus-workspace 4; }
+    Mod+5 { focus-workspace 5; }
+    Mod+6 { focus-workspace 6; }
+    Mod+7 { focus-workspace 7; }
+    Mod+8 { focus-workspace 8; }
+    Mod+9 { focus-workspace 9; }
+    Mod+Shift+1 { move-column-to-workspace 1; }
+    Mod+Shift+2 { move-column-to-workspace 2; }
+    Mod+Shift+3 { move-column-to-workspace 3; }
+    Mod+Shift+4 { move-column-to-workspace 4; }
+    Mod+Shift+5 { move-column-to-workspace 5; }
+    Mod+Shift+6 { move-column-to-workspace 6; }
+    Mod+Shift+7 { move-column-to-workspace 7; }
+    Mod+Shift+8 { move-column-to-workspace 8; }
+    Mod+Shift+9 { move-column-to-workspace 9; }
     Mod+Q { close-window; }
     Mod+Shift+Q { quit; }
+}
+window-rule {
+    match app-id="^wwm-bar$"
+    match title="^wwm-bar$"
+    open-floating true
+    open-focused false
 }
 EOF
 			if [ "${_has_gtk3_bar}" -eq 1 ]; then
@@ -4032,8 +4395,63 @@ EOF
     <keybind key="W-q"><action name="Close"/></keybind>
     <keybind key="A-Tab"><action name="NextWindow"/></keybind>
     <keybind key="W-Tab"><action name="NextWindow"/></keybind>
+    <keybind key="W-1"><action name="GoToDesktop"><to>1</to></action></keybind>
+    <keybind key="W-2"><action name="GoToDesktop"><to>2</to></action></keybind>
+    <keybind key="W-3"><action name="GoToDesktop"><to>3</to></action></keybind>
+    <keybind key="W-4"><action name="GoToDesktop"><to>4</to></action></keybind>
+    <keybind key="W-5"><action name="GoToDesktop"><to>5</to></action></keybind>
+    <keybind key="W-6"><action name="GoToDesktop"><to>6</to></action></keybind>
+    <keybind key="W-7"><action name="GoToDesktop"><to>7</to></action></keybind>
+    <keybind key="W-8"><action name="GoToDesktop"><to>8</to></action></keybind>
+    <keybind key="W-9"><action name="GoToDesktop"><to>9</to></action></keybind>
+    <keybind key="W-S-1"><action name="SendToDesktop"><to>1</to></action></keybind>
+    <keybind key="W-S-2"><action name="SendToDesktop"><to>2</to></action></keybind>
+    <keybind key="W-S-3"><action name="SendToDesktop"><to>3</to></action></keybind>
+    <keybind key="W-S-4"><action name="SendToDesktop"><to>4</to></action></keybind>
+    <keybind key="W-S-5"><action name="SendToDesktop"><to>5</to></action></keybind>
+    <keybind key="W-S-6"><action name="SendToDesktop"><to>6</to></action></keybind>
+    <keybind key="W-S-7"><action name="SendToDesktop"><to>7</to></action></keybind>
+    <keybind key="W-S-8"><action name="SendToDesktop"><to>8</to></action></keybind>
+    <keybind key="W-S-9"><action name="SendToDesktop"><to>9</to></action></keybind>
     <keybind key="W-S-q"><action name="Exit"/></keybind>
   </keyboard>
+  <desktops>
+    <number>1</number>
+    <firstdesk>1</firstdesk>
+    <names>
+      <name>1</name>
+    </names>
+    <popupTime>0</popupTime>
+  </desktops>
+  <applications>
+    <application name="wwm-bar">
+      <decor>no</decor>
+      <position><x>0</x><y>0</y></position>
+      <desktop>all</desktop>
+      <layer>above</layer>
+      <skip_taskbar>yes</skip_taskbar>
+      <skip_pager>yes</skip_pager>
+      <focus>no</focus>
+    </application>
+    <application class="wwm-bar">
+      <decor>no</decor>
+      <position><x>0</x><y>0</y></position>
+      <desktop>all</desktop>
+      <layer>above</layer>
+      <skip_taskbar>yes</skip_taskbar>
+      <skip_pager>yes</skip_pager>
+      <focus>no</focus>
+    </application>
+    <application class="Wwm-bar">
+      <decor>no</decor>
+      <position><x>0</x><y>0</y></position>
+      <desktop>all</desktop>
+      <layer>above</layer>
+      <skip_taskbar>yes</skip_taskbar>
+      <skip_pager>yes</skip_pager>
+      <focus>no</focus>
+    </application>
+  </applications>
 </openbox_config>
 EOF
 			_exec_x11 openbox --config-file "${_ob_wm_cfg}"
@@ -4053,7 +4471,7 @@ color menubg "${_c_bg}"
 color menufg "${_c_fg}"
 color font "${_c_fg}"
 color selfont "#ffffff"
-fontname "${_ui_font}:size=10"
+fontname "${_ui_font}:pixelsize=11:bold"
 gap 32 0 0 0
 ignore wwm-bar
 sticky yes
@@ -4079,6 +4497,7 @@ EOF
 		fvwm3|fvwm)
 			local _fvwm_cfg="${_run_dir}/fvwm-wm-$$.conf"
 			cat << EOF >| "${_fvwm_cfg}"
+DesktopSize 1x1
 EwmhBaseStruts 0 0 32 0
 Style * BorderWidth 2, HandleWidth 2
 Style * HilightBorderColor ${_c_accent}, BorderColor ${_c_border}
@@ -4130,11 +4549,25 @@ window.label.unfocus.textColor: ${_c_muted}
 window.frame.focusColor: ${_c_accent}
 window.frame.unfocusColor: ${_c_border}
 EOF
+			cat << 'EOF' >| "${_fb_dir}/apps"
+[app] (name=wwm-bar)
+  [Sticky] {yes}
+  [Layer] {AboveDock}
+  [Deco] {NONE}
+[end]
+[app] (class=wwm-bar)
+  [Sticky] {yes}
+  [Layer] {AboveDock}
+  [Deco] {NONE}
+[end]
+EOF
 			cat << EOF >| "${_fb_dir}/init"
+session.screen0.workspaces: 1
 session.screen0.toolbar.visible: false
 session.screen0.struts: 0,0,32,0
 session.keyFile: ${_fb_dir}/keys
 session.styleOverlay: ${_fb_dir}/overlay
+session.appsFile: ${_fb_dir}/apps
 EOF
 			_exec_x11 fluxbox -rc "${_fb_dir}/init"
 			_ret=$?
@@ -4145,6 +4578,7 @@ EOF
 			local _ice_dir="${_run_dir}/icewm-wm-$$"
 			mkdir -p "${_ice_dir}"
 			cat << EOF >| "${_ice_dir}/preferences"
+WorkspaceNames=" 1 "
 ShowTaskBar=0
 BorderSizeX=2
 BorderSizeY=2
@@ -4230,6 +4664,7 @@ Files {
     AutoProps = "${_pekwm_dir}/autoproperties"
 }
 Screen {
+    Workspaces = "1"
     EdgeSize = "2"
     EdgeIndent = "True"
 }

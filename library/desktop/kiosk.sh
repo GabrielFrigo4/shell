@@ -394,12 +394,77 @@ EOF
 			local _tabwatch="${_run_dir}/wgui-tabwatch-$$.sh"
 			cat << 'EOF' >| "${_tabwatch}"
 #!/usr/bin/env sh
+_prev_state=""
 while :; do
-	_count=$(swaymsg -t get_tree 2> "/dev/null" | grep -c '"pid":' || true)
-	if [ "${_count:-0}" -ge 2 ]; then
-		swaymsg "[workspace=__focused__] layout tabbed, border normal 2" > "/dev/null" 2>&1 || true
-	else
-		swaymsg "[workspace=__focused__] layout tabbed, border pixel 2" > "/dev/null" 2>&1 || true
+	_tree=$(swaymsg -t get_tree 2> "/dev/null" || true)
+	if [ -n "${_tree}" ]; then
+		if command -v python3 > "/dev/null" 2>&1; then
+			_ws_info=$(
+				printf '%s' "${_tree}" | python3 -c '
+import json, sys
+try:
+    tree = json.load(sys.stdin)
+except Exception:
+    print("0 0")
+    sys.exit(0)
+
+def has_focus(node):
+    if node.get("focused"):
+        return True
+    for child in node.get("nodes", []) + node.get("floating_nodes", []):
+        if has_focus(child):
+            return True
+    return False
+
+def count_leaves(node):
+    children = node.get("nodes", [])
+    if not children:
+        app_id = node.get("app_id") or ""
+        name = node.get("name") or ""
+        if app_id in ("wwm-bar", "xgui-tabbar") or name in ("wwm-bar", "xgui-tabbar"):
+            return 0
+        if node.get("pid") or node.get("app_id") or node.get("window"):
+            return 1
+        return 0
+    return sum(count_leaves(c) for c in children)
+
+def find_focused_ws(node):
+    if node.get("type") == "workspace" and node.get("name") != "__i3_scratch":
+        if has_focus(node):
+            return node
+    for child in node.get("nodes", []):
+        found = find_focused_ws(child)
+        if found is not None:
+            return found
+    return None
+
+ws = find_focused_ws(tree)
+if ws is None:
+    print("0 0")
+else:
+    print(f"{ws.get('\''id'\'', 0)} {count_leaves(ws)}")
+' 2> "/dev/null" || printf '0 0'
+			)
+			_ws_id="${_ws_info%% *}"
+			_count="${_ws_info#* }"
+		else
+			_ws_id="0"
+			_count=$(printf '%s' "${_tree}" | grep -c '"pid":' || true)
+		fi
+		if [ "${_count:-0}" -ge 2 ]; then
+			_mode="tabbed"
+		else
+			_mode="single"
+		fi
+		_state="${_ws_id}:${_mode}"
+		if [ "${_state}" != "${_prev_state}" ]; then
+			if [ "${_mode}" = "tabbed" ]; then
+				swaymsg "[workspace=__focused__] layout tabbed, border normal 2" > "/dev/null" 2>&1 || true
+			else
+				swaymsg "[workspace=__focused__] layout splith, border pixel 2" > "/dev/null" 2>&1 || true
+			fi
+			_prev_state="${_state}"
+		fi
 	fi
 	sleep 1
 done
@@ -414,7 +479,9 @@ default_floating_border pixel 2
 titlebar_border_thickness 0
 gaps inner 0
 gaps outer 0
-workspace_layout tabbed
+workspace_layout default
+default_border pixel 2
+default_floating_border pixel 2
 hide_edge_borders smart
 popup_during_fullscreen smart
 client.focused ${_p_accent} ${_p_panel} ${_p_fg} ${_p_accent} ${_p_accent}
@@ -562,6 +629,12 @@ EOF
       <naturalScroll>yes</naturalScroll>
     </device>
   </libinput>
+  <desktops>
+    <number>1</number>
+    <names>
+      <name>1</name>
+    </names>
+  </desktops>
   <windowRules>
     <windowRule identifier="*">
       <action name="Maximize"/>
@@ -624,6 +697,7 @@ misc {
 input {
     kb_layout = br
     kb_model = abnt2
+    kb_options = numpad:mac
     repeat_rate = 50
     repeat_delay = 200
     touchpad {
@@ -1690,7 +1764,31 @@ case "${_target_wm}" in
       <focus>yes</focus>
       <maximized>no</maximized>
     </application>
+    <application name="xgui-tabbar">
+      <decor>no</decor>
+      <desktop>all</desktop>
+      <layer>above</layer>
+      <skip_taskbar>yes</skip_taskbar>
+      <skip_pager>yes</skip_pager>
+      <focus>no</focus>
+    </application>
+    <application class="Xgui-tabbar">
+      <decor>no</decor>
+      <desktop>all</desktop>
+      <layer>above</layer>
+      <skip_taskbar>yes</skip_taskbar>
+      <skip_pager>yes</skip_pager>
+      <focus>no</focus>
+    </application>
   </applications>
+  <desktops>
+    <number>1</number>
+    <firstdesk>1</firstdesk>
+    <names>
+      <name>1</name>
+    </names>
+    <popupTime>0</popupTime>
+  </desktops>
 </openbox_config>
 XOB
 		openbox --config-file "\${_ob_cfg}" >> "\${_wm_log}" 2>&1 &
@@ -1750,6 +1848,7 @@ Mod4 q :Close
 Mod1 F4 :Close
 FB_KEYS
 		cat << FB_INIT >| "\${_fb_dir}/init"
+session.screen0.workspaces: 1
 session.screen0.toolbar.visible: false
 session.screen0.tabs.intitlebar: false
 session.screen0.defaultDeco: NONE
@@ -1762,6 +1861,7 @@ FB_INIT
 		_ice_dir="${_run_dir}/icewm-gui-$$"
 		mkdir -p "\${_ice_dir}" 2> "/dev/null" || true
 		cat << ICE_PREF >| "\${_ice_dir}/preferences"
+WorkspaceNames=" 1 "
 ShowTaskBar=0
 TaskBarShowWindows=0
 BorderSizeX=0
@@ -1786,6 +1886,7 @@ ICE_PREF
     <Inactive><Background>${_p_bg}</Background><Outline>${_p_border}</Outline></Inactive>
   </WindowStyle>
   <Group><Option>maximized</Option><Option>noborder</Option><Option>notitle</Option></Group>
+  <Group><Name>xgui-tabbar</Name><Option>sticky</Option><Option>noborder</Option><Option>notitle</Option><Option>nolist</Option><Option>nopager</Option><Option>layer:above</Option></Group>
   <Key mask="A" key="Tab">next</Key>
   <Key mask="4" key="Tab">next</Key>
   <Key mask="4" key="q">close</Key>
@@ -1804,6 +1905,9 @@ Files {
     Start = "~/.pekwm/start"
     AutoProps = "~/.pekwm/autoproperties"
     Theme = "~/.pekwm/themes/default"
+}
+Screen {
+    Workspaces = "1"
 }
 PEK_CFG
 		pekwm --config "\${_pek_cfg}" >> "\${_wm_log}" 2>&1 &
