@@ -1429,6 +1429,107 @@ local function cmd_sync_extensions(args)
 	end
 end
 
+local function ensure_vim_junction(vimfiles_dir, is_status, is_dry)
+	if not vimfiles_dir or vimfiles_dir == "" or not is_dir(vimfiles_dir) then return end
+
+	local seen = {}
+	local dests = {}
+	local function add_dest(parent_dir)
+		if not parent_dir or parent_dir == "" or not is_dir(parent_dir) then return end
+		local clean_parent = parent_dir:gsub("/", "\\"):gsub("\\+$", "")
+		local dst = clean_parent .. [[\.vim]]
+		local key = dst:lower()
+		if not seen[key] then
+			seen[key] = true
+			table.insert(dests, dst)
+		end
+	end
+
+	add_dest(os.getenv("HOME"))
+	add_dest(os.getenv("USERPROFILE"))
+	if MSYS_HOME and is_dir(MSYS_HOME) then
+		add_dest(MSYS_HOME)
+	end
+	if #dests == 0 then return end
+
+	local pwsh_exe = get_pwsh_exe()
+	local mode = is_status and "status" or (is_dry and "dry-run" or "update")
+	local quoted_src = ps_single_quote(vimfiles_dir)
+	local quoted_mode = ps_single_quote(mode)
+
+	for _, dst in ipairs(dests) do
+		local quoted_dst = ps_single_quote(dst)
+		local ps_body = "$d=" .. quoted_dst
+			.. ";$s=[System.IO.Path]::GetFullPath(" .. quoted_src .. ").TrimEnd([char[]]'\\/')"
+			.. ";$a=" .. quoted_mode
+			.. ";$i=Get-Item -LiteralPath $d -Force -ErrorAction SilentlyContinue"
+			.. ";$rp=$false;$dirRp=$false"
+			.. ";if($null -ne $i){$rp=($i.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0;$dirRp=$i.PSIsContainer -or (($i.Attributes -band [System.IO.FileAttributes]::Directory) -ne 0)}"
+			.. "else{try{$at=[System.IO.File]::GetAttributes($d);if(($at -band [System.IO.FileAttributes]::ReparsePoint) -ne 0){$rp=$true;$dirRp=($at -band [System.IO.FileAttributes]::Directory) -ne 0}}catch{}}"
+			.. ";if($rp){$t=$null;if(($null -ne $i) -and $i.PSObject.Properties['Target'] -and $i.Target){$t=@($i.Target)[0]}elseif(($null -ne $i) -and $i.PSObject.Properties['LinkTarget'] -and $i.LinkTarget){$t=$i.LinkTarget}"
+			.. ";$ok=$false;if($t){if($t.StartsWith('\\\\?\\') -or $t.StartsWith('\\??\\')){$t=$t.Substring(4)}"
+			.. ";if(-not [System.IO.Path]::IsPathRooted($t)){$t=[System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($d),$t)}"
+			.. ";try{$ft=[System.IO.Path]::GetFullPath($t).TrimEnd([char[]]'\\/');if([string]::Equals($ft,$s,[System.StringComparison]::OrdinalIgnoreCase) -and [System.IO.Directory]::Exists($d)){$ok=$true}}catch{}}"
+			.. ";if($ok){'OK';exit 0}"
+			.. ";if($a -eq 'update'){try{if($dirRp){[System.IO.Directory]::Delete($d,$false)}else{[System.IO.File]::Delete($d)};New-Item -ItemType Junction -Path $d -Target $s -ErrorAction Stop|Out-Null;'RECREATED'}catch{'ERR:'+$_.Exception.Message}}"
+			.. "else{if([System.IO.Directory]::Exists($d)){'DIVERGENT'}else{'BROKEN'}};exit 0}"
+			.. ";if($null -eq $i){if($a -eq 'update'){try{New-Item -ItemType Junction -Path $d -Target $s -ErrorAction Stop|Out-Null;'CREATED'}catch{'ERR:'+$_.Exception.Message}}else{'MISSING'};exit 0}"
+			.. ";if($i.PSIsContainer){$ne=$true;try{$ne=@([System.IO.Directory]::GetFileSystemEntries($d)).Count -gt 0}catch{$ne=$true}"
+			.. ";if($ne){'NONEMPTY'}elseif($a -eq 'update'){try{[System.IO.Directory]::Delete($d,$false);New-Item -ItemType Junction -Path $d -Target $s -ErrorAction Stop|Out-Null;'CREATED'}catch{'ERR:'+$_.Exception.Message}}else{'EMPTY'}}"
+			.. "else{'FILE'}"
+
+		local cmd = pwsh_exe .. [[ -NoProfile -NonInteractive -Command "& { ]] .. ps_body .. [[ }" 2>nul]]
+		local pipe = io.popen(cmd)
+		local status_out = ""
+		if pipe then
+			status_out = trim(pipe:read("*a") or "")
+			pipe:close()
+		end
+
+		if status_out == "OK" then
+			if is_status then
+				_ui_ok("Junction Vim sincronizada: " .. dst .. " -> " .. vimfiles_dir)
+			elseif is_dry then
+				_ui_sub("[IN-SYNC] Junction Vim: " .. dst .. " -> " .. vimfiles_dir)
+			end
+		elseif status_out == "CREATED" or status_out == "RECREATED" then
+			_ui_ok("Junction Vim configurada: " .. dst .. " -> " .. vimfiles_dir)
+		elseif status_out == "MISSING" then
+			if is_status then
+				_ui_warn("Junction Vim ausente: " .. dst .. " -> " .. vimfiles_dir)
+			elseif is_dry then
+				_ui_sub("[DRY-RUN JUNCTION] " .. dst .. " -> " .. vimfiles_dir)
+			end
+		elseif status_out == "BROKEN" then
+			if is_status then
+				_ui_warn("Junction Vim quebrada: " .. dst .. " (esperado: " .. vimfiles_dir .. ")")
+			elseif is_dry then
+				_ui_sub("[DRY-RUN JUNCTION] Recriar " .. dst .. " -> " .. vimfiles_dir)
+			end
+		elseif status_out == "DIVERGENT" then
+			if is_status then
+				_ui_warn("Junction Vim divergente: " .. dst .. " (esperado: " .. vimfiles_dir .. ")")
+			elseif is_dry then
+				_ui_sub("[DRY-RUN JUNCTION] Recriar " .. dst .. " -> " .. vimfiles_dir)
+			end
+		elseif status_out == "EMPTY" then
+			if is_status then
+				_ui_warn("Diretório vazio em " .. dst .. " bloqueia junction para " .. vimfiles_dir)
+			elseif is_dry then
+				_ui_sub("[DRY-RUN JUNCTION] Remover diretório vazio e criar " .. dst .. " -> " .. vimfiles_dir)
+			end
+		elseif status_out == "NONEMPTY" then
+			_ui_warn("Diretório real não-vazio encontrado em " .. dst .. "; preservando dados do usuário sem criar junction.")
+		elseif status_out == "FILE" then
+			_ui_warn("Arquivo existente em " .. dst .. " impede criação da junction para " .. vimfiles_dir .. ".")
+		elseif status_out:sub(1, 4) == "ERR:" then
+			_ui_warn("Falha ao configurar junction Vim em " .. dst .. ": " .. status_out:sub(5))
+		else
+			_ui_warn("Não foi possível verificar junction Vim em " .. dst .. ".")
+		end
+	end
+end
+
 local function cmd_uped(args)
 	local flags = args and trim(args) or ""
 	if flags:find("%-%-help") or flags:find("%-h") then
@@ -1513,6 +1614,16 @@ local function cmd_uped(args)
 		MSYS_HOME and (MSYS_HOME .. [[\.vim]]) or nil,
 	})
 	if vim_dir then update_editor("Vim", vim_dir, false) end
+
+	local env_home = os.getenv("HOME") or ""
+	local vimfiles_dir = resolve_candidate({
+		home_dir ~= "" and (home_dir .. [[\vimfiles]]) or nil,
+		env_home ~= "" and (env_home .. [[\vimfiles]]) or nil,
+	}, is_dir)
+	if vimfiles_dir then
+		found = true
+		ensure_vim_junction(vimfiles_dir, is_status, is_dry)
+	end
 
 	if not found then
 		_ui_info("Nenhum repositório de editor encontrado nos caminhos canônicos (~/.emacs.d, helix, nvim, vimfiles).")

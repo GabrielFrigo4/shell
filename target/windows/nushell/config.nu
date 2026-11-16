@@ -1057,6 +1057,93 @@ def sync-extensions [
 	}
 }
 
+def ensure-vim-junction [vimfiles_dir: string, is_status: bool, is_dry: bool] {
+	if not ($vimfiles_dir | path exists) {
+		return
+	}
+	let src_full = (try { ($vimfiles_dir | path expand) } catch { $vimfiles_dir })
+	let user_home = ($env.USERPROFILE? | default ($env.HOME? | default ""))
+	let raw_dests = [
+		(if ($env.HOME? | is-not-empty) { [$env.HOME, ".vim"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, ".vim"] | path join } else { "" }),
+		(if ($MsysHome | is-not-empty) and ($MsysHome | path exists) { [$MsysHome, ".vim"] | path join } else { "" })
+	]
+
+	mut seen = []
+	mut dests = []
+	for d in $raw_dests {
+		if ($d | is-empty) { continue }
+		let parent = ($d | path dirname)
+		if not ($parent | path exists) { continue }
+		let parent_exp = (try { ($parent | path expand) } catch { $parent })
+		let full_d = ([$parent_exp, ".vim"] | path join)
+		let key = ($full_d | str replace -a '/' '\' | str trim -r -c '\' | str lowercase)
+		if not ($key in $seen) {
+			$seen = ($seen | append $key)
+			$dests = ($dests | append $full_d)
+		}
+	}
+
+	let pw = if (which pwsh | is-not-empty) { "pwsh" } else if (which powershell | is-not-empty) { "powershell" } else { "" }
+	if ($pw | is-empty) {
+		_ui_warn "PowerShell não encontrado para gerenciar junction Vim."
+		return
+	}
+
+	let mode = if $is_status { "status" } else if $is_dry { "dry-run" } else { "update" }
+	let ps_cmd = '$d=$env:VIM_JUNC_DST; $s=[System.IO.Path]::GetFullPath($env:VIM_JUNC_SRC).TrimEnd([char[]]("\/")); $a=$env:VIM_JUNC_MODE; $i=Get-Item -LiteralPath $d -Force -ErrorAction SilentlyContinue; $rp=$false; $dirRp=$false; if($null -ne $i){ $rp=($i.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0; $dirRp=$i.PSIsContainer -or (($i.Attributes -band [System.IO.FileAttributes]::Directory) -ne 0) }else{ try{ $at=[System.IO.File]::GetAttributes($d); if(($at -band [System.IO.FileAttributes]::ReparsePoint) -ne 0){ $rp=$true; $dirRp=($at -band [System.IO.FileAttributes]::Directory) -ne 0 } }catch{} }; if($rp){ $t=$null; if(($null -ne $i) -and $i.PSObject.Properties["Target"] -and $i.Target){ $t=@($i.Target)[0] }elseif(($null -ne $i) -and $i.PSObject.Properties["LinkTarget"] -and $i.LinkTarget){ $t=$i.LinkTarget }; $ok=$false; if($t){ if($t.StartsWith("\\?\") -or $t.StartsWith("\??\")){ $t=$t.Substring(4) }; if(-not [System.IO.Path]::IsPathRooted($t)){ $t=[System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($d),$t) }; try{ $ft=[System.IO.Path]::GetFullPath($t).TrimEnd([char[]]("\/")); if([string]::Equals($ft,$s,[System.StringComparison]::OrdinalIgnoreCase) -and [System.IO.Directory]::Exists($d)){ $ok=$true } }catch{} }; if($ok){ "OK"; exit 0 }; if($a -eq "update"){ try{ if($dirRp){ [System.IO.Directory]::Delete($d,$false) }else{ [System.IO.File]::Delete($d) }; New-Item -ItemType Junction -Path $d -Target $s -ErrorAction Stop | Out-Null; "RECREATED" }catch{ "ERR:" + $_.Exception.Message } }else{ if([System.IO.Directory]::Exists($d)){ "DIVERGENT" }else{ "BROKEN" } }; exit 0 }; if($null -eq $i){ if($a -eq "update"){ try{ New-Item -ItemType Junction -Path $d -Target $s -ErrorAction Stop | Out-Null; "CREATED" }catch{ "ERR:" + $_.Exception.Message } }else{ "MISSING" }; exit 0 }; if($i.PSIsContainer){ $ne=$true; try{ $ne=@([System.IO.Directory]::GetFileSystemEntries($d)).Count -gt 0 }catch{ $ne=$true }; if($ne){ "NONEMPTY" }elseif($a -eq "update"){ try{ [System.IO.Directory]::Delete($d,$false); New-Item -ItemType Junction -Path $d -Target $s -ErrorAction Stop | Out-Null; "CREATED" }catch{ "ERR:" + $_.Exception.Message } }else{ "EMPTY" } }else{ "FILE" }'
+
+	for dst in $dests {
+		let res = (with-env { VIM_JUNC_DST: $dst, VIM_JUNC_SRC: $src_full, VIM_JUNC_MODE: $mode } {
+			do { ^$pw -NoProfile -NonInteractive -Command $ps_cmd } | complete
+		})
+		let status_out = ($res.stdout | str trim)
+		if $status_out == "OK" {
+			if $is_status {
+				_ui_ok $"Junction Vim sincronizada: ($dst) -> ($src_full)"
+			} else if $is_dry {
+				_ui_sub $"[IN-SYNC] Junction Vim: ($dst) -> ($src_full)"
+			}
+		} else if ($status_out == "CREATED") or ($status_out == "RECREATED") {
+			_ui_ok $"Junction Vim configurada: ($dst) -> ($src_full)"
+		} else if $status_out == "MISSING" {
+			if $is_status {
+				_ui_warn $"Junction Vim ausente: ($dst) -> ($src_full)"
+			} else if $is_dry {
+				_ui_sub $"[DRY-RUN JUNCTION] ($dst) -> ($src_full)"
+			}
+		} else if $status_out == "BROKEN" {
+			if $is_status {
+				_ui_warn $"Junction Vim quebrada: ($dst) \(esperado: ($src_full)\)"
+			} else if $is_dry {
+				_ui_sub $"[DRY-RUN JUNCTION] Recriar ($dst) -> ($src_full)"
+			}
+		} else if $status_out == "DIVERGENT" {
+			if $is_status {
+				_ui_warn $"Junction Vim divergente: ($dst) \(esperado: ($src_full)\)"
+			} else if $is_dry {
+				_ui_sub $"[DRY-RUN JUNCTION] Recriar ($dst) -> ($src_full)"
+			}
+		} else if $status_out == "EMPTY" {
+			if $is_status {
+				_ui_warn $"Diretório vazio em ($dst) bloqueia junction para ($src_full)"
+			} else if $is_dry {
+				_ui_sub $"[DRY-RUN JUNCTION] Remover diretório vazio e criar ($dst) -> ($src_full)"
+			}
+		} else if $status_out == "NONEMPTY" {
+			_ui_warn $"Diretório real não-vazio encontrado em ($dst); preservando dados do usuário sem criar junction."
+		} else if $status_out == "FILE" {
+			_ui_warn $"Arquivo existente em ($dst) impede criação da junction para ($src_full)."
+		} else if ($status_out | str starts-with "ERR:") {
+			let err_msg = ($status_out | str substring 4..)
+			_ui_warn $"Falha ao configurar junction Vim em ($dst): ($err_msg)"
+		} else {
+			let err_detail = ($res.stderr | str trim)
+			_ui_warn $"Não foi possível verificar junction Vim em ($dst): ($err_detail)"
+		}
+	}
+}
+
 def uped [
 	--status (-s)        # Audita o status Git de cada editor instalado
 	--dry-run (-n)       # Simula a sincronização sem puxar alterações
@@ -1166,6 +1253,22 @@ def uped [
 			^git -C $vim_dir pull --ff-only
 			_ui_ok "Vim atualizado com sucesso!"
 		}
+	}
+
+	let vimfiles_paths = [
+		(if ($env.HOME? | is-not-empty) { [$env.HOME, "vimfiles"] | path join } else { "" }),
+		(if ($user_home | is-not-empty) { [$user_home, "vimfiles"] | path join } else { "" })
+	]
+	let vimfiles_dir = ($vimfiles_paths | where { |p|
+		if ($p | is-empty) or not ($p | path exists) {
+			false
+		} else {
+			(try { ($p | path expand | path type) == "dir" } catch { false })
+		}
+	} | get -o 0)
+	if ($vimfiles_dir | is-not-empty) {
+		$found = true
+		ensure-vim-junction $vimfiles_dir $is_status $is_dry
 	}
 
 	if (not $found) {

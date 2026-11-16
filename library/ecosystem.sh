@@ -131,18 +131,178 @@ _resolve_windows_editor_roots() {
 	fi
 }
 
+_remove_windows_vim_link() {
+	local _destination _win_destination
+	_destination="$1"
+
+	if unlink "${_destination}" 2> "/dev/null" || rm -f "${_destination}" 2> "/dev/null" || rmdir "${_destination}" 2> "/dev/null"; then
+		return 0
+	fi
+	if command -v cmd.exe > "/dev/null" 2>&1; then
+		if command -v cygpath > "/dev/null" 2>&1; then
+			_win_destination="$(cygpath -w "${_destination}" 2> "/dev/null" || printf '%s\n' "${_destination}")"
+		else
+			_win_destination="$(printf '%s\n' "${_destination}" | sed 's|/|\\|g')"
+		fi
+		MSYS2_ARG_CONV_EXCL="*" cmd.exe /c rmdir "${_win_destination}" > "/dev/null" 2>&1 && return 0
+	fi
+	return 1
+}
+
+_create_windows_vim_junction() {
+	local _destination _vimfiles_dir _win_destination _win_source
+	_destination="$1"
+	_vimfiles_dir="$2"
+
+	if command -v cygpath > "/dev/null" 2>&1; then
+		_win_destination="$(cygpath -w "${_destination}" 2> "/dev/null" || printf '%s\n' "${_destination}")"
+		_win_source="$(cygpath -w "${_vimfiles_dir}" 2> "/dev/null" || printf '%s\n' "${_vimfiles_dir}")"
+	else
+		_win_destination="$(printf '%s\n' "${_destination}" | sed 's|/|\\|g')"
+		_win_source="$(printf '%s\n' "${_vimfiles_dir}" | sed 's|/|\\|g')"
+	fi
+
+	if command -v cmd.exe > "/dev/null" 2>&1; then
+		if MSYS2_ARG_CONV_EXCL="*" cmd.exe /c mklink /J "${_win_destination}" "${_win_source}" > "/dev/null" 2>&1; then
+			_ui_ok "Junction Vim criada: ${_destination} -> ${_vimfiles_dir}"
+			return 0
+		fi
+		_ui_warn "Falha ao criar junction Vim em ${_destination}."
+		return 1
+	elif ln -s "${_vimfiles_dir}" "${_destination}" > "/dev/null" 2>&1; then
+		_ui_ok "Link Vim criado: ${_destination} -> ${_vimfiles_dir}"
+		return 0
+	else
+		_ui_warn "Falha ao criar link Vim em ${_destination}."
+		return 1
+	fi
+}
+
+_ensure_windows_vim_junction() {
+	local _editor_mode _vimfiles_dir _windows_home _candidate _real_source
+	local _processed_destinations _newline_sep _destination _dest_parent
+	local _real_parent _canonical_destination _real_destination
+
+	_editor_mode="${1:-update}"
+	_vimfiles_dir="${2:-}"
+
+	case "$(uname -s 2> "/dev/null")" in
+		MINGW*|MSYS*|CYGWIN*|*_NT*) ;;
+		*) return 0 ;;
+	esac
+
+	_windows_home="${_win_home:-}"
+	if [ -z "${_windows_home}" ] && [ -n "${USERPROFILE:-}" ]; then
+		if command -v cygpath > "/dev/null" 2>&1; then
+			_windows_home="$(cygpath -u "${USERPROFILE}" 2> "/dev/null" || printf '%s\n' "${USERPROFILE}")"
+		else
+			_windows_home="$(printf '%s\n' "${USERPROFILE}" | sed 's|\\|/|g')"
+		fi
+	fi
+
+	if [ -z "${_vimfiles_dir}" ]; then
+		for _candidate in "${HOME}/vimfiles" "${_windows_home:+${_windows_home}/vimfiles}"; do
+			if [ -n "${_candidate}" ] && [ -d "${_candidate}" ]; then
+				_vimfiles_dir="${_candidate}"
+				break
+			fi
+		done
+	fi
+	[ -n "${_vimfiles_dir}" ] && [ -d "${_vimfiles_dir}" ] || return 0
+
+	_real_source="$(CDPATH="" cd -P "${_vimfiles_dir}" 2> "/dev/null" && pwd -P || printf '%s\n' "${_vimfiles_dir}")"
+	_processed_destinations=""
+	_newline_sep="
+"
+
+	for _destination in "${_windows_home:+${_windows_home}/.vim}" "${HOME}/.vim"; do
+		[ -z "${_destination}" ] && continue
+		_dest_parent="$(dirname "${_destination}")"
+		[ -d "${_dest_parent}" ] || continue
+		_real_parent="$(CDPATH="" cd -P "${_dest_parent}" 2> "/dev/null" && pwd -P || printf '%s\n' "${_dest_parent}")"
+		_canonical_destination="${_real_parent}/.vim"
+
+		case "${_newline_sep}${_processed_destinations}${_newline_sep}" in
+			*"${_newline_sep}${_canonical_destination}${_newline_sep}"*) continue ;;
+		esac
+		_processed_destinations="${_processed_destinations}${_newline_sep}${_canonical_destination}"
+
+		if [ -L "${_destination}" ]; then
+			if [ -d "${_destination}" ]; then
+				_real_destination="$(CDPATH="" cd -P "${_destination}" 2> "/dev/null" && pwd -P || true)"
+				if [ "${_real_destination}" = "${_real_source}" ]; then
+					if [ "${_editor_mode}" = "dry-run" ]; then
+						_ui_sub "[IN-SYNC] Junction Vim: ${_destination} -> ${_vimfiles_dir}"
+					else
+						_ui_ok "Junction Vim sincronizada: ${_destination} -> ${_vimfiles_dir}"
+					fi
+				elif [ "${_editor_mode}" = "status" ]; then
+					_ui_warn "Junction Vim divergente: ${_destination} -> ${_real_destination:-desconhecido} (esperado: ${_vimfiles_dir})"
+				elif [ "${_editor_mode}" = "dry-run" ]; then
+					_ui_sub "[DRY-RUN JUNCTION] Recriar ${_destination} -> ${_vimfiles_dir}"
+				elif _remove_windows_vim_link "${_destination}"; then
+					_create_windows_vim_junction "${_destination}" "${_vimfiles_dir}" || true
+				else
+					_ui_warn "Não foi possível remover link divergente em ${_destination}."
+				fi
+			elif [ "${_editor_mode}" = "status" ]; then
+				_ui_warn "Link Vim quebrado em ${_destination} (esperado: ${_vimfiles_dir})"
+			elif [ "${_editor_mode}" = "dry-run" ]; then
+				_ui_sub "[DRY-RUN JUNCTION] Recriar ${_destination} -> ${_vimfiles_dir}"
+			elif _remove_windows_vim_link "${_destination}"; then
+				_create_windows_vim_junction "${_destination}" "${_vimfiles_dir}" || true
+			else
+				_ui_warn "Não foi possível remover link quebrado em ${_destination}."
+			fi
+		elif [ ! -e "${_destination}" ]; then
+			if [ "${_editor_mode}" = "status" ]; then
+				_ui_warn "Junction Vim ausente: ${_destination} -> ${_vimfiles_dir}"
+			elif [ "${_editor_mode}" = "dry-run" ]; then
+				_ui_sub "[DRY-RUN JUNCTION] ${_destination} -> ${_vimfiles_dir}"
+			else
+				_create_windows_vim_junction "${_destination}" "${_vimfiles_dir}" || true
+			fi
+		elif [ -d "${_destination}" ]; then
+			_real_destination="$(CDPATH="" cd -P "${_destination}" 2> "/dev/null" && pwd -P || true)"
+			if [ "${_real_destination}" = "${_real_source}" ]; then
+				if [ "${_editor_mode}" = "dry-run" ]; then
+					_ui_sub "[IN-SYNC] Junction Vim: ${_destination} -> ${_vimfiles_dir}"
+				else
+					_ui_ok "Junction Vim sincronizada: ${_destination} -> ${_vimfiles_dir}"
+				fi
+			elif [ ! -r "${_destination}" ] || [ -n "$(ls -A "${_destination}" 2> "/dev/null")" ]; then
+				_ui_warn "Diretório real não-vazio em ${_destination}; preservando dados do usuário sem criar junction."
+			elif [ "${_editor_mode}" = "status" ]; then
+				_ui_warn "Diretório vazio em ${_destination} bloqueia junction para ${_vimfiles_dir}"
+			elif [ "${_editor_mode}" = "dry-run" ]; then
+				_ui_sub "[DRY-RUN JUNCTION] Remover diretório vazio e criar ${_destination} -> ${_vimfiles_dir}"
+			elif rmdir "${_destination}" 2> "/dev/null"; then
+				_create_windows_vim_junction "${_destination}" "${_vimfiles_dir}" || true
+			else
+				_ui_warn "Falha ao remover diretório vazio em ${_destination}."
+			fi
+		else
+			_ui_warn "Arquivo existente em ${_destination} impede criação da junction para ${_vimfiles_dir}."
+		fi
+	done
+}
+
 _update_editor_candidates() {
-	local _editor="$1" _editor_mode="$2"
-	shift 2
-	local _target _branch _status
+	local _editor _editor_mode _target _real_target _branch _status _newline_sep
+	_editor="$1"
+	_editor_mode="$2"
+	[ "$#" -ge 2 ] && shift 2 || return 0
+	_newline_sep="
+"
 
 	for _target in "$@"; do
 		[ -z "${_target}" ] && continue
 		[ -d "${_target}/.git" ] || [ -f "${_target}/.git" ] || continue
-		case " ${_processed_targets} " in
-			*" ${_target} "*) continue ;;
+		_real_target="$(CDPATH="" cd -P "${_target}" 2> "/dev/null" && pwd -P || printf '%s\n' "${_target}")"
+		case "${_newline_sep}${_processed_targets}${_newline_sep}" in
+			*"${_newline_sep}${_real_target}${_newline_sep}"*) continue ;;
 		esac
-		_processed_targets="${_processed_targets} ${_target} "
+		_processed_targets="${_processed_targets}${_newline_sep}${_real_target}"
 		_found=1
 
 		if [ "${_editor_mode}" = "status" ]; then
@@ -177,6 +337,7 @@ _update_editor_candidates() {
 
 update-editors() {
 	local _arg _found _editor_mode _with_extensions _win_home _win_appdata _win_localappdata _processed_targets
+	local _vimfiles_dir _vimfiles_candidate
 	for _arg in "$@"; do
 		case "${_arg}" in
 			--help|-h)
@@ -235,10 +396,24 @@ update-editors() {
 		"${_win_home:+${_win_home}/AppData/Local/nvim}"
 
 	_update_editor_candidates "Vim" "${_editor_mode}" \
-		"${HOME}/.vim" \
 		"${HOME}/vimfiles" \
 		"${_win_home:+${_win_home}/vimfiles}" \
+		"${HOME}/.vim" \
 		"${_win_home:+${_win_home}/.vim}"
+
+	_vimfiles_dir=""
+	for _vimfiles_candidate in "${HOME}/vimfiles" "${_win_home:+${_win_home}/vimfiles}"; do
+		if [ -n "${_vimfiles_candidate}" ] && [ -d "${_vimfiles_candidate}" ]; then
+			_vimfiles_dir="${_vimfiles_candidate}"
+			break
+		fi
+	done
+	if [ -n "${_vimfiles_dir}" ]; then
+		_ensure_windows_vim_junction "${_editor_mode}" "${_vimfiles_dir}"
+		case "$(uname -s 2> "/dev/null")" in
+			MINGW*|MSYS*|CYGWIN*|*_NT*) _found=1 ;;
+		esac
+	fi
 
 	if [ "${_with_extensions}" -eq 1 ] && command -v sync-extensions > "/dev/null" 2>&1; then
 		echo ""

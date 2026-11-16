@@ -102,6 +102,136 @@ function update-vault -d "Sincroniza o repositório Universal Vault e recarrega"
 end
 alias upvt="update-vault"
 
+function _ensure_windows_vim_junction --argument-names vimfiles_dir win_home is_status is_dry
+    test -n "$vimfiles_dir"; and test -d "$vimfiles_dir"; or return 0
+
+    set -l real_source (realpath "$vimfiles_dir" 2>/dev/null; or command sh -c 'CDPATH="" cd -P "$1" 2>/dev/null && pwd -P' _ "$vimfiles_dir"; or echo "$vimfiles_dir")
+    set -l seen_dests
+    set -l raw_dests "$HOME/.vim"
+    if test -n "$win_home"
+        set raw_dests $raw_dests "$win_home/.vim"
+    end
+
+    for dst in $raw_dests
+        set -l parent_dir (dirname "$dst")
+        test -d "$parent_dir"; or continue
+        set -l real_parent (realpath "$parent_dir" 2>/dev/null; or command sh -c 'CDPATH="" cd -P "$1" 2>/dev/null && pwd -P' _ "$parent_dir"; or echo "$parent_dir")
+        set -l canon_dst "$real_parent/.vim"
+        if contains -- "$canon_dst" $seen_dests
+            continue
+        end
+        set seen_dests $seen_dests "$canon_dst"
+
+        if test -L "$dst"
+            if test -d "$dst"
+                set -l real_dst (realpath "$dst" 2>/dev/null; or command sh -c 'CDPATH="" cd -P "$1" 2>/dev/null && pwd -P' _ "$dst")
+                if test "$real_dst" = "$real_source"
+                    if test $is_dry -eq 1
+                        _ui_sub "[IN-SYNC] Junction Vim: $dst -> $vimfiles_dir"
+                    else
+                        _ui_ok "Junction Vim sincronizada: $dst -> $vimfiles_dir"
+                    end
+                    continue
+                end
+                if test $is_status -eq 1
+                    _ui_warn "Junction Vim divergente: $dst -> $real_dst (esperado: $vimfiles_dir)"
+                    continue
+                else if test $is_dry -eq 1
+                    _ui_sub "[DRY-RUN JUNCTION] Recriar $dst -> $vimfiles_dir"
+                    continue
+                end
+            else
+                if test $is_status -eq 1
+                    _ui_warn "Link Vim quebrado em $dst (esperado: $vimfiles_dir)"
+                    continue
+                else if test $is_dry -eq 1
+                    _ui_sub "[DRY-RUN JUNCTION] Recriar $dst -> $vimfiles_dir"
+                    continue
+                end
+            end
+            unlink "$dst" 2>/dev/null; or rm -f "$dst" 2>/dev/null; or rmdir "$dst" 2>/dev/null
+            if test -L "$dst"; or test -e "$dst"
+                if type -q cmd.exe
+                    set -l win_rm_dst "$dst"
+                    if type -q cygpath
+                        set win_rm_dst (cygpath -w "$dst" 2>/dev/null; or echo "$dst")
+                    else
+                        set win_rm_dst (string replace -a '/' '\\' -- "$dst")
+                    end
+                    begin
+                        set -lx MSYS2_ARG_CONV_EXCL "*"
+                        command cmd.exe /c rmdir "$win_rm_dst" >/dev/null 2>&1
+                    end
+                end
+            end
+            if test -L "$dst"; or test -e "$dst"
+                _ui_warn "Não foi possível remover link Vim existente em $dst."
+                continue
+            end
+        else if test -d "$dst"
+            set -l real_dst (realpath "$dst" 2>/dev/null; or command sh -c 'CDPATH="" cd -P "$1" 2>/dev/null && pwd -P' _ "$dst")
+            if test "$real_dst" = "$real_source"
+                if test $is_dry -eq 1
+                    _ui_sub "[IN-SYNC] Junction Vim: $dst -> $vimfiles_dir"
+                else
+                    _ui_ok "Junction Vim sincronizada: $dst -> $vimfiles_dir"
+                end
+                continue
+            end
+            set -l entries (command ls -A "$dst" 2>/dev/null)
+            if not test -r "$dst"; or test (count $entries) -gt 0
+                _ui_warn "Diretório real não-vazio em $dst; preservando dados do usuário sem criar junction."
+                continue
+            else if test $is_status -eq 1
+                _ui_warn "Diretório vazio em $dst bloqueia junction para $vimfiles_dir"
+                continue
+            else if test $is_dry -eq 1
+                _ui_sub "[DRY-RUN JUNCTION] Remover diretório vazio e criar $dst -> $vimfiles_dir"
+                continue
+            end
+            rmdir "$dst" 2>/dev/null; or begin
+                _ui_warn "Falha ao remover diretório vazio em $dst."
+                continue
+            end
+        else if test -e "$dst"
+            _ui_warn "Arquivo existente em $dst impede criação da junction para $vimfiles_dir."
+            continue
+        else
+            if test $is_status -eq 1
+                _ui_warn "Junction Vim ausente: $dst -> $vimfiles_dir"
+                continue
+            else if test $is_dry -eq 1
+                _ui_sub "[DRY-RUN JUNCTION] $dst -> $vimfiles_dir"
+                continue
+            end
+        end
+
+        if type -q cmd.exe
+            set -l win_dst "$dst"
+            set -l win_src "$vimfiles_dir"
+            if type -q cygpath
+                set win_dst (cygpath -w "$dst" 2>/dev/null; or echo "$dst")
+                set win_src (cygpath -w "$vimfiles_dir" 2>/dev/null; or echo "$vimfiles_dir")
+            else
+                set win_dst (string replace -a '/' '\\' -- "$dst")
+                set win_src (string replace -a '/' '\\' -- "$vimfiles_dir")
+            end
+            if begin
+                    set -lx MSYS2_ARG_CONV_EXCL "*"
+                    command cmd.exe /c mklink /J "$win_dst" "$win_src" >/dev/null 2>&1
+                end
+                _ui_ok "Junction Vim criada: $dst -> $vimfiles_dir"
+            else
+                _ui_warn "Falha ao criar junction Vim em $dst."
+            end
+        else if ln -s "$vimfiles_dir" "$dst" >/dev/null 2>&1
+            _ui_ok "Link Vim criado: $dst -> $vimfiles_dir"
+        else
+            _ui_warn "Falha ao criar link Vim em $dst."
+        end
+    end
+end
+
 function update-editors -d "Atualiza os repositórios da Suíte de Editores"
     for arg in $argv
         switch $arg
@@ -124,13 +254,65 @@ function update-editors -d "Atualiza os repositórios da Suíte de Editores"
         end
     end
 
-    set -l editor_dirs "$HOME/.emacs.d" "$HOME/.config/nvim" "$HOME/.config/helix" "$HOME/.vim" "$HOME/vimfiles"
+    set -l is_windows 0
+    set -l win_home ""
+    set -l win_appdata ""
+    set -l win_localappdata ""
+    if string match -rq '^(MINGW|MSYS|CYGWIN|.*_NT)' -- (uname -s 2>/dev/null)
+        set is_windows 1
+        if set -q USERPROFILE; and test -n "$USERPROFILE"
+            if type -q cygpath
+                set win_home (cygpath -u "$USERPROFILE" 2>/dev/null; or echo "$USERPROFILE")
+            else
+                set win_home (string replace -a '\\' '/' -- "$USERPROFILE")
+            end
+        end
+        if set -q APPDATA; and test -n "$APPDATA"
+            if type -q cygpath
+                set win_appdata (cygpath -u "$APPDATA" 2>/dev/null; or echo "$APPDATA")
+            else
+                set win_appdata (string replace -a '\\' '/' -- "$APPDATA")
+            end
+        else if test -n "$win_home"
+            set win_appdata "$win_home/AppData/Roaming"
+        end
+        if set -q LOCALAPPDATA; and test -n "$LOCALAPPDATA"
+            if type -q cygpath
+                set win_localappdata (cygpath -u "$LOCALAPPDATA" 2>/dev/null; or echo "$LOCALAPPDATA")
+            else
+                set win_localappdata (string replace -a '\\' '/' -- "$LOCALAPPDATA")
+            end
+        else if test -n "$win_home"
+            set win_localappdata "$win_home/AppData/Local"
+        end
+    end
+
+    set -l editor_dirs "$HOME/.emacs.d" "$HOME/.config/nvim" "$HOME/.config/helix" "$HOME/vimfiles" "$HOME/.vim"
+    if test $is_windows -eq 1
+        test -n "$win_home"; and set editor_dirs $editor_dirs "$win_home/.emacs.d" "$win_home/vimfiles" "$win_home/.vim"
+        test -n "$win_appdata"; and set editor_dirs $editor_dirs "$win_appdata/.emacs.d" "$win_appdata/helix"
+        test -n "$win_localappdata"; and set editor_dirs $editor_dirs "$win_localappdata/nvim"
+    end
+
+    set -l processed_targets
     set -l found 0
-    _ui_step "Auditando Suíte de Editores..."
+    if test $is_status -eq 1
+        _ui_step "Auditando Suíte de Editores..."
+    else if test $is_dry -eq 1
+        _ui_step "Simulando atualização da Suíte de Editores..."
+    else
+        _ui_step "Atualizando a Suíte de Editores..."
+    end
     for ed in $editor_dirs
-        if test -d "$ed/.git"
+        test -n "$ed"; or continue
+        if test -d "$ed/.git"; or test -f "$ed/.git"
+            set -l real_ed (realpath "$ed" 2>/dev/null; or command sh -c 'CDPATH="" cd -P "$1" 2>/dev/null && pwd -P' _ "$ed"; or echo "$ed")
+            if contains -- "$real_ed" $processed_targets
+                continue
+            end
+            set processed_targets $processed_targets "$real_ed"
             set found (math $found + 1)
-            set -l ed_name (basename $ed)
+            set -l ed_name (basename "$ed")
             if test $is_status -eq 1
                 _ui_sub "Status de $ed_name em $ed..."
                 git -C "$ed" status -s -b
@@ -140,6 +322,20 @@ function update-editors -d "Atualiza os repositórios da Suíte de Editores"
                 _ui_sub "Atualizando $ed_name em $ed..."
                 git -C "$ed" pull --ff-only
             end
+        end
+    end
+
+    if test $is_windows -eq 1
+        set -l vimfiles_dir ""
+        for cand in "$HOME/vimfiles" "$win_home/vimfiles"
+            if test -n "$cand"; and test -d "$cand"
+                set vimfiles_dir "$cand"
+                break
+            end
+        end
+        if test -n "$vimfiles_dir"
+            set found (math $found + 1)
+            _ensure_windows_vim_junction "$vimfiles_dir" "$win_home" $is_status $is_dry
         end
     end
 

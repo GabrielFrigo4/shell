@@ -1,4 +1,4 @@
-<#
+﻿<#
 # ----------------------------------------------------------------
 # Module: PowerShell Interactive Environment Profile
 # ----------------------------------------------------------------
@@ -489,6 +489,158 @@ Parâmetros:
 	_ui_ok "Operação Push Git concluída!"
 }
 
+function Sync-WindowsVimJunction {
+	param(
+		[Parameter(Mandatory = $true)][string]$VimFilesPath,
+		[switch]$Status,
+		[switch]$DryRun
+	)
+
+	$fullVimFiles = [System.IO.Path]::GetFullPath($VimFilesPath).TrimEnd('\', '/')
+	if (-not [System.IO.Directory]::Exists($fullVimFiles)) { return }
+
+	$rawDestinations = @()
+	if ($HOME) { $rawDestinations += [System.IO.Path]::Combine($HOME, '.vim') }
+	if ($env:USERPROFILE) { $rawDestinations += [System.IO.Path]::Combine($env:USERPROFILE, '.vim') }
+	if ($MsysHome -and (Test-Path -LiteralPath $MsysHome)) {
+		$rawDestinations += [System.IO.Path]::Combine($MsysHome, '.vim')
+	}
+
+	$seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+	$destinations = @()
+	foreach ($dest in $rawDestinations) {
+		if (-not $dest) { continue }
+		$parentDir = [System.IO.Path]::GetDirectoryName($dest)
+		if (-not $parentDir -or -not [System.IO.Directory]::Exists($parentDir)) { continue }
+		$fullParent = [System.IO.Path]::GetFullPath($parentDir).TrimEnd('\', '/')
+		$fullDest = [System.IO.Path]::Combine($fullParent, '.vim')
+		if ($seen.Add($fullDest)) {
+			$destinations += $fullDest
+		}
+	}
+
+	foreach ($linkPath in $destinations) {
+		$item = Get-Item -LiteralPath $linkPath -Force -ErrorAction SilentlyContinue
+		$isReparse = $false
+		$isDirReparse = $false
+		if ($null -ne $item) {
+			$isReparse = ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0
+			$isDirReparse = $item.PSIsContainer -or (($item.Attributes -band [System.IO.FileAttributes]::Directory) -ne 0)
+		} else {
+			try {
+				$attrs = [System.IO.File]::GetAttributes($linkPath)
+				if (($attrs -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+					$isReparse = $true
+					$isDirReparse = ($attrs -band [System.IO.FileAttributes]::Directory) -ne 0
+				}
+			} catch {
+				$isReparse = $false
+			}
+		}
+
+		if ($isReparse) {
+			$rawTarget = $null
+			if ($null -ne $item) {
+				if ($item.PSObject.Properties['Target'] -and $item.Target) {
+					$rawTarget = @($item.Target)[0]
+				} elseif ($item.PSObject.Properties['LinkTarget'] -and $item.LinkTarget) {
+					$rawTarget = $item.LinkTarget
+				}
+			}
+
+			$matchesTarget = $false
+			if ($rawTarget) {
+				if ($rawTarget.StartsWith('\\?\') -or $rawTarget.StartsWith('\??\')) {
+					$rawTarget = $rawTarget.Substring(4)
+				}
+				if (-not [System.IO.Path]::IsPathRooted($rawTarget)) {
+					$rawTarget = [System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($linkPath), $rawTarget)
+				}
+				try {
+					$resolvedTarget = [System.IO.Path]::GetFullPath($rawTarget).TrimEnd('\', '/')
+					if ([string]::Equals($resolvedTarget, $fullVimFiles, [System.StringComparison]::OrdinalIgnoreCase) -and [System.IO.Directory]::Exists($linkPath)) {
+						$matchesTarget = $true
+					}
+				} catch {
+					$matchesTarget = $false
+				}
+			}
+
+			if ($matchesTarget) {
+				if ($Status) {
+					_ui_ok "Junction Vim sincronizada: $linkPath -> $fullVimFiles"
+				} elseif ($DryRun) {
+					_ui_sub "[IN-SYNC] Junction Vim: $linkPath -> $fullVimFiles"
+				}
+				continue
+			}
+
+			$isBroken = -not [System.IO.Directory]::Exists($linkPath)
+			if ($Status) {
+				$label = if ($isBroken) { "quebrada" } else { "divergente" }
+				_ui_warn "Junction Vim ${label}: $linkPath (esperado: $fullVimFiles)"
+			} elseif ($DryRun) {
+				_ui_sub "[DRY-RUN JUNCTION] Recriar $linkPath -> $fullVimFiles"
+			} else {
+				try {
+					if ($isDirReparse) {
+						[System.IO.Directory]::Delete($linkPath, $false)
+					} else {
+						[System.IO.File]::Delete($linkPath)
+					}
+					New-Item -ItemType Junction -Path $linkPath -Target $fullVimFiles -ErrorAction Stop | Out-Null
+					_ui_ok "Junction Vim atualizada: $linkPath -> $fullVimFiles"
+				} catch {
+					_ui_warn "Falha ao atualizar junction Vim em ${linkPath}: $($_.Exception.Message)"
+				}
+			}
+			continue
+		}
+
+		if ($null -eq $item) {
+			if ($Status) {
+				_ui_warn "Junction Vim ausente: $linkPath -> $fullVimFiles"
+			} elseif ($DryRun) {
+				_ui_sub "[DRY-RUN JUNCTION] $linkPath -> $fullVimFiles"
+			} else {
+				try {
+					New-Item -ItemType Junction -Path $linkPath -Target $fullVimFiles -ErrorAction Stop | Out-Null
+					_ui_ok "Junction Vim criada: $linkPath -> $fullVimFiles"
+				} catch {
+					_ui_warn "Falha ao criar junction Vim em ${linkPath}: $($_.Exception.Message)"
+				}
+			}
+			continue
+		}
+
+		if ($item.PSIsContainer) {
+			$hasEntries = $true
+			try {
+				$hasEntries = @([System.IO.Directory]::GetFileSystemEntries($linkPath)).Count -gt 0
+			} catch {
+				$hasEntries = $true
+			}
+			if ($hasEntries) {
+				_ui_warn "Diretório real não-vazio encontrado em $linkPath; preservando dados do usuário sem criar junction."
+			} elseif ($Status) {
+				_ui_warn "Diretório vazio em $linkPath bloqueia junction para $fullVimFiles"
+			} elseif ($DryRun) {
+				_ui_sub "[DRY-RUN JUNCTION] Remover diretório vazio e criar $linkPath -> $fullVimFiles"
+			} else {
+				try {
+					[System.IO.Directory]::Delete($linkPath, $false)
+					New-Item -ItemType Junction -Path $linkPath -Target $fullVimFiles -ErrorAction Stop | Out-Null
+					_ui_ok "Junction Vim criada: $linkPath -> $fullVimFiles"
+				} catch {
+					_ui_warn "Falha ao substituir diretório vazio em ${linkPath}: $($_.Exception.Message)"
+				}
+			}
+		} else {
+			_ui_warn "Arquivo existente em $linkPath impede criação da junction para $fullVimFiles."
+		}
+	}
+}
+
 function Update-Editors {
 	param(
 		[alias("s")][switch]$Status,
@@ -609,6 +761,16 @@ Parâmetros:
 			git -C $vimPath pull --ff-only
 			_ui_ok "Vim atualizado com sucesso!"
 		}
+	}
+
+	$vimFilesDir = @(
+		$(if ($HOME) { Join-Path $HOME "vimfiles" }),
+		$(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE "vimfiles" })
+	) | Where-Object { $_ -and [System.IO.Directory]::Exists($_) } | Select-Object -First 1
+
+	if ($vimFilesDir) {
+		$found = 1
+		Sync-WindowsVimJunction -VimFilesPath $vimFilesDir -Status:$Status -DryRun:$DryRun
 	}
 
 	if ($found -eq 0) {
