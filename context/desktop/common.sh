@@ -315,9 +315,16 @@ open-smart() {
 
 		if { [ -n "${INSIDE_EMACS:-}" ] || [ "${_extension_match}" -eq 1 ]; } && \
 		   _desktop_has_bin "emacsclient"; then
+			if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${INSIDE_EMACS:-}" ]; then
+				_emacs_ensure_healthy_daemon > "/dev/null" 2>&1 || true
+			fi
 			_live_sock="$(_emacs_live_socket || true)"
 			if [ -n "${_live_sock}" ]; then
-				command emacsclient -s "${_live_sock}" -n "${_target}"
+				if [ -n "${INSIDE_EMACS:-}" ]; then
+					command emacsclient -s "${_live_sock}" -n "${_target}"
+				else
+					command emacsclient -s "${_live_sock}" --create-frame -n "${_target}"
+				fi
 				continue
 			fi
 		fi
@@ -448,6 +455,7 @@ _emacs_is_default_socket() {
 	local _tmp_dir="${TMPDIR:-/tmp}"
 	local _std_sock=""
 	local _auth_sock=""
+	local _var_sock=""
 	local _tmp_sock=""
 	_target="$(_emacs_socket_path "${1:-}")"
 	_uid="$(id -u 2> "/dev/null" || printf '1000')"
@@ -455,11 +463,50 @@ _emacs_is_default_socket() {
 	[ -n "${_tmp_dir}" ] || _tmp_dir="/tmp"
 	_std_sock="$(_emacs_std_socket_dir)/server"
 	_auth_sock="${HOME%/}/.emacs.d/var/server/auth/server"
+	_var_sock="${HOME%/}/.emacs.d/var/server/server"
 	_tmp_sock="${_tmp_dir}/emacs${_uid}/server"
 	case "${_target}" in
-		"${_std_sock}"|"${_auth_sock}"|"${_tmp_sock}"|"/tmp/emacs${_uid}/server") return 0 ;;
+		"${_std_sock}"|"${_auth_sock}"|"${_var_sock}"|"${_tmp_sock}"|"/tmp/emacs${_uid}/server") return 0 ;;
 	esac
 	return 1
+}
+
+_emacs_sanitize_path() {
+	local _target="${1:-}"
+	local _parent=""
+	local _rem=""
+	local _cur=""
+	local _part=""
+	[ -n "${_target}" ] || return 0
+	case "${_target}" in
+		*/*) _parent="${_target%/*}" ;;
+		*) return 0 ;;
+	esac
+	[ -n "${_parent}" ] || _parent="/"
+
+	_rem="${_parent#/}"
+	while [ -n "${_rem}" ]; do
+		_part="${_rem%%/*}"
+		if [ "${_rem}" = "${_part}" ]; then
+			_rem=""
+		else
+			_rem="${_rem#*/}"
+		fi
+		[ -n "${_part}" ] || continue
+		_cur="${_cur}/${_part}"
+		if [ -L "${_cur}" ] && [ ! -e "${_cur}" ]; then
+			command rm -f "${_cur}" 2> "/dev/null" || true
+		elif [ -e "${_cur}" ] && [ ! -d "${_cur}" ]; then
+			command rm -f "${_cur}" 2> "/dev/null" || true
+		fi
+	done
+
+	if [ -L "${_target}" ] && [ ! -e "${_target}" ]; then
+		command rm -f "${_target}" 2> "/dev/null" || true
+	elif [ -e "${_target}" ] && [ ! -S "${_target}" ]; then
+		command rm -rf "${_target}" 2> "/dev/null" || true
+	fi
+	return 0
 }
 
 _emacs_ensure_socket_dir() {
@@ -470,6 +517,7 @@ _emacs_ensure_socket_dir() {
 		*) return 0 ;;
 	esac
 	[ -n "${_parent}" ] || _parent="/"
+	_emacs_sanitize_path "${_sock_path}"
 	if [ ! -d "${_parent}" ]; then
 		command mkdir -p "${_parent}" 2> "/dev/null" || true
 	fi
@@ -477,6 +525,16 @@ _emacs_ensure_socket_dir() {
 		command chmod 0700 "${_parent}" 2> "/dev/null" || true
 	fi
 	return 0
+}
+
+_emacs_sync_auth_symlink() {
+	local _live_sock="${1:-}"
+	local _auth_sock="${HOME%/}/.emacs.d/var/server/auth/server"
+	[ -n "${_live_sock}" ] && [ -S "${_live_sock}" ] || return 0
+	_live_sock="$(_emacs_canonical_socket "${_live_sock}" || printf '%s\n' "${_live_sock}")"
+	[ "${_live_sock}" != "${_auth_sock}" ] || return 0
+	_emacs_ensure_socket_dir "${_auth_sock}"
+	command ln -sfn "${_live_sock}" "${_auth_sock}" 2> "/dev/null" || true
 }
 
 _emacs_pgrep() {
@@ -582,6 +640,7 @@ _emacs_live_socket() {
 	local _tmp_dir="${TMPDIR:-/tmp}"
 	local _std_sock=""
 	local _auth_sock=""
+	local _var_sock=""
 	local _tmp_sock=""
 	local _cand=""
 	_desktop_has_bin "emacsclient" || return 1
@@ -593,8 +652,9 @@ _emacs_live_socket() {
 	[ -n "${_tmp_dir}" ] || _tmp_dir="/tmp"
 	_std_sock="$(_emacs_std_socket_dir)/server"
 	_auth_sock="${HOME%/}/.emacs.d/var/server/auth/server"
+	_var_sock="${HOME%/}/.emacs.d/var/server/server"
 	_tmp_sock="${_tmp_dir}/emacs${_uid}/server"
-	for _cand in "${_std_sock}" "${_auth_sock}" "${_tmp_sock}" "/tmp/emacs${_uid}/server"; do
+	for _cand in "${_std_sock}" "${_auth_sock}" "${_var_sock}" "${_tmp_sock}" "/tmp/emacs${_uid}/server"; do
 		[ "${_cand}" != "${_target}" ] || continue
 		_emacs_try_live_socket "${_cand}" && return 0
 	done
@@ -605,6 +665,7 @@ _emacs_remove_one_socket() {
 	local _sock="${1:-}"
 	local _parent=""
 	[ -n "${_sock}" ] || return 0
+	_emacs_sanitize_path "${_sock}"
 	if [ -e "${_sock}" ] || [ -S "${_sock}" ] || [ -L "${_sock}" ]; then
 		_parent="${_sock%/*}"
 		[ -n "${_parent}" ] || _parent="/"
@@ -624,6 +685,7 @@ _emacs_cleanup_socket() {
 	local _tmp_dir="${TMPDIR:-/tmp}"
 	local _std_sock=""
 	local _auth_sock=""
+	local _var_sock=""
 	local _tmp_sock=""
 	local _cand=""
 	local _rc=0
@@ -635,8 +697,9 @@ _emacs_cleanup_socket() {
 		[ -n "${_tmp_dir}" ] || _tmp_dir="/tmp"
 		_std_sock="$(_emacs_std_socket_dir)/server"
 		_auth_sock="${HOME%/}/.emacs.d/var/server/auth/server"
+		_var_sock="${HOME%/}/.emacs.d/var/server/server"
 		_tmp_sock="${_tmp_dir}/emacs${_uid}/server"
-		for _cand in "${_std_sock}" "${_auth_sock}" "${_tmp_sock}" "/tmp/emacs${_uid}/server"; do
+		for _cand in "${_std_sock}" "${_auth_sock}" "${_var_sock}" "${_tmp_sock}" "/tmp/emacs${_uid}/server"; do
 			[ "${_cand}" != "${_target}" ] || continue
 			_emacs_remove_one_socket "${_cand}" || _rc=1
 		done
@@ -653,8 +716,8 @@ _emacs_stop_daemon() {
 	_live_sock="$(_emacs_live_socket "${_socket_path}" || true)"
 	_pids="$(_emacs_list_pids "${_mode}")"
 
-	if { [ -n "${_live_sock}" ] || [ -e "${_socket_path}" ] || [ -S "${_socket_path}" ] || [ -n "${_pids}" ]; } && _desktop_has_bin "emacsclient"; then
-		if _emacs_timeout_eval 2 "(kill-emacs)" "${_live_sock:-${_socket_path}}"; then
+	if { [ -n "${_live_sock}" ] || [ -S "${_socket_path}" ] || [ -n "${_pids}" ]; } && _desktop_has_bin "emacsclient"; then
+		if [ -n "${_live_sock}" ] && _emacs_timeout_eval 2 "(kill-emacs)" "${_live_sock}"; then
 			_emacs_wait_exit 10 "${_mode}" && { _emacs_cleanup_socket; return 0; }
 		fi
 	fi
@@ -680,6 +743,46 @@ _emacs_stop_daemon() {
 	_emacs_cleanup_socket
 }
 
+_emacs_start_daemon() {
+	_desktop_has_bin "emacs" || { _ui_err "emacs not found."; return 127; }
+	local _std_sock=""
+	local _auth_sock="${HOME%/}/.emacs.d/var/server/auth/server"
+	local _target_sock=""
+	local _daemon_sock=""
+	local _live_sock=""
+	local _attempt=0
+
+	_std_sock="$(_emacs_std_socket_dir)/server"
+	_target_sock="$(_emacs_socket_path)"
+
+	_emacs_ensure_socket_dir "${_std_sock}"
+	_emacs_ensure_socket_dir "${_auth_sock}"
+	if _emacs_is_default_socket "${_target_sock}"; then
+		_daemon_sock="${_std_sock}"
+	else
+		_emacs_ensure_socket_dir "${_target_sock}"
+		_daemon_sock="${_target_sock}"
+	fi
+
+	env -u EMACS_SOCKET_NAME command emacs --daemon="${_daemon_sock}" || return $?
+
+	while [ "${_attempt}" -lt 25 ]; do
+		_live_sock="$(_emacs_live_socket "${_target_sock}" || true)"
+		if [ -n "${_live_sock}" ]; then
+			_emacs_sync_auth_symlink "${_live_sock}"
+			return 0
+		fi
+		if sleep 0.2 2> "/dev/null"; then
+			_attempt=$((_attempt + 1))
+		else
+			sleep 1 2> "/dev/null" || break
+			_attempt=$((_attempt + 5))
+		fi
+	done
+
+	return 1
+}
+
 _emacs_ensure_healthy_daemon() {
 	local _socket_path=""
 	local _live_sock=""
@@ -687,14 +790,20 @@ _emacs_ensure_healthy_daemon() {
 	local _attempt=0
 	_socket_path="$(_emacs_socket_path)"
 	_live_sock="$(_emacs_live_socket "${_socket_path}" || true)"
-	[ -n "${_live_sock}" ] && return 0
+	if [ -n "${_live_sock}" ]; then
+		_emacs_sync_auth_symlink "${_live_sock}"
+		return 0
+	fi
 
 	if _emacs_is_default_socket "${_socket_path}" && command -v systemctl > "/dev/null" 2>&1; then
 		_unit_state="$(command systemctl --user show -p ActiveState --value emacs.service 2> "/dev/null" || true)"
 		if [ "${_unit_state}" = "activating" ]; then
 			while [ "${_attempt}" -lt 8 ]; do
 				_live_sock="$(_emacs_live_socket "${_socket_path}" || true)"
-				[ -n "${_live_sock}" ] && return 0
+				if [ -n "${_live_sock}" ]; then
+					_emacs_sync_auth_symlink "${_live_sock}"
+					return 0
+				fi
 				if sleep 0.5 2> "/dev/null"; then
 					_attempt=$((_attempt + 1))
 				else
@@ -705,12 +814,14 @@ _emacs_ensure_healthy_daemon() {
 		fi
 	fi
 
-	if [ -e "${_socket_path}" ] || [ -S "${_socket_path}" ] || [ -L "${_socket_path}" ] || [ -n "$(_emacs_list_pids "daemon")" ]; then
-		if ! _emacs_timeout_eval 2 "(+ 1 1)" "${_socket_path}"; then
-			_ui_warn "Emacs daemon unresponsive (deadlock or stale socket detected). Recovering..."
-			_emacs_stop_daemon "daemon"
-		fi
+	if [ -n "$(_emacs_list_pids "daemon")" ]; then
+		_ui_warn "Emacs daemon unresponsive (deadlock or stale socket detected). Recovering..."
+		_emacs_stop_daemon "daemon"
+	else
+		_emacs_cleanup_socket "${_socket_path}"
 	fi
+
+	_emacs_start_daemon
 }
 
 _emacs_run_nw() {
@@ -742,8 +853,6 @@ emacs-kill() {
 emacs-start() {
 	_desktop_has_bin "emacs" || { _ui_err "emacs not found."; return 127; }
 	_emacs_ensure_healthy_daemon
-	_emacs_ensure_socket_dir "$(_emacs_socket_path)"
-	command emacs --daemon="${EMACS_SOCKET_NAME}"
 	local _status=$?
 	_restore_tty_cursor
 	return ${_status}
@@ -776,21 +885,15 @@ emacs-client() {
 	_live_sock="$(_emacs_live_socket || true)"
 	if [ -n "${_live_sock}" ]; then
 		if [ "$#" -eq 0 ]; then
-			command emacsclient -s "${_live_sock}" --create-frame --alternate-editor="" -n
+			command emacsclient -s "${_live_sock}" --create-frame -n
 			_status=$?
 		else
-			command emacsclient -s "${_live_sock}" --create-frame --alternate-editor="" "$@"
+			command emacsclient -s "${_live_sock}" --create-frame "$@"
 			_status=$?
 		fi
 	else
-		_emacs_ensure_socket_dir "$(_emacs_socket_path)"
-		if [ "$#" -eq 0 ]; then
-			command emacsclient --create-frame --alternate-editor="" -n
-			_status=$?
-		else
-			command emacsclient --create-frame --alternate-editor="" "$@"
-			_status=$?
-		fi
+		command emacs "$@"
+		_status=$?
 	fi
 	_restore_tty_cursor
 	return ${_status}
@@ -808,6 +911,7 @@ emacs-nw() {
 		fi
 	else
 		if _desktop_has_bin "emacsclient"; then
+			_emacs_ensure_healthy_daemon > "/dev/null" 2>&1 || true
 			_live_sock="$(_emacs_live_socket || true)"
 			if [ -n "${_live_sock}" ]; then
 				command emacsclient -t -s "${_live_sock}" "$@" 2> "/dev/null"
@@ -820,9 +924,6 @@ emacs-nw() {
 		fi
 		if _desktop_has_bin "emacs"; then
 			_emacs_run_nw "$@"
-			_status=$?
-		elif _desktop_has_bin "emacsclient"; then
-			command emacsclient -t --alternate-editor="" "$@"
 			_status=$?
 		else
 			_ui_err "emacs not found."
@@ -880,21 +981,15 @@ emacs-open() {
 		_live_sock="$(_emacs_live_socket || true)"
 		if [ -n "${_live_sock}" ]; then
 			if [ "$#" -eq 0 ]; then
-				(command nohup emacsclient -s "${_live_sock}" --create-frame --alternate-editor="" . < "/dev/null" > "/dev/null" 2>&1 &)
+				(command nohup emacsclient -s "${_live_sock}" --create-frame . < "/dev/null" > "/dev/null" 2>&1 &)
 				_status=$?
 			else
-				(command nohup emacsclient -s "${_live_sock}" --create-frame --alternate-editor="" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+				(command nohup emacsclient -s "${_live_sock}" --create-frame "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 				_status=$?
 			fi
 		else
-			_emacs_ensure_socket_dir "$(_emacs_socket_path)"
-			if [ "$#" -eq 0 ]; then
-				(command nohup emacsclient --create-frame --alternate-editor="" . < "/dev/null" > "/dev/null" 2>&1 &)
-				_status=$?
-			else
-				(command nohup emacsclient --create-frame --alternate-editor="" "$@" < "/dev/null" > "/dev/null" 2>&1 &)
-				_status=$?
-			fi
+			(command nohup emacs "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+			_status=$?
 		fi
 	else
 		emacs-open-nw "$@"
@@ -932,15 +1027,14 @@ emacs-eshell() {
 	local _live_sock=""
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
 		if _desktop_has_bin "emacsclient"; then
+			_emacs_ensure_healthy_daemon
 			_live_sock="$(_emacs_live_socket || true)"
 			if [ -n "${_live_sock}" ]; then
-				(command nohup emacsclient -s "${_live_sock}" --create-frame --alternate-editor="" \
+				(command nohup emacsclient -s "${_live_sock}" --create-frame \
 					--eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
 				_status=$?
 			else
-				_emacs_ensure_socket_dir "$(_emacs_socket_path)"
-				(command nohup emacsclient --create-frame --alternate-editor="" \
-					--eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
+				(command nohup emacs --eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
 				_status=$?
 			fi
 		else
@@ -956,6 +1050,7 @@ emacs-eshell() {
 			command emacs -nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
 			_status=$?
 		else
+			_emacs_ensure_healthy_daemon > "/dev/null" 2>&1 || true
 			_live_sock="$(_emacs_live_socket || true)"
 			if [ -n "${_live_sock}" ] && _desktop_has_bin "emacsclient"; then
 				command emacsclient -t -s "${_live_sock}" \
@@ -964,18 +1059,12 @@ emacs-eshell() {
 			else
 				_status=1
 			fi
-			if [ "${_status}" -ne 0 ]; then
-				if _desktop_has_bin "emacs"; then
-					if [ -t 0 ]; then
-						command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
-					fi
-					command emacs -nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
-					_status=$?
-				elif _desktop_has_bin "emacsclient"; then
-					command emacsclient -t --alternate-editor="" \
-						--eval "(progn (cd \"${_dir}/\") (aweshell/new))"
-					_status=$?
+			if [ "${_status}" -ne 0 ] && _desktop_has_bin "emacs"; then
+				if [ -t 0 ]; then
+					command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
 				fi
+				command emacs -nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
+				_status=$?
 			fi
 		fi
 	fi
