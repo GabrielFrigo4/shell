@@ -538,7 +538,7 @@ EOF
 			cat << EOF >| "${_sway_cfg}"
 output * bg ${_p_root} solid_color
 font pango:${_ui_font} Bold 10
-titlebar_padding 10 4
+titlebar_padding 10 6
 default_border pixel 2
 default_floating_border pixel 2
 titlebar_border_thickness 0
@@ -551,7 +551,7 @@ hide_edge_borders smart
 popup_during_fullscreen smart
 client.focused ${_p_accent} ${_p_accent} #ffffff ${_p_accent} ${_p_accent}
 client.focused_inactive ${_p_border} ${_p_panel} ${_p_fg} ${_p_border} ${_p_border}
-client.unfocused ${_p_border} ${_p_bg} ${_p_muted} ${_p_border} ${_p_border}
+client.unfocused ${_p_border} ${_p_panel} ${_p_muted} ${_p_border} ${_p_border}
 client.urgent ${_p_urgent} ${_p_urgent} #ffffff ${_p_urgent} ${_p_urgent}
 seat * xcursor_theme ${_cur_theme} ${_cur_size}
 seat * fallback true
@@ -1049,17 +1049,18 @@ graphical_launcher_x11() {
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
 	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
 	cat << OTM >| "${_kiosk_theme_dir}/themerc"
-border.width: 2
+border.width: 0
 border.color: ${_p_border}
 padding.width: 8
-padding.height: 6
-window.handle.width: 2
+padding.height: 5
+window.handle.width: 0
 window.client.padding.width: 0
 
 window.active.border.color: ${_p_accent}
 window.active.title.bg: flat solid
 window.active.title.bg.color: ${_p_panel}
-window.active.label.bg: parentrelative
+window.active.label.bg: flat solid
+window.active.label.bg.color: ${_p_panel}
 window.active.label.text.color: ${_p_fg}
 window.active.handle.bg: flat solid
 window.active.handle.bg.color: ${_p_panel}
@@ -1078,7 +1079,8 @@ window.active.button.disabled.image.color: ${_p_hover}
 window.inactive.border.color: ${_p_border}
 window.inactive.title.bg: flat solid
 window.inactive.title.bg.color: ${_p_bg}
-window.inactive.label.bg: parentrelative
+window.inactive.label.bg: flat solid
+window.inactive.label.bg.color: ${_p_bg}
 window.inactive.label.text.color: ${_p_muted}
 window.inactive.handle.bg: flat solid
 window.inactive.handle.bg.color: ${_p_bg}
@@ -1166,7 +1168,7 @@ except Exception:
     Xlib = None
     HAS_XLIB = False
 
-BAR_H = 32
+BAR_H = 28
 
 class XguiTabBar(Gtk.Window):
     def __init__(self):
@@ -1188,6 +1190,7 @@ class XguiTabBar(Gtk.Window):
         self.screen_obj = None
         self.root = None
         self.wm_supports_struts = False
+        self.supports_moveresize = False
 
         if HAS_XLIB:
             try:
@@ -1224,6 +1227,10 @@ class XguiTabBar(Gtk.Window):
             self.atom_utf8_string = self.d.intern_atom("UTF8_STRING")
             self.atom_net_wm_type = self.d.intern_atom("_NET_WM_WINDOW_TYPE")
             self.atom_wm_state = self.d.intern_atom("WM_STATE")
+            self.atom_normal_hints = self.d.intern_atom("WM_NORMAL_HINTS")
+            self.atom_size_hints = self.d.intern_atom("WM_SIZE_HINTS")
+            self.atom_frame_extents = self.d.intern_atom("_NET_FRAME_EXTENTS")
+            self.atom_moveresize = self.d.intern_atom("_NET_MOVERESIZE_WINDOW")
             self.atom_net_strut = self.d.intern_atom("_NET_WM_STRUT")
             self.atom_net_strut_partial = self.d.intern_atom("_NET_WM_STRUT_PARTIAL")
             self.atom_cardinal = self.d.intern_atom("CARDINAL")
@@ -1256,8 +1263,11 @@ class XguiTabBar(Gtk.Window):
                     sup_set = set(sup.value)
                     if self.atom_net_strut_partial in sup_set or self.atom_net_strut in sup_set:
                         self.wm_supports_struts = True
+                    if self.atom_moveresize in sup_set:
+                        self.supports_moveresize = True
             except Exception:
                 self.wm_supports_struts = False
+                self.supports_moveresize = False
 
         scheme = os.environ.get("XGUI_SCHEME", "dark").strip().lower()
         if scheme == "light":
@@ -1286,48 +1296,48 @@ class XguiTabBar(Gtk.Window):
         window {{
             background-color: {win_bg};
             background-image: none;
-            border-bottom: 1px solid {border};
+            border: none;
             padding: 0;
             margin: 0;
         }}
         * {{
             font-family: "{font_name}", "JetBrainsMono Nerd Font", monospace;
-            font-size: 11px;
+            font-size: 10pt;
+            font-weight: bold;
         }}
         button {{
             background-image: none;
             box-shadow: none;
             text-shadow: none;
-            border-radius: 6px;
-            padding: 2px 10px;
-            margin: 3px 2px;
-            min-height: 22px;
+            border-radius: 0;
+            border: none;
+            border-right: 1px solid {border};
+            padding: 0 10px;
+            margin: 0;
+            min-height: 28px;
         }}
         button.inactive-tab {{
             background-color: {btn_bg};
             background-image: none;
             color: {muted};
-            border: 1px solid {border};
+            border-bottom: 1px solid {border};
         }}
         button.inactive-tab:hover {{
             background-color: {btn_bg};
             background-image: none;
             color: {fg};
-            border-color: {accent};
+            border-bottom: 1px solid {accent};
         }}
         button.active-tab {{
             background-color: {tab_active_bg};
             background-image: none;
             color: {accent_fg};
-            border: 1px solid {accent};
-            border-top: 2px solid {accent};
-            font-weight: bold;
+            border-bottom: 1px solid {accent};
         }}
         button.active-tab:hover {{
             background-color: {accent};
             background-image: none;
             color: {accent_fg};
-            border-color: {accent};
         }}
         """
         css_provider.load_from_data(css.encode("utf-8"))
@@ -1337,7 +1347,8 @@ class XguiTabBar(Gtk.Window):
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
 
-        self.box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        self.box.set_homogeneous(True)
         self.add(self.box)
 
         self.is_bar_visible = False
@@ -1512,12 +1523,82 @@ class XguiTabBar(Gtk.Window):
             except Exception:
                 pass
 
+    def _strip_resize_inc(self, xid):
+        if self.d is None:
+            return
+        try:
+            xwin = self.d.create_resource_object("window", xid)
+            prop = xwin.get_full_property(self.atom_normal_hints, self.atom_size_hints)
+            if prop and prop.value and len(prop.value) >= 11:
+                vals = [int(v) for v in prop.value]
+                flags = vals[0]
+                if (flags & 0xC0) or vals[9] > 1 or vals[10] > 1:
+                    vals[0] = flags & ~0xC0
+                    vals[9] = 1
+                    vals[10] = 1
+                    xwin.change_property(self.atom_normal_hints, self.atom_size_hints, 32, vals)
+        except Exception:
+            pass
+
+    def _read_frame_extents(self, xid):
+        if self.d is not None:
+            try:
+                xwin = self.d.create_resource_object("window", xid)
+                prop = xwin.get_full_property(self.atom_frame_extents, self.atom_cardinal)
+                if prop and prop.value and len(prop.value) >= 4:
+                    return (int(prop.value[0]), int(prop.value[1]), int(prop.value[2]), int(prop.value[3]))
+                geom = xwin.get_geometry()
+                bw = int(getattr(geom, "border_width", 0) or 0)
+                if bw > 0:
+                    return (bw, bw, bw, bw)
+            except Exception:
+                pass
+        return (0, 0, 0, 0)
+
+    def _read_win_geom(self, xid):
+        if self.d is not None:
+            try:
+                xwin = self.d.create_resource_object("window", xid)
+                g = xwin.get_geometry()
+                pos = self.root.translate_coords(xwin, 0, 0)
+                return (int(pos.x), int(pos.y), int(g.width), int(g.height))
+            except Exception:
+                return None
+        if shutil.which("xdotool"):
+            try:
+                res = subprocess.run(["xdotool", "getwindowgeometry", "--shell", str(xid)], capture_output=True, text=True, timeout=0.5)
+                vals = {}
+                for line in (res.stdout or "").splitlines():
+                    if "=" in line:
+                        k, v = line.split("=", 1)
+                        if v.strip().lstrip("-").isdigit():
+                            vals[k.strip()] = int(v.strip())
+                if all(k in vals for k in ("X", "Y", "WIDTH", "HEIGHT")):
+                    return (vals["X"], vals["Y"], vals["WIDTH"], vals["HEIGHT"])
+            except Exception:
+                pass
+        return None
+
     def maximize_to_bounds(self, xid, y, w, h, maximize_hint=True):
+        self._strip_resize_inc(xid)
         self.unmaximize_window(xid)
+        l, r, t, b = self._read_frame_extents(xid)
+        cw = max(64, int(w) - l - r)
+        ch = max(64, int(h) - t - b)
+        if y > 0:
+            maximize_hint = False
         if self.d is not None:
             try:
                 w_obj = self.d.create_resource_object("window", xid)
-                w_obj.configure(x=0, y=y, width=w, height=h)
+                if self.supports_moveresize:
+                    flags = 1 | (0xF << 8) | (2 << 12)
+                    ev = Xlib.protocol.event.ClientMessage(
+                        window=xid,
+                        client_type=self.atom_moveresize,
+                        data=(32, [flags, 0, int(y), cw, ch])
+                    )
+                    self.root.send_event(ev, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
+                w_obj.configure(x=0, y=int(y), width=cw, height=ch)
                 self.d.sync()
             except Exception:
                 pass
@@ -1526,7 +1607,7 @@ class XguiTabBar(Gtk.Window):
             return
         if shutil.which("wmctrl"):
             try:
-                subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-e", f"0,0,{y},{w},{h}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+                subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-e", f"0,0,{y},{cw},{ch}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
             except Exception:
                 pass
             if maximize_hint:
@@ -1534,7 +1615,7 @@ class XguiTabBar(Gtk.Window):
         elif shutil.which("xdotool"):
             try:
                 subprocess.run(["xdotool", "windowmove", str(xid), "0", str(y)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
-                subprocess.run(["xdotool", "windowsize", str(xid), str(w), str(h)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+                subprocess.run(["xdotool", "windowsize", str(xid), str(cw), str(ch)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
             except Exception:
                 pass
 
@@ -1773,16 +1854,25 @@ class XguiTabBar(Gtk.Window):
         self.positioned_wids.intersection_update(normal_windows)
 
         if not self.is_bar_visible:
-            self.set_struts(True)
             self.move(0, 0)
             self.resize(self.screen_w, self.bar_h)
             self.show_all()
+            self.set_struts(True)
             self._enforce_bar()
             self.is_bar_visible = True
 
+        target_h = self.screen_h - self.bar_h
         for w in normal_windows:
-            if w not in self.positioned_wids:
-                self.maximize_to_bounds(w, self.bar_h, self.screen_w, self.screen_h - self.bar_h, maximize_hint=self.wm_supports_struts)
+            needs_pos = (w not in self.positioned_wids)
+            if not needs_pos:
+                geom = self._read_win_geom(w)
+                if geom is not None:
+                    _, wy, _, wh = geom
+                    _, _, t, b = self._read_frame_extents(w)
+                    if wy < self.bar_h or abs(wh - max(64, target_h - t - b)) > 6:
+                        needs_pos = True
+            if needs_pos:
+                self.maximize_to_bounds(w, self.bar_h, self.screen_w, target_h, maximize_hint=False)
                 self.positioned_wids.add(w)
 
         if normal_windows != self.last_windows or active_xid != self.last_active:
@@ -1797,7 +1887,6 @@ class XguiTabBar(Gtk.Window):
                 lbl = Gtk.Label(label=title)
                 if Pango is not None:
                     lbl.set_ellipsize(Pango.EllipsizeMode.END)
-                lbl.set_max_width_chars(32)
                 btn.add(lbl)
                 ctx = btn.get_style_context()
                 if w == active_xid:
@@ -1820,6 +1909,8 @@ EOF_TABBAR
 	local _sh="$(_detect_enabled_shell)"
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${_run_dir}/xinit-gui-$$.sh"
+	local _picom_cfg="${_run_dir}/picom-gui-$$.conf"
+	_write_picom_conf "${_picom_cfg}"
 	cat << EOF >| "${_xinit_script}"
 #!/usr/bin/env sh
 unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
@@ -1882,8 +1973,9 @@ fi
 if command -v xrdb > "/dev/null" 2>&1; then
 	printf "Xcursor.theme: %s\nXcursor.size: %s\n" "${_valid_theme}" "${_cur_size}" | xrdb -merge - > "/dev/null" 2>&1 || true
 fi
-command -v xsetroot > "/dev/null" 2>&1 && xsetroot -solid "${_p_root}" -cursor_name left_ptr > "/dev/null" 2>&1 || true
-
+EOF
+	_emit_x11_root_pixmap_block "${_p_root}" >> "${_xinit_script}"
+	cat << EOF >> "${_xinit_script}"
 if command -v setxkbmap > "/dev/null" 2>&1; then
 	setxkbmap -model abnt2 -layout br -option numpad:mac > "/dev/null" 2>&1 || true
 fi
@@ -1922,19 +2014,9 @@ Gtk/FontName "${_ui_font}"
 EOF_XSET
 	xsettingsd -c "\${_xsettings_cfg}" >| "${_log_dir}/xsettingsd-kiosk.log" 2>&1 &
 fi
-
-if [ "\${X11_NO_COMPOSITOR:-0}" != "1" ]; then
-	if command -v picom > "/dev/null" 2>&1; then
-		: >| "${_log_dir}/picom-kiosk.log" 2> "/dev/null" || true
-		{ pgrep -x picom > "/dev/null" 2>&1 || pkill -0 -x picom > "/dev/null" 2>&1; } || \
-			picom --backend glx --vsync --no-use-damage -b --log-file "${_log_dir}/picom-kiosk.log" > "/dev/null" 2>&1 || \
-			picom --backend xrender --vsync --no-use-damage -b --log-file "${_log_dir}/picom-kiosk.log" > "/dev/null" 2>&1 || true
-	elif command -v xcompmgr > "/dev/null" 2>&1; then
-		{ pgrep -x xcompmgr > "/dev/null" 2>&1 || pkill -0 -x xcompmgr > "/dev/null" 2>&1; } || \
-			xcompmgr -c -C -b >| "${_log_dir}/xcompmgr-kiosk.log" 2>&1 || true
-	fi
-fi
-
+EOF
+	_emit_x11_compositor_block "${_picom_cfg}" "${_log_dir}/picom-kiosk.log" "${_log_dir}/xcompmgr-kiosk.log" >> "${_xinit_script}"
+	cat << EOF >> "${_xinit_script}"
 if [ -n "${_tabbar_script}" ] && [ -f "${_tabbar_script}" ]; then
 	env GDK_BACKEND=x11 XGUI_FONT="${_ui_font}" XGUI_SCHEME="${_scheme}" python3 "${_tabbar_script}" >| "${_log_dir}/xgui-tabbar.log" 2>&1 &
 fi
@@ -2255,7 +2337,7 @@ EOF
 	fi
 	[ "${_xinit_ret}" -eq 127 ] && _xinit_ret=1
 
-	rm -f "${_server_auth}" "${_xinit_script}" "${_tabbar_script}" \
+	rm -f "${_server_auth}" "${_xinit_script}" "${_picom_cfg}" "${_tabbar_script}" \
 		"${_run_dir}/openbox-gui-$$.xml" "${_run_dir}/cwm-gui-$$.conf" \
 		"${_run_dir}/fvwm-gui-$$.cfg" "${_run_dir}/jwm-gui-$$.rc" \
 		"${_run_dir}/pekwm-gui-$$.cfg" "${_run_dir}/xsettingsd-gui-$$.conf" 2> "/dev/null" || true

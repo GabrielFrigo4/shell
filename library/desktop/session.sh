@@ -919,6 +919,158 @@ _resolve_free_display() {
 	echo ":0"
 }
 
+_emit_x11_root_pixmap_block() {
+	local _root_bg="${1:-#181b20}"
+	cat << EOF
+if command -v xsetroot > "/dev/null" 2>&1; then
+	xsetroot -solid "${_root_bg}" -cursor_name left_ptr > "/dev/null" 2>&1 || true
+fi
+if command -v python3 > "/dev/null" 2>&1; then
+	python3 - "${_root_bg}" << 'EOF_ROOTPMAP' > "/dev/null" 2>&1 || true
+import sys
+from Xlib import display, X, Xatom
+
+hex_bg = sys.argv[1].lstrip("#")
+if len(hex_bg) != 6:
+    sys.exit(0)
+r = int(hex_bg[0:2], 16)
+g = int(hex_bg[2:4], 16)
+b = int(hex_bg[4:6], 16)
+d = display.Display()
+try:
+    scr = d.screen()
+    root = scr.root
+    cmap = scr.default_colormap
+    pixel = cmap.alloc_color(r * 257, g * 257, b * 257).pixel
+    pmap = root.create_pixmap(1, 1, scr.root_depth)
+    gc = pmap.create_gc(foreground=pixel, background=pixel)
+    pmap.fill_rectangle(gc, 0, 0, 1, 1)
+    gc.free()
+    atom_xr = d.intern_atom("_XROOTPMAP_ID")
+    atom_es = d.intern_atom("ESETROOT_PMAP_ID")
+    root.change_property(atom_xr, Xatom.PIXMAP, 32, [pmap.id])
+    root.change_property(atom_es, Xatom.PIXMAP, 32, [pmap.id])
+    root.change_attributes(background_pixmap=pmap.id)
+    root.clear_area(0, 0, 0, 0, False)
+    d.set_close_down_mode(X.RetainPermanent)
+    d.sync()
+finally:
+    d.close()
+EOF_ROOTPMAP
+fi
+EOF
+}
+
+_write_picom_conf() {
+	local _picom_cfg="$1"
+	cat << 'EOF' >| "${_picom_cfg}"
+backend = "glx";
+vsync = true;
+use-damage = false;
+unredir-if-possible = false;
+detect-transient = true;
+detect-client-opacity = true;
+shadow = false;
+fading = false;
+frame-opacity = 1.0;
+inactive-opacity = 1.0;
+active-opacity = 1.0;
+corner-radius = 0;
+dithered-present = false;
+EOF
+}
+
+_emit_x11_compositor_block() {
+	local _picom_cfg="$1"
+	local _picom_log="$2"
+	local _xcompmgr_log="$3"
+	cat << EOF
+if [ "\${X11_NO_COMPOSITOR:-0}" != "1" ]; then
+	if command -v picom > "/dev/null" 2>&1; then
+		: >| "${_picom_log}" 2> "/dev/null" || true
+		if ! { pgrep -x picom > "/dev/null" 2>&1 || pkill -0 -x picom > "/dev/null" 2>&1; }; then
+			_picom_log_flag=""
+			picom --help 2> "/dev/null" | grep -q -- "--log-file" && _picom_log_flag="--log-file"
+			if [ -n "\${_picom_log_flag}" ]; then
+				picom --config "${_picom_cfg}" -b "\${_picom_log_flag}" "${_picom_log}" >| "${_picom_log}" 2>&1 || \
+					picom --config "${_picom_cfg}" --backend xrender -b "\${_picom_log_flag}" "${_picom_log}" >| "${_picom_log}" 2>&1 || true
+			else
+				picom --config "${_picom_cfg}" -b >| "${_picom_log}" 2>&1 || \
+					picom --config "${_picom_cfg}" --backend xrender -b >| "${_picom_log}" 2>&1 || true
+			fi
+		fi
+	elif command -v xcompmgr > "/dev/null" 2>&1; then
+		{ pgrep -x xcompmgr > "/dev/null" 2>&1 || pkill -0 -x xcompmgr > "/dev/null" 2>&1; } || \
+			xcompmgr -c -C -b >| "${_xcompmgr_log}" 2>&1 || true
+	fi
+fi
+EOF
+}
+
+_write_rofi_theme() {
+	local _out_file="$1"
+	local _c_bg="$2"
+	local _c_panel="$3"
+	local _c_fg="$4"
+	local _c_border="$5"
+	local _c_accent="$6"
+	local _c_urgent="$7"
+	cat << EOF >| "${_out_file}"
+@theme "default"
+* {
+    background: ${_c_bg};
+    lightbg: ${_c_panel};
+    foreground: ${_c_fg};
+    lightfg: ${_c_accent};
+    blue: ${_c_accent};
+    red: ${_c_urgent};
+    separatorcolor: ${_c_border};
+    border-color: ${_c_accent};
+    selected-normal-background: ${_c_accent};
+    selected-normal-foreground: #ffffff;
+    selected-active-background: ${_c_accent};
+    selected-active-foreground: #ffffff;
+    alternate-normal-background: ${_c_panel};
+    alternate-normal-foreground: ${_c_fg};
+}
+window {
+    width: 420px;
+    location: northeast;
+    anchor: northeast;
+    x-offset: -6px;
+    y-offset: 34px;
+    background-color: ${_c_bg};
+    border: 2px;
+    border-color: ${_c_accent};
+    border-radius: 6px;
+    padding: 8px;
+}
+listview {
+    lines: 12;
+    columns: 1;
+    fixed-height: false;
+    scrollbar: true;
+    border: 1px solid 0px 0px;
+    border-color: ${_c_border};
+    padding: 6px 0px 0px;
+    spacing: 4px;
+}
+inputbar {
+    background-color: ${_c_panel};
+    text-color: ${_c_fg};
+    padding: 6px 8px;
+    margin: 0px 0px 6px 0px;
+    border: 1px;
+    border-color: ${_c_border};
+    border-radius: 4px;
+}
+element {
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+EOF
+}
+
 _exec_x11() {
 	local _tty_snapshot="$(_tty_env_snapshot)"
 	_sanitize_graphical_env
@@ -1000,6 +1152,7 @@ _exec_x11() {
 	local _vt_arg="$(_resolve_vt_arg)"
 	local _xinit_script="${XDG_RUNTIME_DIR:-/tmp}/xinit-session-$$.sh"
 	local _xsettings_host_cfg="${XDG_RUNTIME_DIR:-/tmp}/xsettingsd-session-$$.conf"
+	local _picom_cfg="${XDG_RUNTIME_DIR:-/tmp}/picom-session-$$.conf"
 	cat << EOF >| "${_xinit_script}"
 #!/usr/bin/env sh
 unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
@@ -1082,10 +1235,9 @@ fi
 if command -v xrdb > "/dev/null" 2>&1; then
 	printf "Xcursor.theme: %s\nXcursor.size: %s\n" "\${XCURSOR_THEME}" "\${XCURSOR_SIZE}" | xrdb -merge - > "/dev/null" 2>&1 || true
 fi
-if command -v xsetroot > "/dev/null" 2>&1; then
-	xsetroot -solid "${_root_bg}" -cursor_name left_ptr > "/dev/null" 2>&1 || true
-fi
-
+EOF
+	_emit_x11_root_pixmap_block "${_root_bg}" >> "${_xinit_script}"
+	cat << EOF >> "${_xinit_script}"
 if command -v setxkbmap > "/dev/null" 2>&1; then
 	setxkbmap -model abnt2 -layout br -option numpad:mac > "/dev/null" 2>&1 || true
 fi
@@ -1123,6 +1275,7 @@ trap '_cleanup_x11_helpers' EXIT TERM INT
 EOF
 
 	if [ "${_is_full_de}" -eq 0 ]; then
+		_write_picom_conf "${_picom_cfg}"
 		cat << EOF >> "${_xinit_script}"
 if command -v xsettingsd > "/dev/null" 2>&1; then
 	_xsettings_cfg="${_xsettings_host_cfg}"
@@ -1137,26 +1290,8 @@ EOF_XSET
 	xsettingsd -c "\${_xsettings_cfg}" >| "${_log_dir}/xsettingsd.log" 2>&1 &
 	_xset_pid=\$!
 fi
-
-if [ "\${X11_NO_COMPOSITOR:-0}" != "1" ]; then
-	if command -v picom > "/dev/null" 2>&1; then
-		if ! { pgrep -x picom > "/dev/null" 2>&1 || pkill -0 -x picom > "/dev/null" 2>&1; }; then
-			_picom_log_flag=""
-			picom --help 2> "/dev/null" | grep -q -- "--log-file" && _picom_log_flag="--log-file"
-			if [ -n "\${_picom_log_flag}" ]; then
-				picom --backend glx --vsync --no-use-damage -b "\${_picom_log_flag}" "${_log_dir}/picom.log" >| "${_log_dir}/picom.log" 2>&1 || \
-					picom --backend xrender --vsync --no-use-damage -b "\${_picom_log_flag}" "${_log_dir}/picom.log" >| "${_log_dir}/picom.log" 2>&1 || true
-			else
-				picom --backend glx --vsync --no-use-damage -b >| "${_log_dir}/picom.log" 2>&1 || \
-					picom --backend xrender --vsync --no-use-damage -b >| "${_log_dir}/picom.log" 2>&1 || true
-			fi
-		fi
-	elif command -v xcompmgr > "/dev/null" 2>&1; then
-		{ pgrep -x xcompmgr > "/dev/null" 2>&1 || pkill -0 -x xcompmgr > "/dev/null" 2>&1; } || \
-			xcompmgr -c -C -b >| "${_log_dir}/xcompmgr.log" 2>&1 || true
-	fi
-fi
 EOF
+		_emit_x11_compositor_block "${_picom_cfg}" "${_log_dir}/picom.log" "${_log_dir}/xcompmgr.log" >> "${_xinit_script}"
 	fi
 
 	if [ -n "${_bg_cmd}" ]; then
@@ -1226,7 +1361,7 @@ EOF
 			_ui_err "xinit ou startx não encontrado para sessão Xorg."
 		fi
 	fi
-	rm -f "${_server_auth}" "${_xinit_script}" "${_xsettings_host_cfg}" 2> "/dev/null" || true
+	rm -f "${_server_auth}" "${_xinit_script}" "${_xsettings_host_cfg}" "${_picom_cfg}" 2> "/dev/null" || true
 	command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" > "/dev/null" 2>&1 || true
 
 	if [ "${_xinit_ret}" -ne 0 ] && [ "${_xinit_ret}" -ne 127 ]; then
@@ -1698,6 +1833,7 @@ except Exception:
     HAS_XLIB = False
 
 BAR_H = 32
+TILE_GAP = 4
 
 class WwmBar(Gtk.Window):
     def __init__(self):
@@ -1717,9 +1853,6 @@ class WwmBar(Gtk.Window):
         screen = Gdk.Screen.get_default()
         self.screen_w = screen.get_width() if screen else 1920
         self.screen_h = screen.get_height() if screen else 1080
-        self.set_default_size(self.screen_w, BAR_H)
-        self.set_size_request(self.screen_w, BAR_H)
-        self.move(0, 0)
 
         self.has_sway = bool(os.environ.get("SWAYSOCK") and shutil.which("swaymsg"))
         self.has_hypr = bool(os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and shutil.which("hyprctl"))
@@ -1727,11 +1860,35 @@ class WwmBar(Gtk.Window):
         wm_env = os.environ.get("WWM_WM", "").strip().lower()
         wayland_wms = {"sway", "labwc", "river", "hyprland", "niri", "wayfire", "dwl", "hikari", "weston", "cage"}
         self.is_wayland = bool(os.environ.get("WAYLAND_DISPLAY") or wm_env in wayland_wms or self.has_sway or self.has_hypr or self.has_niri)
-        self.is_x11 = bool(os.environ.get("DISPLAY") and not self.has_sway and not self.has_hypr and not self.has_niri)
+        self.is_x11 = bool(os.environ.get("DISPLAY") and not self.is_wayland and not self.has_sway and not self.has_hypr and not self.has_niri)
         self.is_x11_tiling = bool(os.environ.get("DISPLAY") and not self.is_wayland and wm_env != "dwm")
 
+        if self.has_sway:
+            try:
+                ores = subprocess.run(["swaymsg", "-t", "get_outputs"], capture_output=True, text=True, timeout=1.0)
+                outputs = json.loads(ores.stdout or "[]")
+                chosen = None
+                for out in outputs:
+                    if out.get("focused"):
+                        chosen = out
+                        break
+                    if chosen is None and out.get("active"):
+                        chosen = out
+                if chosen and isinstance(chosen.get("rect"), dict):
+                    rw = int(chosen["rect"].get("width") or 0)
+                    rh = int(chosen["rect"].get("height") or 0)
+                    if rw > 0 and rh > 0:
+                        self.screen_w = rw
+                        self.screen_h = rh
+            except Exception:
+                pass
+
+        self.set_default_size(self.screen_w, BAR_H)
+        self.set_size_request(self.screen_w, BAR_H)
+        self.move(0, 0)
+
         self.xdisp = None
-        if HAS_XLIB and os.environ.get("DISPLAY"):
+        if HAS_XLIB and os.environ.get("DISPLAY") and not self.is_wayland:
             try:
                 self.xdisp = xlib_display.Display()
                 xscreen = self.xdisp.screen()
@@ -1754,6 +1911,8 @@ class WwmBar(Gtk.Window):
             self.atom_wtype = self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE")
             self.atom_wm_state = self.xdisp.intern_atom("_NET_WM_STATE")
             self.atom_icccm_state = self.xdisp.intern_atom("WM_STATE")
+            self.atom_normal_hints = self.xdisp.intern_atom("WM_NORMAL_HINTS")
+            self.atom_size_hints = self.xdisp.intern_atom("WM_SIZE_HINTS")
             self.atom_hidden = self.xdisp.intern_atom("_NET_WM_STATE_HIDDEN")
             self.atom_fullscreen = self.xdisp.intern_atom("_NET_WM_STATE_FULLSCREEN")
             self.atom_max_vert = self.xdisp.intern_atom("_NET_WM_STATE_MAXIMIZED_VERT")
@@ -1792,7 +1951,9 @@ class WwmBar(Gtk.Window):
         self.manual_override = False
         self.tile_settle_deadline = 0.0
         self.settled_geoms = {}
+        self.target_client_geoms = {}
         self.last_extents = {}
+        self.learned_extents = (2, 2, 27, 2) if wm_env == "openbox" else (0, 0, 0, 0)
         self._reactive_source_id = 0
 
         self.connect("map-event", self._on_map_event)
@@ -2142,6 +2303,11 @@ class WwmBar(Gtk.Window):
             self.set_skip_pager_hint(True)
         except Exception:
             pass
+        if self.has_sway:
+            self._spawn([
+                "swaymsg",
+                f'[instance="wwm-bar"] floating enable, sticky enable, border none, move absolute position 0 0, resize set {self.screen_w} px {BAR_H} px',
+            ])
         if not self.is_x11:
             return
         xid = self._self_xid()
@@ -2205,6 +2371,8 @@ class WwmBar(Gtk.Window):
                 pass
 
     def setup_struts(self):
+        if not self.is_x11:
+            return
         try:
             xid = self._self_xid()
             if not xid:
@@ -3089,14 +3257,17 @@ class WwmBar(Gtk.Window):
                 win = self.xdisp.create_resource_object("window", wid)
                 prop = win.get_full_property(self.atom_frame_extents, xlib_Xatom.CARDINAL)
                 if prop and prop.value and len(prop.value) >= 4:
-                    return (int(prop.value[0]), int(prop.value[1]), int(prop.value[2]), int(prop.value[3]))
+                    ext = (int(prop.value[0]), int(prop.value[1]), int(prop.value[2]), int(prop.value[3]))
+                    if any(v > 0 for v in ext):
+                        self.learned_extents = ext
+                        return ext
                 geom = win.get_geometry()
                 bw = int(getattr(geom, "border_width", 0) or 0)
                 if bw > 0:
                     return (bw, bw, bw, bw)
             except Exception:
                 pass
-            return (0, 0, 0, 0)
+            return self.learned_extents
         if shutil.which("xprop"):
             try:
                 res = subprocess.run(
@@ -3106,11 +3277,30 @@ class WwmBar(Gtk.Window):
                 for line in (res.stdout or "").splitlines():
                     if line.startswith("_NET_FRAME_EXTENTS("):
                         nums = [int(x) for x in re.findall(r"\d+", line.split("=", 1)[-1])]
-                        if len(nums) >= 4:
-                            return (nums[0], nums[1], nums[2], nums[3])
+                        if len(nums) >= 4 and any(v > 0 for v in nums[:4]):
+                            ext = (nums[0], nums[1], nums[2], nums[3])
+                            self.learned_extents = ext
+                            return ext
             except Exception:
                 pass
-        return (0, 0, 0, 0)
+        return self.learned_extents
+
+    def _strip_resize_inc(self, wid):
+        if self.xdisp is None:
+            return
+        try:
+            win = self.xdisp.create_resource_object("window", wid)
+            prop = win.get_full_property(self.atom_normal_hints, self.atom_size_hints)
+            if prop and prop.value and len(prop.value) >= 11:
+                vals = [int(v) for v in prop.value]
+                flags = vals[0]
+                if (flags & 0xC0) or vals[9] > 1 or vals[10] > 1:
+                    vals[0] = flags & ~0xC0
+                    vals[9] = 1
+                    vals[10] = 1
+                    win.change_property(self.atom_normal_hints, self.atom_size_hints, 32, vals)
+        except Exception:
+            pass
 
     def _read_win_geom(self, wid):
         if self.xdisp is not None:
@@ -3183,6 +3373,8 @@ class WwmBar(Gtk.Window):
         ch = max(64, int(sh) - t - b)
         sx = int(sx)
         sy = max(BAR_H, int(sy))
+        self.target_client_geoms[wid] = (sx + l, sy + t, cw, ch)
+        self._strip_resize_inc(wid)
         self._unmaximize_win(wid)
         if self.xdisp is not None:
             try:
@@ -3220,27 +3412,42 @@ class WwmBar(Gtk.Window):
                 pass
 
     def _apply_master_stack(self, tile_wids, extents_map):
-        n = len(tile_wids)
-        if n == 0:
+        if not tile_wids:
             return
-        work_x = 0
-        work_y = BAR_H
-        work_w = self.screen_w
-        work_h = max(128, self.screen_h - BAR_H)
-        if n == 1:
-            self._place_win(tile_wids[0], work_x, work_y, work_w, work_h, extents_map.get(tile_wids[0], (0, 0, 0, 0)))
-            return
-        master_w = int(work_w * 0.55)
-        stack_w = work_w - master_w
-        stack_x = work_x + master_w
-        self._place_win(tile_wids[0], work_x, work_y, master_w, work_h, extents_map.get(tile_wids[0], (0, 0, 0, 0)))
-        stack_count = n - 1
-        base_h = work_h // stack_count
-        rem_h = work_h % stack_count
-        for idx, wid in enumerate(tile_wids[1:]):
-            sy = work_y + idx * base_h + min(idx, rem_h)
-            sh = base_h + (1 if idx < rem_h else 0)
-            self._place_win(wid, stack_x, sy, stack_w, sh, extents_map.get(wid, (0, 0, 0, 0)))
+        work_x = TILE_GAP
+        work_y = BAR_H + TILE_GAP
+        work_w = max(128, self.screen_w - 2 * TILE_GAP)
+        work_h = max(128, self.screen_h - BAR_H - 2 * TILE_GAP)
+
+        def split_tile(wids, rx, ry, rw, rh):
+            if not wids:
+                return
+            if len(wids) == 1:
+                self._place_win(wids[0], rx, ry, rw, rh, extents_map.get(wids[0], self.learned_extents))
+                return
+            if rw >= rh:
+                w1 = (rw - TILE_GAP) // 2
+                w2 = max(64, rw - TILE_GAP - w1)
+                self._place_win(wids[0], rx, ry, w1, rh, extents_map.get(wids[0], self.learned_extents))
+                split_tile(wids[1:], rx + w1 + TILE_GAP, ry, w2, rh)
+            else:
+                h1 = (rh - TILE_GAP) // 2
+                h2 = max(64, rh - TILE_GAP - h1)
+                self._place_win(wids[0], rx, ry, rw, h1, extents_map.get(wids[0], self.learned_extents))
+                split_tile(wids[1:], rx, ry + h1 + TILE_GAP, rw, h2)
+
+        split_tile(tile_wids, work_x, work_y, work_w, work_h)
+
+    def _settle_recheck(self):
+        self.apply_x11_tiling()
+        return False
+
+    def _record_settled_geoms(self, tile_wids):
+        self.settled_geoms = {}
+        for wid in tile_wids:
+            g = self._read_win_geom(wid)
+            if g is not None:
+                self.settled_geoms[wid] = g
 
     def apply_x11_tiling(self):
         if not self.is_x11_tiling:
@@ -3257,13 +3464,12 @@ class WwmBar(Gtk.Window):
             self.tiling_state_key = state_key
             self.manual_override = False
             self.last_extents = dict(extents_map)
+            self.target_client_geoms = {}
             self._apply_master_stack(tile_wids, extents_map)
-            self.tile_settle_deadline = now + 0.35
-            self.settled_geoms = {}
-            for wid in tile_wids:
-                g = self._read_win_geom(wid)
-                if g is not None:
-                    self.settled_geoms[wid] = g
+            self.tile_settle_deadline = now + 0.65
+            self._record_settled_geoms(tile_wids)
+            for delay in (60, 160, 350):
+                GLib.timeout_add(delay, self._settle_recheck)
             return
 
         if not tile_wids:
@@ -3271,20 +3477,26 @@ class WwmBar(Gtk.Window):
 
         if not self.manual_override and extents_map != self.last_extents:
             self.last_extents = dict(extents_map)
+            self.target_client_geoms = {}
             self._apply_master_stack(tile_wids, extents_map)
-            self.tile_settle_deadline = now + 0.35
-            self.settled_geoms = {}
-            for wid in tile_wids:
-                g = self._read_win_geom(wid)
-                if g is not None:
-                    self.settled_geoms[wid] = g
+            self.tile_settle_deadline = now + 0.65
+            self._record_settled_geoms(tile_wids)
+            for delay in (60, 160, 350):
+                GLib.timeout_add(delay, self._settle_recheck)
             return
 
         if now < self.tile_settle_deadline:
-            for wid in tile_wids:
-                g = self._read_win_geom(wid)
-                if g is not None:
-                    self.settled_geoms[wid] = g
+            if not self.manual_override:
+                needs_retry = False
+                for wid in tile_wids:
+                    g = self._read_win_geom(wid)
+                    tgt = self.target_client_geoms.get(wid)
+                    if g is not None and tgt is not None and any(abs(g[i] - tgt[i]) > 4 for i in range(4)):
+                        needs_retry = True
+                        break
+                if needs_retry:
+                    self._apply_master_stack(tile_wids, extents_map)
+            self._record_settled_geoms(tile_wids)
             return
 
         if not self.manual_override:
@@ -3294,7 +3506,7 @@ class WwmBar(Gtk.Window):
                     prev_g = self.settled_geoms.get(wid)
                     if prev_g is None:
                         self.settled_geoms[wid] = g
-                    elif g != prev_g:
+                    elif any(abs(g[i] - prev_g[i]) > 16 for i in range(4)):
                         self.manual_override = True
                         break
 
@@ -3831,49 +4043,12 @@ window #entry:selected {
 }
 EOF
 
-	cat << EOF >| "${_rofi_theme}"
-* {
-    background: ${_c_bg};
-    background-color: ${_c_bg};
-    foreground: ${_c_fg};
-    normal-background: ${_c_bg};
-    normal-foreground: ${_c_fg};
-    alternate-normal-background: ${_c_panel};
-    alternate-normal-foreground: ${_c_fg};
-    selected-normal-background: ${_c_accent};
-    selected-normal-foreground: #ffffff;
-    active-background: ${_c_panel};
-    active-foreground: ${_c_accent};
-    selected-active-background: ${_c_accent};
-    selected-active-foreground: #ffffff;
-    urgent-background: ${_c_urgent};
-    urgent-foreground: #ffffff;
-    border-color: ${_c_accent};
-    separatorcolor: ${_c_border};
-}
-window {
-    background-color: ${_c_bg};
-    border: 2px;
-    border-color: ${_c_accent};
-    padding: 8px;
-}
-inputbar {
-    background-color: ${_c_panel};
-    text-color: ${_c_fg};
-    padding: 6px;
-    border: 1px;
-    border-color: ${_c_border};
-}
-element selected.normal {
-    background-color: ${_c_accent};
-    text-color: #ffffff;
-}
-EOF
+	_write_rofi_theme "${_rofi_theme}" "${_c_bg}" "${_c_panel}" "${_c_fg}" "${_c_border}" "${_c_accent}" "${_c_urgent}"
 
 	cat << EOF >| "${_menu_script}"
 #!/usr/bin/env sh
 if command -v wofi > "/dev/null" 2>&1; then
-	exec wofi --show drun --style "${_wofi_css}"
+	exec wofi --show drun --style "${_wofi_css}" --location top_right --xoffset -6 --yoffset 34 --width 420 --height 420
 elif command -v fuzzel > "/dev/null" 2>&1; then
 	exec fuzzel --background="${_hex_bg}ff" --text-color="${_hex_fg}ff" --match-color="${_hex_accent}ff" --selection-color="${_hex_accent}ff" --selection-text-color="ffffffff" --selection-match-color="ffffffff" --border-color="${_hex_accent}ff" --border-width=2
 elif command -v rofi > "/dev/null" 2>&1; then
@@ -3967,9 +4142,9 @@ def sync_split():
     con, parent = found
     if con.get("type") != "con" or con.get("fullscreen_mode", 0) != 0:
         return
-    app_id = con.get("app_id") or ""
-    name = con.get("name") or ""
-    if app_id == "wwm-bar" or name == "wwm-bar":
+    app_id = (con.get("app_id") or "").lower()
+    name = (con.get("name") or "").lower()
+    if app_id in ("wwm-bar", "rofi", "wofi", "fuzzel", "bemenu") or name in ("wwm-bar", "rofi", "wofi", "fuzzel", "bemenu"):
         return
     if parent and parent.get("layout") in ("tabbed", "stacked"):
         return
@@ -4044,6 +4219,9 @@ for_window [window_type="menu"] floating enable
 for_window [window_role="pop-up"] floating enable
 for_window [window_role="bubble"] floating enable
 for_window [window_role="dialog"] floating enable
+for_window [app_id="rofi"] floating enable, sticky enable
+for_window [class="Rofi"] floating enable, sticky enable
+for_window [app_id="wofi"] floating enable, sticky enable
 seat * xcursor_theme ${_cur_theme} ${_cur_size}
 seat * fallback true
 seat * hide_cursor when-typing disable
@@ -4691,17 +4869,18 @@ window_manager_x11() {
 	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
 	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
 	cat << OTM >| "${_kiosk_theme_dir}/themerc"
-border.width: 3
+border.width: 2
 border.color: ${_c_border}
 padding.width: 8
-padding.height: 6
-window.handle.width: 3
+padding.height: 5
+window.handle.width: 0
 window.client.padding.width: 0
 
 window.active.border.color: ${_c_accent}
 window.active.title.bg: flat solid
 window.active.title.bg.color: ${_c_panel}
-window.active.label.bg: parentrelative
+window.active.label.bg: flat solid
+window.active.label.bg.color: ${_c_panel}
 window.active.label.text.color: ${_c_fg}
 window.active.handle.bg: flat solid
 window.active.handle.bg.color: ${_c_panel}
@@ -4720,7 +4899,8 @@ window.active.button.disabled.image.color: ${_c_dis}
 window.inactive.border.color: ${_c_border}
 window.inactive.title.bg: flat solid
 window.inactive.title.bg.color: ${_c_bg}
-window.inactive.label.bg: parentrelative
+window.inactive.label.bg: flat solid
+window.inactive.label.bg.color: ${_c_bg}
 window.inactive.label.text.color: ${_c_muted}
 window.inactive.handle.bg: flat solid
 window.inactive.handle.bg.color: ${_c_bg}
@@ -4833,44 +5013,7 @@ done
 EOF
 	chmod 0755 "${_emacs_script}"
 
-	cat << EOF >| "${_rofi_theme}"
-* {
-    background: ${_c_bg};
-    background-color: ${_c_bg};
-    foreground: ${_c_fg};
-    normal-background: ${_c_bg};
-    normal-foreground: ${_c_fg};
-    alternate-normal-background: ${_c_panel};
-    alternate-normal-foreground: ${_c_fg};
-    selected-normal-background: ${_c_accent};
-    selected-normal-foreground: #ffffff;
-    active-background: ${_c_panel};
-    active-foreground: ${_c_accent};
-    selected-active-background: ${_c_accent};
-    selected-active-foreground: #ffffff;
-    urgent-background: ${_c_urgent};
-    urgent-foreground: #ffffff;
-    border-color: ${_c_accent};
-    separatorcolor: ${_c_border};
-}
-window {
-    background-color: ${_c_bg};
-    border: 2px;
-    border-color: ${_c_accent};
-    padding: 8px;
-}
-inputbar {
-    background-color: ${_c_panel};
-    text-color: ${_c_fg};
-    padding: 6px;
-    border: 1px;
-    border-color: ${_c_border};
-}
-element selected.normal {
-    background-color: ${_c_accent};
-    text-color: #ffffff;
-}
-EOF
+	_write_rofi_theme "${_rofi_theme}" "${_c_bg}" "${_c_panel}" "${_c_fg}" "${_c_border}" "${_c_accent}" "${_c_urgent}"
 
 	cat << EOF >| "${_menu_script}"
 #!/usr/bin/env sh
@@ -4911,7 +5054,7 @@ EOF
     <font place="InactiveOnScreenDisplay"><name>${_ui_font}</name><size>10</size><weight>Normal</weight><slant>Normal</slant></font>
   </theme>
   <margins>
-    <top>0</top>
+    <top>32</top>
     <bottom>0</bottom>
     <left>0</left>
     <right>0</right>
