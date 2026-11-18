@@ -380,8 +380,10 @@ _setup_cursor_env() {
 		esac
 	fi
 
-	mkdir -p "${HOME}/.icons/default" 2> "/dev/null" || true
+	local _xdg_icons_default="${XDG_DATA_HOME:-${HOME}/.local/share}/icons/default"
+	mkdir -p "${HOME}/.icons/default" "${_xdg_icons_default}" 2> "/dev/null" || true
 	printf '[Icon Theme]\nInherits=%s\n' "${_valid_theme}" >| "${HOME}/.icons/default/index.theme" 2> "/dev/null" || true
+	printf '[Icon Theme]\nInherits=%s\n' "${_valid_theme}" >| "${_xdg_icons_default}/index.theme" 2> "/dev/null" || true
 
 	local _de_key="${_flavor:-$(_detect_desktop_theme 2> "/dev/null" || echo "gnome")}"
 	case "${_de_key}" in
@@ -418,7 +420,7 @@ _setup_cursor_env() {
 
 	if [ -n "${DISPLAY:-}" ]; then
 		if command -v xrdb > "/dev/null" 2>&1; then
-			printf "Xcursor.theme: %s\nXcursor.size: %s\nXTerm*cursorBlink: always\nXTerm*cursorOnTime: 600\nXTerm*cursorOffTime: 600\n" "${_valid_theme}" "${_target_size}" | xrdb -merge - > "/dev/null" 2>&1 || true
+			printf "Xcursor.theme: %s\nXcursor.size: %s\nXcursor.theme_core: true\nXTerm*cursorBlink: always\nXTerm*cursorOnTime: 600\nXTerm*cursorOffTime: 600\n" "${_valid_theme}" "${_target_size}" | xrdb -merge - > "/dev/null" 2>&1 || true
 		fi
 		command -v xsetroot > "/dev/null" 2>&1 && xsetroot -cursor_name left_ptr > "/dev/null" 2>&1 || true
 	fi
@@ -432,6 +434,37 @@ _setup_cursor_env() {
 				gsettings set org.gnome.desktop.interface icon-theme "${_icon_theme}" > "/dev/null" 2>&1 || true
 				;;
 		esac
+	fi
+}
+
+_prepare_openbox_cursor_overlay() {
+	local _theme_name="${1:-}" _overlay_dir="${2:-}" _p _real_cursors="" _target_cursors _name
+	[ -n "${_theme_name}" ] && [ -n "${_overlay_dir}" ] || return 0
+	for _p in "${HOME}/.local/share/icons" "${HOME}/.icons" "/usr/local/share/icons" "/usr/share/icons"; do
+		if [ -d "${_p}/${_theme_name}/cursors" ]; then
+			_real_cursors="${_p}/${_theme_name}/cursors"
+			break
+		fi
+	done
+	[ -n "${_real_cursors}" ] || return 0
+	if [ -e "${_real_cursors}/size_ver" ] && [ -e "${_real_cursors}/size_hor" ] && \
+		[ -e "${_real_cursors}/size_fdiag" ] && [ -e "${_real_cursors}/size_bdiag" ]; then
+		_target_cursors="${_overlay_dir}/${_theme_name}/cursors"
+		if mkdir -p "${_target_cursors}" 2> "/dev/null"; then
+			for _name in top_side bottom_side; do
+				ln -sf "${_real_cursors}/size_ver" "${_target_cursors}/${_name}" 2> "/dev/null" || true
+			done
+			for _name in left_side right_side; do
+				ln -sf "${_real_cursors}/size_hor" "${_target_cursors}/${_name}" 2> "/dev/null" || true
+			done
+			for _name in top_left_corner bottom_right_corner bd_double_arrow; do
+				ln -sf "${_real_cursors}/size_fdiag" "${_target_cursors}/${_name}" 2> "/dev/null" || true
+			done
+			for _name in top_right_corner bottom_left_corner fd_double_arrow; do
+				ln -sf "${_real_cursors}/size_bdiag" "${_target_cursors}/${_name}" 2> "/dev/null" || true
+			done
+			printf '%s\n' "${_overlay_dir}"
+		fi
 	fi
 }
 
@@ -927,35 +960,93 @@ if command -v xsetroot > "/dev/null" 2>&1; then
 fi
 if command -v python3 > "/dev/null" 2>&1; then
 	python3 - "${_root_bg}" << 'EOF_ROOTPMAP' > "/dev/null" 2>&1 || true
+import ctypes
+import ctypes.util
+import glob
 import sys
-from Xlib import display, X, Xatom
+
+def _set_xcursor_root():
+    x11_path = ctypes.util.find_library("X11")
+    xc_path = ctypes.util.find_library("Xcursor")
+    if not x11_path:
+        for pat in ("/usr/local/lib/libX11.so*", "/usr/lib/*/libX11.so*", "/usr/lib/libX11.so*"):
+            hits = sorted(glob.glob(pat))
+            if hits:
+                x11_path = hits[0]
+                break
+    if not xc_path:
+        for pat in ("/usr/local/lib/libXcursor.so*", "/usr/lib/*/libXcursor.so*", "/usr/lib/libXcursor.so*"):
+            hits = sorted(glob.glob(pat))
+            if hits:
+                xc_path = hits[0]
+                break
+    if not x11_path or not xc_path:
+        return False
+    libx11 = ctypes.CDLL(x11_path)
+    libxc = ctypes.CDLL(xc_path)
+    libx11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+    libx11.XOpenDisplay.restype = ctypes.c_void_p
+    libx11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
+    libx11.XDefaultRootWindow.restype = ctypes.c_ulong
+    libxc.XcursorLibraryLoadCursor.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    libxc.XcursorLibraryLoadCursor.restype = ctypes.c_ulong
+    libx11.XDefineCursor.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong]
+    libx11.XDefineCursor.restype = ctypes.c_int
+    libx11.XFreeCursor.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+    libx11.XFreeCursor.restype = ctypes.c_int
+    libx11.XFlush.argtypes = [ctypes.c_void_p]
+    libx11.XFlush.restype = ctypes.c_int
+    libx11.XCloseDisplay.argtypes = [ctypes.c_void_p]
+    libx11.XCloseDisplay.restype = ctypes.c_int
+    dpy = libx11.XOpenDisplay(None)
+    if not dpy:
+        return False
+    try:
+        root_win = libx11.XDefaultRootWindow(dpy)
+        cur = libxc.XcursorLibraryLoadCursor(dpy, b"left_ptr")
+        if not cur:
+            return False
+        libx11.XDefineCursor(dpy, root_win, cur)
+        libx11.XFreeCursor(dpy, cur)
+        libx11.XFlush(dpy)
+        return True
+    finally:
+        libx11.XCloseDisplay(dpy)
 
 hex_bg = sys.argv[1].lstrip("#")
-if len(hex_bg) != 6:
-    sys.exit(0)
-r = int(hex_bg[0:2], 16)
-g = int(hex_bg[2:4], 16)
-b = int(hex_bg[4:6], 16)
-d = display.Display()
+if len(hex_bg) == 6:
+    try:
+        from Xlib import display, X, Xatom
+        r = int(hex_bg[0:2], 16)
+        g = int(hex_bg[2:4], 16)
+        b = int(hex_bg[4:6], 16)
+        d = display.Display()
+        try:
+            scr = d.screen()
+            root = scr.root
+            cmap = scr.default_colormap
+            pixel = cmap.alloc_color(r * 257, g * 257, b * 257).pixel
+            pmap = root.create_pixmap(1, 1, scr.root_depth)
+            gc = pmap.create_gc(foreground=pixel, background=pixel)
+            pmap.fill_rectangle(gc, 0, 0, 1, 1)
+            gc.free()
+            atom_xr = d.intern_atom("_XROOTPMAP_ID")
+            atom_es = d.intern_atom("ESETROOT_PMAP_ID")
+            root.change_property(atom_xr, Xatom.PIXMAP, 32, [pmap.id])
+            root.change_property(atom_es, Xatom.PIXMAP, 32, [pmap.id])
+            root.change_attributes(background_pixmap=pmap.id)
+            root.clear_area(0, 0, 0, 0, False)
+            d.set_close_down_mode(X.RetainPermanent)
+            d.sync()
+        finally:
+            d.close()
+    except Exception:
+        pass
+
 try:
-    scr = d.screen()
-    root = scr.root
-    cmap = scr.default_colormap
-    pixel = cmap.alloc_color(r * 257, g * 257, b * 257).pixel
-    pmap = root.create_pixmap(1, 1, scr.root_depth)
-    gc = pmap.create_gc(foreground=pixel, background=pixel)
-    pmap.fill_rectangle(gc, 0, 0, 1, 1)
-    gc.free()
-    atom_xr = d.intern_atom("_XROOTPMAP_ID")
-    atom_es = d.intern_atom("ESETROOT_PMAP_ID")
-    root.change_property(atom_xr, Xatom.PIXMAP, 32, [pmap.id])
-    root.change_property(atom_es, Xatom.PIXMAP, 32, [pmap.id])
-    root.change_attributes(background_pixmap=pmap.id)
-    root.clear_area(0, 0, 0, 0, False)
-    d.set_close_down_mode(X.RetainPermanent)
-    d.sync()
-finally:
-    d.close()
+    _set_xcursor_root()
+except Exception:
+    pass
 EOF_ROOTPMAP
 fi
 EOF
@@ -1107,9 +1198,10 @@ _exec_x11() {
 	unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 	export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
 
-	local _display="$(_resolve_free_display)"
-	export DISPLAY="${_display}"
+	local _target_display="$(_resolve_free_display)"
 	_x11_session_env "${_X11_FLAVOR_OVERRIDE:-}" "${_is_full_de}"
+	local _display="${_target_display}"
+	export DISPLAY="${_display}"
 
 	local _log_dir="$(_get_shell_log_dir)"
 	local _persistent_log="${_log_dir}/xorg-session.log"
@@ -1132,6 +1224,19 @@ _exec_x11() {
 	local _color_scheme="${_RESOLVED_COLOR_SCHEME:-$(_detect_color_scheme "${_theme_flavor}" 2> "/dev/null" || echo "dark")}"
 	local _ui_font="$(_resolve_desktop_font "${_theme_flavor}" 2> "/dev/null" || echo "Sans")"
 	local _valid_theme="${XCURSOR_THEME:-Adwaita}"
+	local _xcursor_overlay="${_X11_CURSOR_OVERLAY_DIR:-}" _own_cursor_overlay=0
+	if [ -z "${_xcursor_overlay}" ] && [ "$#" -gt 0 ]; then
+		case "${1##*/}" in
+			openbox)
+				_xcursor_overlay="$(_prepare_openbox_cursor_overlay "${_valid_theme}" "${XDG_RUNTIME_DIR:-/tmp}/xcursor-ob-x11-$$")"
+				[ -n "${_xcursor_overlay}" ] && _own_cursor_overlay=1
+				;;
+		esac
+	fi
+	local _xcursor_path="${XCURSOR_PATH:-${HOME}/.local/share/icons:${HOME}/.icons:/usr/local/share/icons:/usr/share/icons}"
+	if [ -n "${_xcursor_overlay}" ] && [ -d "${_xcursor_overlay}" ]; then
+		_xcursor_path="${_xcursor_overlay}:${_xcursor_path}"
+	fi
 	local _icon_theme="${_RESOLVED_ICON_THEME:-Adwaita}"
 	local _gtk_theme="${GTK_THEME:-}"
 	if [ -z "${_gtk_theme}" ] && command -v _resolve_gtk_theme > "/dev/null" 2>&1; then
@@ -1211,8 +1316,10 @@ export SAL_USE_VCLPLUGIN="gtk3"
 export vblank_mode=3
 export __GL_SYNC_TO_VBLANK=1
 export QT_QPA_PLATFORMTHEME="\${QT_QPA_PLATFORMTHEME:-qt6ct}"
-export XCURSOR_THEME="\${XCURSOR_THEME}"
-export XCURSOR_SIZE="\${XCURSOR_SIZE:-24}"
+export XCURSOR_PATH="${_xcursor_path}"
+export XCURSOR_THEME="${_valid_theme}"
+export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
+export XCURSOR_THEME_CORE="true"
 EOF
 
 	if [ "${_is_full_de}" -eq 1 ]; then
@@ -1233,7 +1340,7 @@ if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "\${HOME}/.Xresources" > "/dev/null" 2>&1 || true
 fi
 if command -v xrdb > "/dev/null" 2>&1; then
-	printf "Xcursor.theme: %s\nXcursor.size: %s\n" "\${XCURSOR_THEME}" "\${XCURSOR_SIZE}" | xrdb -merge - > "/dev/null" 2>&1 || true
+	printf "Xcursor.theme: %s\nXcursor.size: %s\nXcursor.theme_core: true\n" "${_valid_theme}" "${XCURSOR_SIZE:-24}" | xrdb -merge - > "/dev/null" 2>&1 || true
 fi
 EOF
 	_emit_x11_root_pixmap_block "${_root_bg}" >> "${_xinit_script}"
@@ -1361,6 +1468,7 @@ EOF
 			_ui_err "xinit ou startx não encontrado para sessão Xorg."
 		fi
 	fi
+	[ "${_own_cursor_overlay}" -eq 1 ] && [ -n "${_xcursor_overlay}" ] && rm -rf "${_xcursor_overlay}" 2> "/dev/null" || true
 	rm -f "${_server_auth}" "${_xinit_script}" "${_xsettings_host_cfg}" "${_picom_cfg}" 2> "/dev/null" || true
 	command -v xauth > "/dev/null" 2>&1 && command xauth -q remove "${_display}" > "/dev/null" 2>&1 || true
 
@@ -3945,7 +4053,7 @@ window_manager_wayland() {
 	fi
 	local _hex_root="${_c_root#\#}" _hex_bg="${_c_bg#\#}" _hex_panel="${_c_panel#\#}" _hex_fg="${_c_fg#\#}" _hex_border="${_c_border#\#}" _hex_accent="${_c_accent#\#}" _hex_urgent="${_c_urgent#\#}"
 
-	local _cur_theme="${XCURSOR_THEME}"
+	local _cur_theme="${XCURSOR_THEME:-Adwaita}"
 	local _cur_size="${XCURSOR_SIZE:-24}"
 	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
 	local _log_dir="$(_get_shell_log_dir)"
@@ -4463,6 +4571,11 @@ EOF
 			local _hypr_cfg="${_run_dir}/hyprland-wm-$$.conf"
 			cat << EOF >| "${_hypr_cfg}"
 monitor=,preferred,auto,1
+env = XCURSOR_THEME,${_cur_theme}
+env = XCURSOR_SIZE,${_cur_size}
+env = HYPRCURSOR_THEME,${_cur_theme}
+env = HYPRCURSOR_SIZE,${_cur_size}
+exec-once = hyprctl setcursor ${_cur_theme} ${_cur_size}
 general {
     border_size = 2
     gaps_in = 2
@@ -4850,6 +4963,7 @@ window_manager_x11() {
 
 	local _X11_FLAVOR_OVERRIDE="${_flavor}"
 	_x11_session_env "${_flavor}"
+	local _valid_theme="${XCURSOR_THEME:-Adwaita}"
 
 	local _scheme="${_RESOLVED_COLOR_SCHEME:-dark}"
 	local _c_root="#181b20" _c_bg="#1e222a" _c_panel="#2a2e38" _c_menu_bg="#1e222a" _c_fg="#ffffff" _c_muted="#9a9996" _c_dis="#5e5c64" _c_border="#3b404d" _c_accent="#3daee9" _c_urgent="#e05263"
@@ -4866,9 +4980,9 @@ window_manager_x11() {
 
 	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
 
-	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
-	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
-	cat << OTM >| "${_kiosk_theme_dir}/themerc"
+	local _xwm_theme_dir="${HOME}/.local/share/themes/xwm-kiosk/openbox-3"
+	mkdir -p "${_xwm_theme_dir}" 2> "/dev/null" || true
+	cat << OTM >| "${_xwm_theme_dir}/themerc"
 border.width: 2
 border.color: ${_c_border}
 padding.width: 8
@@ -5037,12 +5151,20 @@ EOF
 		openbox)
 			local _ob_menu_cfg="${_run_dir}/openbox-menu-$$.xml"
 			local _ob_wm_cfg="${_run_dir}/openbox-wm-$$.xml"
+			local _ob_cursor_overlay=""
+			local _prev_x11_cursor_overlay="${_X11_CURSOR_OVERLAY_DIR:-}"
+			_ob_cursor_overlay="$(_prepare_openbox_cursor_overlay "${_valid_theme}" "${_run_dir}/xcursor-ob-$$")"
+			if [ -n "${_ob_cursor_overlay}" ]; then
+				export _X11_CURSOR_OVERLAY_DIR="${_ob_cursor_overlay}"
+			else
+				unset _X11_CURSOR_OVERLAY_DIR
+			fi
 			_generate_openbox_menu_xml "${_ob_menu_cfg}" "${_browser_script}" "${_term_script}" "${_files_script}" "${_emacs_script}" "${_wm_x11_term}"
 			cat << EOF >| "${_ob_wm_cfg}"
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_config xmlns="http://openbox.org/3.4/rc">
   <theme>
-    <name>kiosk</name>
+    <name>xwm-kiosk</name>
     <titleLayout>NLIMC</titleLayout>
     <keepBorder>no</keepBorder>
     <animateIconify>no</animateIconify>
@@ -5220,6 +5342,12 @@ EOF
 EOF
 			_exec_x11 openbox --config-file "${_ob_wm_cfg}"
 			_ret=$?
+			if [ -n "${_prev_x11_cursor_overlay}" ]; then
+				export _X11_CURSOR_OVERLAY_DIR="${_prev_x11_cursor_overlay}"
+			else
+				unset _X11_CURSOR_OVERLAY_DIR
+			fi
+			rm -rf "${_run_dir}/xcursor-ob-$$" 2> "/dev/null" || true
 			rm -f "${_ob_menu_cfg}" "${_ob_wm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" "${_rofi_theme}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;

@@ -744,6 +744,11 @@ EOF
 			local _hypr_cfg="${_run_dir}/hyprland-gui-$$.conf"
 			cat << EOF >| "${_hypr_cfg}"
 monitor=,preferred,auto,1
+env = XCURSOR_THEME,${_cur_theme}
+env = XCURSOR_SIZE,${_cur_size}
+env = HYPRCURSOR_THEME,${_cur_theme}
+env = HYPRCURSOR_SIZE,${_cur_size}
+exec-once = hyprctl setcursor ${_cur_theme} ${_cur_size}
 general {
     border_size = 2
     gaps_in = 0
@@ -1020,9 +1025,10 @@ graphical_launcher_x11() {
 	unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 	export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
 
-	local _display="$(_resolve_free_display)"
-	export DISPLAY="${_display}"
+	local _target_display="$(_resolve_free_display)"
 	_x11_session_env "${_flavor}"
+	local _display="${_target_display}"
+	export DISPLAY="${_display}"
 	_x11_driver_preflight "${_persistent_kiosk_log}"
 
 	local _scheme="${_RESOLVED_COLOR_SCHEME:-dark}"
@@ -1046,9 +1052,9 @@ graphical_launcher_x11() {
 		_p_hover="#77767b"
 	fi
 
-	local _kiosk_theme_dir="${HOME}/.local/share/themes/kiosk/openbox-3"
-	mkdir -p "${_kiosk_theme_dir}" 2> "/dev/null" || true
-	cat << OTM >| "${_kiosk_theme_dir}/themerc"
+	local _xgui_theme_dir="${HOME}/.local/share/themes/xgui-kiosk/openbox-3"
+	mkdir -p "${_xgui_theme_dir}" 2> "/dev/null" || true
+	cat << OTM >| "${_xgui_theme_dir}/themerc"
 border.width: 0
 border.color: ${_p_border}
 padding.width: 8
@@ -1138,6 +1144,14 @@ OTM
 
 	local _run_dir="${XDG_RUNTIME_DIR:-/tmp}"
 	[ -d "${_run_dir}" ] && [ -w "${_run_dir}" ] || _run_dir="/tmp"
+	local _xcursor_overlay=""
+	local _xcursor_path="${XCURSOR_PATH:-${HOME}/.local/share/icons:${HOME}/.icons:/usr/local/share/icons:/usr/share/icons}"
+	if [ "${_target_wm}" = "openbox" ]; then
+		_xcursor_overlay="$(_prepare_openbox_cursor_overlay "${_valid_theme}" "${_run_dir}/xcursor-ob-gui-$$")"
+		if [ -n "${_xcursor_overlay}" ] && [ -d "${_xcursor_overlay}" ]; then
+			_xcursor_path="${_xcursor_overlay}:${_xcursor_path}"
+		fi
+	fi
 	local _tabbar_script=""
 	if command -v python3 > "/dev/null" 2>&1 && python3 -c 'import gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk' > "/dev/null" 2>&1; then
 		_tabbar_script="${_run_dir}/xgui-tabbar-$$.py"
@@ -1962,8 +1976,10 @@ export GTK_THEME="${_gtk_theme}"
 export GTK_APPLICATION_PREFER_DARK_THEME="${_prefer_dark}"
 export ADW_DEBUG_COLOR_SCHEME="${ADW_DEBUG_COLOR_SCHEME:-prefer-dark}"
 export QT_QPA_PLATFORMTHEME="\${QT_QPA_PLATFORMTHEME:-qt6ct}"
+export XCURSOR_PATH="${_xcursor_path}"
 export XCURSOR_THEME="${_valid_theme}"
 export XCURSOR_SIZE="${_cur_size}"
+export XCURSOR_THEME_CORE="true"
 export MOZ_GTK_TITLEBAR_DECORATION="system"
 export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
 
@@ -1971,7 +1987,7 @@ if [ -f "\${HOME}/.Xresources" ] && command -v xrdb > "/dev/null" 2>&1; then
 	xrdb -merge "\${HOME}/.Xresources" > "/dev/null" 2>&1 || true
 fi
 if command -v xrdb > "/dev/null" 2>&1; then
-	printf "Xcursor.theme: %s\nXcursor.size: %s\n" "${_valid_theme}" "${_cur_size}" | xrdb -merge - > "/dev/null" 2>&1 || true
+	printf "Xcursor.theme: %s\nXcursor.size: %s\nXcursor.theme_core: true\n" "${_valid_theme}" "${_cur_size}" | xrdb -merge - > "/dev/null" 2>&1 || true
 fi
 EOF
 	_emit_x11_root_pixmap_block "${_p_root}" >> "${_xinit_script}"
@@ -2030,7 +2046,7 @@ case "${_target_wm}" in
 <?xml version="1.0"?>
 <openbox_config xmlns="http://openbox.org/3.4/rc">
   <theme>
-    <name>kiosk</name>
+    <name>xgui-kiosk</name>
     <titleLayout>NLIMC</titleLayout>
     <keepBorder>no</keepBorder>
     <animateIconify>no</animateIconify>
@@ -2341,7 +2357,7 @@ EOF
 		"${_run_dir}/openbox-gui-$$.xml" "${_run_dir}/cwm-gui-$$.conf" \
 		"${_run_dir}/fvwm-gui-$$.cfg" "${_run_dir}/jwm-gui-$$.rc" \
 		"${_run_dir}/pekwm-gui-$$.cfg" "${_run_dir}/xsettingsd-gui-$$.conf" 2> "/dev/null" || true
-	rm -rf "${_run_dir}/fluxbox-gui-$$" "${_run_dir}/icewm-gui-$$" 2> "/dev/null" || true
+	rm -rf "${_run_dir}/fluxbox-gui-$$" "${_run_dir}/icewm-gui-$$" "${_run_dir}/xcursor-ob-gui-$$" 2> "/dev/null" || true
 	_has_bin "xauth" && command xauth -q remove "${_display}" > "/dev/null" 2>&1 || true
 	[ "${_had_display}" -eq 0 ] && unset DISPLAY
 	eval "${_tty_snapshot}"

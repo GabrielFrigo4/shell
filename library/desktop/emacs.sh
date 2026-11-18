@@ -311,6 +311,63 @@ _emacs_timeout_eval() {
 	)
 }
 
+_emacs_elisp_escape() {
+	local _raw="${1:-}"
+	local _head=""
+	local _out=""
+	while [ -n "${_raw}" ]; do
+		case "${_raw}" in
+			*\\*)
+				_head="${_raw%%\\*}"
+				_raw="${_raw#*\\}"
+				_out="${_out}${_head}\\\\"
+				;;
+			*)
+				_out="${_out}${_raw}"
+				_raw=""
+				;;
+		esac
+	done
+	_raw="${_out}"
+	_out=""
+	while [ -n "${_raw}" ]; do
+		case "${_raw}" in
+			*\"*)
+				_head="${_raw%%\"*}"
+				_raw="${_raw#*\"}"
+				_out="${_out}${_head}\\\""
+				;;
+			*)
+				_out="${_out}${_raw}"
+				_raw=""
+				;;
+		esac
+	done
+	printf '%s' "${_out}"
+}
+
+_emacs_sync_gui_env() {
+	local _sock="${1:-}"
+	[ -n "${_sock}" ] && [ -S "${_sock}" ] || return 0
+	_has_bin "emacsclient" || return 0
+	local _expr="(progn"
+	local _var=""
+	local _val=""
+	local _esc=""
+	for _var in WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP DESKTOP_SESSION XDG_SESSION_TYPE DBUS_SESSION_BUS_ADDRESS GTK_THEME GTK_APPLICATION_PREFER_DARK_THEME XCURSOR_THEME XCURSOR_SIZE XCURSOR_PATH; do
+		eval "_val=\"\${${_var}:-}\""
+		if [ -n "${_val}" ]; then
+			_esc="$(_emacs_elisp_escape "${_val}")"
+			_expr="${_expr} (setenv \"${_var}\" \"${_esc}\")"
+		else
+			_expr="${_expr} (setenv \"${_var}\" nil)"
+		fi
+	done
+	_expr="${_expr})"
+	_emacs_timeout_eval 2 "${_expr}" "${_sock}" || true
+	return 0
+}
+
 _emacs_try_live_socket() {
 	local _cand="${1:-}"
 	[ -n "${_cand}" ] || return 1
@@ -458,9 +515,35 @@ _emacs_start_daemon() {
 		-u UNIVERSAL_RAW_TTY \
 		-u FORCE_RAW_TTY \
 		-u NVIM_NOTTYFAST \
+		-u _IS_RAW_TTY_CACHED \
 		-u TERM_PROGRAM \
+		-u TERM_PROGRAM_VERSION \
 		-u KONSOLE_VERSION \
+		-u KONSOLE_DBUS_SERVICE \
+		-u KONSOLE_DBUS_SESSION \
+		-u KONSOLE_DBUS_WINDOW \
 		-u WT_SESSION \
+		-u VTE_VERSION \
+		-u XTERM_VERSION \
+		-u KITTY_PID \
+		-u ALACRITTY_LOG \
+		-u ALACRITTY_SOCKET \
+		-u WEZTERM_PANE \
+		-u INSIDE_EMACS \
+		-u EAT_SHELL_INTEGRATION_DIR \
+		-u EMACS_OS_MODE \
+		-u COLORTERM \
+		-u DISPLAY \
+		-u WAYLAND_DISPLAY \
+		-u XDG_CURRENT_DESKTOP \
+		-u XDG_SESSION_DESKTOP \
+		-u DESKTOP_SESSION \
+		-u XDG_SESSION_TYPE \
+		-u GTK_THEME \
+		-u GTK_APPLICATION_PREFER_DARK_THEME \
+		-u XCURSOR_THEME \
+		-u XCURSOR_SIZE \
+		TERM="xterm-256color" \
 		emacs --daemon="${_daemon_sock}" || return $?
 
 	while [ "${_attempt}" -lt 25 ]; do
@@ -581,6 +664,7 @@ emacs-client() {
 	_emacs_ensure_healthy_daemon
 	_live_sock="$(_emacs_live_socket || true)"
 	if [ -n "${_live_sock}" ]; then
+		_emacs_sync_gui_env "${_live_sock}"
 		if [ "$#" -eq 0 ]; then
 			_emacs_with_gui_env emacsclient -s "${_live_sock}" --create-frame -n
 			_status=$?
@@ -624,13 +708,37 @@ emacsclient() {
 	local _status=0
 	local _arg=""
 	local _mode="auto"
+	local _explicit_sock=""
+	local _explicit_server_file=0
+	local _next_is=""
+	local _live_sock=""
 	if [ "$#" -eq 0 ]; then
 		emacs-client
 		_status=$?
 	else
 		_has_bin "emacsclient" || { _ui_err "emacsclient not found."; return 127; }
 		for _arg in "$@"; do
+			if [ -n "${_next_is}" ]; then
+				case "${_next_is}" in
+					socket) _explicit_sock="${_arg}" ;;
+				esac
+				_next_is=""
+				continue
+			fi
 			case "${_arg}" in
+				-s|--socket-name)
+					_next_is="socket"
+					;;
+				--socket-name=*)
+					_explicit_sock="${_arg#--socket-name=}"
+					;;
+				-f|--server-file)
+					_explicit_server_file=1
+					_next_is="file"
+					;;
+				--server-file=*)
+					_explicit_server_file=1
+					;;
 				-e|--eval|-h|-H|--help|-V|--version)
 					_mode="raw"
 					break
@@ -654,6 +762,10 @@ emacsclient() {
 				;;
 			*)
 				if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+					if [ "${_explicit_server_file}" -eq 0 ]; then
+						_live_sock="$(_emacs_live_socket "${_explicit_sock}" || true)"
+						[ -n "${_live_sock}" ] && _emacs_sync_gui_env "${_live_sock}"
+					fi
 					_emacs_with_gui_env emacsclient "$@"
 				else
 					_emacs_with_tty_env emacsclient "$@"
@@ -699,6 +811,7 @@ emacs-open() {
 		_emacs_ensure_healthy_daemon
 		_live_sock="$(_emacs_live_socket || true)"
 		if [ -n "${_live_sock}" ]; then
+			_emacs_sync_gui_env "${_live_sock}"
 			if [ "$#" -eq 0 ]; then
 				(_emacs_with_gui_env nohup emacsclient -s "${_live_sock}" --create-frame . < "/dev/null" > "/dev/null" 2>&1 &)
 				_status=$?
@@ -749,6 +862,7 @@ emacs-eshell() {
 			_emacs_ensure_healthy_daemon
 			_live_sock="$(_emacs_live_socket || true)"
 			if [ -n "${_live_sock}" ]; then
+				_emacs_sync_gui_env "${_live_sock}"
 				(_emacs_with_gui_env nohup emacsclient -s "${_live_sock}" --create-frame \
 					--eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
 				_status=$?

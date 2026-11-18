@@ -189,22 +189,28 @@ _ec_ensure_socket_dir() {
 	return 0
 }
 
-_ec_probe_socket() {
-	_ec_psock="${1:-}"
-	command -v emacsclient > "/dev/null" 2>&1 || return 1
-	if command -v timeout > "/dev/null" 2>&1; then
-		if [ -n "${_ec_psock}" ]; then
-			timeout 2 emacsclient -s "${_ec_psock}" -e '(+ 1 1)' < "/dev/null" > "/dev/null" 2>&1 && return 0
-		else
-			timeout 2 emacsclient -e '(+ 1 1)' < "/dev/null" > "/dev/null" 2>&1 && return 0
-		fi
+_ec_timeout_eval() {
+	_ec_eval_sock="${1:-}"
+	_ec_eval_expr="${2:-t}"
+	_ec_eval_ret=0
+	command -v emacsclient > "/dev/null" 2>&1 || {
+		unset _ec_eval_sock _ec_eval_expr _ec_eval_ret
 		return 1
+	}
+	if command -v timeout > "/dev/null" 2>&1; then
+		if [ -n "${_ec_eval_sock}" ]; then
+			timeout 2 emacsclient -s "${_ec_eval_sock}" -e "${_ec_eval_expr}" < "/dev/null" > "/dev/null" 2>&1 || _ec_eval_ret=$?
+		else
+			timeout 2 emacsclient -e "${_ec_eval_expr}" < "/dev/null" > "/dev/null" 2>&1 || _ec_eval_ret=$?
+		fi
+		unset _ec_eval_sock _ec_eval_expr
+		return "${_ec_eval_ret}"
 	fi
 	(
-		if [ -n "${_ec_psock}" ]; then
-			emacsclient -s "${_ec_psock}" -e '(+ 1 1)' < "/dev/null" > "/dev/null" 2>&1 &
+		if [ -n "${_ec_eval_sock}" ]; then
+			emacsclient -s "${_ec_eval_sock}" -e "${_ec_eval_expr}" < "/dev/null" > "/dev/null" 2>&1 &
 		else
-			emacsclient -e '(+ 1 1)' < "/dev/null" > "/dev/null" 2>&1 &
+			emacsclient -e "${_ec_eval_expr}" < "/dev/null" > "/dev/null" 2>&1 &
 		fi
 		_ec_probe_pid=$!
 		(
@@ -212,12 +218,78 @@ _ec_probe_socket() {
 			kill -0 "${_ec_probe_pid}" 2> "/dev/null" && kill -9 "${_ec_probe_pid}" 2> "/dev/null" || true
 		) &
 		_ec_wd_pid=$!
-		wait "${_ec_probe_pid}" 2> "/dev/null"
-		_ec_probe_ret=$?
+		_ec_probe_ret=0
+		wait "${_ec_probe_pid}" 2> "/dev/null" || _ec_probe_ret=$?
 		kill -9 "${_ec_wd_pid}" 2> "/dev/null" || true
 		wait "${_ec_wd_pid}" 2> "/dev/null" || true
 		exit "${_ec_probe_ret}"
-	)
+	) || _ec_eval_ret=$?
+	unset _ec_eval_sock _ec_eval_expr
+	return "${_ec_eval_ret}"
+}
+
+_ec_probe_socket() {
+	_ec_timeout_eval "${1:-}" '(+ 1 1)'
+}
+
+_ec_elisp_escape() {
+	_ec_raw="${1:-}"
+	_ec_head=""
+	_ec_out=""
+	while [ -n "${_ec_raw}" ]; do
+		case "${_ec_raw}" in
+			*\\*)
+				_ec_head="${_ec_raw%%\\*}"
+				_ec_raw="${_ec_raw#*\\}"
+				_ec_out="${_ec_out}${_ec_head}\\\\"
+				;;
+			*)
+				_ec_out="${_ec_out}${_ec_raw}"
+				_ec_raw=""
+				;;
+		esac
+	done
+	_ec_raw="${_ec_out}"
+	_ec_out=""
+	while [ -n "${_ec_raw}" ]; do
+		case "${_ec_raw}" in
+			*\"*)
+				_ec_head="${_ec_raw%%\"*}"
+				_ec_raw="${_ec_raw#*\"}"
+				_ec_out="${_ec_out}${_ec_head}\\\""
+				;;
+			*)
+				_ec_out="${_ec_out}${_ec_raw}"
+				_ec_raw=""
+				;;
+		esac
+	done
+	printf '%s' "${_ec_out}"
+	unset _ec_raw _ec_head _ec_out
+}
+
+_ec_sync_gui_env() {
+	_ec_sync_sock="${1:-}"
+	if [ -z "${_ec_sync_sock}" ] || [ ! -S "${_ec_sync_sock}" ] || ! command -v emacsclient > "/dev/null" 2>&1; then
+		unset _ec_sync_sock
+		return 0
+	fi
+	_ec_expr="(progn"
+	_ec_val=""
+	_ec_esc=""
+	for _ec_var in WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP DESKTOP_SESSION XDG_SESSION_TYPE DBUS_SESSION_BUS_ADDRESS GTK_THEME GTK_APPLICATION_PREFER_DARK_THEME XCURSOR_THEME XCURSOR_SIZE XCURSOR_PATH; do
+		eval "_ec_val=\"\${${_ec_var}:-}\""
+		if [ -n "${_ec_val}" ]; then
+			_ec_esc="$(_ec_elisp_escape "${_ec_val}")"
+			_ec_expr="${_ec_expr} (setenv \"${_ec_var}\" \"${_ec_esc}\")"
+		else
+			_ec_expr="${_ec_expr} (setenv \"${_ec_var}\" nil)"
+		fi
+	done
+	_ec_expr="${_ec_expr})"
+	_ec_timeout_eval "${_ec_sync_sock}" "${_ec_expr}" || true
+	unset _ec_sync_sock _ec_expr _ec_var _ec_val _ec_esc
+	return 0
 }
 
 _ec_start_daemon() {
@@ -234,9 +306,35 @@ _ec_start_daemon() {
 		-u UNIVERSAL_RAW_TTY \
 		-u FORCE_RAW_TTY \
 		-u NVIM_NOTTYFAST \
+		-u _IS_RAW_TTY_CACHED \
 		-u TERM_PROGRAM \
+		-u TERM_PROGRAM_VERSION \
 		-u KONSOLE_VERSION \
+		-u KONSOLE_DBUS_SERVICE \
+		-u KONSOLE_DBUS_SESSION \
+		-u KONSOLE_DBUS_WINDOW \
 		-u WT_SESSION \
+		-u VTE_VERSION \
+		-u XTERM_VERSION \
+		-u KITTY_PID \
+		-u ALACRITTY_LOG \
+		-u ALACRITTY_SOCKET \
+		-u WEZTERM_PANE \
+		-u INSIDE_EMACS \
+		-u EAT_SHELL_INTEGRATION_DIR \
+		-u EMACS_OS_MODE \
+		-u COLORTERM \
+		-u DISPLAY \
+		-u WAYLAND_DISPLAY \
+		-u XDG_CURRENT_DESKTOP \
+		-u XDG_SESSION_DESKTOP \
+		-u DESKTOP_SESSION \
+		-u XDG_SESSION_TYPE \
+		-u GTK_THEME \
+		-u GTK_APPLICATION_PREFER_DARK_THEME \
+		-u XCURSOR_THEME \
+		-u XCURSOR_SIZE \
+		TERM="xterm-256color" \
 		emacs --daemon="${_ec_daemon_sock}" > "/dev/null" 2>&1 || {
 			unset _ec_daemon_sock
 			return 1
@@ -535,6 +633,10 @@ if [ "${_ec_want_eval}" -eq 1 ]; then
 		-u KONSOLE_VERSION \
 		-u WT_SESSION \
 		emacsclient --alternate-editor="" "$@"
+fi
+
+if [ -n "${_ec_live_sock}" ] && [ -S "${_ec_live_sock}" ]; then
+	_ec_sync_gui_env "${_ec_live_sock}"
 fi
 
 if [ -n "${_ec_live_sock}" ] && [ -z "${_ec_explicit_socket}" ] && [ "${_ec_explicit_server_file}" -eq 0 ]; then

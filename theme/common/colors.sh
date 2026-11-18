@@ -54,6 +54,7 @@ _setup_colors() {
 	_theme_color_bright_white="${_theme_color_open}${_escape}[97m${_theme_color_close}"
 
 	_theme_color_gray="${_theme_color_bright_gray}"
+	_theme_color_tty_gray="${_theme_color_open}${_escape}[37m${_theme_color_close}"
 	_theme_color_red="${_theme_color_bright_red}"
 	_theme_color_green="${_theme_color_bright_green}"
 	_theme_color_yellow="${_theme_color_bright_yellow}"
