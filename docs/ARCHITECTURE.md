@@ -10,10 +10,10 @@ Ao abrir qualquer novo emulador de terminal, painel de multiplexador (`tmux`) ou
 
 ```mermaid
 flowchart TD
-    RC["🐚 Entrypoint (shell.sh / RC)"] --> LIB_BASE["📚 1. library/{detect,detect-desktop,ui,functions}.sh"]
-    LIB_BASE --> LIB_EXTRA["📚 2. library/*.sh (desktop-* lazy apenas em desktop)"]
-    LIB_EXTRA --> T_ENV["⚙️ 3. target/{OS}/environment.sh (--userland)"]
-    T_ENV --> C_ENV["⚙️ 4. core/environment.sh (PYTHONPYCACHEPREFIX, _shell_ls, PATH)"]
+    RC["🐚 Entrypoint (shell.sh / RC)"] --> CORE_BASE["⚙️ 1. core/{detect,ui,elevate,perms,path}.sh"]
+    CORE_BASE --> LIB_DISP["📚 2. library/*.sh (desktop.sh apenas em desktop)"]
+    LIB_DISP --> T_ENV["⚙️ 3. target/{OS}/environment.sh"]
+    T_ENV --> C_ENV["⚙️ 4. core/{environment,userland}.sh"]
     C_ENV --> C_VAULT["🔐 5. core/vault.sh (~/.vault)"]
     C_VAULT --> CTX["🎯 6. context/{CONTEXT}/{common,OS}.sh"]
     CTX --> T_TARGET["🎨 7. target/{OS}/{SHELL}/prompt.sh ➔ theme/{SHELL}.sh"]
@@ -21,12 +21,12 @@ flowchart TD
 
 ### Ordem Estrita de Sourcing & Auto-Cura:
 
-1. **Auto-Cura de Permissões (`0755` vs `0644`):** Antes do bootstrap, `_self_heal_perms` (e o `install.sh`) assegura `0755` apenas nos entrypoints com `#!` (`shell.sh`, `init.sh`, `install.sh`, `benchmark.sh`, `.githooks/*` e scripts em `.scripts/` como `.scripts/emacs-client`), mantendo `0644` em todas as bibliotecas carregadas via `source` (`.`) e documentações.
-2. **`library/` Base & Lazy Desktop:** Carrega primeiro `detect.sh`, `detect-desktop.sh`, `ui.sh` e `functions.sh`, depois os demais módulos POSIX (`hypervisor.sh`, `ecosystem.sh`, `network-ports.sh`, `system-update.sh`), carregando `library/desktop-*.sh` (`desktop-device.sh`, `desktop-kiosk.sh`, `desktop-session.sh`) **exclusivamente** quando `SHELL_CONTEXT=desktop`.
+1. **`core/` Fundação (`detect`, `ui`, `elevate`, `perms`, `path`):** Carrega o motor de detecção e cache, emissão semântica `_ui_*`, escalonamento `_as_root`, manipulação de `$PATH` e `_has_bin`/`_resolve_bin`. Em seguida, `_self_heal_perms` (e o `_install_repo_perms` no `install.sh`) assegura `0755` apenas nos entrypoints com `#!` (`shell.sh`, `init.sh`, `install.sh`, `benchmark.sh`, `.githooks/*` e `.scripts/*`), mantendo `0644` em todas as bibliotecas carregadas via `source` (`.`) e suportando diretórios `.git` e gitlinks de submódulos.
+2. **`library/` Dispatchers & Lazy Desktop:** Carrega os dispatchers de domínio (`functions.sh`, `system.sh`, `ecosystem.sh`, `hypervisor.sh`) e carrega `library/desktop.sh` **exclusivamente** quando `SHELL_CONTEXT=desktop` (carregando `desktop/{detect,theme,emacs,apps}.sh` e registrando wrappers _lazy_ para `desktop/{device,kiosk,session}.sh`).
 3. **`target/{OS}/environment.sh`:** Aplica caminhos e tunings nativos do SO (incluindo segregação `--userland` como `/usr/gnu/bin` e `MANPATH` no illumos).
-4. **`core/environment.sh`:** Exporta `PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"` em todos os contextos, aplica a política `--userland=default|bsd|gnu`, configura `_shell_ls` (com detecção de TTY vs pipe) e define `COLORTERM`, `EDITOR`/`VISUAL` e históricos.
-5. **`core/vault.sh`:** Se `~/.vault` existir, injeta silenciosamente variáveis de ambiente privadas e chaves SSH.
-6. **`context/{CONTEXT}/{common,OS}.sh`:** Aplica recursos específicos do perfil ativo (`desktop`, `server`, `container` — com extensão `wsl.sh` quando aplicável).
+4. **`core/environment.sh` & `core/userland.sh`:** Exporta `PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"` em todos os contextos, configura `_shell_ls` (com detecção de TTY vs pipe), `COLORTERM`, `EDITOR`/`VISUAL` e aliases universais, aplicando em seguida o motor dual-mode `--userland=default|bsd|gnu` via `core/userland.sh` (`core/deploy.sh` permanece exclusivo do `install.sh`).
+5. **`core/vault.sh`:** Se `~/.vault` existir, injeta silenciosamente variáveis de ambiente privadas e chaves SSH sob carregamento _lazy_.
+6. **`context/{CONTEXT}/{common,OS}.sh`:** Aplica variáveis e especializações do perfil ativo (`desktop`, `server`, `container` — com extensão `wsl.sh` quando aplicável). Em `desktop/common.sh`, aplica `_desktop_apply_theme_context` (de `library/desktop/theme.sh`) sem carregar as 4.600+ linhas de `library/desktop/session.sh` no boot.
 7. **`target/{OS}/{SHELL}/prompt.sh` & `theme/{SHELL}.sh`:** Carrega o motor visual do shell e as regras de `target/common/{SHELL}/`. No Fish, o fluxo espelhado parte de `target/common/fish/config.fish` (`ui.fish`, `prompt.fish`, `aliases.fish`).
 
 ---
@@ -173,8 +173,8 @@ O repositório **Setup** opera com privilégios de superusuário (`sudo`/`doas`)
 O repositório **Universal Shell** opera no espaço de usuário desprivilegiado e governa a integridade da sessão interativa:
 
 - **Resiliência contra Mutações de TUI:** Editores modais (Helix, Vim, Neovim) e aplicações TUI frequentemente alteram o cursor via sequências de controle DECSCUSR (`\e[?1 q` para bloco piscante, `\e[?5 q` para barra). Ao encerrar ou receber sinais (`SIGINT`), essas aplicações podem deixar o console em estado degradado.
-- **Auto-Cura no Retorno de Ferramentas:** Wrappers de editores (como `hx()` e `_restore_tty_cursor` em `context/desktop/common.sh`) capturam o código de retorno e reemitem a sequência de cura (`\e%G\e[?16;238;0c` em consoles puros `_is_raw_tty` Linux ou `\e[1 q\e]112\a\e]112\e\\` em PTYs gráficos).
-- **Recuperação Segura do Daemon Emacs (`.scripts/emacs-client`):** Em vez de encerrar processos indiscriminadamente com `pkill -9 -x emacs`, o entrypoint `.scripts/emacs-client` (e `_emacs_ensure_healthy_daemon` em `context/desktop/common.sh`) executa um probe não-bloqueante (`timeout 2 emacsclient -e '(+ 1 1)'`) sobre o socket `EMACS_SOCKET_NAME`, limpando processos/sockets órfãos somente quando o daemon não responde.
+- **Auto-Cura no Retorno de Ferramentas:** Wrappers de editores (como `hx()` e `_restore_tty_cursor` em `library/desktop/apps.sh`) capturam o código de retorno e reemitem a sequência de cura (`\e%G\e[?16;238;0c` em consoles puros `_is_raw_tty` Linux ou `\e[1 q\e]112\a\e]112\e\\` em PTYs gráficos).
+- **Recuperação Segura do Daemon Emacs (`.scripts/emacs-client`):** Em vez de encerrar processos indiscriminadamente com `pkill -9 -x emacs`, o entrypoint `.scripts/emacs-client` (e `_emacs_ensure_healthy_daemon` em `library/desktop/emacs.sh`) executa um probe não-bloqueante (`timeout 2 emacsclient -e '(+ 1 1)'`) sobre o socket `EMACS_SOCKET_NAME`, limpando processos/sockets órfãos somente quando o daemon não responde.
 - **Auto-Cura no Ciclo de Prompt:** Na inicialização da sessão (`core/environment.sh`) e na renderização dos prompts (`theme/{bash,zsh,sh,ksh}.sh`), o Shell assegura que o interpretador UTF-8 permaneça sincronizado (`\e%G` em Linux VT ou `\e[1 q` em PTY) e que o cursor mantenha-se em bloco estático imune ao bug de deslocamento cromático das fontes de 512 glifos.
 
 ---

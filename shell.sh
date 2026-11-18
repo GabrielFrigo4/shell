@@ -61,66 +61,27 @@ _shell_is_sourced() {
 	esac
 }
 
-_self_heal_perms() {
-	if [ -x "${_SHELL_ROOT}/shell.sh" ] && [ -x "${_SHELL_ROOT}/.scripts/emacs-client" ] && { [ ! -d "${_SHELL_ROOT}/.git/objects" ] || [ -w "${_SHELL_ROOT}/.git/objects" ]; }; then
-		return 0
-	fi
-	if [ "$(uname -s 2> "/dev/null")" != "Windows_NT" ]; then
-		_cur_u="$(id -u 2> "/dev/null" || echo 1000)"
-		_real_u="${SUDO_USER:-${DOAS_USER:-$(id -un 2> "/dev/null")}}"
-		_real_g="$(id -gn "${_real_u}" 2> "/dev/null" || id -gn 2> "/dev/null")"
-		if [ "${_cur_u}" -ne 0 ] && [ -d "${_SHELL_ROOT}/.git" ]; then
-			if [ ! -w "${_SHELL_ROOT}" ] || [ ! -w "${_SHELL_ROOT}/.git/objects" ]; then
-				if command -v _as_root > "/dev/null" 2>&1; then
-					_as_root chown -R "${_real_u}:${_real_g}" "${_SHELL_ROOT}" 2> "/dev/null" || true
-					_as_root chmod -R u+rwX,go+rX "${_SHELL_ROOT}" 2> "/dev/null" || true
-				fi
-			fi
-		fi
-	fi
-	if [ -d "${_SHELL_ROOT}/.git" ] && command -v git > "/dev/null" 2>&1; then
-		git -C "${_SHELL_ROOT}" config core.hooksPath .githooks 2> "/dev/null" || true
-		git config --global --add safe.directory "${_SHELL_ROOT}" 2> "/dev/null" || true
-	fi
-	if [ -d "${_SHELL_ROOT}/.githooks" ]; then
-		chmod 0755 "${_SHELL_ROOT}/.githooks/"* 2> "/dev/null" || true
-	fi
-	if [ -d "${_SHELL_ROOT}/.scripts" ]; then
-		for _script_item in "${_SHELL_ROOT}/.scripts/"*; do
-			if [ -f "${_script_item}" ]; then
-				read -r _first_line < "${_script_item}" 2> "/dev/null" || _first_line=""
-				case "${_first_line}" in
-					"#!"*) chmod 0755 "${_script_item}" 2> "/dev/null" || true ;;
-				esac
-			fi
-		done
-		unset _script_item _first_line
-	fi
-	[ -f "${_SHELL_ROOT}/shell.sh" ] && chmod 0755 "${_SHELL_ROOT}/shell.sh" 2> "/dev/null" || true
-	[ -f "${_SHELL_ROOT}/init.sh" ] && chmod 0755 "${_SHELL_ROOT}/init.sh" 2> "/dev/null" || true
-	[ -f "${_SHELL_ROOT}/install.sh" ] && chmod 0755 "${_SHELL_ROOT}/install.sh" 2> "/dev/null" || true
-	[ -f "${_SHELL_ROOT}/benchmark.sh" ] && chmod 0755 "${_SHELL_ROOT}/benchmark.sh" 2> "/dev/null" || true
-}
-
 ### ================================
 ### BOOTSTRAP DE RUNTIME
 ### ================================
 _shell_bootstrap() {
-	_self_heal_perms
-	_ctx="${SHELL_CONTEXT:-desktop}"
-	for _module in detect.sh detect-desktop.sh ui.sh functions.sh; do
-		[ -f "${_SHELL_ROOT}/library/${_module}" ] && . "${_SHELL_ROOT}/library/${_module}"
+	for _module in detect.sh ui.sh elevate.sh perms.sh path.sh; do
+		[ -f "${_SHELL_ROOT}/core/${_module}" ] && . "${_SHELL_ROOT}/core/${_module}"
 	done
+	command -v _self_heal_perms > "/dev/null" 2>&1 && _self_heal_perms "${_SHELL_ROOT}"
+	_ctx="${SHELL_CONTEXT:-desktop}"
 	for _module in "${_SHELL_ROOT}/library/"*.sh; do
 		case "${_module##*/}" in
-			deploy.sh|detect.sh|detect-desktop.sh|ui.sh|functions.sh) continue ;;
-			desktop-*.sh) [ "${_ctx}" = "desktop" ] || continue ;;
+			desktop.sh) [ "${_ctx}" = "desktop" ] || continue ;;
 		esac
 		[ -f "${_module}" ] && . "${_module}"
 	done
 	_ctx_os="${_DETECTED_OS-$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')}"
 	[ -f "${_SHELL_ROOT}/target/${_ctx_os}/environment.sh" ] && . "${_SHELL_ROOT}/target/${_ctx_os}/environment.sh"
 	for _module in "${_SHELL_ROOT}/core/"*.sh; do
+		case "${_module##*/}" in
+			deploy.sh|perms.sh|detect.sh|ui.sh|elevate.sh|path.sh) continue ;;
+		esac
 		[ -f "${_module}" ] && . "${_module}"
 	done
 	[ -f "${_SHELL_ROOT}/context/${_ctx}/common.sh" ] && . "${_SHELL_ROOT}/context/${_ctx}/common.sh"

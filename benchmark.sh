@@ -37,8 +37,8 @@ if [ -z "${_python_bin}" ]; then
 	exit 1
 fi
 
-if [ -f "${_repo_dir}/library/detect.sh" ]; then
-	. "${_repo_dir}/library/detect.sh"
+if [ -f "${_repo_dir}/core/detect.sh" ]; then
+	. "${_repo_dir}/core/detect.sh"
 	_os="${_os:-$(_detect_os)}"
 fi
 
@@ -142,9 +142,10 @@ cmd_direct = [shell_bin, '-c', f'''
 LC_ALL=C
 [ \"{sh}\" = \"zsh\" ] && zmodload zsh/datetime 2> \"/dev/null\"
 export SHELL_REPO_DIR=\"{repo}\"
-for _f in \"{repo}/library/\"*.sh; do case \"\$_f\" in */deploy.sh) continue ;; */desktop-*.sh) [ \"\${{SHELL_CONTEXT:-desktop}}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_f\" ] && . \"\$_f\"; done
+for _f in detect.sh ui.sh elevate.sh perms.sh path.sh; do [ -f \"{repo}/core/\$_f\" ] && . \"{repo}/core/\$_f\"; done
+for _f in \"{repo}/library/\"*.sh; do case \"\$_f\" in */desktop.sh) [ \"\${{SHELL_CONTEXT:-desktop}}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_f\" ] && . \"\$_f\"; done
 [ -f \"{repo}/target/{os_name}/environment.sh\" ] && . \"{repo}/target/{os_name}/environment.sh\"
-for _f in \"{repo}/core/\"*.sh; do [ -f \"\$_f\" ] && . \"\$_f\"; done
+for _f in \"{repo}/core/\"*.sh; do case \"\$_f\" in */deploy.sh|*/perms.sh|*/detect.sh|*/ui.sh|*/elevate.sh|*/path.sh) continue ;; esac; [ -f \"\$_f\" ] && . \"\$_f\"; done
 [ -f \"{repo}/theme/{sh}.sh\" ] && . \"{repo}/theme/{sh}.sh\"
 t0=\${{EPOCHREALTIME:-}}
 if [ -n \"\$t0\" ]; then
@@ -166,7 +167,7 @@ try:
 except Exception:
     pass
 
-base = f'export SHELL_REPO_DIR=\"{repo}\"; for _f in \"{repo}/library/\"*.sh; do case \"\$_f\" in */deploy.sh) continue ;; */desktop-*.sh) [ \"\${{SHELL_CONTEXT:-desktop}}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_f\" ] && . \"\$_f\"; done; [ -f \"{repo}/target/{os_name}/environment.sh\" ] && . \"{repo}/target/{os_name}/environment.sh\"; for _f in \"{repo}/core/\"*.sh; do [ -f \"\$_f\" ] && . \"\$_f\"; done; [ -f \"{repo}/theme/{sh}.sh\" ] && . \"{repo}/theme/{sh}.sh\";'
+base = f'export SHELL_REPO_DIR=\"{repo}\"; for _f in detect.sh ui.sh elevate.sh perms.sh path.sh; do [ -f \"{repo}/core/\$_f\" ] && . \"{repo}/core/\$_f\"; done; for _f in \"{repo}/library/\"*.sh; do case \"\$_f\" in */desktop.sh) [ \"\${{SHELL_CONTEXT:-desktop}}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_f\" ] && . \"\$_f\"; done; [ -f \"{repo}/target/{os_name}/environment.sh\" ] && . \"{repo}/target/{os_name}/environment.sh\"; for _f in \"{repo}/core/\"*.sh; do case \"\$_f\" in */deploy.sh|*/perms.sh|*/detect.sh|*/ui.sh|*/elevate.sh|*/path.sh) continue ;; esac; [ -f \"\$_f\" ] && . \"\$_f\"; done; [ -f \"{repo}/theme/{sh}.sh\" ] && . \"{repo}/theme/{sh}.sh\";'
 cmd_base = [shell_bin, '-c', base]
 cmd_loop = [shell_bin, '-c', base + ' for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25; do cd /tmp && cd \"\$OLDPWD\"; done;']
 try:
@@ -203,9 +204,10 @@ cmd_direct = [shell_bin, '-c', f'''
 export LC_ALL=C
 [ \"{sh}\" = \"zsh\" ] && zmodload zsh/datetime 2> \"/dev/null\"
 export SHELL_REPO_DIR=\"{repo}\"
-for _f in \"{repo}/library/\"*.sh; do case \"\$_f\" in */deploy.sh) continue ;; */desktop-*.sh) [ \"\${{SHELL_CONTEXT:-desktop}}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_f\" ] && . \"\$_f\"; done
+for _f in detect.sh ui.sh elevate.sh perms.sh path.sh; do [ -f \"{repo}/core/\$_f\" ] && . \"{repo}/core/\$_f\"; done
+for _f in \"{repo}/library/\"*.sh; do case \"\$_f\" in */desktop.sh) [ \"\${{SHELL_CONTEXT:-desktop}}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_f\" ] && . \"\$_f\"; done
 [ -f \"{repo}/target/{os_name}/environment.sh\" ] && . \"{repo}/target/{os_name}/environment.sh\"
-for _f in \"{repo}/core/\"*.sh; do [ -f \"\$_f\" ] && . \"\$_f\"; done
+for _f in \"{repo}/core/\"*.sh; do case \"\$_f\" in */deploy.sh|*/perms.sh|*/detect.sh|*/ui.sh|*/elevate.sh|*/path.sh) continue ;; esac; [ -f \"\$_f\" ] && . \"\$_f\"; done
 [ -f \"{repo}/theme/{sh}.sh\" ] && . \"{repo}/theme/{sh}.sh\"
 _update_prompt > \"/dev/null\" 2>&1
 t0=\${{EPOCHREALTIME:-}}
@@ -228,7 +230,7 @@ try:
 except Exception:
     pass
 
-base = f'export LC_ALL=C; export SHELL_REPO_DIR=\"{repo}\"; for _f in \"{repo}/library/\"*.sh; do case \"\$_f\" in */deploy.sh) continue ;; */desktop-*.sh) [ \"\${{SHELL_CONTEXT:-desktop}}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_f\" ] && . \"\$_f\"; done; [ -f \"{repo}/target/{os_name}/environment.sh\" ] && . \"{repo}/target/{os_name}/environment.sh\"; for _f in \"{repo}/core/\"*.sh; do [ -f \"\$_f\" ] && . \"\$_f\"; done; [ -f \"{repo}/theme/{sh}.sh\" ] && . \"{repo}/theme/{sh}.sh\";'
+base = f'export LC_ALL=C; export SHELL_REPO_DIR=\"{repo}\"; for _f in detect.sh ui.sh elevate.sh perms.sh path.sh; do [ -f \"{repo}/core/\$_f\" ] && . \"{repo}/core/\$_f\"; done; for _f in \"{repo}/library/\"*.sh; do case \"\$_f\" in */desktop.sh) [ \"\${{SHELL_CONTEXT:-desktop}}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_f\" ] && . \"\$_f\"; done; [ -f \"{repo}/target/{os_name}/environment.sh\" ] && . \"{repo}/target/{os_name}/environment.sh\"; for _f in \"{repo}/core/\"*.sh; do case \"\$_f\" in */deploy.sh|*/perms.sh|*/detect.sh|*/ui.sh|*/elevate.sh|*/path.sh) continue ;; esac; [ -f \"\$_f\" ] && . \"\$_f\"; done; [ -f \"{repo}/theme/{sh}.sh\" ] && . \"{repo}/theme/{sh}.sh\";'
 cmd_base = [shell_bin, '-c', base]
 cmd_prompt = [shell_bin, '-c', base + ' for i in 1 2 3 4 5; do _update_prompt; done;']
 try:
@@ -371,7 +373,7 @@ if _is_shell_selected zsh && command -v zsh > "/dev/null" 2>&1; then
 	_prompt_zsh="${_repo_dir}/target/${_os}/zsh/prompt.sh"
 	if [ -f "${_prompt_zsh}" ]; then
 		_zsh_bin="$(_resolve_shell_bin "zsh")"
-		_shell_zsh_ms="$(_measure_cmd "${_zsh_bin} -c 'export SHELL_REPO_DIR=\"${_repo_dir}\"; for _file in \"${_repo_dir}/library/\"*.sh; do case \"\$_file\" in */deploy.sh) continue ;; */desktop-*.sh) [ \"\${SHELL_CONTEXT:-desktop}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_file\" ] && . \"\$_file\"; done; [ -f \"${_repo_dir}/target/${_os}/environment.sh\" ] && . \"${_repo_dir}/target/${_os}/environment.sh\"; for _file in \"${_repo_dir}/core/\"*.sh; do [ -f \"\$_file\" ] && . \"\$_file\"; done; . \"${_prompt_zsh}\"'")"
+		_shell_zsh_ms="$(_measure_cmd "${_zsh_bin} -c 'export SHELL_REPO_DIR=\"${_repo_dir}\"; for _file in detect.sh ui.sh elevate.sh perms.sh path.sh; do [ -f \"${_repo_dir}/core/\$_file\" ] && . \"${_repo_dir}/core/\$_file\"; done; for _file in \"${_repo_dir}/library/\"*.sh; do case \"\$_file\" in */desktop.sh) [ \"\${SHELL_CONTEXT:-desktop}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_file\" ] && . \"\$_file\"; done; [ -f \"${_repo_dir}/target/${_os}/environment.sh\" ] && . \"${_repo_dir}/target/${_os}/environment.sh\"; for _file in \"${_repo_dir}/core/\"*.sh; do case \"\$_file\" in */deploy.sh|*/perms.sh|*/detect.sh|*/ui.sh|*/elevate.sh|*/path.sh) continue ;; esac; [ -f \"\$_file\" ] && . \"\$_file\"; done; . \"${_prompt_zsh}\"'")"
 		printf "%-24s %b\n" "Shell Stack (zsh)" "$(_format_ms "${_shell_zsh_ms}" "${_target_limit}")"
 	fi
 fi
@@ -380,7 +382,7 @@ if _is_shell_selected bash && command -v bash > "/dev/null" 2>&1; then
 	_prompt_bash="${_repo_dir}/target/${_os}/bash/prompt.sh"
 	if [ -f "${_prompt_bash}" ]; then
 		_bash_bin="$(_resolve_shell_bin "bash")"
-		_shell_bash_ms="$(_measure_cmd "${_bash_bin} -c 'export SHELL_REPO_DIR=\"${_repo_dir}\"; for _file in \"${_repo_dir}/library/\"*.sh; do case \"\$_file\" in */deploy.sh) continue ;; */desktop-*.sh) [ \"\${SHELL_CONTEXT:-desktop}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_file\" ] && . \"\$_file\"; done; [ -f \"${_repo_dir}/target/${_os}/environment.sh\" ] && . \"${_repo_dir}/target/${_os}/environment.sh\"; for _file in \"${_repo_dir}/core/\"*.sh; do [ -f \"\$_file\" ] && . \"\$_file\"; done; . \"${_prompt_bash}\"'")"
+		_shell_bash_ms="$(_measure_cmd "${_bash_bin} -c 'export SHELL_REPO_DIR=\"${_repo_dir}\"; for _file in detect.sh ui.sh elevate.sh perms.sh path.sh; do [ -f \"${_repo_dir}/core/\$_file\" ] && . \"${_repo_dir}/core/\$_file\"; done; for _file in \"${_repo_dir}/library/\"*.sh; do case \"\$_file\" in */desktop.sh) [ \"\${SHELL_CONTEXT:-desktop}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_file\" ] && . \"\$_file\"; done; [ -f \"${_repo_dir}/target/${_os}/environment.sh\" ] && . \"${_repo_dir}/target/${_os}/environment.sh\"; for _file in \"${_repo_dir}/core/\"*.sh; do case \"\$_file\" in */deploy.sh|*/perms.sh|*/detect.sh|*/ui.sh|*/elevate.sh|*/path.sh) continue ;; esac; [ -f \"\$_file\" ] && . \"\$_file\"; done; . \"${_prompt_bash}\"'")"
 		printf "%-24s %b\n" "Shell Stack (bash)" "$(_format_ms "${_shell_bash_ms}" "${_target_limit}")"
 	fi
 fi
@@ -389,14 +391,14 @@ if [ "${_os}" = "freebsd" ] && _is_shell_selected sh && command -v sh > "/dev/nu
 	_prompt_sh="${_repo_dir}/target/freebsd/sh/prompt.sh"
 	if [ -f "${_prompt_sh}" ]; then
 		_sh_bin="$(_resolve_shell_bin "sh")"
-		_shell_sh_ms="$(_measure_cmd "${_sh_bin} -c 'export SHELL_REPO_DIR=\"${_repo_dir}\"; export SHELL_INIT=1; for _file in \"${_repo_dir}/library/\"*.sh; do case \"\$_file\" in */deploy.sh) continue ;; */desktop-*.sh) [ \"\${SHELL_CONTEXT:-desktop}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_file\" ] && . \"\$_file\"; done; [ -f \"${_repo_dir}/target/freebsd/environment.sh\" ] && . \"${_repo_dir}/target/freebsd/environment.sh\"; for _file in \"${_repo_dir}/core/\"*.sh; do [ -f \"\$_file\" ] && . \"\$_file\"; done; . \"${_prompt_sh}\"'")"
+		_shell_sh_ms="$(_measure_cmd "${_sh_bin} -c 'export SHELL_REPO_DIR=\"${_repo_dir}\"; export SHELL_INIT=1; for _file in detect.sh ui.sh elevate.sh perms.sh path.sh; do [ -f \"${_repo_dir}/core/\$_file\" ] && . \"${_repo_dir}/core/\$_file\"; done; for _file in \"${_repo_dir}/library/\"*.sh; do case \"\$_file\" in */desktop.sh) [ \"\${SHELL_CONTEXT:-desktop}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_file\" ] && . \"\$_file\"; done; [ -f \"${_repo_dir}/target/freebsd/environment.sh\" ] && . \"${_repo_dir}/target/freebsd/environment.sh\"; for _file in \"${_repo_dir}/core/\"*.sh; do case \"\$_file\" in */deploy.sh|*/perms.sh|*/detect.sh|*/ui.sh|*/elevate.sh|*/path.sh) continue ;; esac; [ -f \"\$_file\" ] && . \"\$_file\"; done; . \"${_prompt_sh}\"'")"
 		printf "%-24s %b\n" "Shell Stack (sh)" "$(_format_ms "${_shell_sh_ms}" "${_target_limit}")"
 	fi
 fi
 
 if [ "${_os}" = "freebsd" ] && _is_shell_selected sh; then
 	_sh_bin="$(_resolve_shell_bin "sh")"
-	_shell_core_ms="$(_measure_cmd "${_sh_bin} -c '. \"${_repo_dir}/library/detect.sh\"; . \"${_repo_dir}/library/functions.sh\"; . \"${_repo_dir}/target/freebsd/environment.sh\"; . \"${_repo_dir}/core/environment.sh\"'")"
+	_shell_core_ms="$(_measure_cmd "${_sh_bin} -c 'export SHELL_REPO_DIR=\"${_repo_dir}\"; for _file in detect.sh ui.sh elevate.sh perms.sh path.sh; do . \"${_repo_dir}/core/\$_file\"; done; . \"${_repo_dir}/target/freebsd/environment.sh\"; . \"${_repo_dir}/core/environment.sh\"'")"
 	printf "%-24s %b\n" "Shell Core (sh)" "$(_format_ms "${_shell_core_ms}" "${_target_limit}")"
 fi
 
@@ -408,7 +410,7 @@ if [ "${_os}" = "openbsd" ]; then
 		_prompt_ksh="${_repo_dir}/target/openbsd/ksh/prompt.sh"
 		if [ -f "${_prompt_ksh}" ]; then
 			_resolved_ksh="$(_resolve_shell_bin "${_ksh_bin}")"
-			_shell_ksh_ms="$(_measure_cmd "${_resolved_ksh} -c 'export SHELL_REPO_DIR=\"${_repo_dir}\"; for _file in \"${_repo_dir}/library/\"*.sh; do case \"\$_file\" in */deploy.sh) continue ;; */desktop-*.sh) [ \"\${SHELL_CONTEXT:-desktop}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_file\" ] && . \"\$_file\"; done; [ -f \"${_repo_dir}/target/openbsd/environment.sh\" ] && . \"${_repo_dir}/target/openbsd/environment.sh\"; for _file in \"${_repo_dir}/core/\"*.sh; do [ -f \"\$_file\" ] && . \"\$_file\"; done; . \"${_prompt_ksh}\"'")"
+			_shell_ksh_ms="$(_measure_cmd "${_resolved_ksh} -c 'export SHELL_REPO_DIR=\"${_repo_dir}\"; for _file in detect.sh ui.sh elevate.sh perms.sh path.sh; do [ -f \"${_repo_dir}/core/\$_file\" ] && . \"${_repo_dir}/core/\$_file\"; done; for _file in \"${_repo_dir}/library/\"*.sh; do case \"\$_file\" in */desktop.sh) [ \"\${SHELL_CONTEXT:-desktop}\" = \"desktop\" ] || continue ;; esac; [ -f \"\$_file\" ] && . \"\$_file\"; done; [ -f \"${_repo_dir}/target/openbsd/environment.sh\" ] && . \"${_repo_dir}/target/openbsd/environment.sh\"; for _file in \"${_repo_dir}/core/\"*.sh; do case \"\$_file\" in */deploy.sh|*/perms.sh|*/detect.sh|*/ui.sh|*/elevate.sh|*/path.sh) continue ;; esac; [ -f \"\$_file\" ] && . \"\$_file\"; done; . \"${_prompt_ksh}\"'")"
 			printf "%-24s %b\n" "Shell Stack (${_ksh_bin})" "$(_format_ms "${_shell_ksh_ms}" "${_target_limit}")"
 		fi
 	fi

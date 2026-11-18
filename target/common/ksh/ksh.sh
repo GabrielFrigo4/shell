@@ -24,7 +24,7 @@ set -o noclobber 2> "/dev/null" || true
 ### --------------------------------
 ### STANDARD ALIASES
 ### --------------------------------
-alias h='fc -l'
+alias h > "/dev/null" 2>&1 || alias h='fc -l'
 alias j='jobs'
 alias m="${PAGER:-less}"
 alias history='fc -l'

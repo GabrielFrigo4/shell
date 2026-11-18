@@ -1,6 +1,6 @@
-# 🧠 Motores de Inteligência & Detecção (`library/detect.sh`)
+# 🧠 Motores de Inteligência & Detecção (`core/detect.sh` & `library/desktop/detect.sh`)
 
-O módulo `library/detect.sh` é o cérebro investigativo do **Universal Shell Environment**. Ele sonda o ambiente do hospedeiro em baixo nível, identificando hardware, kernel, distribuições e interfaces visuais sem degradação de desempenho.
+Os módulos `core/detect.sh` (SO, shell, distro, cache, Raw TTY e binários CLI modernos) e `library/desktop/detect.sh` (ambientes desktop, esquemas Dark/Light e toolkits gráficos) compõem o cérebro investigativo do **Universal Shell Environment**. Eles sondam o ambiente do hospedeiro em baixo nível sem degradação de desempenho.
 
 ---
 
@@ -119,7 +119,7 @@ Para preservar a legibilidade e evitar caracteres corrompidos (_mojibake_ de fon
 
 ### 1. Critérios de Identificação de Console Puro
 
-A função `_is_raw_tty()` em `library/detect.sh` avalia a cascata:
+A função `_is_raw_tty()` em `core/detect.sh` avalia a cascata:
 
 1. **Variáveis de Ambiente Independentes:** Checa `RAW_TTY`, `LC_RAW_TTY` e `UNIVERSAL_RAW_TTY` de forma isolada (`1`, `true`, `yes`).
 2. **Emulação do Terminal (`$TERM`):** `linux`, `dumb`, `vt100`, `cons25*`, `wvt25*`.

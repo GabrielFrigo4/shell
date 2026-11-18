@@ -102,15 +102,15 @@ update-vault() {
 	done
 
 	_target=""
-	if [ -n "${VAULT_DIR:-}" ] && [ -d "${VAULT_DIR}/.git" ]; then
+	if [ -n "${VAULT_DIR:-}" ] && [ -e "${VAULT_DIR}/.git" ]; then
 		_target="${VAULT_DIR}"
-	elif [ -d "${HOME}/.local/share/vault/.git" ]; then
+	elif [ -e "${HOME}/.local/share/vault/.git" ]; then
 		_target="${HOME}/.local/share/vault"
-	elif [ -d "${HOME}/.config/vault/.git" ]; then
+	elif [ -e "${HOME}/.config/vault/.git" ]; then
 		_target="${HOME}/.config/vault"
-	elif [ -d "${HOME}/.vault/.git" ]; then
+	elif [ -e "${HOME}/.vault/.git" ]; then
 		_target="${HOME}/.vault"
-	elif [ -d "/usr/local/share/vault/.git" ]; then
+	elif [ -e "/usr/local/share/vault/.git" ]; then
 		_target="/usr/local/share/vault"
 	fi
 

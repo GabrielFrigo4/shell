@@ -74,7 +74,7 @@ test:
 			_pipe_sh="sh"; \
 		fi; \
 		if [ -n "$${_pipe_sh}" ]; then \
-			"$${_pipe_sh}" -c '. ./library/detect.sh 2> "/dev/null" && . ./library/functions.sh 2> "/dev/null" && . ./core/environment.sh 2> "/dev/null"; \
+			"$${_pipe_sh}" -c 'export SHELL_REPO_DIR="."; . ./core/detect.sh 2> "/dev/null" && . ./core/ui.sh 2> "/dev/null" && . ./core/elevate.sh 2> "/dev/null" && . ./core/path.sh 2> "/dev/null" && . ./library/functions.sh 2> "/dev/null" && . ./core/environment.sh 2> "/dev/null"; \
 				for _fn in l la ll lr lar llr; do \
 					_out=$$("$${_fn}" core | cat); \
 					[ -n "$${_out}" ] || { echo "❌ Saída vazia em $${_fn} | cat" >&2; exit 1; }; \

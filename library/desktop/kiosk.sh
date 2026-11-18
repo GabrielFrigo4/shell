@@ -6,6 +6,9 @@
 ### EPHEMERAL GRAPHICAL LAUNCHERS
 ### --------------------------------
 _kiosk_ensure_session() {
+	if ! command -v _resolve_bin > "/dev/null" 2>&1; then
+		[ -n "${SHELL_REPO_DIR:-}" ] && [ -f "${SHELL_REPO_DIR}/core/path.sh" ] && . "${SHELL_REPO_DIR}/core/path.sh"
+	fi
 	[ -n "${_SHELL_DESKTOP_SESSION_LOADED:-}" ] && return 0
 	if [ -n "${SHELL_REPO_DIR:-}" ] && [ -f "${SHELL_REPO_DIR}/library/desktop/session.sh" ]; then
 		. "${SHELL_REPO_DIR}/library/desktop/session.sh"
@@ -27,36 +30,6 @@ _kiosk_restore_ifs() {
 	else
 		unset IFS
 	fi
-}
-
-_kiosk_resolve_exec_bin() {
-	local _keb_target="${1:-}"
-	[ -z "${_keb_target}" ] && return 1
-	case "${_keb_target}" in
-		*/*)
-			if [ -f "${_keb_target}" ] && [ -x "${_keb_target}" ]; then
-				printf '%s\n' "${_keb_target}"
-				return 0
-			fi
-			return 1
-			;;
-	esac
-	[ -z "${PATH:-}" ] && return 1
-	local _keb_rem="${PATH}:" _keb_dir=""
-	while [ -n "${_keb_rem}" ]; do
-		_keb_dir="${_keb_rem%%:*}"
-		_keb_rem="${_keb_rem#*:}"
-		[ -z "${_keb_dir}" ] && _keb_dir="."
-		if [ -f "${_keb_dir}/${_keb_target}" ] && [ -x "${_keb_dir}/${_keb_target}" ]; then
-			printf '%s\n' "${_keb_dir}/${_keb_target}"
-			return 0
-		fi
-	done
-	return 1
-}
-
-_kiosk_has_exec_bin() {
-	_kiosk_resolve_exec_bin "${1:-}" > "/dev/null" 2>&1
 }
 
 _kiosk_has_forced_backend() {
@@ -99,12 +72,12 @@ _kiosk_exec_wayland_logged() {
 	[ -z "${_log_target}" ] && return 1
 	local _exec_ret=0
 	local _os_name="$(_detect_os 2> "/dev/null" || uname -s 2> "/dev/null" | tr '[:upper:]' '[:lower:]')"
-	if [ "${_os_name}" = "freebsd" ] && _kiosk_has_exec_bin "ck-launch-session"; then
+	if [ "${_os_name}" = "freebsd" ] && _has_bin "ck-launch-session"; then
 		local _ck_cmd="$(_session_cmd_file "$@")"
-		if _kiosk_has_exec_bin "dbus-run-session"; then
+		if _has_bin "dbus-run-session"; then
 			command dbus-run-session -- ck-launch-session "${_ck_cmd}" >> "${_log_target}" 2>&1
 			_exec_ret=$?
-		elif _kiosk_has_exec_bin "dbus-launch"; then
+		elif _has_bin "dbus-launch"; then
 			command dbus-launch --exit-with-session ck-launch-session "${_ck_cmd}" >> "${_log_target}" 2>&1
 			_exec_ret=$?
 		else
@@ -112,10 +85,10 @@ _kiosk_exec_wayland_logged() {
 			_exec_ret=$?
 		fi
 		rm -f "${_ck_cmd}" 2> "/dev/null" || true
-	elif _kiosk_has_exec_bin "dbus-run-session"; then
+	elif _has_bin "dbus-run-session"; then
 		command dbus-run-session -- "$@" >> "${_log_target}" 2>&1
 		_exec_ret=$?
-	elif _kiosk_has_exec_bin "dbus-launch"; then
+	elif _has_bin "dbus-launch"; then
 		command dbus-launch --exit-with-session "$@" >> "${_log_target}" 2>&1
 		_exec_ret=$?
 	else
@@ -185,7 +158,7 @@ graphical_launcher_wayland() {
 	_is_terminal_app "${_app}" && _is_terminal=1
 
 	local _has_xwayland=0
-	_kiosk_has_exec_bin "Xwayland" && _has_xwayland=1
+	_has_bin "Xwayland" && _has_xwayland=1
 
 	local _require_xwayland=0
 	if [ "${_is_terminal}" -eq 0 ] && [ "${_has_xwayland}" -eq 0 ] && [ -z "${DISPLAY:-}" ]; then
@@ -193,8 +166,8 @@ graphical_launcher_wayland() {
 			xterm|urxvt|rxvt) _require_xwayland=1 ;;
 			*)
 				local _app_path=""
-				_app_path="$(_kiosk_resolve_exec_bin "${_app}" || true)"
-				if [ -n "${_app_path}" ] && [ -f "${_app_path}" ] && _kiosk_has_exec_bin "readelf"; then
+				_app_path="$(_resolve_bin "${_app}" || true)"
+				if [ -n "${_app_path}" ] && [ -f "${_app_path}" ] && _has_bin "readelf"; then
 					local _app_libs=""
 					_app_libs="$(command readelf -d "${_app_path}" 2> "/dev/null" | command grep "(NEEDED)" || true)"
 					if printf '%s\n' "${_app_libs}" | command grep -qi "libX11" > "/dev/null" 2>&1 && \
@@ -386,7 +359,7 @@ EOF
 	unset DBUS_SESSION_BUS_ADDRESS SYSTEMD_EXEC_PID MANAGERPID
 	export MOZ_DBUS_REMOTE=0 MOZ_NO_REMOTE=1
 
-	local _resolved_wm="$(_kiosk_resolve_exec_bin "${_target_wm}" || printf '%s' "${_target_wm}")"
+	local _resolved_wm="$(_resolve_bin "${_target_wm}" || printf '%s' "${_target_wm}")"
 
 	case "${_target_wm}" in
 		sway)
@@ -882,14 +855,14 @@ graphical_launcher_x11() {
 		esac
 	done
 
-	{ _kiosk_has_exec_bin "xinit" || _kiosk_has_exec_bin "startx"; } || {
+	{ _has_bin "xinit" || _has_bin "startx"; } || {
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "xinit ou startx não encontrado para lançador Xorg."
 		fi
 		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 		return 127
 	}
-	{ _kiosk_has_exec_bin "Xorg" || _kiosk_has_exec_bin "X"; } || {
+	{ _has_bin "Xorg" || _has_bin "X"; } || {
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "Servidor Xorg não encontrado."
 		fi
@@ -900,20 +873,20 @@ graphical_launcher_x11() {
 	local _target_wm=""
 	if [ -n "${_selected_wm}" ]; then
 		if [ "${_selected_wm}" = "fvwm" ] || [ "${_selected_wm}" = "fvwm3" ]; then
-			if _kiosk_has_exec_bin "${_selected_wm}"; then
+			if _has_bin "${_selected_wm}"; then
 				_target_wm="${_selected_wm}"
-			elif _kiosk_has_exec_bin "fvwm3"; then
+			elif _has_bin "fvwm3"; then
 				_target_wm="fvwm3"
-			elif _kiosk_has_exec_bin "fvwm"; then
+			elif _has_bin "fvwm"; then
 				_target_wm="fvwm"
 			fi
 		elif [ "${_selected_wm}" = "matchbox" ] || [ "${_selected_wm}" = "matchbox-window-manager" ]; then
-			if _kiosk_has_exec_bin "matchbox-window-manager"; then
+			if _has_bin "matchbox-window-manager"; then
 				_target_wm="matchbox-window-manager"
-			elif _kiosk_has_exec_bin "matchbox"; then
+			elif _has_bin "matchbox"; then
 				_target_wm="matchbox"
 			fi
-		elif _kiosk_has_exec_bin "${_selected_wm}"; then
+		elif _has_bin "${_selected_wm}"; then
 			_target_wm="${_selected_wm}"
 		fi
 		if [ -z "${_target_wm}" ]; then
@@ -929,7 +902,7 @@ graphical_launcher_x11() {
 			_x_cand="${_x_pipeline%% *}"
 			_x_pipeline="${_x_pipeline#* }"
 			[ -z "${_x_cand}" ] && continue
-			if _kiosk_has_exec_bin "${_x_cand}"; then
+			if _has_bin "${_x_cand}"; then
 				_target_wm="${_x_cand}"
 				break
 			fi
@@ -1958,14 +1931,14 @@ EOF
 	local _xinit_ret=0
 	local _use_auth=0
 
-	if _kiosk_has_exec_bin "xauth"; then
+	if _has_bin "xauth"; then
 		( umask 0077; rm -f "${_server_auth}"; : >| "${_server_auth}"; [ -f "${HOME}/.Xauthority" ] || : >| "${HOME}/.Xauthority" ) 2> "/dev/null" || true
 		local _cookie=""
-		if _kiosk_has_exec_bin "mcookie"; then
+		if _has_bin "mcookie"; then
 			_cookie="$(command mcookie 2> "/dev/null" || true)"
-		elif [ -r "/dev/urandom" ] && _kiosk_has_exec_bin "hexdump"; then
+		elif [ -r "/dev/urandom" ] && _has_bin "hexdump"; then
 			_cookie="$(command dd if=/dev/urandom bs=16 count=1 2> "/dev/null" | command hexdump -e '16/1 "%02x"' 2> "/dev/null" || true)"
-		elif [ -r "/dev/urandom" ] && _kiosk_has_exec_bin "od"; then
+		elif [ -r "/dev/urandom" ] && _has_bin "od"; then
 			_cookie="$(command dd if=/dev/urandom bs=16 count=1 2> "/dev/null" | command od -An -tx1 2> "/dev/null" | tr -d ' \n' || true)"
 		fi
 		if [ -n "${_cookie}" ]; then
@@ -1976,21 +1949,21 @@ EOF
 		fi
 	fi
 
-	if _kiosk_has_exec_bin "xinit" && [ "${_use_auth}" -eq 1 ]; then
+	if _has_bin "xinit" && [ "${_use_auth}" -eq 1 ]; then
 		if [ -n "${_vt_arg}" ]; then
 			command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" "${_vt_arg}" "-auth" "${_server_auth}" >> "${_persistent_kiosk_log}" 2>&1
 		else
 			command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" "-auth" "${_server_auth}" >> "${_persistent_kiosk_log}" 2>&1
 		fi
 		_xinit_ret=$?
-	elif _kiosk_has_exec_bin "startx"; then
+	elif _has_bin "startx"; then
 		if [ -n "${_vt_arg}" ]; then
 			command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" "${_vt_arg}" >> "${_persistent_kiosk_log}" 2>&1
 		else
 			command startx "${_xinit_script}" "${_app}" "$@" -- "${_display}" >> "${_persistent_kiosk_log}" 2>&1
 		fi
 		_xinit_ret=$?
-	elif _kiosk_has_exec_bin "xinit"; then
+	elif _has_bin "xinit"; then
 		if [ -n "${_vt_arg}" ]; then
 			command xinit "${_xinit_script}" "${_app}" "$@" -- "${_display}" "${_vt_arg}" >> "${_persistent_kiosk_log}" 2>&1
 		else
@@ -2007,7 +1980,7 @@ EOF
 		"${_run_dir}/fvwm-gui-$$.cfg" "${_run_dir}/jwm-gui-$$.rc" \
 		"${_run_dir}/pekwm-gui-$$.cfg" "${_run_dir}/xsettingsd-gui-$$.conf" 2> "/dev/null" || true
 	rm -rf "${_run_dir}/fluxbox-gui-$$" "${_run_dir}/icewm-gui-$$" 2> "/dev/null" || true
-	_kiosk_has_exec_bin "xauth" && command xauth -q remove "${_display}" > "/dev/null" 2>&1 || true
+	_has_bin "xauth" && command xauth -q remove "${_display}" > "/dev/null" 2>&1 || true
 	[ "${_had_display}" -eq 0 ] && unset DISPLAY
 	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
 	_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
@@ -2076,7 +2049,7 @@ emacs_window_manager_wayland() {
 	_wayland_session_env "${_flavor}"
 	export EMACS_OS_MODE="wayland"
 
-	local _ewm_emacs_bin="$(_kiosk_resolve_exec_bin "emacs-pgtk" || _kiosk_resolve_exec_bin "emacs" || true)"
+	local _ewm_emacs_bin="$(_resolve_bin "emacs-pgtk" || _resolve_bin "emacs" || true)"
 	if [ -z "${_ewm_emacs_bin}" ]; then
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "emacs não encontrado."
@@ -2167,14 +2140,14 @@ emacs_window_manager_x11() {
 		esac
 	done
 
-	{ _kiosk_has_exec_bin "xinit" || _kiosk_has_exec_bin "startx"; } || {
+	{ _has_bin "xinit" || _has_bin "startx"; } || {
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "xinit ou startx não encontrado para EWM Xorg."
 		fi
 		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 		return 127
 	}
-	{ _kiosk_has_exec_bin "Xorg" || _kiosk_has_exec_bin "X"; } || {
+	{ _has_bin "Xorg" || _has_bin "X"; } || {
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "Servidor Xorg não encontrado para EWM."
 		fi
@@ -2182,7 +2155,7 @@ emacs_window_manager_x11() {
 		return 127
 	}
 
-	local _emacs_bin="$(_kiosk_resolve_exec_bin "emacs-gtk+x11" || _kiosk_resolve_exec_bin "emacs-x11" || _kiosk_resolve_exec_bin "emacs-lucid" || _kiosk_resolve_exec_bin "emacs-gtk" || _kiosk_resolve_exec_bin "emacs-nw" || _kiosk_resolve_exec_bin "emacs" || true)"
+	local _emacs_bin="$(_resolve_bin "emacs-gtk+x11" || _resolve_bin "emacs-x11" || _resolve_bin "emacs-lucid" || _resolve_bin "emacs-gtk" || _resolve_bin "emacs-nw" || _resolve_bin "emacs" || true)"
 	if [ -z "${_emacs_bin}" ]; then
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "emacs não encontrado."

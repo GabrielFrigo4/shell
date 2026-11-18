@@ -28,7 +28,7 @@ if [ -z "${ZSH_VERSION:-}" ]; then
 	unset _esc_ok _kebab_ok
 fi
 
-[ -f "${SHELL_REPO_DIR}/library/ui.sh" ] && . "${SHELL_REPO_DIR}/library/ui.sh"
+[ -f "${SHELL_REPO_DIR}/core/ui.sh" ] && . "${SHELL_REPO_DIR}/core/ui.sh"
 
 
 ### --------------------------------
@@ -146,10 +146,10 @@ esac
 ### --------------------------------
 ### DETECT ENVIRONMENT
 ### --------------------------------
-for _lib in detect.sh detect-desktop.sh ui.sh functions.sh deploy.sh; do
-	[ -f "${SHELL_REPO_DIR}/library/${_lib}" ] && . "${SHELL_REPO_DIR}/library/${_lib}"
+for _core in detect.sh ui.sh elevate.sh perms.sh path.sh deploy.sh; do
+	[ -f "${SHELL_REPO_DIR}/core/${_core}" ] && . "${SHELL_REPO_DIR}/core/${_core}"
 done
-unset _lib
+unset _core
 _cache_clean
 OS_NAME="$(_detect_os)"
 SHELL_NAME="$(_detect_shell)"
@@ -213,39 +213,7 @@ fi
 ### --------------------------------
 ### REPOSITORY PERMISSIONS
 ### --------------------------------
-if [ "${OS_NAME}" != "windows" ]; then
-	_real_user="${SUDO_USER:-${DOAS_USER:-$(id -un)}}"
-	_real_group="$(id -gn "${_real_user}" 2> "/dev/null" || id -gn)"
-	if [ "$(id -u)" -eq 0 ]; then
-		if [ -n "${_real_user}" ] && [ "${_real_user}" != "root" ]; then
-			chown -R "${_real_user}:${_real_group}" "${SHELL_REPO_DIR}" 2> "/dev/null" || true
-		fi
-	elif command -v _as_root > "/dev/null" 2>&1; then
-		_as_root chown -R "${_real_user}:${_real_group}" "${SHELL_REPO_DIR}" 2> "/dev/null" || true
-	else
-		chown -R "${_real_user}:${_real_group}" "${SHELL_REPO_DIR}" 2> "/dev/null" || true
-	fi
-	find "${SHELL_REPO_DIR}" -path "${SHELL_REPO_DIR}/.git" -prune -o -type d -exec chmod 0755 {} + 2> "/dev/null" || true
-	find "${SHELL_REPO_DIR}" -path "${SHELL_REPO_DIR}/.git" -prune -o -type f -exec chmod 0644 {} + 2> "/dev/null" || true
-	[ -f "${SHELL_REPO_DIR}/shell.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/shell.sh" 2> "/dev/null" || true
-	[ -f "${SHELL_REPO_DIR}/init.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/init.sh" 2> "/dev/null" || true
-	[ -f "${SHELL_REPO_DIR}/install.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/install.sh" 2> "/dev/null" || true
-	[ -f "${SHELL_REPO_DIR}/benchmark.sh" ] && chmod 0755 "${SHELL_REPO_DIR}/benchmark.sh" 2> "/dev/null" || true
-	[ -d "${SHELL_REPO_DIR}/.githooks" ] && chmod 0755 "${SHELL_REPO_DIR}/.githooks/"* 2> "/dev/null" || true
-	if [ -d "${SHELL_REPO_DIR}/.scripts" ]; then
-		find "${SHELL_REPO_DIR}/.scripts" -type f 2> "/dev/null" | while IFS= read -r _script_item; do
-			read -r _first_line < "${_script_item}" 2> "/dev/null" || _first_line=""
-			case "${_first_line}" in
-				"#!"*) chmod 0755 "${_script_item}" 2> "/dev/null" || true ;;
-			esac
-		done
-	fi
-	command git config --global --add safe.directory "${SHELL_REPO_DIR}" 2> "/dev/null" || true
-fi
-
-if [ -d "${SHELL_REPO_DIR}/.git" ] && command -v git > "/dev/null" 2>&1; then
-	command git -C "${SHELL_REPO_DIR}" config core.hooksPath .githooks 2> "/dev/null" || true
-fi
+_install_repo_perms "${SHELL_REPO_DIR}" "${OS_NAME}"
 
 ### --------------------------------
 ### STANDALONE BASE TEMPLATE
@@ -532,18 +500,22 @@ _install_shell_target() {
 		export SHELL_FRAMEWORK=${SHELL_FRAMEWORK}
 		unset _SHELL_TARGET_ENV_LOADED _SHELL_CONTEXT_LOADED
 
-		for _file in detect.sh detect-desktop.sh ui.sh functions.sh; do
-			[ -f "\${SHELL_REPO_DIR}/library/\${_file}" ] && ${_source_cmd} "\${SHELL_REPO_DIR}/library/\${_file}"
+		for _file in detect.sh ui.sh elevate.sh perms.sh path.sh; do
+			[ -f "\${SHELL_REPO_DIR}/core/\${_file}" ] && ${_source_cmd} "\${SHELL_REPO_DIR}/core/\${_file}"
 		done
 		for _file in "\${SHELL_REPO_DIR}/library/"*.sh; do
 			case "\${_file##*/}" in
-				deploy.sh|detect.sh|detect-desktop.sh|ui.sh|functions.sh) continue ;;
-				desktop-*.sh) [ "\${SHELL_CONTEXT:-desktop}" = "desktop" ] || continue ;;
+				desktop.sh) [ "\${SHELL_CONTEXT:-desktop}" = "desktop" ] || continue ;;
 			esac
 			[ -f "\${_file}" ] && ${_source_cmd} "\${_file}"
 		done
 		[ -f "\${SHELL_REPO_DIR}/target/${OS_NAME}/environment.sh" ] && ${_source_cmd} "\${SHELL_REPO_DIR}/target/${OS_NAME}/environment.sh"
-		for _file in "\${SHELL_REPO_DIR}/core/"*.sh; do [ -f "\${_file}" ] && ${_source_cmd} "\${_file}"; done
+		for _file in "\${SHELL_REPO_DIR}/core/"*.sh; do
+			case "\${_file##*/}" in
+				deploy.sh|perms.sh|detect.sh|ui.sh|elevate.sh|path.sh) continue ;;
+			esac
+			[ -f "\${_file}" ] && ${_source_cmd} "\${_file}"
+		done
 		unset _file
 
 		${_source_line}

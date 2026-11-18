@@ -41,7 +41,7 @@ jobs:
                   ### ================================
                   ### LINUX ENVIRONMENT
                   ### ================================
-                  . ./library/detect.sh
+                  . ./core/detect.sh
                   OS=$(_detect_os)
                   echo "Detected OS: ${OS}"
                   [ "${OS}" = "linux" ] || { echo "Expected linux, got ${OS}"; exit 1; }
@@ -96,7 +96,7 @@ jobs:
                       ### FREEBSD ENVIRONMENT
                       ### ================================
                       freebsd-version || uname -a
-                      . ./library/detect.sh
+                      . ./core/detect.sh
                       OS=$(_detect_os)
                       echo "Detected OS: ${OS}"
                       [ "${OS}" = "freebsd" ] || { echo "Expected freebsd, got ${OS}"; exit 1; }
@@ -118,8 +118,7 @@ jobs:
                       zsh -n theme/zsh.sh
                       bash -n target/freebsd/bash/prompt.sh
                       bash -n theme/bash.sh
-                      sh -n library/functions.sh
-                      sh -n core/environment.sh
+                      find core library -name "*.sh" -exec sh -n {} +
                       sh -n target/freebsd/environment.sh
                       sh -n target/freebsd/sh/terminal.sh
                       sh -n target/freebsd/sh/prompt.sh
@@ -168,7 +167,7 @@ jobs:
                   ### ================================
                   ### MSYS2 ENVIRONMENT
                   ### ================================
-                  . ./library/detect.sh
+                  . ./core/detect.sh
                   OS=$(_detect_os)
                   echo "Detected OS: ${OS}"
                   [ "${OS}" = "windows" ] || { echo "Expected windows, got ${OS}"; exit 1; }
@@ -217,7 +216,7 @@ jobs:
                   ### ================================
                   ### MACOS ENVIRONMENT
                   ### ================================
-                  . ./library/detect.sh
+                  . ./core/detect.sh
                   OS=$(_detect_os)
                   echo "Detected OS: ${OS}"
                   [ "${OS}" = "macos" ] || { echo "Expected macos, got ${OS}"; exit 1; }
@@ -267,7 +266,7 @@ jobs:
                       ### OPENBSD ENVIRONMENT
                       ### ================================
                       uname -a
-                      . ./library/detect.sh
+                      . ./core/detect.sh
                       OS=$(_detect_os)
                       echo "Detected OS: ${OS}"
                       [ "${OS}" = "openbsd" ] || { echo "Expected openbsd, got ${OS}"; exit 1; }
@@ -334,7 +333,7 @@ jobs:
                       ### ================================
                       export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:${PATH}"
                       uname -a
-                      . ./library/detect.sh
+                      . ./core/detect.sh
                       OS=$(_detect_os)
                       echo "Detected OS: ${OS}"
                       [ "${OS}" = "netbsd" ] || { echo "Expected netbsd, got ${OS}"; exit 1; }
@@ -420,7 +419,10 @@ jobs:
                     export SHELL_REPO_DIR="${PWD}"
                     export SHELL_CONTEXT="desktop"
                     export PROMPT_OS_NAME="illumos"
-                    . ./library/detect.sh
+                    . ./core/detect.sh
+                    . ./core/ui.sh
+                    . ./core/elevate.sh
+                    . ./core/path.sh
                     . ./library/functions.sh
                     . ./core/environment.sh
                     . ./target/illumos/environment.sh
@@ -435,7 +437,10 @@ jobs:
                     export SHELL_REPO_DIR="${PWD}"
                     export SHELL_CONTEXT="desktop"
                     export PROMPT_OS_NAME="illumos"
-                    . ./library/detect.sh
+                    . ./core/detect.sh
+                    . ./core/ui.sh
+                    . ./core/elevate.sh
+                    . ./core/path.sh
                     . ./library/functions.sh
                     . ./core/environment.sh
                     . ./target/illumos/environment.sh

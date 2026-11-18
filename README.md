@@ -240,18 +240,19 @@ Para aprofundar na arquitetura, comportamentos por contexto e motores de detecç
 
 ```mermaid
 flowchart TD
-    RC["🐚 Arquivo RC / Entrypoint (~/.zshrc, ~/.bashrc, ~/.shrc, ~/.kshrc, config.fish)"] --> LIB["📚 1. library/*.sh (desktop-* lazy apenas em desktop)"]
-    LIB --> TENV["⚙️ 2. target/{OS}/environment.sh (--userland)"]
-    TENV --> CORE["⚙️ 3. core/*.sh (PYTHONPYCACHEPREFIX & vault)"]
-    CORE --> CTX["🎯 4. context/{CONTEXT}/{common,OS}.sh"]
-    CTX --> TGT["🎨 5. target/{OS}/{SHELL}/prompt.sh"]
-    TGT --> THM["🖌️ 6. theme/{SHELL}.sh"]
+    RC["🐚 Arquivo RC / Entrypoint (~/.zshrc, ~/.bashrc, ~/.shrc, ~/.kshrc, config.fish)"] --> CBASE["⚙️ 1. core/{detect,ui,elevate,perms,path}.sh"]
+    CBASE --> LIB["📚 2. library/*.sh (desktop.sh exclusivo de desktop)"]
+    LIB --> TENV["⚙️ 3. target/{OS}/environment.sh (--userland)"]
+    TENV --> CORE["⚙️ 4. core/{environment,userland,vault}.sh"]
+    CORE --> CTX["🎯 5. context/{CONTEXT}/{common,OS}.sh"]
+    CTX --> TGT["🎨 6. target/{OS}/{SHELL}/prompt.sh"]
+    TGT --> THM["🖌️ 7. theme/{SHELL}.sh"]
 ```
 
-- 🐚 **`shell.sh` / `init.sh`**: Interface unificada de componente e entrypoint executável (`0755`) com carregamento _lazy_ de `library/desktop-*.sh` restrito a `SHELL_CONTEXT=desktop`.
+- 🐚 **`shell.sh` / `init.sh`**: Interface unificada de componente e entrypoint executável (`0755`) com carregamento condicional de `library/desktop.sh` restrito a `SHELL_CONTEXT=desktop` e sub-módulos _lazy_ (`desktop/{device,kiosk,session}.sh`).
 - 🔧 **`.scripts/`**: Wrappers executáveis (`0755`) como `.scripts/emacs-client` (com probe de saúde `timeout 2` e recuperação automática de socket/daemon).
-- 📚 **[library/](library/README.md)**: Biblioteca padrão (`0644`) com utilitários POSIX (`functions.sh`), emissão semântica (`ui.sh`), detectores (`detect.sh`, `detect-desktop.sh`), hipervisores (`hypervisor.sh`) e módulos gráficos sob demanda (`desktop-*.sh`).
-- ⚙️ **[core/](core/README.md)**: Fundações do ambiente (`environment.sh` com `PYTHONPYCACHEPREFIX` universal em `${XDG_CACHE_HOME:-${HOME}/.cache}/pycache` e `--userland`) e integração com segredos (`vault.sh`).
+- ⚙️ **[core/](core/README.md)**: Os 9 módulos fundacionais e interativos do shell (`detect.sh`, `ui.sh`, `elevate.sh`, `perms.sh`, `path.sh`, `deploy.sh`, `environment.sh` com `PYTHONPYCACHEPREFIX`, `userland.sh` e `vault.sh`).
+- 📚 **[library/](library/README.md)**: Biblioteca padrão (`0644`) organizada em 5 dispatchers de domínio com subpastas especializadas (`desktop/`, `system/`, `functions/`, `ecosystem/`, `hypervisor/`).
 - 🎯 **[context/](context/README.md)**: Orquestrador de perfis operacionais (`desktop`, `server`, `container`).
 - 🖌️ **[theme/](theme/README.md)**: Motores de renderização de prompts (`zsh.sh`, `bash.sh`, `sh.sh`, `ksh.sh`) e paleta `common/`.
 - 🎨 **[target/](target/README.md)**: Configurações por sistema operacional (`linux`, `freebsd`, `openbsd`, `netbsd`, `illumos`, `macos`, `windows`) e runtimes comuns em [target/common/](target/common/README.md) (incluindo `fish/` e perfis nativos Windows `powershell`, `nushell`, `cmd`).

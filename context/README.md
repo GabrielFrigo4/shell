@@ -6,9 +6,9 @@ Esta pasta gerencia as especializações dinâmicas (`0644`, carregadas via `sou
 
 ## 📁 Estrutura dos 3 Contextos Canônicos
 
-- 💻 **`desktop/`**: Estação de trabalho gráfica (Linux, FreeBSD, OpenBSD, NetBSD, illumos, macOS, Windows MSYS2) com editores de código (`nvim`, `code`, `zed`), sondagem segura de socket/daemon Emacs (`_emacs_ensure_healthy_daemon` com `timeout 2`), módulos auxiliares `library/desktop-*.sh` carregados _lazy_ apenas em `SHELL_CONTEXT=desktop`, montagem de smartphones (`mount-device`), extensão WSL (`wsl.sh`) e cache Python isolado (`PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"`).
+- 💻 **`desktop/`**: Estação de trabalho gráfica (Linux, FreeBSD, OpenBSD, NetBSD, illumos, macOS, Windows MSYS2) orquestrada pelo dispatcher `library/desktop.sh` (`desktop/{detect,theme,emacs,apps}.sh` diretos + `desktop/{device,kiosk,session}.sh` _lazy_ exclusivos de `SHELL_CONTEXT=desktop`), integrando variáveis de toolkit via `_desktop_apply_theme_context`, `target/common/session.sh`, aliases leves (`r`, `delta`), extensão WSL (`wsl.sh`) e cache Python isolado (`PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"`).
 - 🌐 **`server/`**: Máquinas de produção e servidores dedicados com aliases para administração de rede, serviços (`systemctl`, `svcs`, `rcctl`, `service`), logs (`journalctl`, `/var/log/messages`), extensão headless para WSL (`wsl.sh`) e cache centralizado Python (`PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"`).
-- 📦 **`container/`**: Ambientes de contêineres que compartilham o kernel hospedeiro (Linux namespaces/cgroups, FreeBSD Jails, Solaris/illumos Zones) com carregamento ultraleve (sem carregar `library/desktop-*.sh`), comandos mínimos e cache Python efêmero em `PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"`.
+- 📦 **`container/`**: Ambientes de contêineres que compartilham o kernel hospedeiro (Linux namespaces/cgroups, FreeBSD Jails, Solaris/illumos Zones) com carregamento ultraleve (sem carregar `library/desktop.sh`), comandos mínimos e cache Python efêmero em `PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-${HOME}/.cache}/pycache"`.
 
 ---
 

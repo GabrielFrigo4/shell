@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------
-# Module: Shell Declarative Deployment Engine
+# Core: Shell Declarative Deployment Engine
 # ----------------------------------------------------------------
 
 ### ================================
@@ -98,7 +98,7 @@ _deploy_item() {
 _install_extended_shell() {
 	_target_shell="$1"
 	if ! command -v _ui_step > "/dev/null" 2>&1; then
-		[ -f "${SHELL_REPO_DIR:-}/library/ui.sh" ] && . "${SHELL_REPO_DIR:-}/library/ui.sh"
+		[ -f "${SHELL_REPO_DIR:-}/core/ui.sh" ] && . "${SHELL_REPO_DIR:-}/core/ui.sh"
 	fi
 	_deploy_win_paths
 

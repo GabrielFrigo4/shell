@@ -80,9 +80,9 @@ Toda alteração de código, adição de alias, refatoração ou otimização no
 - **Regra `4a` (Permissões Octais Canônicas no Git Index e Filesystem):**
     - **`0755` (`--chmod=+x`) SOMENTE para entrypoints executáveis com shebang:** `.githooks/*`, `shell.sh`, `init.sh`, `install.sh`, `benchmark.sh` e utilitários em `.scripts/*` que iniciem com `#!` (como `.scripts/emacs-client`).
     - **`0644` (`--chmod=-x`) para todas as bibliotecas sourced e arquivos de configuração/documentação:** `core/`, `library/`, `context/`, `target/`, `theme/`, além de `.md`, `.fish`, `.nu`, `.ps1`, `.cmd`, `.reg`, `.lua`, `.yml`, `.json`, `.toml` e arquivos de governança.
-- **Carregamento Lazy de `desktop-*.sh` & `--userland=gnu` Antifrágil:**
-    - Os módulos `library/desktop-*.sh` (`desktop-device.sh`, `desktop-kiosk.sh`, `desktop-session.sh`) são carregados condicionalmente apenas quando `SHELL_CONTEXT="desktop"` (zero overhead em `server` e `container`), e `desktop-kiosk.sh` carrega `desktop-session.sh` sob demanda via `_kiosk_ensure_session`.
-    - O modo `--userland=gnu` (`install.sh --userland [default|gnu|bsd]` e função `userland` em `core/environment.sh`) é estritamente opt-in e antifrágil: nos modos `default` e `bsd`, diretórios `gnubin` nunca poluem a frente do `$PATH` (no illumos, `/usr/gnu/bin` permanece ao final via `path-back`), sendo promovidos e cacheados em `${XDG_CACHE_HOME:-${HOME}/.cache}/shell/gnu_aliases_<os>.sh` somente quando `gnu` é explicitamente ativado.
+- **Carregamento Lazy de `library/desktop/` & `--userland=gnu` Antifrágil:**
+    - O dispatcher `library/desktop.sh` é carregado condicionalmente apenas quando `SHELL_CONTEXT="desktop"` (zero overhead em `server` e `container`), carregando `desktop/{detect,theme,emacs,apps}.sh` e registrando lazy wrappers para `desktop/device.sh`, `desktop/kiosk.sh` e `desktop/session.sh` (`kiosk.sh` carrega `session.sh` sob demanda via `_kiosk_ensure_session`).
+    - O modo `--userland=gnu` (`install.sh --userland [default|gnu|bsd]` e função `userland` em `core/userland.sh`) é estritamente opt-in e antifrágil: nos modos `default` e `bsd`, diretórios `gnubin` nunca poluem a frente do `$PATH` (no illumos, `/usr/gnu/bin` permanece ao final via `path-back`), sendo promovidos e cacheados em `${XDG_CACHE_HOME:-${HOME}/.cache}/shell/gnu_aliases_<os>.sh` somente quando `gnu` é explicitamente ativado.
 
 ## 7. Heredocs Indentados, Emissão e Guards Interativos
 

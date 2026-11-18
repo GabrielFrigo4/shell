@@ -1,45 +1,40 @@
-# 📚 library/ — Biblioteca Padrão de Funções & Detecção
+# 📚 library/ — Biblioteca Padrão de Funções & Dispatchers
 
-Esta pasta fornece o runtime compartilhado (`0644`, carregado via `source`) de utilitários POSIX e funções de sondagem em baixo nível do **Universal Shell Environment**.
-
----
-
-## 📁 Módulos Base (Carregamento Universal)
-
-- **`detect.sh`**:
-    - Motor analítico que sonda SO (`linux`, `freebsd`, `openbsd`, `netbsd`, `illumos`, `macos`, `windows`), distro, shell habilitado (ignorando `dash` e NetBSD `/bin/sh`) e console bruto `_is_raw_tty`.
-    - Consulte a documentação completa em **[docs/DETECTION.md](../docs/DETECTION.md)**.
-- **`detect-desktop.sh`**:
-    - Sondagem gráfica desacoplada: desktop environments (11 DEs), esquema Dark/Light (XDG Portal / D-Bus / GSettings / KDE), temas GTK/Qt e detecção de Wayland/X11/cursores.
-- **`functions.sh`**:
-    - Helpers POSIX canônicos: `path-front`, `path-back`, `path-dedup`, `_is_command`, `_as_root`, navegação segura e utilitários de sessão.
-- **`ecosystem.sh`**:
-    - Orquestradores e sincronizadores do Quarteto (`update-shell`, `update-editors`, `update-emacs-modes`, `update-profile`, `sync-extensions`, `reinstall-shell`, `clean-cache`, `bench-shell`).
-- **`system-update.sh`**:
-    - Abstração multi-SO de pacotes (`update-all`, `update-system`, `clean-system`, `update-apt`/`dnf`/`pacman`/`pkg`/`pkg-add`/`pkgin`/`ips`/`brew`, etc.).
-- **`network-ports.sh`**:
-    - Conectividade, credenciais Wi-Fi e diagnósticos (`update-wifi`, `update-network`, `update-linux`, `ports`, `conns`, controle de energia).
-- **`deploy.sh`**:
-    - Primitivas de implantação e vinculação de perfis utilizadas pelo instalador e sincronizadores.
-- **`hypervisor.sh`**:
-    - Orquestrador unificado multiplataforma para Máquinas Virtuais (KVM/Bhyve), Containers (Incus LXC) e Jails (BastilleBSD).
-    - Comandos e aliases canônicos:
-        - `fb` / `freebsd`: Controla VM KVM (no Linux Host) ou Jail nativa Bastille (no FreeBSD Host).
-        - `lx` / `linux`: Controla Container Incus LXC (no Linux Host) ou VM Bhyve Debian (no FreeBSD Host).
-        - `ob` / `openbsd`: Controla VM OpenBSD no KVM (Linux) ou Bhyve (FreeBSD).
-        - `nb` / `netbsd`: Controla VM NetBSD no KVM (Linux) ou Bhyve (FreeBSD).
-    - Subcomandos universais: `start`, `stop`, `restart`, `status`, `console`, `ssh` e execução direta de comandos no convidado.
-- **`ui.sh`**:
-    - Sistema de emissão semântica e interface de terminal (TUI) resiliente com suporte estrito a POSIX sh (`_ui_step`, `_ui_sub`, `_ui_ok`, `_ui_warn`, `_ui_err`, `_ui_info`, `_ui_banner`) sob `[ -t 1 ]` com fallback sem ANSI em pipes.
+Esta pasta fornece o runtime modular compartilhado (`0644`, carregado via `source`) do **Universal Shell Environment**, organizado no padrão **Dispatcher na raiz + Subpasta coesa** para carregamento direto e _lazy_.
 
 ---
 
-## 💻 Módulos _Lazy_ (`SHELL_CONTEXT=desktop` Exclusivo)
+## 📁 Dispatchers de Domínio (Raiz de `library/`)
 
-Os módulos abaixo só são carregados pelo bootstrap (`shell.sh` / `install.sh`) quando `SHELL_CONTEXT=desktop`, mantendo contextos `server` e `container` com overhead zero:
+- **`functions.sh`** ➔ `library/functions/`
+    - **`functions/git.sh`**: Sincronização resiliente multi-repositório (`update-git` / `upgit`, `push-git` / `psgit`, `_git_pull_resilient` com resolução de `.git` gitlink em submódulos e proteção `0700`/`0600` no `Vault`) e integração híbrida Git/Game of Trees (`vcs-status`, `vcs-diff`, `got-init`).
+    - **`functions/utils.sh`**: Utilitários POSIX de sessão (`clean-cache`, `take-dir`, `cd-git-root`, `hist-search`, `extract-archive`).
+- **`system.sh`** ➔ `library/system/`
+    - **`system/packages.sh`**: Abstração multi-SO de gerenciadores de pacotes (`update-system`, `update-pacman`/`apt`/`dnf`/`tdnf`/`zypper`/`xbps`/`apk`/`pkg`/`pkg-add`/`pkgin`/`ips`/`brew`/`mas`/`aur`/`flatpak`/`snap`/`emerge`/`nix`/`eopkg`/`slackpkg`/`guix`/`opkg`).
+    - **`system/network.sh`**: Conectividade, credenciais Wi-Fi (`update-wifi`, `update-network`), atualização da árvore FreeBSD Ports (`update-ports`) e VM Bhyve Linux (`update-linux` / `uplx` / `updeb`).
+    - **`system/lifecycle.sh`**: Orquestração e ciclo de energia (`update-all` / `upall`, `clean-system`, `poweroff`, `reboot`).
+- **`ecosystem.sh`** ➔ `library/ecosystem/`
+    - **`ecosystem/shell.sh`**: Auto-atualização, reinstalação e benchmark do Shell (`update-shell`, `reinstall-shell`, `bench-shell`).
+    - **`ecosystem/profile.sh`**: Sincronização do Profile e extensões de IDE (`update-profile`, `sync-extensions`).
+    - **`ecosystem/editors.sh`**: Atualizadores da Suíte de Editores (`update-editors`, `update-emacs-modes`, gerenciamento automático de junction `.vim` no Windows).
+- **`hypervisor.sh`** ➔ `library/hypervisor/`
+    - **`hypervisor/common.sh`**: Helpers comuns de transporte SSH/TTY, KVM (`virsh`), Bhyve (`vm`), BastilleBSD (`bastille`) e Incus (`incus`).
+    - **`hypervisor/managers.sh`**: Orquestradores multiplataforma por SO (`freebsd`/`fb`, `linux`/`lx`, `openbsd`/`ob`, `netbsd`/`nb`).
 
-- **`desktop-device.sh`**: Gestão de servidores pessoais/corporativos (`PERSONAL_SERVER_*`, `VENTURE_SERVER_*`), chaves SSH do Vault e montagem MTP/ADB em `~/Device` (`mount-device`, `umount-device`).
-- **`desktop-kiosk.sh`**: Lançadores efêmeros multi-TTY (`graphical-launcher` / `gui`, `wgui`, `xgui`) e sessões Emacs OS (`ewm`, `wewm`, `xewm`).
-- **`desktop-session.sh`**: Orquestração completa de sessões gráficas (`window-manager` / `wm`, `wwm`, `xwm`), barra `wwm-bar`, pipeline tipográfico `_resolve_desktop_font` e cursores `_setup_cursor_env`.
+---
+
+## 💻 Dispatcher Desktop (`SHELL_CONTEXT=desktop` Exclusivo)
+
+O dispatcher **`desktop.sh`** só é carregado pelo bootstrap (`shell.sh`, `install.sh` e RCs) quando `SHELL_CONTEXT=desktop`, mantendo contextos `server` e `container` com overhead zero:
+
+- **Carregamento Direto (`library/desktop/`):**
+    - **`desktop/detect.sh`**: Sondagem gráfica desacoplada de Desktop Environments (11 DEs), esquema Dark/Light (XDG Portal / D-Bus / GSettings / KDE), temas GTK/Qt, cursores e pipelines Wayland/X11.
+    - **`desktop/theme.sh`**: Propagação leve de tema de sessão (`_propagate_session_theme_env`) e aplicação contextual (`_desktop_apply_theme_context`) sem disparar o parse de `desktop/session.sh` no boot.
+    - **`desktop/emacs.sh`**: Gerenciamento completo de socket/daemon Emacs (`EMACS_SOCKET_NAME`, `_emacs_*`, `emacs-*` e aliases `ek..esh`).
+    - **`desktop/apps.sh`**: Restauração defensiva de cursor (`_restore_tty_cursor`), wrappers de editores TUI/GUI (`nvim`, `hx`, `micro`, `open-kate`..`open-zed`), aplicativos desktop e abridor inteligente (`open-smart` / `open` / `o`).
+- **Carregamento _Lazy_ (`library/desktop/`):**
+    - **`desktop/device.sh`**: Gestão de servidores pessoais/corporativos (`personal-server`, `venture-server`), chaves SSH do Vault e montagem MTP/ADB em `~/Device` (`mount-device`, `umount-device`).
+    - **`desktop/kiosk.sh`**: Lançadores efêmeros multi-TTY (`graphical-launcher` / `gui`, `wgui`, `xgui`) e sessões Emacs OS (`ewm`, `wewm`, `xewm`).
+    - **`desktop/session.sh`**: Orquestração completa de sessões gráficas (`window-manager` / `wm`, `wwm`, `xwm`), barra `wwm-bar`, pipeline tipográfico `_resolve_desktop_font` e cursores `_setup_cursor_env`.
 
 Todos os scripts desta pasta seguem o padrão **POSIX sh** estrito e rodam sem bashisms.
