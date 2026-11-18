@@ -609,7 +609,7 @@ _wayland_session_env() {
 	export XKB_DEFAULT_LAYOUT="br" XKB_DEFAULT_MODEL="abnt2" XKB_DEFAULT_OPTIONS="numpad:mac"
 	export WLR_KEYBOARD_REPEAT_DELAY=200 WLR_KEYBOARD_REPEAT_RATE=50
 	export GDK_BACKEND="wayland,x11" CLUTTER_BACKEND="wayland" SDL_VIDEODRIVER="wayland"
-	export MOZ_ENABLE_WAYLAND=1 ELECTRON_OZONE_PLATFORM_HINT="auto"
+	export MOZ_ENABLE_WAYLAND=1 GTK_USE_PORTAL=1 ELECTRON_OZONE_PLATFORM_HINT="auto"
 	export QT_QPA_PLATFORM="wayland;xcb"
 
 	local _theme_flavor="$(_detect_desktop_theme "${_target_flavor}" 2> "/dev/null" || echo "gnome")"
