@@ -18,6 +18,16 @@ _emacs_current_user() {
 }
 
 _emacs_is_raw_vt() {
+	case "${FORCE_RAW_TTY:-}" in
+		1|true|yes) return 0 ;;
+	esac
+	if command -v _is_raw_tty > "/dev/null" 2>&1; then
+		_is_raw_tty
+		return "$?"
+	fi
+	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
+		*0*|*false*|*no*) return 1 ;;
+	esac
 	local _tty=""
 	if [ -t 0 ]; then
 		_tty="$(command tty 2> "/dev/null" || true)"
@@ -26,9 +36,59 @@ _emacs_is_raw_vt() {
 		_tty="$(command tty <&1 2> "/dev/null" || true)"
 	fi
 	case "${_tty}" in
+		/dev/pts/*|/dev/ttyp*|/dev/ttys*|/dev/pty*) return 1 ;;
 		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyC*|/dev/ttyE*|/dev/console) return 0 ;;
 	esac
+	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${TERM_PROGRAM:-}" ] || [ -n "${KONSOLE_VERSION:-}" ] || [ -n "${WT_SESSION:-}" ]; then
+		return 1
+	fi
+	case "${TERM:-}" in
+		linux|cons25*|wvt25*) return 0 ;;
+	esac
+	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
+		*1*|*true*|*yes*) return 0 ;;
+	esac
 	return 1
+}
+
+_emacs_with_gui_env() {
+	command env \
+		-u RAW_TTY \
+		-u LC_RAW_TTY \
+		-u UNIVERSAL_RAW_TTY \
+		-u FORCE_RAW_TTY \
+		-u NVIM_NOTTYFAST \
+		COLORTERM="truecolor" \
+		MICRO_TRUECOLOR="1" \
+		"$@"
+}
+
+_emacs_with_tty_env() {
+	if _emacs_is_raw_vt; then
+		command env \
+			-u DISPLAY \
+			-u WAYLAND_DISPLAY \
+			-u COLORTERM \
+			-u MICRO_TRUECOLOR \
+			-u TERM_PROGRAM \
+			-u KONSOLE_VERSION \
+			-u WT_SESSION \
+			RAW_TTY="1" \
+			LC_RAW_TTY="1" \
+			UNIVERSAL_RAW_TTY="1" \
+			FORCE_RAW_TTY="1" \
+			"$@"
+	else
+		command env \
+			-u RAW_TTY \
+			-u LC_RAW_TTY \
+			-u UNIVERSAL_RAW_TTY \
+			-u FORCE_RAW_TTY \
+			-u NVIM_NOTTYFAST \
+			COLORTERM="truecolor" \
+			MICRO_TRUECOLOR="1" \
+			"$@"
+	fi
 }
 
 _emacs_std_socket_dir() {
@@ -391,7 +451,17 @@ _emacs_start_daemon() {
 		_daemon_sock="${_target_sock}"
 	fi
 
-	env -u EMACS_SOCKET_NAME command emacs --daemon="${_daemon_sock}" || return $?
+	command env \
+		-u EMACS_SOCKET_NAME \
+		-u RAW_TTY \
+		-u LC_RAW_TTY \
+		-u UNIVERSAL_RAW_TTY \
+		-u FORCE_RAW_TTY \
+		-u NVIM_NOTTYFAST \
+		-u TERM_PROGRAM \
+		-u KONSOLE_VERSION \
+		-u WT_SESSION \
+		emacs --daemon="${_daemon_sock}" || return $?
 
 	while [ "${_attempt}" -lt 25 ]; do
 		_live_sock="$(_emacs_live_socket "${_target_sock}" || true)"
@@ -467,7 +537,7 @@ _emacs_run_nw() {
 		esac
 		_argc=$((_argc - 1))
 	done
-	command emacs -nw "$@"
+	_emacs_with_tty_env emacs -nw "$@"
 }
 
 emacs-kill() {
@@ -512,14 +582,14 @@ emacs-client() {
 	_live_sock="$(_emacs_live_socket || true)"
 	if [ -n "${_live_sock}" ]; then
 		if [ "$#" -eq 0 ]; then
-			command emacsclient -s "${_live_sock}" --create-frame -n
+			_emacs_with_gui_env emacsclient -s "${_live_sock}" --create-frame -n
 			_status=$?
 		else
-			command emacsclient -s "${_live_sock}" --create-frame "$@"
+			_emacs_with_gui_env emacsclient -s "${_live_sock}" --create-frame "$@"
 			_status=$?
 		fi
 	else
-		command emacs "$@"
+		_emacs_with_gui_env emacs "$@"
 		_status=$?
 	fi
 	_restore_tty_cursor
@@ -528,47 +598,69 @@ emacs-client() {
 emacs-nw() {
 	local _status=0
 	local _live_sock=""
-	if _emacs_is_raw_vt; then
-		if _has_bin "emacs"; then
-			_emacs_run_nw "$@"
+	if _has_bin "emacsclient"; then
+		_emacs_ensure_healthy_daemon > "/dev/null" 2>&1 || true
+		_live_sock="$(_emacs_live_socket || true)"
+		if [ -n "${_live_sock}" ]; then
+			_emacs_with_tty_env emacsclient -t -s "${_live_sock}" "$@" 2> "/dev/null"
 			_status=$?
-		else
-			_ui_err "emacs not found."
-			return 127
-		fi
-	else
-		if _has_bin "emacsclient"; then
-			_emacs_ensure_healthy_daemon > "/dev/null" 2>&1 || true
-			_live_sock="$(_emacs_live_socket || true)"
-			if [ -n "${_live_sock}" ]; then
-				command emacsclient -t -s "${_live_sock}" "$@" 2> "/dev/null"
-				_status=$?
-				if [ "${_status}" -eq 0 ]; then
-					_restore_tty_cursor
-					return 0
-				fi
+			if [ "${_status}" -eq 0 ]; then
+				_restore_tty_cursor
+				return 0
 			fi
 		fi
-		if _has_bin "emacs"; then
-			_emacs_run_nw "$@"
-			_status=$?
-		else
-			_ui_err "emacs not found."
-			return 127
-		fi
+	fi
+	if _has_bin "emacs"; then
+		_emacs_run_nw "$@"
+		_status=$?
+	else
+		_ui_err "emacs not found."
+		return 127
 	fi
 	_restore_tty_cursor
 	return ${_status}
 }
 emacsclient() {
 	local _status=0
+	local _arg=""
+	local _mode="auto"
 	if [ "$#" -eq 0 ]; then
 		emacs-client
 		_status=$?
 	else
 		_has_bin "emacsclient" || { _ui_err "emacsclient not found."; return 127; }
-		command emacsclient "$@"
-		_status=$?
+		for _arg in "$@"; do
+			case "${_arg}" in
+				-e|--eval|-h|-H|--help|-V|--version)
+					_mode="raw"
+					break
+					;;
+				-t|--tty|-nw|--no-window-system)
+					_mode="tty"
+					;;
+				-c|--create-frame|-r|--reuse-frame)
+					[ "${_mode}" = "auto" ] && _mode="frame"
+					;;
+			esac
+		done
+		case "${_mode}" in
+			raw)
+				command emacsclient "$@"
+				_status=$?
+				;;
+			tty)
+				_emacs_with_tty_env emacsclient "$@"
+				_status=$?
+				;;
+			*)
+				if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+					_emacs_with_gui_env emacsclient "$@"
+				else
+					_emacs_with_tty_env emacsclient "$@"
+				fi
+				_status=$?
+				;;
+		esac
 	fi
 	_restore_tty_cursor
 	return ${_status}
@@ -608,14 +700,14 @@ emacs-open() {
 		_live_sock="$(_emacs_live_socket || true)"
 		if [ -n "${_live_sock}" ]; then
 			if [ "$#" -eq 0 ]; then
-				(command nohup emacsclient -s "${_live_sock}" --create-frame . < "/dev/null" > "/dev/null" 2>&1 &)
+				(_emacs_with_gui_env nohup emacsclient -s "${_live_sock}" --create-frame . < "/dev/null" > "/dev/null" 2>&1 &)
 				_status=$?
 			else
-				(command nohup emacsclient -s "${_live_sock}" --create-frame "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+				(_emacs_with_gui_env nohup emacsclient -s "${_live_sock}" --create-frame "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 				_status=$?
 			fi
 		else
-			(command nohup emacs "$@" < "/dev/null" > "/dev/null" 2>&1 &)
+			(_emacs_with_gui_env nohup emacs "$@" < "/dev/null" > "/dev/null" 2>&1 &)
 			_status=$?
 		fi
 	else
@@ -657,42 +749,34 @@ emacs-eshell() {
 			_emacs_ensure_healthy_daemon
 			_live_sock="$(_emacs_live_socket || true)"
 			if [ -n "${_live_sock}" ]; then
-				(command nohup emacsclient -s "${_live_sock}" --create-frame \
+				(_emacs_with_gui_env nohup emacsclient -s "${_live_sock}" --create-frame \
 					--eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
 				_status=$?
 			else
-				(command nohup emacs --eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
+				(_emacs_with_gui_env nohup emacs --eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
 				_status=$?
 			fi
 		else
-			(command nohup emacs --eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
+			(_emacs_with_gui_env nohup emacs --eval "(progn (cd \"${_dir}/\") (aweshell/new))" < "/dev/null" > "/dev/null" 2>&1 &)
 			_status=$?
 		fi
 	else
-		if _emacs_is_raw_vt; then
-			_has_bin "emacs" || { _ui_err "emacs not found."; return 127; }
-			if [ -t 0 ]; then
-				command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
-			fi
-			command emacs -nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
-			_status=$?
-		else
+		if _has_bin "emacsclient"; then
 			_emacs_ensure_healthy_daemon > "/dev/null" 2>&1 || true
 			_live_sock="$(_emacs_live_socket || true)"
-			if [ -n "${_live_sock}" ] && _has_bin "emacsclient"; then
-				command emacsclient -t -s "${_live_sock}" \
+			if [ -n "${_live_sock}" ]; then
+				_emacs_with_tty_env emacsclient -t -s "${_live_sock}" \
 					--eval "(progn (cd \"${_dir}/\") (aweshell/new))" 2> "/dev/null"
 				_status=$?
 			else
 				_status=1
 			fi
-			if [ "${_status}" -ne 0 ] && _has_bin "emacs"; then
-				if [ -t 0 ]; then
-					command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
-				fi
-				command emacs -nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
-				_status=$?
-			fi
+		else
+			_status=1
+		fi
+		if [ "${_status}" -ne 0 ] && _has_bin "emacs"; then
+			_emacs_run_nw --eval "(progn (cd \"${_dir}/\") (aweshell/new))"
+			_status=$?
 		fi
 	fi
 	_restore_tty_cursor

@@ -6,9 +6,34 @@
 ### GRAPHICAL HELPERS
 ### --------------------------------
 _sanitize_graphical_env() {
-	unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED
+	unset RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY FORCE_RAW_TTY NVIM_NOTTYFAST _IS_RAW_TTY_CACHED
 	export COLORTERM="truecolor"
 	export MICRO_TRUECOLOR=1
+}
+
+_tty_env_snapshot() {
+	local _var _val _q
+	for _var in RAW_TTY LC_RAW_TTY UNIVERSAL_RAW_TTY FORCE_RAW_TTY NVIM_NOTTYFAST COLORTERM MICRO_TRUECOLOR; do
+		if eval "[ \"\${${_var}+set}\" = \"set\" ]"; then
+			eval "_val=\"\${${_var}}\""
+			case "${_val}" in
+				*\'*) _q="'$(printf '%s' "${_val}" | sed "s/'/'\\\\''/g")'" ;;
+				*)    _q="'${_val}'" ;;
+			esac
+			printf 'export %s=%s\n' "${_var}" "${_q}"
+		else
+			printf 'unset %s\n' "${_var}"
+		fi
+	done
+	if [ "${_IS_RAW_TTY_CACHED+set}" = "set" ]; then
+		case "${_IS_RAW_TTY_CACHED}" in
+			*\'*) _q="'$(printf '%s' "${_IS_RAW_TTY_CACHED}" | sed "s/'/'\\\\''/g")'" ;;
+			*)    _q="'${_IS_RAW_TTY_CACHED}'" ;;
+		esac
+		printf '_IS_RAW_TTY_CACHED=%s\n' "${_q}"
+	else
+		printf 'unset _IS_RAW_TTY_CACHED\n'
+	fi
 }
 
 _get_shell_log_dir() {
@@ -501,7 +526,7 @@ _apply_common_theme_exports() {
 		kde|plasma)
 			export XDG_CURRENT_DESKTOP="KDE" DESKTOP_SESSION="${DESKTOP_SESSION:-kde}" QT_QPA_PLATFORMTHEME="kde"
 			if [ "${_is_full_de}" -eq 0 ]; then
-				[ "${_color_scheme}" = "light" ] && export QT_STYLE_OVERRIDE="Breeze" || export QT_STYLE_OVERRIDE="Breeze-Dark"
+				export QT_STYLE_OVERRIDE="Breeze"
 			fi
 			;;
 		lxqt)
@@ -787,6 +812,7 @@ _exec_wayland() {
 		fi
 		return 127
 	fi
+	local _tty_snapshot="$(_tty_env_snapshot)"
 	_sanitize_graphical_env
 	local _log_dir="$(_get_shell_log_dir)"
 	local _log_file="${_log_dir}/wayland-session.log"
@@ -853,7 +879,9 @@ _exec_wayland() {
 		fi
 	fi
 
+	eval "${_tty_snapshot}"
 	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
+	command -v _restore_tty_cursor > "/dev/null" 2>&1 && { _restore_tty_cursor > "/dev/null" 2>&1 || true; }
 	[ "${_ret}" -eq 127 ] && _ret=1
 
 	if [ "${_ret}" -ne 0 ]; then
@@ -892,23 +920,27 @@ _resolve_free_display() {
 }
 
 _exec_x11() {
+	local _tty_snapshot="$(_tty_env_snapshot)"
 	_sanitize_graphical_env
 	if ! { _has_exec_bin "startx" || _has_exec_bin "xinit"; }; then
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "xinit ou startx não encontrado para sessão Xorg."
 		fi
+		eval "${_tty_snapshot}"
 		return 127
 	fi
 	if ! { _has_exec_bin "Xorg" || _has_exec_bin "X"; }; then
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "Servidor Xorg não encontrado."
 		fi
+		eval "${_tty_snapshot}"
 		return 127
 	fi
 	if [ "$#" -gt 0 ] && ! _has_exec_bin "$1"; then
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "Executável X11 '$1' não encontrado."
 		fi
+		eval "${_tty_snapshot}"
 		return 127
 	fi
 
@@ -957,7 +989,7 @@ _exec_x11() {
 		[ "${_color_scheme}" = "light" ] && _gtk_theme="adw-gtk3" || _gtk_theme="adw-gtk3-dark"
 	fi
 
-	local _prefer_dark=1 _adw_scheme="prefer-dark" _root_bg="#1e1e22"
+	local _prefer_dark=1 _adw_scheme="prefer-dark" _root_bg="${BREEZE_ADWAITA_ROOT_BG:-#181b20}"
 	if [ "${_color_scheme}" = "light" ]; then
 		_prefer_dark=0
 		_adw_scheme="default"
@@ -1202,7 +1234,9 @@ EOF
 	fi
 
 	[ "${_had_display}" -eq 0 ] && unset DISPLAY
+	eval "${_tty_snapshot}"
 	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
+	command -v _restore_tty_cursor > "/dev/null" 2>&1 && { _restore_tty_cursor > "/dev/null" 2>&1 || true; }
 	return "${_xinit_ret}"
 }
 
@@ -1533,7 +1567,6 @@ _start_xorg() {
 }
 
 start_session() {
-	_sanitize_graphical_env
 	local _type=""
 	local _env=""
 	while [ "$#" -gt 0 ]; do
@@ -1648,10 +1681,15 @@ alias desktop-session-x11="desktop_session_x11" xorg="desktop_session_x11" x11="
 _generate_wwm_bar_script() {
 	local _out_script="$1"
 	cat << 'EOF_WBAR' >| "${_out_script}"
-import os, sys, subprocess, json, datetime, shutil
+import os, re, sys, time, subprocess, json, datetime, shutil
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GLib
+
+try:
+    from gi.repository import GdkX11
+except Exception:
+    GdkX11 = None
 
 try:
     from Xlib import display as xlib_display, X as xlib_X, Xatom as xlib_Xatom
@@ -1678,6 +1716,7 @@ class WwmBar(Gtk.Window):
 
         screen = Gdk.Screen.get_default()
         self.screen_w = screen.get_width() if screen else 1920
+        self.screen_h = screen.get_height() if screen else 1080
         self.set_default_size(self.screen_w, BAR_H)
         self.set_size_request(self.screen_w, BAR_H)
         self.move(0, 0)
@@ -1685,18 +1724,77 @@ class WwmBar(Gtk.Window):
         self.has_sway = bool(os.environ.get("SWAYSOCK") and shutil.which("swaymsg"))
         self.has_hypr = bool(os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and shutil.which("hyprctl"))
         self.has_niri = bool(os.environ.get("NIRI_SOCKET") and shutil.which("niri"))
+        wm_env = os.environ.get("WWM_WM", "").strip().lower()
+        wayland_wms = {"sway", "labwc", "river", "hyprland", "niri", "wayfire", "dwl", "hikari", "weston", "cage"}
+        self.is_wayland = bool(os.environ.get("WAYLAND_DISPLAY") or wm_env in wayland_wms or self.has_sway or self.has_hypr or self.has_niri)
         self.is_x11 = bool(os.environ.get("DISPLAY") and not self.has_sway and not self.has_hypr and not self.has_niri)
+        self.is_x11_tiling = bool(os.environ.get("DISPLAY") and not self.is_wayland and wm_env != "dwm")
+
         self.xdisp = None
         if HAS_XLIB and os.environ.get("DISPLAY"):
             try:
                 self.xdisp = xlib_display.Display()
+                xscreen = self.xdisp.screen()
+                if xscreen.width_in_pixels > 0 and xscreen.height_in_pixels > 0:
+                    self.screen_w = xscreen.width_in_pixels
+                    self.screen_h = xscreen.height_in_pixels
+                    self.set_default_size(self.screen_w, BAR_H)
+                    self.set_size_request(self.screen_w, BAR_H)
             except Exception:
                 self.xdisp = None
+
+        self.supports_moveresize = False
+        self.skip_types = set()
+        if self.xdisp is not None:
+            self.atom_supported = self.xdisp.intern_atom("_NET_SUPPORTED")
+            self.atom_client_list = self.xdisp.intern_atom("_NET_CLIENT_LIST")
+            self.atom_active = self.xdisp.intern_atom("_NET_ACTIVE_WINDOW")
+            self.atom_cur_desk = self.xdisp.intern_atom("_NET_CURRENT_DESKTOP")
+            self.atom_wm_desk = self.xdisp.intern_atom("_NET_WM_DESKTOP")
+            self.atom_wtype = self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE")
+            self.atom_wm_state = self.xdisp.intern_atom("_NET_WM_STATE")
+            self.atom_icccm_state = self.xdisp.intern_atom("WM_STATE")
+            self.atom_hidden = self.xdisp.intern_atom("_NET_WM_STATE_HIDDEN")
+            self.atom_fullscreen = self.xdisp.intern_atom("_NET_WM_STATE_FULLSCREEN")
+            self.atom_max_vert = self.xdisp.intern_atom("_NET_WM_STATE_MAXIMIZED_VERT")
+            self.atom_max_horz = self.xdisp.intern_atom("_NET_WM_STATE_MAXIMIZED_HORZ")
+            self.atom_frame_extents = self.xdisp.intern_atom("_NET_FRAME_EXTENTS")
+            self.atom_moveresize = self.xdisp.intern_atom("_NET_MOVERESIZE_WINDOW")
+            self.atom_net_name = self.xdisp.intern_atom("_NET_WM_NAME")
+            self.atom_utf8 = self.xdisp.intern_atom("UTF8_STRING")
+            self.skip_types = {
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_DOCK"),
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_DESKTOP"),
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_MENU"),
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_TOOLBAR"),
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_SPLASH"),
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_UTILITY"),
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_DIALOG"),
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_NOTIFICATION"),
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_DROPDOWN_MENU"),
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_POPUP_MENU"),
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_TOOLTIP"),
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_COMBO"),
+                self.xdisp.intern_atom("_NET_WM_WINDOW_TYPE_DND"),
+            }
+            try:
+                sup = self.xdisp.screen().root.get_full_property(self.atom_supported, xlib_Xatom.ATOM)
+                if sup and sup.value and self.atom_moveresize in set(sup.value):
+                    self.supports_moveresize = True
+            except Exception:
+                self.supports_moveresize = False
 
         self.managed_workspaces = {1}
         self.current_fallback_ws = 1
         self.last_ws_state = None
         self.last_win_state = None
+        self.tiling_state_key = None
+        self.manual_override = False
+        self.tile_settle_deadline = 0.0
+        self.settled_geoms = {}
+        self.last_extents = {}
+        self._reactive_source_id = 0
+
         self.connect("map-event", self._on_map_event)
         self.realize()
         self.pin_bar()
@@ -1709,18 +1807,20 @@ class WwmBar(Gtk.Window):
             border = "#cdc7c2"
             fg = "#241f31"
             muted = "#5e5c64"
-            accent = "#3584e4"
-            danger = "#e01b24"
-            tab_active_bg = "#ffffff"
+            accent = "#3daee9"
+            accent_fg = "#ffffff"
+            danger = "#e05263"
+            tab_active_bg = "#3daee9"
         else:
-            win_bg = "#1e1e22"
-            btn_bg = "#2b2b30"
-            border = "#38383d"
+            win_bg = "#1e222a"
+            btn_bg = "#2a2e38"
+            border = "#3b404d"
             fg = "#ffffff"
             muted = "#9a9996"
-            accent = "#3584e4"
-            danger = "#e01b24"
-            tab_active_bg = "#2b2b30"
+            accent = "#3daee9"
+            accent_fg = "#ffffff"
+            danger = "#e05263"
+            tab_active_bg = "#3daee9"
 
         font_name = os.environ.get("WWM_FONT", "JetBrainsMono Nerd Font")
         css_provider = Gtk.CssProvider()
@@ -1755,11 +1855,11 @@ class WwmBar(Gtk.Window):
         button.app-btn:hover {{
             background-color: {accent};
             background-image: none;
-            color: #ffffff;
+            color: {accent_fg};
             border-color: {accent};
         }}
         button.ws-inactive {{
-            background-color: {win_bg};
+            background-color: {btn_bg};
             background-image: none;
             color: {muted};
             border: 1px solid {border};
@@ -1778,7 +1878,7 @@ class WwmBar(Gtk.Window):
         button.ws-active {{
             background-color: {tab_active_bg};
             background-image: none;
-            color: {fg};
+            color: {accent_fg};
             border: 1px solid {accent};
             border-radius: 6px;
             padding: 2px 8px;
@@ -1790,7 +1890,7 @@ class WwmBar(Gtk.Window):
         button.ws-active:hover {{
             background-color: {accent};
             background-image: none;
-            color: #ffffff;
+            color: {accent_fg};
             border-color: {accent};
         }}
         button.ws-ctrl-btn {{
@@ -1808,11 +1908,11 @@ class WwmBar(Gtk.Window):
         button.ws-ctrl-btn:hover {{
             background-color: {accent};
             background-image: none;
-            color: #ffffff;
+            color: {accent_fg};
             border-color: {accent};
         }}
         button.win-tab {{
-            background-color: {win_bg};
+            background-color: {btn_bg};
             background-image: none;
             color: {muted};
             border: 1px solid {border};
@@ -1830,7 +1930,7 @@ class WwmBar(Gtk.Window):
         button.win-tab-active {{
             background-color: {tab_active_bg};
             background-image: none;
-            color: {fg};
+            color: {accent_fg};
             border: 1px solid {accent};
             border-radius: 6px;
             padding: 2px 10px;
@@ -1841,7 +1941,7 @@ class WwmBar(Gtk.Window):
         button.win-tab-active:hover {{
             background-color: {accent};
             background-image: none;
-            color: #ffffff;
+            color: {accent_fg};
             border-color: {accent};
         }}
         button.danger-btn {{
@@ -1932,13 +2032,14 @@ class WwmBar(Gtk.Window):
             b.connect("clicked", lambda widget, c=cmd: self.run_cmd(c))
             actions_box.pack_end(b, False, False, 0)
 
+        self.show_all()
+        self.pin_bar()
+        self.setup_struts()
+        self._setup_x11_watch()
         self.refresh_tick()
         self.update_clock()
         GLib.timeout_add(250, self.refresh_tick)
         GLib.timeout_add(1000, self.update_clock)
-        self.show_all()
-        self.pin_bar()
-        self.setup_struts()
         GLib.timeout_add(300, self._deferred_pin)
 
     def _deferred_pin(self):
@@ -1950,6 +2051,62 @@ class WwmBar(Gtk.Window):
         self.pin_bar()
         self.setup_struts()
         return False
+
+    def _setup_x11_watch(self):
+        if not self.is_x11 or self.xdisp is None:
+            return
+        try:
+            root = self.xdisp.screen().root
+            root.change_attributes(event_mask=xlib_X.SubstructureNotifyMask | xlib_X.PropertyChangeMask)
+            self.xdisp.flush()
+            GLib.io_add_watch(self.xdisp.fileno(), GLib.IO_IN, self._on_x11_io)
+        except Exception:
+            pass
+
+    def _run_reactive_tick(self):
+        self._reactive_source_id = 0
+        self.refresh_tick()
+        return False
+
+    def _on_x11_io(self, source=None, condition=None):
+        if self.xdisp is None:
+            return False
+        relevant = False
+        self_xid = self._self_xid()
+        try:
+            while self.xdisp.pending_events() > 0:
+                ev = self.xdisp.next_event()
+                ev_win = getattr(ev, "window", None)
+                ev_wid = getattr(ev_win, "id", 0) if ev_win else 0
+                if self_xid and ev_wid == self_xid:
+                    continue
+                etype = getattr(ev, "type", None)
+                if etype in (
+                    xlib_X.MapNotify,
+                    xlib_X.UnmapNotify,
+                    xlib_X.DestroyNotify,
+                    xlib_X.ConfigureNotify,
+                    xlib_X.ReparentNotify,
+                ):
+                    relevant = True
+                elif etype == xlib_X.PropertyNotify:
+                    atom = getattr(ev, "atom", None)
+                    if atom in (
+                        self.atom_client_list,
+                        self.atom_active,
+                        self.atom_cur_desk,
+                        self.atom_wm_desk,
+                        self.atom_wm_state,
+                        self.atom_icccm_state,
+                        self.atom_frame_extents,
+                        self.atom_net_name,
+                    ):
+                        relevant = True
+        except Exception:
+            return False
+        if relevant and not self._reactive_source_id:
+            self._reactive_source_id = GLib.timeout_add(20, self._run_reactive_tick)
+        return True
 
     def _spawn(self, args, shell=False):
         try:
@@ -1966,14 +2123,19 @@ class WwmBar(Gtk.Window):
     def _self_xid(self):
         try:
             gdk_win = self.get_window()
-            if gdk_win and hasattr(gdk_win, "get_xid"):
-                return int(gdk_win.get_xid())
+            if gdk_win is not None:
+                if GdkX11 is not None and hasattr(GdkX11.X11Window, "get_xid"):
+                    return int(GdkX11.X11Window.get_xid(gdk_win))
+                if hasattr(gdk_win, "get_xid"):
+                    return int(gdk_win.get_xid())
         except Exception:
             pass
         return 0
 
     def pin_bar(self):
         try:
+            self.move(0, 0)
+            self.resize(self.screen_w, BAR_H)
             self.stick()
             self.set_keep_above(True)
             self.set_skip_taskbar_hint(True)
@@ -1996,6 +2158,7 @@ class WwmBar(Gtk.Window):
                 atom_above = self.xdisp.intern_atom("_NET_WM_STATE_ABOVE")
                 atom_skip_tb = self.xdisp.intern_atom("_NET_WM_STATE_SKIP_TASKBAR")
                 atom_skip_pg = self.xdisp.intern_atom("_NET_WM_STATE_SKIP_PAGER")
+                win.configure(x=0, y=0, width=self.screen_w, height=BAR_H)
                 win.change_property(atom_desk, xlib_Xatom.CARDINAL, 32, [0xFFFFFFFF])
                 ev_desk = protocol.event.ClientMessage(
                     window=win,
@@ -2011,6 +2174,7 @@ class WwmBar(Gtk.Window):
                         data=(32, [1, s1, s2, 2, 0]),
                     )
                     root.send_event(ev_state, event_mask=xlib_X.SubstructureRedirectMask | xlib_X.SubstructureNotifyMask)
+                win.raise_window()
                 self.xdisp.flush()
                 return
             except Exception:
@@ -2027,7 +2191,16 @@ class WwmBar(Gtk.Window):
         if shutil.which("wmctrl"):
             try:
                 subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-t", "-1"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-b", "add,sticky,above,skip_taskbar,skip_pager"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-b", "add,sticky,above"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-b", "add,skip_taskbar,skip_pager"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-e", f"0,0,0,{self.screen_w},{BAR_H}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+        elif shutil.which("xdotool"):
+            try:
+                subprocess.run(["xdotool", "windowmove", str(xid), "0", "0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["xdotool", "windowsize", str(xid), str(self.screen_w), str(BAR_H)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["xdotool", "windowraise", str(xid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except Exception:
                 pass
 
@@ -2036,19 +2209,20 @@ class WwmBar(Gtk.Window):
             xid = self._self_xid()
             if not xid:
                 return
+            end_x = max(0, self.screen_w - 1)
             if self.xdisp is not None:
                 try:
                     win = self.xdisp.create_resource_object("window", xid)
                     atom_sp = self.xdisp.intern_atom("_NET_WM_STRUT_PARTIAL")
                     atom_st = self.xdisp.intern_atom("_NET_WM_STRUT")
-                    win.change_property(atom_sp, xlib_Xatom.CARDINAL, 32, [0, 0, BAR_H, 0, 0, 0, 0, 0, 0, self.screen_w, 0, 0])
+                    win.change_property(atom_sp, xlib_Xatom.CARDINAL, 32, [0, 0, BAR_H, 0, 0, 0, 0, 0, 0, end_x, 0, 0])
                     win.change_property(atom_st, xlib_Xatom.CARDINAL, 32, [0, 0, BAR_H, 0])
                     self.xdisp.flush()
                     return
                 except Exception:
                     pass
             if shutil.which("xprop"):
-                sp = f"0, 0, {BAR_H}, 0, 0, 0, 0, 0, 0, {self.screen_w}, 0, 0"
+                sp = f"0, 0, {BAR_H}, 0, 0, 0, 0, 0, 0, {end_x}, 0, 0"
                 st = f"0, 0, {BAR_H}, 0"
                 subprocess.run(
                     ["xprop", "-id", str(xid), "-f", "_NET_WM_STRUT_PARTIAL", "32c", "-set", "_NET_WM_STRUT_PARTIAL", sp],
@@ -2786,7 +2960,346 @@ class WwmBar(Gtk.Window):
             self.tabs_box.pack_start(b, False, False, 0)
         self.tabs_box.show_all()
 
+    def _get_tile_state(self):
+        self_xid = self._self_xid()
+        cur_desk = 0
+        tile_wids = []
+        if self.xdisp is not None:
+            try:
+                root = self.xdisp.screen().root
+                cur_prop = root.get_full_property(self.atom_cur_desk, xlib_Xatom.CARDINAL)
+                if cur_prop and cur_prop.value:
+                    cur_desk = int(cur_prop.value[0])
+                prop = root.get_full_property(self.atom_client_list, xlib_Xatom.WINDOW)
+                wids = list(prop.value) if prop and prop.value else []
+                if not wids:
+                    for child in root.query_tree().children:
+                        cid = getattr(child, "id", 0)
+                        if cid:
+                            wids.append(cid)
+                for wid in wids:
+                    if not wid or wid == self_xid:
+                        continue
+                    try:
+                        win = self.xdisp.create_resource_object("window", wid)
+                        attrs = win.get_attributes()
+                        if not attrs or attrs.override_redirect or attrs.map_state != xlib_X.IsViewable:
+                            continue
+                        wclass = win.get_wm_class()
+                        if wclass and any("wwm-bar" in str(c).lower() for c in wclass):
+                            continue
+                        nprop = win.get_full_property(self.atom_net_name, self.atom_utf8)
+                        wname = ""
+                        if nprop and nprop.value:
+                            raw = nprop.value
+                            wname = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else str(raw)
+                        if not wname:
+                            wname = win.get_wm_name() or ""
+                        if wname == "wwm-bar":
+                            continue
+                        if win.get_wm_transient_for():
+                            continue
+                        wtype = win.get_full_property(self.atom_wtype, xlib_Xatom.ATOM)
+                        if wtype and wtype.value and any(t in self.skip_types for t in wtype.value):
+                            continue
+                        istate = win.get_full_property(self.atom_icccm_state, 0)
+                        if istate and istate.value and int(istate.value[0]) != 1:
+                            continue
+                        sprop = win.get_full_property(self.atom_wm_state, xlib_Xatom.ATOM)
+                        if sprop and sprop.value:
+                            states = set(sprop.value)
+                            if self.atom_hidden in states or self.atom_fullscreen in states:
+                                continue
+                        dprop = win.get_full_property(self.atom_wm_desk, xlib_Xatom.CARDINAL)
+                        if dprop and dprop.value:
+                            wdesk = int(dprop.value[0])
+                            if wdesk != cur_desk and wdesk != 0xFFFFFFFF:
+                                continue
+                        tile_wids.append(wid)
+                    except Exception:
+                        continue
+                return cur_desk, tile_wids
+            except Exception:
+                pass
+
+        if shutil.which("xprop"):
+            try:
+                rp = subprocess.run(
+                    ["xprop", "-root", "_NET_CURRENT_DESKTOP", "_NET_CLIENT_LIST"],
+                    capture_output=True, text=True, timeout=1.0
+                )
+                cand_wids = []
+                for line in (rp.stdout or "").splitlines():
+                    if line.startswith("_NET_CURRENT_DESKTOP"):
+                        m = re.search(r"=\s*(\d+)", line)
+                        if m:
+                            cur_desk = int(m.group(1))
+                    elif line.startswith("_NET_CLIENT_LIST") and "not found" not in line:
+                        for tok in re.findall(r"0x[0-9a-fA-F]+", line):
+                            wid = int(tok, 16)
+                            if wid > 0 and wid != self_xid and wid not in cand_wids:
+                                cand_wids.append(wid)
+                for wid in cand_wids:
+                    try:
+                        wp = subprocess.run(
+                            ["xprop", "-id", hex(wid), "_NET_WM_WINDOW_TYPE", "_NET_WM_STATE", "WM_TRANSIENT_FOR", "WM_STATE", "_NET_WM_DESKTOP", "WM_CLASS"],
+                            capture_output=True, text=True, timeout=0.5
+                        )
+                        if wp.returncode != 0:
+                            continue
+                        out = wp.stdout or ""
+                        if "BadWindow" in out or re.search(r"window state:\s*(Withdrawn|Iconic)", out, re.I):
+                            continue
+                        skip = False
+                        for l in out.splitlines():
+                            if l.startswith("WM_TRANSIENT_FOR("):
+                                skip = True
+                                break
+                            if l.startswith("WM_CLASS(") and "wwm-bar" in l.lower():
+                                skip = True
+                                break
+                            if l.startswith("_NET_WM_STATE(") and ("_NET_WM_STATE_HIDDEN" in l or "_NET_WM_STATE_FULLSCREEN" in l):
+                                skip = True
+                                break
+                            if l.startswith("_NET_WM_WINDOW_TYPE("):
+                                for st in ("DOCK", "DESKTOP", "MENU", "TOOLBAR", "SPLASH", "UTILITY", "DIALOG", "NOTIFICATION", "DROPDOWN_MENU", "POPUP_MENU", "TOOLTIP", "COMBO", "DND"):
+                                    if f"_NET_WM_WINDOW_TYPE_{st}" in l:
+                                        skip = True
+                                        break
+                                if skip:
+                                    break
+                            if l.startswith("_NET_WM_DESKTOP("):
+                                dm = re.search(r"=\s*(\d+)", l)
+                                if dm:
+                                    wd = int(dm.group(1))
+                                    if wd != cur_desk and wd != 0xFFFFFFFF:
+                                        skip = True
+                                        break
+                        if not skip:
+                            tile_wids.append(wid)
+                    except Exception:
+                        continue
+            except Exception:
+                pass
+        return cur_desk, tile_wids
+
+    def _read_frame_extents(self, wid):
+        if self.xdisp is not None:
+            try:
+                win = self.xdisp.create_resource_object("window", wid)
+                prop = win.get_full_property(self.atom_frame_extents, xlib_Xatom.CARDINAL)
+                if prop and prop.value and len(prop.value) >= 4:
+                    return (int(prop.value[0]), int(prop.value[1]), int(prop.value[2]), int(prop.value[3]))
+                geom = win.get_geometry()
+                bw = int(getattr(geom, "border_width", 0) or 0)
+                if bw > 0:
+                    return (bw, bw, bw, bw)
+            except Exception:
+                pass
+            return (0, 0, 0, 0)
+        if shutil.which("xprop"):
+            try:
+                res = subprocess.run(
+                    ["xprop", "-id", hex(wid), "_NET_FRAME_EXTENTS"],
+                    capture_output=True, text=True, timeout=0.5
+                )
+                for line in (res.stdout or "").splitlines():
+                    if line.startswith("_NET_FRAME_EXTENTS("):
+                        nums = [int(x) for x in re.findall(r"\d+", line.split("=", 1)[-1])]
+                        if len(nums) >= 4:
+                            return (nums[0], nums[1], nums[2], nums[3])
+            except Exception:
+                pass
+        return (0, 0, 0, 0)
+
+    def _read_win_geom(self, wid):
+        if self.xdisp is not None:
+            try:
+                win = self.xdisp.create_resource_object("window", wid)
+                root = self.xdisp.screen().root
+                g = win.get_geometry()
+                pos = root.translate_coords(win, 0, 0)
+                return (int(pos.x), int(pos.y), int(g.width), int(g.height))
+            except Exception:
+                return None
+        if shutil.which("xdotool"):
+            try:
+                res = subprocess.run(
+                    ["xdotool", "getwindowgeometry", "--shell", str(wid)],
+                    capture_output=True, text=True, timeout=0.5
+                )
+                vals = {}
+                for line in (res.stdout or "").splitlines():
+                    if "=" in line:
+                        k, v = line.split("=", 1)
+                        if v.strip().lstrip("-").isdigit():
+                            vals[k.strip()] = int(v.strip())
+                if all(k in vals for k in ("X", "Y", "WIDTH", "HEIGHT")):
+                    return (vals["X"], vals["Y"], vals["WIDTH"], vals["HEIGHT"])
+            except Exception:
+                pass
+        return None
+
+    def _unmaximize_win(self, wid):
+        if self.xdisp is not None:
+            try:
+                from Xlib import protocol
+                win = self.xdisp.create_resource_object("window", wid)
+                sprop = win.get_full_property(self.atom_wm_state, xlib_Xatom.ATOM)
+                if sprop and sprop.value:
+                    states = set(sprop.value)
+                    if self.atom_max_vert in states or self.atom_max_horz in states:
+                        root = self.xdisp.screen().root
+                        ev = protocol.event.ClientMessage(
+                            window=win,
+                            client_type=self.atom_wm_state,
+                            data=(32, [0, self.atom_max_vert, self.atom_max_horz, 2, 0]),
+                        )
+                        root.send_event(ev, event_mask=xlib_X.SubstructureRedirectMask | xlib_X.SubstructureNotifyMask)
+                        self.xdisp.sync()
+                return
+            except Exception:
+                pass
+        if shutil.which("wmctrl"):
+            try:
+                subprocess.run(
+                    ["wmctrl", "-i", "-r", hex(wid), "-b", "remove,maximized_vert,maximized_horz"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=0.8
+                )
+            except Exception:
+                pass
+        elif shutil.which("xdotool"):
+            try:
+                subprocess.run(
+                    ["xdotool", "windowstate", "--remove", "MAXIMIZED_VERT", "--remove", "MAXIMIZED_HORZ", str(wid)],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=0.8
+                )
+            except Exception:
+                pass
+
+    def _place_win(self, wid, sx, sy, sw, sh, extents):
+        l, r, t, b = extents
+        cw = max(64, int(sw) - l - r)
+        ch = max(64, int(sh) - t - b)
+        sx = int(sx)
+        sy = max(BAR_H, int(sy))
+        self._unmaximize_win(wid)
+        if self.xdisp is not None:
+            try:
+                win = self.xdisp.create_resource_object("window", wid)
+                if self.supports_moveresize:
+                    from Xlib import protocol
+                    root = self.xdisp.screen().root
+                    flags = 1 | (0xF << 8) | (2 << 12)
+                    ev = protocol.event.ClientMessage(
+                        window=win,
+                        client_type=self.atom_moveresize,
+                        data=(32, [flags, sx, sy, cw, ch]),
+                    )
+                    root.send_event(ev, event_mask=xlib_X.SubstructureRedirectMask | xlib_X.SubstructureNotifyMask)
+                else:
+                    win.configure(x=sx, y=sy, width=cw, height=ch)
+                self.xdisp.sync()
+                return
+            except Exception:
+                pass
+        if shutil.which("wmctrl"):
+            try:
+                subprocess.run(
+                    ["wmctrl", "-i", "-r", hex(wid), "-e", f"0,{sx},{sy},{cw},{ch}"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=0.8
+                )
+                return
+            except Exception:
+                pass
+        if shutil.which("xdotool"):
+            try:
+                subprocess.run(["xdotool", "windowmove", str(wid), str(sx), str(sy)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=0.8)
+                subprocess.run(["xdotool", "windowsize", str(wid), str(cw), str(ch)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=0.8)
+            except Exception:
+                pass
+
+    def _apply_master_stack(self, tile_wids, extents_map):
+        n = len(tile_wids)
+        if n == 0:
+            return
+        work_x = 0
+        work_y = BAR_H
+        work_w = self.screen_w
+        work_h = max(128, self.screen_h - BAR_H)
+        if n == 1:
+            self._place_win(tile_wids[0], work_x, work_y, work_w, work_h, extents_map.get(tile_wids[0], (0, 0, 0, 0)))
+            return
+        master_w = int(work_w * 0.55)
+        stack_w = work_w - master_w
+        stack_x = work_x + master_w
+        self._place_win(tile_wids[0], work_x, work_y, master_w, work_h, extents_map.get(tile_wids[0], (0, 0, 0, 0)))
+        stack_count = n - 1
+        base_h = work_h // stack_count
+        rem_h = work_h % stack_count
+        for idx, wid in enumerate(tile_wids[1:]):
+            sy = work_y + idx * base_h + min(idx, rem_h)
+            sh = base_h + (1 if idx < rem_h else 0)
+            self._place_win(wid, stack_x, sy, stack_w, sh, extents_map.get(wid, (0, 0, 0, 0)))
+
+    def apply_x11_tiling(self):
+        if not self.is_x11_tiling:
+            return
+        cur_desk, tile_wids = self._get_tile_state()
+        state_key = (cur_desk, tuple(tile_wids))
+        now = time.monotonic()
+
+        extents_map = {}
+        for wid in tile_wids:
+            extents_map[wid] = self._read_frame_extents(wid)
+
+        if state_key != self.tiling_state_key:
+            self.tiling_state_key = state_key
+            self.manual_override = False
+            self.last_extents = dict(extents_map)
+            self._apply_master_stack(tile_wids, extents_map)
+            self.tile_settle_deadline = now + 0.35
+            self.settled_geoms = {}
+            for wid in tile_wids:
+                g = self._read_win_geom(wid)
+                if g is not None:
+                    self.settled_geoms[wid] = g
+            return
+
+        if not tile_wids:
+            return
+
+        if not self.manual_override and extents_map != self.last_extents:
+            self.last_extents = dict(extents_map)
+            self._apply_master_stack(tile_wids, extents_map)
+            self.tile_settle_deadline = now + 0.35
+            self.settled_geoms = {}
+            for wid in tile_wids:
+                g = self._read_win_geom(wid)
+                if g is not None:
+                    self.settled_geoms[wid] = g
+            return
+
+        if now < self.tile_settle_deadline:
+            for wid in tile_wids:
+                g = self._read_win_geom(wid)
+                if g is not None:
+                    self.settled_geoms[wid] = g
+            return
+
+        if not self.manual_override:
+            for wid in tile_wids:
+                g = self._read_win_geom(wid)
+                if g is not None:
+                    prev_g = self.settled_geoms.get(wid)
+                    if prev_g is None:
+                        self.settled_geoms[wid] = g
+                    elif g != prev_g:
+                        self.manual_override = True
+                        break
+
     def refresh_tick(self):
+        self.apply_x11_tiling()
         self.update_workspaces()
         self.update_windows()
         return True
@@ -3081,7 +3594,6 @@ EOF
 ### --------------------------------
 window_manager_wayland() {
 	unset EMACS_OS_MODE
-	_sanitize_graphical_env
 	local _flavor="" _selected_wm=""
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
@@ -3210,15 +3722,16 @@ window_manager_wayland() {
 	_wayland_session_env "${_flavor}"
 
 	local _scheme="${_RESOLVED_COLOR_SCHEME:-dark}"
-	local _c_bg="#1e1e22" _c_panel="#2b2b30" _c_fg="#ffffff" _c_muted="#9a9996" _c_border="#38383d" _c_accent="#3584e4" _c_urgent="#e01b24"
+	local _c_root="#181b20" _c_bg="#1e222a" _c_panel="#2a2e38" _c_fg="#ffffff" _c_muted="#9a9996" _c_border="#3b404d" _c_accent="#3daee9" _c_urgent="#e05263"
 	if [ "${_scheme}" = "light" ]; then
+		_c_root="#f6f5f4"
 		_c_bg="#f6f5f4"
 		_c_panel="#ffffff"
 		_c_fg="#241f31"
 		_c_muted="#5e5c64"
 		_c_border="#cdc7c2"
 	fi
-	local _hex_bg="${_c_bg#\#}" _hex_border="${_c_border#\#}" _hex_accent="${_c_accent#\#}"
+	local _hex_root="${_c_root#\#}" _hex_bg="${_c_bg#\#}" _hex_panel="${_c_panel#\#}" _hex_fg="${_c_fg#\#}" _hex_border="${_c_border#\#}" _hex_accent="${_c_accent#\#}" _hex_urgent="${_c_urgent#\#}"
 
 	local _cur_theme="${XCURSOR_THEME}"
 	local _cur_size="${XCURSOR_SIZE:-24}"
@@ -3241,6 +3754,9 @@ window_manager_wayland() {
 	local _menu_script="${_run_dir}/wwm-menu-$$.sh"
 	local _status_script="${_run_dir}/wwm-status-$$.sh"
 	local _bar_script="${_run_dir}/wwm-bar-$$.py"
+	local _wofi_css="${_run_dir}/wwm-wofi-$$.css"
+	local _rofi_theme="${_run_dir}/wwm-rofi-$$.rasi"
+	local _autotile_script="${_run_dir}/wwm-autotile-$$.sh"
 
 	local _has_gtk3_bar=0
 	if command -v python3 > "/dev/null" 2>&1 && python3 -c 'import gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk' > "/dev/null" 2>&1; then
@@ -3286,16 +3802,84 @@ done
 EOF
 	chmod 0755 "${_emacs_script}"
 
+	cat << EOF >| "${_wofi_css}"
+window {
+    background-color: ${_c_bg};
+    border: 2px solid ${_c_accent};
+    border-radius: 6px;
+    color: ${_c_fg};
+}
+window #input {
+    background-color: ${_c_panel};
+    border: 1px solid ${_c_border};
+    color: ${_c_fg};
+    margin: 6px;
+    padding: 6px;
+}
+window #inner-box {
+    margin: 4px;
+    background-color: ${_c_bg};
+}
+window #entry {
+    padding: 6px;
+    color: ${_c_fg};
+    border-radius: 4px;
+}
+window #entry:selected {
+    background-color: ${_c_accent};
+    color: #ffffff;
+}
+EOF
+
+	cat << EOF >| "${_rofi_theme}"
+* {
+    background: ${_c_bg};
+    background-color: ${_c_bg};
+    foreground: ${_c_fg};
+    normal-background: ${_c_bg};
+    normal-foreground: ${_c_fg};
+    alternate-normal-background: ${_c_panel};
+    alternate-normal-foreground: ${_c_fg};
+    selected-normal-background: ${_c_accent};
+    selected-normal-foreground: #ffffff;
+    active-background: ${_c_panel};
+    active-foreground: ${_c_accent};
+    selected-active-background: ${_c_accent};
+    selected-active-foreground: #ffffff;
+    urgent-background: ${_c_urgent};
+    urgent-foreground: #ffffff;
+    border-color: ${_c_accent};
+    separatorcolor: ${_c_border};
+}
+window {
+    background-color: ${_c_bg};
+    border: 2px;
+    border-color: ${_c_accent};
+    padding: 8px;
+}
+inputbar {
+    background-color: ${_c_panel};
+    text-color: ${_c_fg};
+    padding: 6px;
+    border: 1px;
+    border-color: ${_c_border};
+}
+element selected.normal {
+    background-color: ${_c_accent};
+    text-color: #ffffff;
+}
+EOF
+
 	cat << EOF >| "${_menu_script}"
 #!/usr/bin/env sh
 if command -v wofi > "/dev/null" 2>&1; then
-	exec wofi --show drun
+	exec wofi --show drun --style "${_wofi_css}"
 elif command -v fuzzel > "/dev/null" 2>&1; then
-	exec fuzzel
+	exec fuzzel --background="${_hex_bg}ff" --text-color="${_hex_fg}ff" --match-color="${_hex_accent}ff" --selection-color="${_hex_accent}ff" --selection-text-color="ffffffff" --selection-match-color="ffffffff" --border-color="${_hex_accent}ff" --border-width=2
 elif command -v rofi > "/dev/null" 2>&1; then
-	exec rofi -show drun
+	exec rofi -show drun -theme "${_rofi_theme}"
 elif command -v bemenu-run > "/dev/null" 2>&1; then
-	exec bemenu-run
+	exec bemenu-run --tb "${_c_bg}" --tf "${_c_accent}" --fb "${_c_bg}" --ff "${_c_fg}" --nb "${_c_bg}" --nf "${_c_fg}" --hb "${_c_accent}" --hf "#ffffff" --sb "${_c_accent}" --sf "#ffffff" --bdr "${_c_border}"
 else
 	exec ${_wm_term}
 fi
@@ -3351,17 +3935,115 @@ EOF
 	case "${_target_wm}" in
 		sway)
 			local _sway_cfg="${_run_dir}/sway-wm-$$.conf"
+			cat << 'EOF_AT' >| "${_autotile_script}"
+#!/usr/bin/env sh
+if command -v python3 > "/dev/null" 2>&1; then
+	exec python3 - << 'EOF_PY_AT'
+import json, subprocess, sys
+
+def find_focused_with_parent(node, parent=None):
+    if node.get("focused"):
+        return node, parent
+    for child in node.get("nodes", []) + node.get("floating_nodes", []):
+        res = find_focused_with_parent(child, node)
+        if res is not None:
+            return res
+    return None
+
+last_cmd = None
+
+def sync_split():
+    global last_cmd
+    try:
+        res = subprocess.run(["swaymsg", "-t", "get_tree"], capture_output=True, text=True, timeout=1.0)
+        if res.returncode != 0 or not res.stdout:
+            return
+        tree = json.loads(res.stdout)
+    except Exception:
+        return
+    found = find_focused_with_parent(tree)
+    if not found:
+        return
+    con, parent = found
+    if con.get("type") != "con" or con.get("fullscreen_mode", 0) != 0:
+        return
+    app_id = con.get("app_id") or ""
+    name = con.get("name") or ""
+    if app_id == "wwm-bar" or name == "wwm-bar":
+        return
+    if parent and parent.get("layout") in ("tabbed", "stacked"):
+        return
+    rect = con.get("rect") or {}
+    w = rect.get("width", 0)
+    h = rect.get("height", 0)
+    if w <= 0 or h <= 0:
+        return
+    split_cmd = "splith" if w >= h else "splitv"
+    key = (con.get("id"), split_cmd)
+    if key != last_cmd:
+        subprocess.run(["swaymsg", split_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+        last_cmd = key
+
+try:
+    proc = subprocess.Popen(
+        ["swaymsg", "-t", "subscribe", "-m", '["window"]'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        bufsize=1,
+    )
+except Exception:
+    sys.exit(0)
+
+sync_split()
+try:
+    if proc.stdout is not None:
+        while True:
+            line = proc.stdout.readline()
+            if not line:
+                break
+            try:
+                ev = json.loads(line)
+            except Exception:
+                continue
+            if ev.get("change") in ("focus", "new", "move"):
+                sync_split()
+except (KeyboardInterrupt, BrokenPipeError, OSError):
+    pass
+finally:
+    try:
+        proc.terminate()
+    except Exception:
+        pass
+    try:
+        proc.wait(timeout=1.0)
+    except Exception:
+        pass
+EOF_PY_AT
+fi
+EOF_AT
+			chmod 0755 "${_autotile_script}"
 			cat << EOF >| "${_sway_cfg}"
-output * bg ${_c_bg} solid_color
+output * bg ${_c_root} solid_color
 font pango:${_ui_font} Bold 10
-workspace_layout tabbed
+workspace_layout default
+gaps inner 4
+gaps outer 0
 titlebar_padding 10 6
 default_border pixel 2
 default_floating_border pixel 2
-client.focused ${_c_accent} ${_c_panel} ${_c_fg} ${_c_accent} ${_c_accent}
-client.focused_inactive ${_c_border} ${_c_bg} ${_c_muted} ${_c_border} ${_c_border}
+client.focused ${_c_accent} ${_c_accent} #ffffff ${_c_accent} ${_c_accent}
+client.focused_inactive ${_c_border} ${_c_panel} ${_c_fg} ${_c_border} ${_c_border}
 client.unfocused ${_c_border} ${_c_bg} ${_c_muted} ${_c_border} ${_c_border}
-client.urgent ${_c_urgent} ${_c_panel} #ffffff ${_c_urgent} ${_c_urgent}
+client.urgent ${_c_urgent} ${_c_urgent} #ffffff ${_c_urgent} ${_c_urgent}
+for_window [window_type="dialog"] floating enable
+for_window [window_type="utility"] floating enable
+for_window [window_type="toolbar"] floating enable
+for_window [window_type="splash"] floating enable
+for_window [window_type="menu"] floating enable
+for_window [window_role="pop-up"] floating enable
+for_window [window_role="bubble"] floating enable
+for_window [window_role="dialog"] floating enable
 seat * xcursor_theme ${_cur_theme} ${_cur_size}
 seat * fallback true
 seat * hide_cursor when-typing disable
@@ -3433,10 +4115,12 @@ no_focus [instance="wwm-bar"]
 no_focus [app_id="wwm-bar"]
 for_window [instance="wwm-bar"] floating enable, sticky enable, border none, resize set 100 ppt 32 px, move absolute position 0 0
 for_window [app_id="wwm-bar"] floating enable, sticky enable, border none, resize set 100 ppt 32 px, move absolute position 0 0
+exec "${_autotile_script}"
 exec sh -c 'env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="sway" python3 "${_bar_script}" >| "${_log_dir}/wwm-bar.log" 2>&1'
 EOF
 			else
 				cat << EOF >> "${_sway_cfg}"
+exec "${_autotile_script}"
 bar {
     position bottom
     status_command "${_status_script}"
@@ -3445,15 +4129,16 @@ bar {
         background ${_c_bg}
         statusline ${_c_fg}
         separator ${_c_border}
-        focused_workspace ${_c_accent} ${_c_panel} ${_c_fg}
-        inactive_workspace ${_c_bg} ${_c_bg} ${_c_muted}
+        focused_workspace ${_c_accent} ${_c_accent} #ffffff
+        inactive_workspace ${_c_bg} ${_c_panel} ${_c_muted}
+        urgent_workspace ${_c_urgent} ${_c_urgent} #ffffff
     }
 }
 EOF
 			fi
 			_exec_wayland sway -c "${_sway_cfg}"
 			local _ret=$?
-			rm -f "${_sway_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_sway_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" "${_wofi_css}" "${_rofi_theme}" "${_autotile_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		labwc)
@@ -3507,6 +4192,7 @@ EOF
       <name>1</name>
     </names>
   </desktops>
+  <margin top="32" bottom="0" left="0" right="0"/>
   <windowRules>
     <windowRule identifier="wwm-bar" serverDecoration="no" skipTaskbar="yes"/>
   </windowRules>
@@ -3538,16 +4224,21 @@ EOF
   </libinput>
 </labwc_config>
 EOF
-			if [ "${_has_gtk3_bar}" -eq 1 ]; then
-				cat << EOF >| "${_labwc_dir}/autostart"
-#!/usr/bin/env sh
+			if [ "${_has_gtk3_bar}" -eq 1 ] || command -v swaybg > "/dev/null" 2>&1; then
+				printf '#!/usr/bin/env sh\n' >| "${_labwc_dir}/autostart"
+				if command -v swaybg > "/dev/null" 2>&1; then
+					printf 'swaybg -c "%s" > "/dev/null" 2>&1 &\n' "${_c_root}" >> "${_labwc_dir}/autostart"
+				fi
+				if [ "${_has_gtk3_bar}" -eq 1 ]; then
+					cat << EOF >> "${_labwc_dir}/autostart"
 env GDK_BACKEND=${_bar_gdk} WWM_TERM="${_term_script}" WWM_BROWSER="${_browser_script}" WWM_FILES="${_files_script}" WWM_EMACS="${_emacs_script}" WWM_MENU="${_menu_script}" WWM_FONT="${_ui_font}" WWM_SCHEME="${_scheme}" WWM_WM="labwc" python3 "${_bar_script}" >| "${_log_dir}/wwm-bar.log" 2>&1 &
 EOF
+				fi
 				chmod 0755 "${_labwc_dir}/autostart"
 			fi
 			_exec_wayland labwc -C "${_labwc_dir}"
 			local _ret=$?
-			rm -rf "${_labwc_dir}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -rf "${_labwc_dir}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" "${_wofi_css}" "${_rofi_theme}" "${_autotile_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		river)
@@ -3557,7 +4248,7 @@ EOF
 riverctl border-width 2
 riverctl border-color-focused "0x${_hex_accent}"
 riverctl border-color-unfocused "0x${_hex_border}"
-riverctl background-color "0x${_hex_bg}"
+riverctl background-color "0x${_hex_root}"
 riverctl xcursor-theme "${_cur_theme}" "${_cur_size}"
 riverctl input pointer-* accel-profile adaptive
 riverctl input pointer-* pointer-accel 0.35
@@ -3587,7 +4278,7 @@ EOF
 			chmod 0755 "${_river_init}"
 			_exec_wayland river -c "${_river_init}"
 			local _ret=$?
-			rm -f "${_river_init}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_river_init}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" "${_wofi_css}" "${_rofi_theme}" "${_autotile_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		Hyprland|hyprland)
@@ -3603,7 +4294,7 @@ general {
 }
 misc {
     disable_hyprland_logo = true
-    background_color = rgb(${_hex_bg})
+    background_color = rgb(${_hex_root})
 }
 input {
     kb_layout = br
@@ -3663,7 +4354,7 @@ EOF
 			fi
 			_exec_wayland "${_target_wm}" --config "${_hypr_cfg}"
 			local _ret=$?
-			rm -f "${_hypr_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_hypr_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" "${_wofi_css}" "${_rofi_theme}" "${_autotile_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		niri)
@@ -3718,7 +4409,7 @@ EOF
 			fi
 			_exec_wayland niri --config "${_niri_cfg}"
 			local _ret=$?
-			rm -f "${_niri_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_niri_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" "${_wofi_css}" "${_rofi_theme}" "${_autotile_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		wayfire)
@@ -3747,7 +4438,7 @@ EOF
 			fi
 			_exec_wayland wayfire -c "${_wf_cfg}"
 			local _ret=$?
-			rm -f "${_wf_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_wf_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" "${_wofi_css}" "${_rofi_theme}" "${_autotile_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		dwl)
@@ -3762,7 +4453,7 @@ EOF
 			chmod 0755 "${_dwl_startup}"
 			_exec_wayland dwl -s "${_dwl_startup}"
 			local _ret=$?
-			rm -f "${_dwl_startup}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_dwl_startup}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" "${_wofi_css}" "${_rofi_theme}" "${_autotile_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		hikari)
@@ -3794,7 +4485,7 @@ bindings {
 EOF
 			_exec_wayland hikari -c "${_hikari_cfg}"
 			local _ret=$?
-			rm -f "${_hikari_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_hikari_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" "${_wofi_css}" "${_rofi_theme}" "${_autotile_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		weston)
@@ -3803,7 +4494,7 @@ EOF
 [core]
 xwayland=true
 [shell]
-background-color=0xff${_hex_bg}
+background-color=0xff${_hex_root}
 panel-position=top
 [keyboard]
 keymap_layout=br
@@ -3819,7 +4510,7 @@ path=${_emacs_script}
 EOF
 			_exec_wayland weston --config="${_weston_cfg}"
 			local _ret=$?
-			rm -f "${_weston_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_weston_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" "${_wofi_css}" "${_rofi_theme}" "${_autotile_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		cage)
@@ -3829,11 +4520,11 @@ EOF
 				_exec_wayland cage -s -- "${_wm_term}"
 			fi
 			local _ret=$?
-			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" "${_wofi_css}" "${_rofi_theme}" "${_autotile_script}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		*)
-			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_status_script}" "${_bar_script}" "${_wofi_css}" "${_rofi_theme}" "${_autotile_script}" 2> "/dev/null" || true
 			if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 				_ui_err "Compositor Wayland '${_target_wm}' não suportado pelo wwm."
 			fi
@@ -3848,7 +4539,6 @@ alias window-manager-wayland="window_manager_wayland" wwm="window_manager_waylan
 ### --------------------------------
 window_manager_x11() {
 	unset EMACS_OS_MODE
-	_sanitize_graphical_env
 	local _flavor="" _selected_wm=""
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
@@ -3984,8 +4674,9 @@ window_manager_x11() {
 	_x11_session_env "${_flavor}"
 
 	local _scheme="${_RESOLVED_COLOR_SCHEME:-dark}"
-	local _c_bg="#1e1e22" _c_panel="#2b2b30" _c_menu_bg="#242428" _c_fg="#ffffff" _c_muted="#9a9996" _c_dis="#5e5c64" _c_border="#38383d" _c_accent="#3584e4" _c_urgent="#e01b24"
+	local _c_root="#181b20" _c_bg="#1e222a" _c_panel="#2a2e38" _c_menu_bg="#1e222a" _c_fg="#ffffff" _c_muted="#9a9996" _c_dis="#5e5c64" _c_border="#3b404d" _c_accent="#3daee9" _c_urgent="#e05263"
 	if [ "${_scheme}" = "light" ]; then
+		_c_root="#f6f5f4"
 		_c_bg="#f6f5f4"
 		_c_panel="#ffffff"
 		_c_menu_bg="#ffffff"
@@ -4097,6 +4788,7 @@ OTM
 	local _emacs_script="${_run_dir}/xwm-emacs-$$.sh"
 	local _menu_script="${_run_dir}/xwm-menu-$$.sh"
 	local _bar_script="${_run_dir}/xwm-bar-$$.py"
+	local _rofi_theme="${_run_dir}/xwm-rofi-$$.rasi"
 
 	local _has_gtk3_bar=0
 	if command -v python3 > "/dev/null" 2>&1 && python3 -c 'import gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk' > "/dev/null" 2>&1; then
@@ -4141,12 +4833,51 @@ done
 EOF
 	chmod 0755 "${_emacs_script}"
 
+	cat << EOF >| "${_rofi_theme}"
+* {
+    background: ${_c_bg};
+    background-color: ${_c_bg};
+    foreground: ${_c_fg};
+    normal-background: ${_c_bg};
+    normal-foreground: ${_c_fg};
+    alternate-normal-background: ${_c_panel};
+    alternate-normal-foreground: ${_c_fg};
+    selected-normal-background: ${_c_accent};
+    selected-normal-foreground: #ffffff;
+    active-background: ${_c_panel};
+    active-foreground: ${_c_accent};
+    selected-active-background: ${_c_accent};
+    selected-active-foreground: #ffffff;
+    urgent-background: ${_c_urgent};
+    urgent-foreground: #ffffff;
+    border-color: ${_c_accent};
+    separatorcolor: ${_c_border};
+}
+window {
+    background-color: ${_c_bg};
+    border: 2px;
+    border-color: ${_c_accent};
+    padding: 8px;
+}
+inputbar {
+    background-color: ${_c_panel};
+    text-color: ${_c_fg};
+    padding: 6px;
+    border: 1px;
+    border-color: ${_c_border};
+}
+element selected.normal {
+    background-color: ${_c_accent};
+    text-color: #ffffff;
+}
+EOF
+
 	cat << EOF >| "${_menu_script}"
 #!/usr/bin/env sh
 if command -v rofi > "/dev/null" 2>&1; then
-	exec rofi -show drun
+	exec rofi -show drun -theme "${_rofi_theme}"
 elif command -v dmenu_run > "/dev/null" 2>&1; then
-	exec dmenu_run
+	exec dmenu_run -nb "${_c_bg}" -nf "${_c_fg}" -sb "${_c_accent}" -sf "#ffffff"
 else
 	exec ${_wm_x11_term}
 fi
@@ -4170,7 +4901,7 @@ EOF
   <theme>
     <name>kiosk</name>
     <titleLayout>NLIMC</titleLayout>
-    <keepBorder>yes</keepBorder>
+    <keepBorder>no</keepBorder>
     <animateIconify>no</animateIconify>
     <font place="ActiveWindow"><name>${_ui_font}</name><size>10</size><weight>Bold</weight><slant>Normal</slant></font>
     <font place="InactiveWindow"><name>${_ui_font}</name><size>10</size><weight>Normal</weight><slant>Normal</slant></font>
@@ -4180,7 +4911,7 @@ EOF
     <font place="InactiveOnScreenDisplay"><name>${_ui_font}</name><size>10</size><weight>Normal</weight><slant>Normal</slant></font>
   </theme>
   <margins>
-    <top>32</top>
+    <top>0</top>
     <bottom>0</bottom>
     <left>0</left>
     <right>0</right>
@@ -4346,7 +5077,7 @@ EOF
 EOF
 			_exec_x11 openbox --config-file "${_ob_wm_cfg}"
 			_ret=$?
-			rm -f "${_ob_menu_cfg}" "${_ob_wm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_ob_menu_cfg}" "${_ob_wm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" "${_rofi_theme}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		cwm)
@@ -4381,7 +5112,7 @@ bind-key 4S-q quit
 EOF
 			_exec_x11 cwm -c "${_cwm_cfg}"
 			_ret=$?
-			rm -f "${_cwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_cwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" "${_rofi_theme}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		fvwm3|fvwm)
@@ -4394,7 +5125,7 @@ Style * HilightBorderColor ${_c_accent}, BorderColor ${_c_border}
 Style * HilightFore ${_c_fg}, HilightBack ${_c_panel}
 Style * ForeColor ${_c_muted}, BackColor ${_c_bg}
 Style * Font "xft:${_ui_font}:size=10:bold"
-Style "wwm-bar" !Title, !Borders, !Handles, Sticky, WindowListSkip, CirculateSkip, StaysOnTop
+Style "wwm-bar" !Title, !Borders, !Handles, Sticky, WindowListSkip, CirculateSkip, StaysOnTop, PositionPlacement 0 0, FixedPosition
 Key Return A 4 Exec exec ${_term_script}
 Key b A 4 Exec exec ${_browser_script}
 Key e A 4 Exec exec ${_emacs_script}
@@ -4408,7 +5139,7 @@ Key q A 4S Quit
 EOF
 			_exec_x11 "${_fvwm_bin}" -f "${_fvwm_cfg}"
 			_ret=$?
-			rm -f "${_fvwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_fvwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" "${_rofi_theme}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		fluxbox)
@@ -4429,7 +5160,7 @@ Mod4 Shift q :Exit
 EOF
 			cat << EOF >| "${_fb_dir}/overlay"
 background: solid
-background.color: ${_c_bg}
+background.color: ${_c_root}
 window.borderWidth: 2
 window.borderColor: ${_c_border}
 window.title.focus.color: ${_c_panel}
@@ -4444,11 +5175,13 @@ EOF
   [Sticky] {yes}
   [Layer] {AboveDock}
   [Deco] {NONE}
+  [Position] (UPPERLEFT) {0 0}
 [end]
 [app] (class=wwm-bar)
   [Sticky] {yes}
   [Layer] {AboveDock}
   [Deco] {NONE}
+  [Position] (UPPERLEFT) {0 0}
 [end]
 EOF
 			cat << EOF >| "${_fb_dir}/init"
@@ -4461,7 +5194,7 @@ session.appsFile: ${_fb_dir}/apps
 EOF
 			_exec_x11 fluxbox -rc "${_fb_dir}/init"
 			_ret=$?
-			rm -rf "${_fb_dir}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -rf "${_fb_dir}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" "${_rofi_theme}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		icewm)
@@ -4472,7 +5205,7 @@ WorkspaceNames=" 1 "
 ShowTaskBar=0
 BorderSizeX=2
 BorderSizeY=2
-DesktopBackgroundColor="${_c_bg}"
+DesktopBackgroundColor="${_c_root}"
 ColorActiveTitleBar="${_c_panel}"
 ColorNormalTitleBar="${_c_bg}"
 ColorActiveTitleBarText="${_c_fg}"
@@ -4495,7 +5228,7 @@ wwm-bar.allWorkspaces: 1
 EOF
 			ICEWM_PRIVCFG="${_ice_dir}" _exec_x11 icewm -c "${_ice_dir}/preferences"
 			_ret=$?
-			rm -rf "${_ice_dir}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -rf "${_ice_dir}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" "${_rofi_theme}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		jwm)
@@ -4504,7 +5237,7 @@ EOF
 <?xml version="1.0"?>
 <JWM>
   <Desktops width="1" height="1">
-    <Background type="solid">${_c_bg}</Background>
+    <Background type="solid">${_c_root}</Background>
   </Desktops>
   <WindowStyle>
     <Font>${_ui_font}-10:bold</Font>
@@ -4542,7 +5275,7 @@ EOF
 EOF
 			_exec_x11 jwm -f "${_jwm_cfg}"
 			_ret=$?
-			rm -f "${_jwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_jwm_cfg}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" "${_rofi_theme}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		pekwm)
@@ -4584,23 +5317,23 @@ Property = "wwm-bar,wwm-bar" {
 EOF
 			_exec_x11 pekwm --config "${_pekwm_dir}/config"
 			_ret=$?
-			rm -rf "${_pekwm_dir}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -rf "${_pekwm_dir}" "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" "${_rofi_theme}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		dwm|twm)
 			_exec_x11 "${_target_wm}"
 			_ret=$?
-			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" "${_rofi_theme}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		matchbox|matchbox-window-manager)
 			_exec_x11 sh -c '(command -v xterm > "/dev/null" 2>&1 && xterm &); exec matchbox-window-manager'
 			_ret=$?
-			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" "${_rofi_theme}" 2> "/dev/null" || true
 			return "${_ret}"
 			;;
 		*)
-			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" 2> "/dev/null" || true
+			rm -f "${_term_script}" "${_browser_script}" "${_files_script}" "${_emacs_script}" "${_menu_script}" "${_bar_script}" "${_rofi_theme}" 2> "/dev/null" || true
 			if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 				_ui_err "Gerenciador X11 '${_target_wm}' não suportado pelo xwm."
 			fi

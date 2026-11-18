@@ -495,6 +495,45 @@ _detect_privilege_escalator() {
 ### --------------------------------
 ### DETECT RAW TTY
 ### --------------------------------
+_has_raw_tty_ancestor() {
+	ps -ax -o pid= -o ppid= -o tty= -o comm= 2> "/dev/null" | awk -v start_pid="$$" '
+		$1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ {
+			p = $1 + 0
+			pp = $2 + 0
+			t = $3
+			sub(/^[ \t]*[0-9]+[ \t]+[0-9]+[ \t]+[^ \t]+[ \t]*/, "", $0)
+			sub(/[ \t]+$/, "", $0)
+			parent[p] = pp
+			tty[p] = t
+			comm[p] = $0
+		}
+		END {
+			start = start_pid + 0
+			cur = start
+			for (depth = 0; depth <= 16; depth++) {
+				if (cur <= 1 || !(cur in parent)) {
+					exit 1
+				}
+				if (cur != start) {
+					name = comm[cur]
+					sub(/^.*\//, "", name)
+					sub(/^-+/, "", name)
+					if (name ~ /^(Xorg|X|Xwayland|xinit|startx|sway|labwc|Hyprland|hyprland|river|niri|wayfire|dwl|hikari|weston|cage|kwin_wayland(_wrappe(r)?)?|kwin_x11|gnome-shell|plasmashell|xfce4-session|mate-session|cinnamon(-sessio(n)?)?|cosmic-comp|cosmic-session|startplasma-way(land)?|startplasma-x11|foot|footclient|konsole|xterm|alacritty|kitty|wezterm(-gui)?|ghostty|gnome-terminal(-serv(er)?)?|gnome-terminal-|tilix|terminator|urxvt[cd]?|rxvt|st|ptyxis|sshd(-session)?|mosh-server)$/ || name ~ /^sshd:/) {
+						exit 1
+					}
+					tval = tty[cur]
+					sub(/^\/dev\//, "", tval)
+					if (tval ~ /^(ttyv[0-9a-f]+|tty[0-9]+|v[0-9]+|ttyS[0-9]+|ttyC[0-9]+|ttyE[0-9]+|ttyq[0-9]+|console|vt\/.+)$/) {
+						exit 0
+					}
+				}
+				cur = parent[cur]
+			}
+			exit 1
+		}
+	'
+}
+
 _is_raw_tty() {
 	[ -n "${_IS_RAW_TTY_CACHED+x}" ] && return "${_IS_RAW_TTY_CACHED}"
 
@@ -502,38 +541,56 @@ _is_raw_tty() {
 		1|true|yes) _IS_RAW_TTY_CACHED=0; return 0 ;;
 	esac
 
-	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
-		*0*|*false*|*no*) _IS_RAW_TTY_CACHED=1; return 1 ;;
-	esac
+	local _raw_flag
+	for _raw_flag in "${RAW_TTY:-}" "${LC_RAW_TTY:-}" "${UNIVERSAL_RAW_TTY:-}"; do
+		case "${_raw_flag}" in
+			0|false|no) _IS_RAW_TTY_CACHED=1; return 1 ;;
+		esac
+	done
 
 	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${TERM_PROGRAM:-}" ] || [ -n "${KONSOLE_VERSION:-}" ] || [ -n "${WT_SESSION:-}" ]; then
 		_IS_RAW_TTY_CACHED=1
 		return 1
 	fi
 
-	local _dev="${SSH_TTY:-${TTY:-}}"
-	if [ -z "${_dev}" ] && { [ -t 0 ] || [ -t 1 ]; }; then
-		_dev="$(command tty 2> "/dev/null" || true)"
-	fi
-
-	case "${_dev}" in
-		/dev/pts/*|/dev/ttyp*|/dev/ttys*|/dev/pty*)
-			_IS_RAW_TTY_CACHED=1
-			return 1
-			;;
-		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/ttyC*|/dev/ttyE*|/dev/ttyq*|/dev/term/*|/dev/vt/*|/dev/console)
-			_IS_RAW_TTY_CACHED=0
-			return 0
-			;;
-	esac
-
 	case "${TERM:-}" in
 		linux|cons25*|wvt25*) _IS_RAW_TTY_CACHED=0; return 0 ;;
 	esac
 
-	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
-		*1*|*true*|*yes*) _IS_RAW_TTY_CACHED=0; return 0 ;;
+	local _dev="${SSH_TTY:-${TTY:-}}"
+	if [ -z "${_dev}" ]; then
+		if [ -t 0 ]; then
+			_dev="$(command tty 2> "/dev/null" || true)"
+		elif [ -t 1 ]; then
+			_dev="$(command tty <&1 2> "/dev/null" || true)"
+		fi
+	fi
+
+	case "${_dev}" in
+		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyS*|/dev/ttyC*|/dev/ttyE*|/dev/ttyq*|/dev/term/*|/dev/vt/*|/dev/console)
+			_IS_RAW_TTY_CACHED=0
+			return 0
+			;;
+		/dev/pts/*|/dev/ttyp*|/dev/ttys*|/dev/pty*)
+			for _raw_flag in "${RAW_TTY:-}" "${LC_RAW_TTY:-}" "${UNIVERSAL_RAW_TTY:-}"; do
+				case "${_raw_flag}" in
+					1|true|yes) _IS_RAW_TTY_CACHED=0; return 0 ;;
+				esac
+			done
+			if _has_raw_tty_ancestor; then
+				_IS_RAW_TTY_CACHED=0
+				return 0
+			fi
+			_IS_RAW_TTY_CACHED=1
+			return 1
+			;;
 	esac
+
+	for _raw_flag in "${RAW_TTY:-}" "${LC_RAW_TTY:-}" "${UNIVERSAL_RAW_TTY:-}"; do
+		case "${_raw_flag}" in
+			1|true|yes) _IS_RAW_TTY_CACHED=0; return 0 ;;
+		esac
+	done
 
 	_IS_RAW_TTY_CACHED=1
 	return 1

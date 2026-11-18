@@ -588,15 +588,10 @@ _detect_gtk_theme() {
 ### --------------------------------
 _detect_qt_theme() {
 	local _flavor="$(_detect_desktop_theme)"
-	local _color_scheme="$(_detect_color_scheme "${_flavor}")"
 
 	case "${_flavor}" in
 		kde|lxqt)
-			if [ "${_color_scheme}" = "dark" ]; then
-				_DETECTED_QT_THEME="Breeze-Dark"
-			else
-				_DETECTED_QT_THEME="Breeze"
-			fi
+			_DETECTED_QT_THEME="Breeze"
 			;;
 		deepin)
 			_DETECTED_QT_THEME="chameleon"

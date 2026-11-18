@@ -163,23 +163,23 @@ Ao inicializar uma máquina diretamente em um console TTY de emergência (sem se
 
 ---
 
-## 🖥️ Sistema Visual de Desktop & Paleta Adwaita-Breeze Dark Fusion
+## 🖥️ Sistema Visual de Desktop & Paleta Breeze-Adwaita Fusion
 
 Além da experiência de linha de comando no terminal e no console TTY, o ecossistema estende sua identidade visual para sessões de gerenciadores de janela (`wwm`, `xwm`) e quiosques gráficos flutuantes (`wgui`, `xgui`):
 
-### 1. Paleta Cromática Adwaita-Breeze Dark Fusion
+### 1. Paleta Cromática Breeze-Adwaita Fusion
 
-A identidade visual equilibra a sobriedade dos tons escuros do Adwaita com o contraste moderno do KDE Breeze:
+A identidade visual unifica o contraste moderno do KDE Breeze com a sobriedade estrutural do Adwaita:
 
-| Elemento de UI                         | Código Hex | Papel Visual                                                        |
-| :------------------------------------- | :--------: | :------------------------------------------------------------------ |
-| **Superfície Base / Fundo**            | `#1e1e22`  | Cor de fundo das barras, bordas inativas e área de desktop          |
-| **Painel Ativo / Superfície Elevada**  | `#2b2b30`  | Fundo de botões interativos e títulos de janelas ativas             |
-| **Acento Primário (Azul Adwaita)**     | `#3584e4`  | Foco de janela, bordas ativas e botões de ação principal            |
-| **Acento de Alerta (Vermelho Breeze)** | `#e01b24`  | Botões de encerramento (`[ Close ]`, `[ Exit ]`) e janelas urgentes |
-| **Bordas & Separadores**               | `#38383d`  | Linhas de contenção de containers e separadores de barra            |
-| **Texto Secundário / Inativo**         | `#9a9996`  | Rótulos de workspaces inativos e carimbos de data/hora              |
-| **Texto de Alto Contraste**            | `#ffffff`  | Tipografia em botões em foco e títulos de janelas ativas            |
+| Elemento de UI                           | Código Hex | Papel Visual                                                            |
+| :--------------------------------------- | :--------: | :---------------------------------------------------------------------- |
+| **Fundo da Barra / Inativo**             | `#1e222a`  | Cor de fundo das barras (`wwm-bar`, `xgui-tabbar`) e abas inativas      |
+| **Superfície de Botões / Tabs Inativas** | `#2a2e38`  | Fundo de botões interativos e abas não selecionadas (borda `#3b404d`)   |
+| **Bordas & Contornos**                   | `#3b404d`  | Linhas de contenção de botões, abas inativas e separadores de barra     |
+| **Destaque Ativo (Azul Breeze)**         | `#3daee9`  | Tab/workspace ativo, borda de foco e botões de ação em destaque         |
+| **Alerta / Exit / Close Hover**          | `#e05263`  | Botões de encerramento (`Close`, `Exit`) em `:hover` e alertas          |
+| **Fundo Desktop / Root**                 | `#181b20`  | Fundo de root window (`xsetroot`) e área base do gerenciador de janelas |
+| **Texto de Alto Contraste**              | `#ffffff`  | Tipografia sobre destaque ativo (`#3daee9`) e rótulos em foco           |
 
 ### 2. Pipeline Tipográfico (`_resolve_desktop_font`)
 
@@ -239,12 +239,12 @@ Sincroniza proceduralmente `SAL_USE_VCLPLUGIN="gtk3"`, `GTK_APPLICATION_PREFER_D
 
 | Desktop Environment | Tema GTK Canônico                         | Estilo de Widget Qt (`QT_STYLE_OVERRIDE`) | Plataforma Qt (`QT_QPA_PLATFORMTHEME`)                         |
 | :------------------ | :---------------------------------------- | :---------------------------------------- | :------------------------------------------------------------- |
-| **KDE (Plasma)**    | `Breeze-Dark`                             | `Breeze-Dark` / `Breeze`                  | `xdgdesktopportal`                                             |
+| **KDE (Plasma)**    | `Breeze-Dark`                             | `Breeze`                                  | `xdgdesktopportal`                                             |
 | **GNOME**           | `adw-gtk3-dark` / GSettings               | _(Padrão via Platform Theme)_             | `qt6ct` $\rightarrow$ `qt5ct` $\rightarrow$ `xdgdesktopportal` |
 | **MATE**            | `Yaru-MATE-dark` / `BlackMATE`            | _(Padrão via Platform Theme)_             | `gtk3`                                                         |
 | **Cinnamon**        | `Mint-Y-Dark`                             | _(Padrão via Platform Theme)_             | `gtk3`                                                         |
 | **XFCE**            | `Greybird-dark`                           | _(Padrão via Platform Theme)_             | `gtk3`                                                         |
-| **LXQt**            | `Breeze-Dark` / `Arc-Dark`                | `Breeze-Dark` / `Breeze`                  | `lxqt`                                                         |
+| **LXQt**            | `Breeze-Dark` / `Arc-Dark`                | `Breeze`                                  | `lxqt`                                                         |
 | **LXDE**            | `Clearlooks-Phenix` / `Arc-Dark`          | _(Padrão via Platform Theme)_             | `gtk3`                                                         |
 | **Budgie**          | `Materia-dark` / `Arc-Dark`               | _(Padrão via Platform Theme)_             | `qt6ct` $\rightarrow$ `qt5ct` $\rightarrow$ `xdgdesktopportal` |
 | **Pantheon**        | `io.elementary.stylesheet.blueberry-dark` | _(Padrão via Platform Theme)_             | `qt6ct` $\rightarrow$ `qt5ct` $\rightarrow$ `xdgdesktopportal` |
@@ -254,9 +254,9 @@ Sincroniza proceduralmente `SAL_USE_VCLPLUGIN="gtk3"`, `GTK_APPLICATION_PREFER_D
 
 ### 5. Componentes Visuais de Sessão & Quiosque
 
-- **Barra Interativa `wwm-bar` (GTK3 / Swaybar) com Botões Pílula GTK4/Qt6:** No gerenciador Wayland nativo (`wwm`), a barra superior opera via GTK3 nativo (`wwm-bar`) com fallback transparente para streaming JSON da `swaybar` (`"click_events": true`). Adota botões estilo pílula inspirados nas diretrizes de GTK4 e Qt6 sem colchetes (`Web Browser`, `Terminal`, `Files`, `Emacs`, `Menu`, `Close`, `Exit`), com resposta imediata e feedback dinâmico de `:hover` (`#3584e4` em ferramentas, `#e01b24` nos botões de encerramento). Incorpora gestão dinâmica de workspaces (`1..N`) com botões dedicados de criação (`+`, que descobre o menor índice vago) e destruição (`−`, que move janelas do workspace focado para um adjacente e descarta a área).
+- **Barra Interativa `wwm-bar` (GTK3 / Swaybar) com Botões Pílula GTK4/Qt6:** No gerenciador Wayland nativo (`wwm`), a barra superior (`BAR_H = 32`, `32px`) opera via GTK3 nativo (`wwm-bar`) com fallback transparente para streaming JSON da `swaybar` (`"click_events": true`). Adota botões estilo pílula inspirados nas diretrizes de GTK4 e Qt6 sem colchetes (`Web Browser`, `Terminal`, `Files`, `Emacs`, `Menu`, `Close`, `Exit`), com resposta imediata e feedback dinâmico de `:hover` (`#3daee9` em ferramentas, `#e05263` nos botões de encerramento). Incorpora gestão dinâmica de workspaces (`1..N`) com botões dedicados de criação (`+`, que descobre o menor índice vago) e destruição (`−`, que move janelas do workspace focado para um adjacente e descarta a área).
 - **Menu Dinâmico & Ergonomia SSD no `xwm`:** No ambiente X11 com Openbox, um parser procedural em AWK varre os arquivos `.desktop` do sistema em `/usr/share/applications`, `/usr/local/share/applications` e Flatpak, agrupando as aplicações em categorias canônicas: Desenvolvimento (`dev`), Rede (`net`), Escritório (`office`), Multimídia (`media`) e Sistema (`sys`). Além disso, o `xwm` implementa suporte completo a decorações server-side (SSD) com redimensionamento fluido em todas as 4 bordas e 4 cantos (`Top`, `Bottom`, `Left`, `Right`, `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`), permitindo arrastar bordas com o mouse sem depender de combinações modais de teclado (`Alt + Right Click`).
 - **Abas Dinâmicas no `xgui` e `wgui` com Paridade 100% ($\ge 2$ Janelas):** Nos quiosques flutuantes sob Wayland e X11, o monitoramento de janelas ativas atua em tempo real:
     - **Janela Única (`_count < 2`):** Interface imersiva de aplicação única com bordas ocultas (`border none` / `layout splith`).
-    - **Múltiplas Janelas (`_count >= 2`):** Assim que uma segunda janela, caixa de diálogo ou visualizador modal é aberto, o `wgui` (Wayland) aciona abas no Sway e o `xgui` (X11) instancia a barra superior `xgui-tabbar` (GTK3 dock de 28px).
-    - **Paridade Estética e Tipográfica 1:1:** O `xgui-tabbar` replica fielmente as dimensões e pesos visuais do `wgui`, utilizando tipografia em `10pt Bold`, fundo da aba focada em tom elevado `#2b2b30` com borda azul `#3584e4` (com realce no topo de 2px), abas desfocadas em tom base `#1e1e22` com bordas `#38383d`, texto secundário em `#9a9996` e iluminação em `:hover` (`#ffffff`), colapsando instantaneamente quando o número de janelas cai para uma.
+    - **Múltiplas Janelas (`_count >= 2`):** Assim que uma segunda janela, caixa de diálogo ou visualizador modal é aberto, o `wgui` (Wayland) aciona abas no Sway e o `xgui` (X11) instancia a barra superior `xgui-tabbar` (GTK3 dock de `32px`, `BAR_H = 32`).
+    - **Paridade Estética e Tipográfica 1:1:** O `xgui-tabbar` replica fielmente as dimensões e pesos visuais do `wgui` na paleta **Breeze-Adwaita Fusion**, utilizando tipografia em `10pt Bold`, aba focada com destaque `#3daee9` e texto `#ffffff`, abas desfocadas em `#2a2e38` sobre base `#1e222a` com bordas `#3b404d` e hover de encerramento `#e05263`, colapsando instantaneamente quando o número de janelas cai para uma.

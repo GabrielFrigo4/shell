@@ -42,6 +42,12 @@ fi
 ### TERMINAL & SOCKET HELPERS
 ### ================================
 _ec_is_raw_vt() {
+	case "${FORCE_RAW_TTY:-}" in
+		1|true|yes) return 0 ;;
+	esac
+	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
+		*0*|*false*|*no*) return 1 ;;
+	esac
 	_ec_tty=""
 	if [ -t 0 ]; then
 		_ec_tty="$(tty 2> "/dev/null" || true)"
@@ -50,13 +56,94 @@ _ec_is_raw_vt() {
 		_ec_tty="$(tty <&1 2> "/dev/null" || true)"
 	fi
 	case "${_ec_tty}" in
+		/dev/pts/*|/dev/ttyp*|/dev/ttys*|/dev/pty*)
+			unset _ec_tty
+			return 1
+			;;
 		/dev/tty[0-9]*|/dev/ttyv*|/dev/ttyC*|/dev/ttyE*|/dev/console)
 			unset _ec_tty
 			return 0
 			;;
 	esac
 	unset _ec_tty
+	if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${TERM_PROGRAM:-}" ] || [ -n "${KONSOLE_VERSION:-}" ] || [ -n "${WT_SESSION:-}" ]; then
+		return 1
+	fi
+	case "${TERM:-}" in
+		linux|cons25*|wvt25*) return 0 ;;
+	esac
+	case "${RAW_TTY:-}${LC_RAW_TTY:-}${UNIVERSAL_RAW_TTY:-}" in
+		*1*|*true*|*yes*) return 0 ;;
+	esac
 	return 1
+}
+
+_ec_exec_gui_env() {
+	exec env \
+		-u RAW_TTY \
+		-u LC_RAW_TTY \
+		-u UNIVERSAL_RAW_TTY \
+		-u FORCE_RAW_TTY \
+		-u NVIM_NOTTYFAST \
+		COLORTERM="truecolor" \
+		MICRO_TRUECOLOR="1" \
+		"$@"
+}
+
+_ec_run_tty_env() {
+	if _ec_is_raw_vt; then
+		env \
+			-u DISPLAY \
+			-u WAYLAND_DISPLAY \
+			-u COLORTERM \
+			-u MICRO_TRUECOLOR \
+			-u TERM_PROGRAM \
+			-u KONSOLE_VERSION \
+			-u WT_SESSION \
+			RAW_TTY="1" \
+			LC_RAW_TTY="1" \
+			UNIVERSAL_RAW_TTY="1" \
+			FORCE_RAW_TTY="1" \
+			"$@"
+	else
+		env \
+			-u RAW_TTY \
+			-u LC_RAW_TTY \
+			-u UNIVERSAL_RAW_TTY \
+			-u FORCE_RAW_TTY \
+			-u NVIM_NOTTYFAST \
+			COLORTERM="truecolor" \
+			MICRO_TRUECOLOR="1" \
+			"$@"
+	fi
+}
+
+_ec_exec_tty_env() {
+	if _ec_is_raw_vt; then
+		exec env \
+			-u DISPLAY \
+			-u WAYLAND_DISPLAY \
+			-u COLORTERM \
+			-u MICRO_TRUECOLOR \
+			-u TERM_PROGRAM \
+			-u KONSOLE_VERSION \
+			-u WT_SESSION \
+			RAW_TTY="1" \
+			LC_RAW_TTY="1" \
+			UNIVERSAL_RAW_TTY="1" \
+			FORCE_RAW_TTY="1" \
+			"$@"
+	else
+		exec env \
+			-u RAW_TTY \
+			-u LC_RAW_TTY \
+			-u UNIVERSAL_RAW_TTY \
+			-u FORCE_RAW_TTY \
+			-u NVIM_NOTTYFAST \
+			COLORTERM="truecolor" \
+			MICRO_TRUECOLOR="1" \
+			"$@"
+	fi
 }
 
 _ec_canonical_path() {
@@ -133,6 +220,45 @@ _ec_probe_socket() {
 	)
 }
 
+_ec_start_daemon() {
+	command -v emacs > "/dev/null" 2>&1 || return 1
+	_ec_daemon_sock="${_ec_target_sock}"
+	if [ "${_ec_is_default_mode}" -eq 1 ]; then
+		_ec_daemon_sock="${_ec_std_sock}"
+	fi
+	_ec_ensure_socket_dir "${_ec_daemon_sock}"
+	env \
+		-u EMACS_SOCKET_NAME \
+		-u RAW_TTY \
+		-u LC_RAW_TTY \
+		-u UNIVERSAL_RAW_TTY \
+		-u FORCE_RAW_TTY \
+		-u NVIM_NOTTYFAST \
+		-u TERM_PROGRAM \
+		-u KONSOLE_VERSION \
+		-u WT_SESSION \
+		emacs --daemon="${_ec_daemon_sock}" > "/dev/null" 2>&1 || {
+			unset _ec_daemon_sock
+			return 1
+		}
+	_ec_wait=0
+	while [ "${_ec_wait}" -lt 25 ]; do
+		if [ -S "${_ec_daemon_sock}" ] && _ec_probe_socket "${_ec_daemon_sock}"; then
+			_ec_live_sock="$(_ec_canonical_path "${_ec_daemon_sock}")"
+			if [ "${_ec_is_default_mode}" -eq 1 ] && [ -n "${_ec_auth_sock}" ] && [ "${_ec_live_sock}" != "${_ec_auth_sock}" ]; then
+				_ec_ensure_socket_dir "${_ec_auth_sock}"
+				ln -sfn "${_ec_live_sock}" "${_ec_auth_sock}" 2> "/dev/null" || true
+			fi
+			unset _ec_daemon_sock _ec_wait
+			return 0
+		fi
+		sleep 0.2 2> "/dev/null" || sleep 1 2> "/dev/null" || break
+		_ec_wait=$((_ec_wait + 1))
+	done
+	unset _ec_daemon_sock _ec_wait
+	return 1
+}
+
 _ec_exec_nw() {
 	_ec_nw_bin="$(command -v emacs 2> "/dev/null" || command -v emacs-nw 2> "/dev/null" || true)"
 	if [ -z "${_ec_nw_bin}" ]; then
@@ -153,7 +279,7 @@ _ec_exec_nw() {
 		_ec_argc=$((_ec_argc - 1))
 	done
 	unset _ec_argc _ec_arg
-	exec "${_ec_nw_bin}" -nw "$@"
+	_ec_exec_tty_env "${_ec_nw_bin}" -nw "$@"
 }
 
 ### ================================
@@ -209,16 +335,12 @@ if [ "${_ec_want_eval}" -eq 0 ] && [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISP
 	_ec_want_tui=1
 fi
 
-if [ "${_ec_want_tui}" -eq 1 ] && _ec_is_raw_vt; then
-	_ec_exec_nw "$@"
-fi
-
 if ! command -v emacsclient > "/dev/null" 2>&1; then
 	if [ "${_ec_want_tui}" -eq 1 ]; then
 		_ec_exec_nw "$@"
 	fi
 	if command -v emacs > "/dev/null" 2>&1; then
-		exec emacs "$@"
+		_ec_exec_gui_env emacs "$@"
 	fi
 	printf '%s\n' "emacsclient: command not found" >&2
 	exit 127
@@ -350,6 +472,19 @@ if [ "${_ec_explicit_server_file}" -eq 0 ]; then
 	fi
 fi
 
+if [ -z "${_ec_live_sock}" ] && [ "${_ec_explicit_server_file}" -eq 0 ]; then
+	_ec_skip_autostart=0
+	if [ "${_ec_want_eval}" -eq 1 ]; then
+		case "$*" in
+			*kill-emacs*) _ec_skip_autostart=1 ;;
+		esac
+	fi
+	if [ "${_ec_skip_autostart}" -eq 0 ]; then
+		_ec_start_daemon || true
+	fi
+	unset _ec_skip_autostart
+fi
+
 if [ -n "${_ec_live_sock}" ]; then
 	if [ -z "${_ec_explicit_socket}" ] && [ "${_ec_explicit_server_file}" -eq 0 ]; then
 		EMACS_SOCKET_NAME="${_ec_live_sock}"
@@ -365,11 +500,11 @@ fi
 if [ "${_ec_want_tui}" -eq 1 ]; then
 	if [ -n "${_ec_live_sock}" ] || [ "${_ec_explicit_server_file}" -eq 1 ]; then
 		if [ -n "${_ec_live_sock}" ] && [ -z "${_ec_explicit_socket}" ] && [ "${_ec_explicit_server_file}" -eq 0 ]; then
-			if emacsclient -t -s "${_ec_live_sock}" "$@" 2> "/dev/null"; then
+			if _ec_run_tty_env emacsclient -t -s "${_ec_live_sock}" "$@" 2> "/dev/null"; then
 				exit 0
 			fi
 		else
-			if emacsclient -t "$@" 2> "/dev/null"; then
+			if _ec_run_tty_env emacsclient -t "$@" 2> "/dev/null"; then
 				exit 0
 			fi
 		fi
@@ -379,19 +514,37 @@ fi
 
 if [ "${_ec_want_eval}" -eq 1 ]; then
 	if [ -n "${_ec_live_sock}" ] && [ -z "${_ec_explicit_socket}" ] && [ "${_ec_explicit_server_file}" -eq 0 ]; then
-		exec emacsclient -s "${_ec_live_sock}" --alternate-editor="" "$@"
+		exec env \
+			-u RAW_TTY \
+			-u LC_RAW_TTY \
+			-u UNIVERSAL_RAW_TTY \
+			-u FORCE_RAW_TTY \
+			-u NVIM_NOTTYFAST \
+			-u TERM_PROGRAM \
+			-u KONSOLE_VERSION \
+			-u WT_SESSION \
+			emacsclient -s "${_ec_live_sock}" --alternate-editor="" "$@"
 	fi
-	exec emacsclient --alternate-editor="" "$@"
+	exec env \
+		-u RAW_TTY \
+		-u LC_RAW_TTY \
+		-u UNIVERSAL_RAW_TTY \
+		-u FORCE_RAW_TTY \
+		-u NVIM_NOTTYFAST \
+		-u TERM_PROGRAM \
+		-u KONSOLE_VERSION \
+		-u WT_SESSION \
+		emacsclient --alternate-editor="" "$@"
 fi
 
 if [ -n "${_ec_live_sock}" ] && [ -z "${_ec_explicit_socket}" ] && [ "${_ec_explicit_server_file}" -eq 0 ]; then
 	if [ "$#" -eq 0 ]; then
-		exec emacsclient -s "${_ec_live_sock}" --create-frame --alternate-editor="" -n
+		_ec_exec_gui_env emacsclient -s "${_ec_live_sock}" --create-frame --alternate-editor="" -n
 	fi
-	exec emacsclient -s "${_ec_live_sock}" --create-frame --alternate-editor="" "$@"
+	_ec_exec_gui_env emacsclient -s "${_ec_live_sock}" --create-frame --alternate-editor="" "$@"
 fi
 
 if [ "$#" -eq 0 ]; then
-	exec emacsclient --create-frame --alternate-editor="" -n
+	_ec_exec_gui_env emacsclient --create-frame --alternate-editor="" -n
 fi
-exec emacsclient --create-frame --alternate-editor="" "$@"
+_ec_exec_gui_env emacsclient --create-frame --alternate-editor="" "$@"

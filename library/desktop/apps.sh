@@ -8,6 +8,9 @@
 _restore_tty_cursor() {
 	[ -n "${INSIDE_EMACS:-}" ] && return 0
 	if [ -t 0 ]; then
+		if command -v python3 > "/dev/null" 2>&1; then
+			python3 -c 'import sys, termios; termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)' 2> "/dev/null" || true
+		fi
 		command -v stty > "/dev/null" 2>&1 && stty sane 2> "/dev/null" || true
 	fi
 	if [ -t 1 ]; then

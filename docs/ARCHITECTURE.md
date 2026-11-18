@@ -164,8 +164,8 @@ flowchart TD
 O repositório **Setup** opera com privilégios de superusuário (`sudo`/`doas`) e governa o estado do hardware e do sistema operacional desde o boot:
 
 - **Parâmetros de Kernel:** Injeta `vt.cur_default=0xee10` (`60944`) no GRUB e `systemd-boot`, estabelecendo o softcursor canônico para o subsistema VT do Linux.
-- **Drivers de Console & Tipografia:** Instala e ativa as fontes bitmap de alta legibilidade (Spleen 12x24 / 512 glifos) via `vconsole.conf` (Linux) e `/etc/rc.conf` (FreeBSD).
-- **Desativação de Pisque:** Configura `cursor_blink 0` via `systemd-tmpfiles` e limpa o terminal pré-login em `/etc/issue` no Linux; configura `allscreens_flags="-c normal,noblink"` no FreeBSD.
+- **Drivers de Console & Tipografia:** Instala e ativa as fontes bitmap de alta legibilidade via `vconsole.conf` (Linux, Spleen 12x24 / 512 glifos) e serviço rc.d `vt_autofont` (`Setup/freebsd/desktop/system/vt-autofont.sh`) com `allscreens_flags="-f <fonte>"` proporcional à resolução no `/etc/rc.conf` (FreeBSD).
+- **Desativação de Pisque:** Configura `cursor_blink 0` via `systemd-tmpfiles` e limpa o terminal pré-login em `/etc/issue` no Linux; no FreeBSD `vt(4)`, o cursor é intrinsecamente estático por arquitetura de kernel (`sys/dev/vt/vt_core.c`), dispensando flags obsoletas do antigo `sc(4)`.
 - O Setup garante que, antes mesmo do usuário autenticar, o console virtual já opere em alta resolução e com cursor estático.
 
 ### 2. Responsabilidade do Shell (Sessão & Auto-Cura)
@@ -173,6 +173,7 @@ O repositório **Setup** opera com privilégios de superusuário (`sudo`/`doas`)
 O repositório **Universal Shell** opera no espaço de usuário desprivilegiado e governa a integridade da sessão interativa:
 
 - **Resiliência contra Mutações de TUI:** Editores modais (Helix, Vim, Neovim) e aplicações TUI frequentemente alteram o cursor via sequências de controle DECSCUSR (`\e[?1 q` para bloco piscante, `\e[?5 q` para barra). Ao encerrar ou receber sinais (`SIGINT`), essas aplicações podem deixar o console em estado degradado.
+- **Linhagem TTY (`_has_raw_tty_ancestor` & `_is_raw_tty`):** A detecção em `core/detect.sh` avalia a árvore de processos ancestrais respeitando fronteiras gráficas (Wayland/X11/PTY e Emacs GUI) e preservando o modo TTY em subshells de `:terminal`, `eat`, `vterm` e `term`.
 - **Auto-Cura no Retorno de Ferramentas:** Wrappers de editores (como `hx()` e `_restore_tty_cursor` em `library/desktop/apps.sh`) capturam o código de retorno e reemitem a sequência de cura (`\e%G\e[?16;238;0c` em consoles puros `_is_raw_tty` Linux ou `\e[1 q\e]112\a\e]112\e\\` em PTYs gráficos).
 - **Recuperação Segura do Daemon Emacs (`.scripts/emacs-client`):** Em vez de encerrar processos indiscriminadamente com `pkill -9 -x emacs`, o entrypoint `.scripts/emacs-client` (e `_emacs_ensure_healthy_daemon` em `library/desktop/emacs.sh`) executa um probe não-bloqueante (`timeout 2 emacsclient -e '(+ 1 1)'`) sobre o socket `EMACS_SOCKET_NAME`, limpando processos/sockets órfãos somente quando o daemon não responde.
 - **Auto-Cura no Ciclo de Prompt:** Na inicialização da sessão (`core/environment.sh`) e na renderização dos prompts (`theme/{bash,zsh,sh,ksh}.sh`), o Shell assegura que o interpretador UTF-8 permaneça sincronizado (`\e%G` em Linux VT ou `\e[1 q` em PTY) e que o cursor mantenha-se em bloco estático imune ao bug de deslocamento cromático das fontes de 512 glifos.

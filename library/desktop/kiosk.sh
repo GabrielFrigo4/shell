@@ -106,6 +106,7 @@ graphical_launcher_wayland() {
 		_saved_ifs="${IFS}"
 	fi
 	unset EMACS_OS_MODE
+	local _tty_snapshot="$(_tty_env_snapshot)"
 	_sanitize_graphical_env
 
 	local _flavor="" _selected_wm=""
@@ -115,6 +116,7 @@ graphical_launcher_wayland() {
 		case "$1" in
 			-l|--list|--pipeline)
 				_show_wm_pipeline "wayland"
+				eval "${_tty_snapshot}"
 				_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 				return 0
 				;;
@@ -202,6 +204,7 @@ graphical_launcher_wayland() {
 			else
 				unset _WAYLAND_REQUIRE_XWAYLAND
 			fi
+			eval "${_tty_snapshot}"
 			_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 			return 127
 		fi
@@ -233,6 +236,7 @@ graphical_launcher_wayland() {
 			else
 				unset _WAYLAND_REQUIRE_XWAYLAND
 			fi
+			eval "${_tty_snapshot}"
 			_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 			return 127
 		fi
@@ -247,16 +251,17 @@ graphical_launcher_wayland() {
 	_wayland_session_env "${_flavor}"
 
 	local _scheme="${_RESOLVED_COLOR_SCHEME:-dark}"
-	local _hex_bg="1e1e22" _hex_panel="2b2b30" _hex_border="38383d" _hex_fg="ffffff" _hex_muted="9a9996"
-	local _hex_accent="3584e4" _hex_urgent="e01b24"
+	local _hex_root="181b20" _hex_bg="1e222a" _hex_panel="2a2e38" _hex_border="3b404d" _hex_fg="ffffff" _hex_muted="9a9996"
+	local _hex_accent="3daee9" _hex_urgent="e05263"
 	if [ "${_scheme}" = "light" ]; then
+		_hex_root="f6f5f4"
 		_hex_bg="f6f5f4"
 		_hex_panel="ffffff"
 		_hex_border="cdc7c2"
 		_hex_fg="241f31"
 		_hex_muted="5e5c64"
 	fi
-	local _p_bg="#${_hex_bg}" _p_panel="#${_hex_panel}" _p_border="#${_hex_border}"
+	local _p_root="#${_hex_root}" _p_bg="#${_hex_bg}" _p_panel="#${_hex_panel}" _p_border="#${_hex_border}"
 	local _p_fg="#${_hex_fg}" _p_muted="#${_hex_muted}" _p_accent="#${_hex_accent}" _p_urgent="#${_hex_urgent}"
 
 	local _run_dir="${XDG_RUNTIME_DIR:-/tmp}"
@@ -367,19 +372,37 @@ EOF
 			local _tabwatch="${_run_dir}/wgui-tabwatch-$$.sh"
 			cat << 'EOF' >| "${_tabwatch}"
 #!/usr/bin/env sh
-_prev_state=""
-while :; do
-	_tree=$(swaymsg -t get_tree 2> "/dev/null" || true)
-	if [ -n "${_tree}" ]; then
-		if command -v python3 > "/dev/null" 2>&1; then
-			_ws_info=$(
-				printf '%s' "${_tree}" | python3 -c '
-import json, sys
-try:
-    tree = json.load(sys.stdin)
-except Exception:
-    print("0 0")
-    sys.exit(0)
+if command -v python3 > "/dev/null" 2>&1; then
+	exec python3 - << 'EOF_PY_TABWATCH'
+import json, os, socket, subprocess, sys, time
+
+def wait_swaysock(timeout=5.0):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        sock = os.environ.get("SWAYSOCK", "")
+        if sock and os.path.exists(sock):
+            try:
+                s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                s.settimeout(0.2)
+                s.connect(sock)
+                s.close()
+                return True
+            except Exception:
+                pass
+        else:
+            try:
+                res = subprocess.run(
+                    ["swaymsg", "-t", "get_version"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=0.3,
+                )
+                if res.returncode == 0:
+                    return True
+            except Exception:
+                pass
+        time.sleep(0.05)
+    return False
 
 def has_focus(node):
     if node.get("focused"):
@@ -411,40 +434,109 @@ def find_focused_ws(node):
             return found
     return None
 
-ws = find_focused_ws(tree)
-if ws is None:
-    print("0 0")
-else:
-    print(f"{ws.get('\''id'\'', 0)} {count_leaves(ws)}")
-' 2> "/dev/null" || printf '0 0'
-			)
-			_ws_id="${_ws_info%% *}"
-			_count="${_ws_info#* }"
-		else
-			_ws_id="0"
-			_count=$(printf '%s' "${_tree}" | grep -c '"pid":' || true)
-		fi
-		if [ "${_count:-0}" -ge 2 ]; then
-			_mode="tabbed"
-		else
-			_mode="single"
-		fi
-		_state="${_ws_id}:${_mode}"
-		if [ "${_state}" != "${_prev_state}" ]; then
-			if [ "${_mode}" = "tabbed" ]; then
-				swaymsg "[workspace=__focused__] layout tabbed, border normal 2" > "/dev/null" 2>&1 || true
-			else
-				swaymsg "[workspace=__focused__] layout splith, border pixel 2" > "/dev/null" 2>&1 || true
-			fi
-			_prev_state="${_state}"
-		fi
+def make_sync_layout():
+    state = {"prev": None}
+
+    def sync_layout():
+        try:
+            res = subprocess.run(
+                ["swaymsg", "-t", "get_tree"],
+                capture_output=True,
+                text=True,
+                timeout=1.0,
+            )
+            if res.returncode != 0 or not res.stdout:
+                return
+            tree = json.loads(res.stdout)
+        except Exception:
+            return
+        ws = find_focused_ws(tree)
+        if ws is None:
+            return
+        ws_id = ws.get("id", 0)
+        count = count_leaves(ws)
+        if count > 1:
+            mode = "tabbed"
+            cmd = "[workspace=__focused__] layout tabbed, border normal 2"
+            key = (ws_id, mode, count)
+        elif count == 1:
+            mode = "single"
+            cmd = "[workspace=__focused__] layout splith, border pixel 2"
+            key = (ws_id, mode, count)
+        else:
+            return
+        cur_layout = ws.get("layout")
+        need_converge = (mode == "tabbed" and cur_layout != "tabbed") or (mode == "single" and cur_layout == "tabbed")
+        if key != state["prev"] or need_converge:
+            subprocess.run(
+                ["swaymsg", cmd],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=1.0,
+            )
+            state["prev"] = key
+
+    return sync_layout
+
+wait_swaysock()
+sync_layout = make_sync_layout()
+sync_layout()
+try:
+    proc = subprocess.Popen(
+        ["swaymsg", "-t", "subscribe", "-m", '["window","workspace"]'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        bufsize=1,
+    )
+except Exception:
+    sys.exit(0)
+sync_layout()
+try:
+    if proc.stdout is not None:
+        while True:
+            line = proc.stdout.readline()
+            if not line:
+                break
+            sync_layout()
+except (KeyboardInterrupt, BrokenPipeError, OSError):
+    pass
+finally:
+    try:
+        proc.terminate()
+    except Exception:
+        pass
+    try:
+        proc.wait(timeout=1.0)
+    except Exception:
+        pass
+EOF_PY_TABWATCH
+fi
+
+_prev_mode=""
+swaymsg -t subscribe -m '["window","workspace"]' 2> "/dev/null" | while IFS= read -r _; do
+	_tree="$(swaymsg -t get_tree 2> "/dev/null" || true)"
+	[ -n "${_tree}" ] || continue
+	_count="$(printf '%s' "${_tree}" | grep -c '"pid":' || true)"
+	if [ "${_count:-0}" -gt 1 ]; then
+		_mode="tabbed"
+	else
+		_mode="single"
 	fi
-	sleep 1
+	if [ "${_mode}" != "${_prev_mode}" ]; then
+		if [ "${_mode}" = "tabbed" ]; then
+			swaymsg "[workspace=__focused__] layout tabbed, border normal 2" > "/dev/null" 2>&1 || true
+		else
+			swaymsg "[workspace=__focused__] layout splith, border pixel 2" > "/dev/null" 2>&1 || true
+		fi
+		_prev_mode="${_mode}"
+	fi
 done
 EOF
 			chmod 0755 "${_tabwatch}" 2> "/dev/null" || true
 
 			cat << EOF >| "${_sway_cfg}"
+output * bg ${_p_root} solid_color
 font pango:${_ui_font} Bold 10
 titlebar_padding 10 4
 default_border pixel 2
@@ -457,10 +549,10 @@ default_border pixel 2
 default_floating_border pixel 2
 hide_edge_borders smart
 popup_during_fullscreen smart
-client.focused ${_p_accent} ${_p_panel} ${_p_fg} ${_p_accent} ${_p_accent}
-client.focused_inactive ${_p_border} ${_p_bg} ${_p_muted} ${_p_border} ${_p_border}
+client.focused ${_p_accent} ${_p_accent} #ffffff ${_p_accent} ${_p_accent}
+client.focused_inactive ${_p_border} ${_p_panel} ${_p_fg} ${_p_border} ${_p_border}
 client.unfocused ${_p_border} ${_p_bg} ${_p_muted} ${_p_border} ${_p_border}
-client.urgent ${_p_urgent} ${_p_panel} #ffffff ${_p_urgent} ${_p_urgent}
+client.urgent ${_p_urgent} ${_p_urgent} #ffffff ${_p_urgent} ${_p_urgent}
 seat * xcursor_theme ${_cur_theme} ${_cur_size}
 seat * fallback true
 seat * hide_cursor when-typing disable
@@ -623,7 +715,7 @@ EOF
 			local _river_init="${_run_dir}/river-gui-$$.sh"
 			cat << EOF >| "${_river_init}"
 #!/usr/bin/env sh
-riverctl background-color 0x${_hex_bg}
+riverctl background-color 0x${_hex_root}
 riverctl border-width 2
 riverctl border-color-focused 0x${_hex_accent}
 riverctl border-color-unfocused 0x${_hex_border}
@@ -665,7 +757,7 @@ decoration {
 }
 misc {
     disable_hyprland_logo = true
-    background_color = rgb(${_hex_bg})
+    background_color = rgb(${_hex_root})
 }
 input {
     kb_layout = br
@@ -764,7 +856,7 @@ EOF
 [core]
 xwayland=${_xwayland_ini}
 [shell]
-background-color=0xff${_hex_bg}
+background-color=0xff${_hex_root}
 panel-position=none
 [keyboard]
 keymap_layout=br
@@ -787,7 +879,9 @@ EOF
 	[ "${_ret}" -eq 127 ] && _ret=1
 	rm -f "${_wayland_runner}" "${_wayland_entry}" 2> "/dev/null" || true
 	[ "${_had_wayland}" -eq 0 ] && unset WAYLAND_DISPLAY
+	eval "${_tty_snapshot}"
 	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
+	command -v _restore_tty_cursor > "/dev/null" 2>&1 && { _restore_tty_cursor > "/dev/null" 2>&1 || true; }
 	_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 
 	if [ "${_ret}" -ne 0 ]; then
@@ -806,6 +900,7 @@ graphical_launcher_x11() {
 		_saved_ifs="${IFS}"
 	fi
 	unset EMACS_OS_MODE
+	local _tty_snapshot="$(_tty_env_snapshot)"
 	_sanitize_graphical_env
 
 	local _flavor="" _selected_wm=""
@@ -816,6 +911,7 @@ graphical_launcher_x11() {
 		case "$1" in
 			-l|--list|--pipeline)
 				_show_wm_pipeline "x11"
+				eval "${_tty_snapshot}"
 				_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 				return 0
 				;;
@@ -859,6 +955,7 @@ graphical_launcher_x11() {
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "xinit ou startx não encontrado para lançador Xorg."
 		fi
+		eval "${_tty_snapshot}"
 		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 		return 127
 	}
@@ -866,6 +963,7 @@ graphical_launcher_x11() {
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "Servidor Xorg não encontrado."
 		fi
+		eval "${_tty_snapshot}"
 		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 		return 127
 	}
@@ -893,6 +991,7 @@ graphical_launcher_x11() {
 			if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 				_ui_err "Gerenciador X11 '${_selected_wm}' não está instalado."
 			fi
+			eval "${_tty_snapshot}"
 			_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 			return 127
 		fi
@@ -934,9 +1033,10 @@ graphical_launcher_x11() {
 	local _ui_font="$(_resolve_desktop_font "${_flavor}")"
 	local _gtk_theme="${GTK_THEME:-adw-gtk3-dark}"
 
-	local _p_bg="#1e1e22" _p_panel="#2b2b30" _p_border="#38383d" _p_fg="#ffffff" _p_muted="#9a9996"
-	local _p_menu_bg="#242428" _p_hover="#5e5c64" _p_accent="#3584e4" _p_urgent="#e01b24"
+	local _p_root="#181b20" _p_bg="#1e222a" _p_panel="#2a2e38" _p_border="#3b404d" _p_fg="#ffffff" _p_muted="#9a9996"
+	local _p_menu_bg="#1e222a" _p_hover="#5e5c64" _p_accent="#3daee9" _p_urgent="#e05263"
 	if [ "${_scheme}" = "light" ]; then
+		_p_root="#f6f5f4"
 		_p_bg="#f6f5f4"
 		_p_panel="#ffffff"
 		_p_border="#cdc7c2"
@@ -1040,7 +1140,7 @@ OTM
 	if command -v python3 > "/dev/null" 2>&1 && python3 -c 'import gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk' > "/dev/null" 2>&1; then
 		_tabbar_script="${_run_dir}/xgui-tabbar-$$.py"
 		cat << 'EOF_TABBAR' >| "${_tabbar_script}"
-import os, sys, shutil, subprocess
+import os, re, sys, shutil, subprocess
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GLib
@@ -1077,6 +1177,9 @@ class XguiTabBar(Gtk.Window):
         self.set_accept_focus(False)
         self.set_focus_on_map(False)
         self.set_keep_above(True)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.stick()
         self.set_title("xgui-tabbar")
         self.set_wmclass("xgui-tabbar", "xgui-tabbar")
 
@@ -1100,29 +1203,20 @@ class XguiTabBar(Gtk.Window):
             gdk_screen = Gdk.Screen.get_default()
             self.screen_w = gdk_screen.get_width() if gdk_screen else 1920
             self.screen_h = gdk_screen.get_height() if gdk_screen else 1080
-            if not shutil.which("wmctrl") and not shutil.which("xdotool"):
+            if not shutil.which("wmctrl") and not shutil.which("xdotool") and not shutil.which("xprop"):
                 sys.exit(0)
 
         self.set_default_size(self.screen_w, self.bar_h)
         self.set_size_request(self.screen_w, self.bar_h)
         self.move(0, 0)
+        self.connect("map-event", self._on_map_event)
         self.realize()
 
         self.self_xid = 0
-        try:
-            gdk_win = self.get_window()
-            if gdk_win and hasattr(gdk_win, "get_xid"):
-                self.self_xid = int(gdk_win.get_xid())
-        except Exception:
-            self.self_xid = 0
-
         self.self_xwin = None
+        self._capture_self_xid()
+
         if self.d is not None:
-            if self.self_xid:
-                try:
-                    self.self_xwin = self.d.create_resource_object("window", self.self_xid)
-                except Exception:
-                    self.self_xwin = None
             self.atom_net_supported = self.d.intern_atom("_NET_SUPPORTED")
             self.atom_net_client_list = self.d.intern_atom("_NET_CLIENT_LIST")
             self.atom_net_active = self.d.intern_atom("_NET_ACTIVE_WINDOW")
@@ -1136,6 +1230,9 @@ class XguiTabBar(Gtk.Window):
             self.atom_net_wm_state = self.d.intern_atom("_NET_WM_STATE")
             self.atom_max_vert = self.d.intern_atom("_NET_WM_STATE_MAXIMIZED_VERT")
             self.atom_max_horz = self.d.intern_atom("_NET_WM_STATE_MAXIMIZED_HORZ")
+            self.atom_fullscreen = self.d.intern_atom("_NET_WM_STATE_FULLSCREEN")
+            self.atom_above = self.d.intern_atom("_NET_WM_STATE_ABOVE")
+            self.atom_sticky = self.d.intern_atom("_NET_WM_STATE_STICKY")
 
             self.skip_types = set([
                 self.d.intern_atom("_NET_WM_WINDOW_TYPE_DOCK"),
@@ -1145,7 +1242,12 @@ class XguiTabBar(Gtk.Window):
                 self.d.intern_atom("_NET_WM_WINDOW_TYPE_SPLASH"),
                 self.d.intern_atom("_NET_WM_WINDOW_TYPE_UTILITY"),
                 self.d.intern_atom("_NET_WM_WINDOW_TYPE_DIALOG"),
-                self.d.intern_atom("_NET_WM_WINDOW_TYPE_NOTIFICATION")
+                self.d.intern_atom("_NET_WM_WINDOW_TYPE_NOTIFICATION"),
+                self.d.intern_atom("_NET_WM_WINDOW_TYPE_DROPDOWN_MENU"),
+                self.d.intern_atom("_NET_WM_WINDOW_TYPE_POPUP_MENU"),
+                self.d.intern_atom("_NET_WM_WINDOW_TYPE_TOOLTIP"),
+                self.d.intern_atom("_NET_WM_WINDOW_TYPE_COMBO"),
+                self.d.intern_atom("_NET_WM_WINDOW_TYPE_DND"),
             ])
 
             try:
@@ -1164,16 +1266,18 @@ class XguiTabBar(Gtk.Window):
             border = "#cdc7c2"
             fg = "#241f31"
             muted = "#5e5c64"
-            accent = "#3584e4"
-            tab_active_bg = "#ffffff"
+            accent = "#3daee9"
+            accent_fg = "#ffffff"
+            tab_active_bg = "#3daee9"
         else:
-            win_bg = "#1e1e22"
-            btn_bg = "#2b2b30"
-            border = "#38383d"
+            win_bg = "#1e222a"
+            btn_bg = "#2a2e38"
+            border = "#3b404d"
             fg = "#ffffff"
             muted = "#9a9996"
-            accent = "#3584e4"
-            tab_active_bg = "#2b2b30"
+            accent = "#3daee9"
+            accent_fg = "#ffffff"
+            tab_active_bg = "#3daee9"
 
         font_name = os.environ.get("XGUI_FONT", "JetBrainsMono Nerd Font")
 
@@ -1200,7 +1304,7 @@ class XguiTabBar(Gtk.Window):
             min-height: 22px;
         }}
         button.inactive-tab {{
-            background-color: {win_bg};
+            background-color: {btn_bg};
             background-image: none;
             color: {muted};
             border: 1px solid {border};
@@ -1214,7 +1318,7 @@ class XguiTabBar(Gtk.Window):
         button.active-tab {{
             background-color: {tab_active_bg};
             background-image: none;
-            color: {fg};
+            color: {accent_fg};
             border: 1px solid {accent};
             border-top: 2px solid {accent};
             font-weight: bold;
@@ -1222,7 +1326,7 @@ class XguiTabBar(Gtk.Window):
         button.active-tab:hover {{
             background-color: {accent};
             background-image: none;
-            color: #ffffff;
+            color: {accent_fg};
             border-color: {accent};
         }}
         """
@@ -1245,6 +1349,64 @@ class XguiTabBar(Gtk.Window):
         self.poll()
         GLib.timeout_add(200, self.poll)
 
+    def _capture_self_xid(self):
+        if not self.self_xid:
+            try:
+                gdk_win = self.get_window()
+                if gdk_win is not None:
+                    if GdkX11 is not None and hasattr(GdkX11.X11Window, "get_xid"):
+                        self.self_xid = int(GdkX11.X11Window.get_xid(gdk_win))
+                    elif hasattr(gdk_win, "get_xid"):
+                        self.self_xid = int(gdk_win.get_xid())
+            except Exception:
+                self.self_xid = 0
+        if self.d is not None and self.self_xid and self.self_xwin is None:
+            try:
+                self.self_xwin = self.d.create_resource_object("window", self.self_xid)
+            except Exception:
+                self.self_xwin = None
+        return self.self_xid
+
+    def _enforce_bar(self):
+        self.move(0, 0)
+        self.resize(self.screen_w, self.bar_h)
+        self.set_keep_above(True)
+        xid = self._capture_self_xid()
+        if self.d is not None and self.self_xwin is not None:
+            try:
+                self.self_xwin.configure(x=0, y=0, width=self.screen_w, height=self.bar_h)
+                self.self_xwin.change_property(self.atom_net_wm_state, Xatom.ATOM, 32, [self.atom_above, self.atom_sticky])
+                ev = Xlib.protocol.event.ClientMessage(
+                    window=self.self_xwin,
+                    client_type=self.atom_net_wm_state,
+                    data=(32, [1, self.atom_above, self.atom_sticky, 2, 0])
+                )
+                self.root.send_event(ev, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
+                self.self_xwin.raise_window()
+                self.d.sync()
+                return
+            except Exception:
+                pass
+        if xid:
+            if shutil.which("wmctrl"):
+                try:
+                    subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-b", "add,above,sticky"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+                    subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-e", f"0,0,0,{self.screen_w},{self.bar_h}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+                except Exception:
+                    pass
+            if shutil.which("xdotool"):
+                try:
+                    subprocess.run(["xdotool", "windowmove", str(xid), "0", "0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+                    subprocess.run(["xdotool", "windowsize", str(xid), str(self.screen_w), str(self.bar_h)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+                    subprocess.run(["xdotool", "windowraise", str(xid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+                except Exception:
+                    pass
+
+    def _on_map_event(self, widget=None, event=None):
+        self.set_struts(True)
+        self._enforce_bar()
+        return False
+
     def _spawn(self, argv):
         try:
             subprocess.Popen(
@@ -1258,36 +1420,73 @@ class XguiTabBar(Gtk.Window):
             pass
 
     def set_struts(self, enable):
-        if self.d is None or self.self_xwin is None:
+        xid = self._capture_self_xid()
+        if not xid:
             return
-        try:
-            if enable:
-                strut = [0, 0, self.bar_h, 0]
-                strut_p = [0, 0, self.bar_h, 0, 0, 0, 0, 0, 0, self.screen_w - 1, 0, 0]
-                self.self_xwin.change_property(self.atom_net_strut, self.atom_cardinal, 32, strut)
-                self.self_xwin.change_property(self.atom_net_strut_partial, self.atom_cardinal, 32, strut_p)
-            else:
-                self.self_xwin.delete_property(self.atom_net_strut)
-                self.self_xwin.delete_property(self.atom_net_strut_partial)
-            self.d.sync()
-        except Exception:
-            pass
+        end_x = max(0, self.screen_w - 1)
+        if self.d is not None and self.self_xwin is not None:
+            try:
+                if enable:
+                    strut = [0, 0, self.bar_h, 0]
+                    strut_p = [0, 0, self.bar_h, 0, 0, 0, 0, 0, 0, end_x, 0, 0]
+                    self.self_xwin.change_property(self.atom_net_strut, self.atom_cardinal, 32, strut)
+                    self.self_xwin.change_property(self.atom_net_strut_partial, self.atom_cardinal, 32, strut_p)
+                else:
+                    self.self_xwin.delete_property(self.atom_net_strut)
+                    self.self_xwin.delete_property(self.atom_net_strut_partial)
+                self.d.sync()
+                return
+            except Exception:
+                pass
+        if shutil.which("xprop"):
+            try:
+                if enable:
+                    sp = f"0, 0, {self.bar_h}, 0, 0, 0, 0, 0, 0, {end_x}, 0, 0"
+                    st = f"0, 0, {self.bar_h}, 0"
+                    subprocess.run(
+                        ["xprop", "-id", str(xid), "-f", "_NET_WM_STRUT_PARTIAL", "32c", "-set", "_NET_WM_STRUT_PARTIAL", sp],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0
+                    )
+                    subprocess.run(
+                        ["xprop", "-id", str(xid), "-f", "_NET_WM_STRUT", "32c", "-set", "_NET_WM_STRUT", st],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0
+                    )
+                else:
+                    subprocess.run(["xprop", "-id", str(xid), "-remove", "_NET_WM_STRUT"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+                    subprocess.run(["xprop", "-id", str(xid), "-remove", "_NET_WM_STRUT_PARTIAL"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+            except Exception:
+                pass
 
     def unmaximize_window(self, xid):
         if self.d is not None:
             try:
-                ev = Xlib.protocol.event.ClientMessage(
+                ev1 = Xlib.protocol.event.ClientMessage(
                     window=xid,
                     client_type=self.atom_net_wm_state,
                     data=(32, [0, self.atom_max_vert, self.atom_max_horz, 1, 0])
                 )
-                self.root.send_event(ev, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
+                ev2 = Xlib.protocol.event.ClientMessage(
+                    window=xid,
+                    client_type=self.atom_net_wm_state,
+                    data=(32, [0, self.atom_fullscreen, 0, 1, 0])
+                )
+                self.root.send_event(ev1, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
+                self.root.send_event(ev2, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
                 self.d.sync()
                 return
             except Exception:
                 pass
         if shutil.which("wmctrl"):
-            self._spawn(["wmctrl", "-i", "-r", str(xid), "-b", "remove,maximized_vert,maximized_horz"])
+            try:
+                subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-b", "remove,maximized_vert,maximized_horz"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+                subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-b", "remove,fullscreen"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+            except Exception:
+                pass
+        elif shutil.which("xdotool"):
+            try:
+                subprocess.run(["xdotool", "windowstate", "--remove", "MAXIMIZED_VERT", "--remove", "MAXIMIZED_HORZ", "--remove", "FULLSCREEN", str(xid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+            except Exception:
+                pass
 
     def maximize_window(self, xid):
         if self.d is not None:
@@ -1303,7 +1502,15 @@ class XguiTabBar(Gtk.Window):
             except Exception:
                 pass
         if shutil.which("wmctrl"):
-            self._spawn(["wmctrl", "-i", "-r", str(xid), "-b", "add,maximized_vert,maximized_horz"])
+            try:
+                subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-b", "add,maximized_vert,maximized_horz"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+            except Exception:
+                pass
+        elif shutil.which("xdotool"):
+            try:
+                subprocess.run(["xdotool", "windowstate", "--add", "MAXIMIZED_VERT", "--add", "MAXIMIZED_HORZ", str(xid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+            except Exception:
+                pass
 
     def maximize_to_bounds(self, xid, y, w, h, maximize_hint=True):
         self.unmaximize_window(xid)
@@ -1318,13 +1525,18 @@ class XguiTabBar(Gtk.Window):
                 self.maximize_window(xid)
             return
         if shutil.which("wmctrl"):
+            try:
+                subprocess.run(["wmctrl", "-i", "-r", hex(xid), "-e", f"0,0,{y},{w},{h}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+            except Exception:
+                pass
             if maximize_hint:
                 self.maximize_window(xid)
-            else:
-                self._spawn(["wmctrl", "-i", "-r", str(xid), "-e", f"0,0,{y},{w},{h}"])
         elif shutil.which("xdotool"):
-            self._spawn(["xdotool", "windowmove", str(xid), "0", str(y)])
-            self._spawn(["xdotool", "windowsize", str(xid), str(w), str(h)])
+            try:
+                subprocess.run(["xdotool", "windowmove", str(xid), "0", str(y)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+                subprocess.run(["xdotool", "windowsize", str(xid), str(w), str(h)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.0)
+            except Exception:
+                pass
 
     def activate_window(self, xid):
         if self.d is not None:
@@ -1342,7 +1554,7 @@ class XguiTabBar(Gtk.Window):
             except Exception:
                 pass
         if shutil.which("wmctrl"):
-            self._spawn(["wmctrl", "-i", "-a", str(xid)])
+            self._spawn(["wmctrl", "-i", "-a", hex(xid)])
         elif shutil.which("xdotool"):
             self._spawn(["xdotool", "windowactivate", str(xid)])
 
@@ -1361,23 +1573,72 @@ class XguiTabBar(Gtk.Window):
                 pass
         if shutil.which("xdotool"):
             try:
-                res = subprocess.run(["xdotool", "getwindowname", str(xid)], capture_output=True, text=True)
+                res = subprocess.run(["xdotool", "getwindowname", str(xid)], capture_output=True, text=True, timeout=0.5)
                 t = (res.stdout or "").strip()
                 if t:
                     return t
             except Exception:
                 pass
+        if shutil.which("xprop"):
+            try:
+                res = subprocess.run(["xprop", "-id", hex(xid), "_NET_WM_NAME", "WM_NAME"], capture_output=True, text=True, timeout=0.5)
+                for line in (res.stdout or "").splitlines():
+                    m = re.search(r'=\s*"(.*)"\s*$', line)
+                    if m and m.group(1):
+                        return m.group(1)
+            except Exception:
+                pass
         return "Window"
 
     def is_normal(self, xid):
-        if xid == self.self_xid:
+        self._capture_self_xid()
+        if xid <= 0 or xid == self.self_xid:
             return False
         if self.d is None:
+            if shutil.which("xprop"):
+                try:
+                    res = subprocess.run(
+                        ["xprop", "-id", hex(xid), "_NET_WM_WINDOW_TYPE", "WM_TRANSIENT_FOR", "WM_STATE", "WM_CLASS"],
+                        capture_output=True, text=True, timeout=0.5
+                    )
+                    if res.returncode != 0:
+                        return False
+                    out = res.stdout or ""
+                    if "BadWindow" in out or re.search(r"window state:\s*Withdrawn", out, re.I):
+                        return False
+                    for line in out.splitlines():
+                        if line.startswith("WM_TRANSIENT_FOR("):
+                            return False
+                        if line.startswith("WM_CLASS(") and "xgui-tabbar" in line.lower():
+                            return False
+                        if line.startswith("_NET_WM_WINDOW_TYPE("):
+                            for st in (
+                                "_NET_WM_WINDOW_TYPE_DOCK",
+                                "_NET_WM_WINDOW_TYPE_DESKTOP",
+                                "_NET_WM_WINDOW_TYPE_MENU",
+                                "_NET_WM_WINDOW_TYPE_TOOLBAR",
+                                "_NET_WM_WINDOW_TYPE_SPLASH",
+                                "_NET_WM_WINDOW_TYPE_UTILITY",
+                                "_NET_WM_WINDOW_TYPE_DIALOG",
+                                "_NET_WM_WINDOW_TYPE_NOTIFICATION",
+                                "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU",
+                                "_NET_WM_WINDOW_TYPE_POPUP_MENU",
+                                "_NET_WM_WINDOW_TYPE_TOOLTIP",
+                                "_NET_WM_WINDOW_TYPE_COMBO",
+                                "_NET_WM_WINDOW_TYPE_DND",
+                            ):
+                                if st in line:
+                                    return False
+                except Exception:
+                    pass
             return True
         try:
             xwin = self.d.create_resource_object("window", xid)
             attrs = xwin.get_attributes()
             if attrs and getattr(attrs, "override_redirect", False):
+                return False
+            wclass = xwin.get_wm_class()
+            if wclass and any("xgui-tabbar" in str(c).lower() for c in wclass):
                 return False
             trans = xwin.get_wm_transient_for()
             if trans:
@@ -1394,36 +1655,58 @@ class XguiTabBar(Gtk.Window):
             return False
 
     def _list_windows_fallback(self):
+        self._capture_self_xid()
         normal = []
         titles = {}
         active_xid = None
-        if shutil.which("wmctrl"):
+        if shutil.which("xprop"):
             try:
-                res = subprocess.run(["wmctrl", "-l"], capture_output=True, text=True)
+                res = subprocess.run(
+                    ["xprop", "-root", "_NET_CLIENT_LIST", "_NET_ACTIVE_WINDOW"],
+                    capture_output=True, text=True, timeout=1.0
+                )
                 for line in (res.stdout or "").splitlines():
-                    parts = line.split(None, 3)
-                    if len(parts) >= 4:
-                        wid = int(parts[0], 16)
-                        if wid == self.self_xid:
-                            continue
-                        normal.append(wid)
-                        titles[wid] = parts[3].strip() or "Window"
+                    if line.startswith("_NET_CLIENT_LIST") and "not found" not in line:
+                        for tok in re.findall(r"0x[0-9a-fA-F]+", line):
+                            wid = int(tok, 16)
+                            if wid > 0 and wid != self.self_xid and wid not in normal:
+                                normal.append(wid)
+                    elif line.startswith("_NET_ACTIVE_WINDOW"):
+                        m = re.search(r"0x[0-9a-fA-F]+", line)
+                        if m:
+                            aw = int(m.group(0), 16)
+                            if aw > 0:
+                                active_xid = aw
             except Exception:
                 pass
-        elif shutil.which("xdotool"):
-            try:
-                res = subprocess.run(["xdotool", "search", "--onlyvisible", "--maxdepth", "2", "--name", ""], capture_output=True, text=True)
-                for line in (res.stdout or "").splitlines():
-                    s = line.strip()
-                    if s.isdigit():
-                        wid = int(s)
-                        if wid != self.self_xid:
+        if not normal:
+            if shutil.which("wmctrl"):
+                try:
+                    res = subprocess.run(["wmctrl", "-l"], capture_output=True, text=True, timeout=1.0)
+                    for line in (res.stdout or "").splitlines():
+                        parts = line.split(None, 3)
+                        if len(parts) >= 4:
+                            wid = int(parts[0], 16)
+                            if wid == self.self_xid:
+                                continue
                             normal.append(wid)
-            except Exception:
-                pass
-        if shutil.which("xdotool"):
+                            titles[wid] = parts[3].strip() or "Window"
+                except Exception:
+                    pass
+            elif shutil.which("xdotool"):
+                try:
+                    res = subprocess.run(["xdotool", "search", "--onlyvisible", "--maxdepth", "2", "--name", ""], capture_output=True, text=True, timeout=1.0)
+                    for line in (res.stdout or "").splitlines():
+                        s = line.strip()
+                        if s.isdigit():
+                            wid = int(s)
+                            if wid != self.self_xid:
+                                normal.append(wid)
+                except Exception:
+                    pass
+        if active_xid is None and shutil.which("xdotool"):
             try:
-                res = subprocess.run(["xdotool", "getactivewindow"], capture_output=True, text=True)
+                res = subprocess.run(["xdotool", "getactivewindow"], capture_output=True, text=True, timeout=0.5)
                 s = (res.stdout or "").strip()
                 if s.isdigit():
                     active_xid = int(s)
@@ -1494,12 +1777,7 @@ class XguiTabBar(Gtk.Window):
             self.move(0, 0)
             self.resize(self.screen_w, self.bar_h)
             self.show_all()
-            if self.self_xwin is not None:
-                try:
-                    self.self_xwin.raise_window()
-                    self.d.sync()
-                except Exception:
-                    pass
+            self._enforce_bar()
             self.is_bar_visible = True
 
         for w in normal_windows:
@@ -1604,7 +1882,7 @@ fi
 if command -v xrdb > "/dev/null" 2>&1; then
 	printf "Xcursor.theme: %s\nXcursor.size: %s\n" "${_valid_theme}" "${_cur_size}" | xrdb -merge - > "/dev/null" 2>&1 || true
 fi
-command -v xsetroot > "/dev/null" 2>&1 && xsetroot -solid "${_p_bg}" -cursor_name left_ptr > "/dev/null" 2>&1 || true
+command -v xsetroot > "/dev/null" 2>&1 && xsetroot -solid "${_p_root}" -cursor_name left_ptr > "/dev/null" 2>&1 || true
 
 if command -v setxkbmap > "/dev/null" 2>&1; then
 	setxkbmap -model abnt2 -layout br -option numpad:mac > "/dev/null" 2>&1 || true
@@ -1739,14 +2017,16 @@ case "${_target_wm}" in
     </application>
     <application name="xgui-tabbar">
       <decor>no</decor>
+      <position><x>0</x><y>0</y></position>
       <desktop>all</desktop>
       <layer>above</layer>
       <skip_taskbar>yes</skip_taskbar>
       <skip_pager>yes</skip_pager>
       <focus>no</focus>
     </application>
-    <application class="Xgui-tabbar">
+    <application class="xgui-tabbar" name="xgui-tabbar">
       <decor>no</decor>
+      <position><x>0</x><y>0</y></position>
       <desktop>all</desktop>
       <layer>above</layer>
       <skip_taskbar>yes</skip_taskbar>
@@ -1982,7 +2262,9 @@ EOF
 	rm -rf "${_run_dir}/fluxbox-gui-$$" "${_run_dir}/icewm-gui-$$" 2> "/dev/null" || true
 	_has_bin "xauth" && command xauth -q remove "${_display}" > "/dev/null" 2>&1 || true
 	[ "${_had_display}" -eq 0 ] && unset DISPLAY
+	eval "${_tty_snapshot}"
 	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
+	command -v _restore_tty_cursor > "/dev/null" 2>&1 && { _restore_tty_cursor > "/dev/null" 2>&1 || true; }
 	_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 
 	if [ "${_xinit_ret}" -ne 0 ] && [ "${_xinit_ret}" -ne 127 ]; then
@@ -2025,6 +2307,7 @@ emacs_window_manager_wayland() {
 		_ifs_was_set=1
 		_saved_ifs="${IFS}"
 	fi
+	local _tty_snapshot="$(_tty_env_snapshot)"
 	_sanitize_graphical_env
 
 	local _flavor=""
@@ -2055,6 +2338,7 @@ emacs_window_manager_wayland() {
 			_ui_err "emacs não encontrado."
 		fi
 		unset EMACS_OS_MODE
+		eval "${_tty_snapshot}"
 		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 		return 127
 	fi
@@ -2073,6 +2357,7 @@ emacs_window_manager_wayland() {
 				_ui_err "Pré-requisitos Wayland (/dev/dri/card* ou compositor) indisponíveis para EWM."
 			fi
 			unset EMACS_OS_MODE
+			eval "${_tty_snapshot}"
 			_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 			return 127
 		fi
@@ -2105,8 +2390,9 @@ emacs_window_manager_wayland() {
 	fi
 
 	unset EMACS_OS_MODE
-	_restore_tty_cursor > "/dev/null" 2>&1 || true
+	eval "${_tty_snapshot}"
 	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
+	command -v _restore_tty_cursor > "/dev/null" 2>&1 && { _restore_tty_cursor > "/dev/null" 2>&1 || true; }
 	_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 	return "${_emacs_ret}"
 }
@@ -2119,6 +2405,7 @@ emacs_window_manager_x11() {
 		_ifs_was_set=1
 		_saved_ifs="${IFS}"
 	fi
+	local _tty_snapshot="$(_tty_env_snapshot)"
 	_sanitize_graphical_env
 
 	local _flavor=""
@@ -2144,6 +2431,7 @@ emacs_window_manager_x11() {
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "xinit ou startx não encontrado para EWM Xorg."
 		fi
+		eval "${_tty_snapshot}"
 		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 		return 127
 	}
@@ -2151,6 +2439,7 @@ emacs_window_manager_x11() {
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "Servidor Xorg não encontrado para EWM."
 		fi
+		eval "${_tty_snapshot}"
 		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 		return 127
 	}
@@ -2160,6 +2449,7 @@ emacs_window_manager_x11() {
 		if [ "${_SHELL_DISPATCH_PROBE:-0}" != "1" ]; then
 			_ui_err "emacs não encontrado."
 		fi
+		eval "${_tty_snapshot}"
 		_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 		return 127
 	fi
@@ -2174,8 +2464,9 @@ emacs_window_manager_x11() {
 	_exec_x11 "${_emacs_bin}" -mm "$@"
 	local _ret=$?
 	unset _X11_FLAVOR_OVERRIDE EMACS_OS_MODE
-	_restore_tty_cursor > "/dev/null" 2>&1 || true
+	eval "${_tty_snapshot}"
 	_freebsd_vt_bounce > "/dev/null" 2>&1 || true
+	command -v _restore_tty_cursor > "/dev/null" 2>&1 && { _restore_tty_cursor > "/dev/null" 2>&1 || true; }
 	_kiosk_restore_ifs "${_ifs_was_set}" "${_saved_ifs}"
 	return "${_ret}"
 }

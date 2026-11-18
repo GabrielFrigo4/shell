@@ -50,7 +50,7 @@ Os módulos `core/detect.sh` (SO, shell, distro, cache, Raw TTY e binários CLI 
     4. Sonda de binários e diretórios de sistema na ordem canônica de precedência: `KDE > GNOME > MATE > Cinnamon > XFCE > LXQt > LXDE > Budgie > Pantheon > Deepin > COSMIC > Fallback (adwaita)`.
 - **`_detect_color_scheme`**: Consulta dinamicamente a intenção estética em tempo real (`dark` ou `light`, sem fixar cache obsoleto em disco) via portal D-Bus XDG (`org.freedesktop.appearance.color-scheme`), `kreadconfig6`/`kreadconfig5`/`~/.config/kdeglobals`, GSettings (`org.gnome.desktop.interface color-scheme`, tratando `'default'` com tema não-escuro como `light`) e chaves nativas COSMIC/XFCE/Cinnamon/MATE.
 - **`_resolve_gtk_theme` & `_detect_gtk_theme`**: Mapeia o tema GTK coerente para ambos os modos **light** e **dark** do DE mestre (`adw-gtk3` / `adw-gtk3-dark`, `Breeze` / `Breeze-Dark`, `Greybird` / `Greybird-dark`, `Mint-Y` / `Mint-Y-Dark`, `Yaru-MATE` / `Yaru-MATE-dark`, `Clearlooks-Phenix`, `Materia` / `Materia-dark`, `io.elementary.stylesheet.blueberry` / `io.elementary.stylesheet.blueberry-dark`, `deepin` / `deepin-dark`, `cosmic` / `cosmic-dark`) inspecionando `/usr/share/themes`, `/usr/local/share/themes` e diretórios do usuário.
-- **`_detect_qt_theme`**: Resolve `QT_STYLE_OVERRIDE` (`Breeze-Dark`, `Breeze`, `chameleon`) alinhando componentes Qt à paleta global.
+- **`_detect_qt_theme`**: Resolve `QT_STYLE_OVERRIDE` (`"Breeze"` para KDE/LXQt como nome de QStyle válido no Qt6, ou `"chameleon"` no Deepin) alinhando componentes Qt à paleta global.
 - **`_detect_qt_platform_theme`**: Define `QT_QPA_PLATFORMTHEME` (`xdgdesktopportal`, `lxqt`, `deepin`, `gtk3`, `qt6ct`, `qt5ct`) para integração nativa de janelas de diálogo e estilos de widgets.
 - **Sessão Wayland vs. X11**: Avalia `$XDG_SESSION_TYPE` e `$WAYLAND_DISPLAY` para determinar a rota gráfica correta.
 
@@ -93,9 +93,9 @@ O Universal Shell detecta a intenção estética em tempo real do sistema operac
 ### 3. Qt Toolkit (`QT_QPA_PLATFORMTHEME` & `QT_STYLE_OVERRIDE`)
 
 - Garante diálogo nativo de arquivos e renderização coerente em aplicativos Qt:
-    - No GNOME/KDE: Utiliza `xdgdesktopportal`.
+    - No GNOME/KDE: Utiliza `xdgdesktopportal` (ou `kde` no Plasma / `qt6ct` em WMs).
     - Em ambientes com Qt6 configuration tool: Integra com `qt6ct` ou `qt5ct`.
-    - Define `QT_STYLE_OVERRIDE="Breeze-Dark"` quando apropriado.
+    - Define `QT_STYLE_OVERRIDE="Breeze"` em sessões standalone KDE/LXQt (QStyle válido no Qt6; o esquema claro/escuro é herdado via `qt6ct`/`kdeglobals`/portal, sem usar `"Breeze-Dark"` como nome de estilo).
 
 ### 4. Electron Wayland Nativo
 
@@ -113,13 +113,13 @@ O Universal Shell detecta a intenção estética em tempo real do sistema operac
 
 ---
 
-## 📟 Detecção & Propagação de Raw TTY (`_is_raw_tty`)
+## 📟 Detecção, Linhagem & Propagação de Raw TTY (`_is_raw_tty` & `_has_raw_tty_ancestor`)
 
-Para preservar a legibilidade e evitar caracteres corrompidos (_mojibake_ de fontes ausentes) em consoles puros do kernel ou sessões SSH/Bhyve:
+Para preservar a legibilidade e evitar caracteres corrompidos (_mojibake_ de fontes ausentes) em consoles puros do kernel, sessões SSH/Bhyve e subshells aninhados:
 
-### 1. Critérios de Identificação de Console Puro
+### 1. Critérios de Identificação & Linhagem de Console Puro
 
-A função `_is_raw_tty()` em `core/detect.sh` avalia a cascata:
+As funções `_is_raw_tty()` e `_has_raw_tty_ancestor()` em `core/detect.sh` avaliam a cascata e a linhagem de processos:
 
 1. **Variáveis de Ambiente Independentes:** Checa `RAW_TTY`, `LC_RAW_TTY` e `UNIVERSAL_RAW_TTY` de forma isolada (`1`, `true`, `yes`).
 2. **Emulação do Terminal (`$TERM`):** `linux`, `dumb`, `vt100`, `cons25*`, `wvt25*`.
@@ -128,6 +128,7 @@ A função `_is_raw_tty()` em `core/detect.sh` avalia a cascata:
     - FreeBSD: `/dev/ttyv*` (`vt(4)`)
     - OpenBSD / NetBSD: `/dev/ttyC*`, `/dev/ttyE*` (`wscons`)
     - Console mestre: `/dev/console`
+4. **Linhagem TTY com Fronteiras Gráficas (`_has_raw_tty_ancestor`):** Sobe a árvore de processos ancestrais para propagar o modo Raw TTY automaticamente em subshells abertos dentro de `:terminal` (Vim/NeoVim), `eat`, `vterm` ou `term` (Emacs TTY), interrompendo a subida ao cruzar fronteiras gráficas (sessões Wayland/X11, emuladores PTY gráficos ou Emacs GUI).
 
 ### 2. Propagação Transparente via SSH & Bhyve
 

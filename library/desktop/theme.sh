@@ -2,6 +2,14 @@
 # Library: Desktop Theme Context & Session Environment Propagation
 # ----------------------------------------------------------------
 
+export BREEZE_ADWAITA_ROOT_BG="#181b20"
+export BREEZE_ADWAITA_BAR_BG="#1e222a"
+export BREEZE_ADWAITA_SURFACE_BG="#2a2e38"
+export BREEZE_ADWAITA_BORDER="#3b404d"
+export BREEZE_ADWAITA_ACCENT="#3daee9"
+export BREEZE_ADWAITA_ACCENT_FG="#ffffff"
+export BREEZE_ADWAITA_ALERT="#e05263"
+
 ### ================================
 ### SESSION THEME PROPAGATION
 ### ================================
@@ -42,12 +50,12 @@ _propagate_session_theme_env() {
 	case "${_flavor}" in
 		kde|plasma)
 			_qt_platform="kde"
-			[ "${_scheme}" = "light" ] && _qt_theme="Breeze" || _qt_theme="Breeze-Dark"
+			_qt_theme="Breeze"
 			[ "${_scheme}" = "light" ] && _gtk_theme="Breeze" || _gtk_theme="Breeze-Dark"
 			;;
 		lxqt)
 			_qt_platform="lxqt"
-			[ "${_scheme}" = "light" ] && _qt_theme="Breeze" || _qt_theme="Breeze-Dark"
+			_qt_theme="Breeze"
 			[ "${_scheme}" = "light" ] && _gtk_theme="Breeze" || _gtk_theme="Breeze-Dark"
 			;;
 		*)
